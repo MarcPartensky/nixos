@@ -39,8 +39,20 @@ in
   networking.wireless.iwd.enable = true;
   networking.networkmanager.wifi.backend = "iwd";
 
-  services.xserver.enable = true;
-  services.xserver.displayManager.gdm.enable = true;
+  displayManager = { 
+    defaultSession = "none+i3"; 
+    lightdm = { 
+      enable = true; 
+      greeter.enable = false; 
+      autoLogin = { 
+        enable = true; 
+        user = "dooy"; 
+      }; 
+    }; 
+  };
+
+  # services.xserver.enable = true;
+  # services.xserver.displayManager.gdm.enable = true;
 
   hardware.pulseaudio.enable = true;
   hardware.bluetooth.enable = true;
