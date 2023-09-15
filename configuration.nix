@@ -266,7 +266,8 @@ in
       mcfly
       sddm
       sddm-peace-color
-      plasma
+      plasma-pa
+      plasma-nm
       # tokyo-night-sddm
       # sddm-theme-dialog
       # (callPackage ./themes/sddm-theme-dialog.nix {}).sddm-theme-dialog
