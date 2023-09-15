@@ -37,8 +37,8 @@ in
   # boot.loader.systemd-boot.enable = true;
   # boot.initrd.systemd.enable = true;
   # boot.loader.efi.canTouchEfiVariables = true;
-  # boot.plymouth.enable = true;
-  # boot.plymouth.theme = "breeze";
+  boot.plymouth.enable = true;
+  boot.plymouth.theme = "breeze";
 
   virtualisation.docker.enable = true;
 
