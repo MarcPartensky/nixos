@@ -35,7 +35,7 @@ in
 
   boot.zfs.forceImportRoot = lib.mkDefault false;
   # boot.loader.systemd-boot.enable = true;
-  # boot.initrd.systemd.enable = true;
+  boot.initrd.systemd.enable = true;
   # boot.loader.efi.canTouchEfiVariables = true;
   boot.plymouth.enable = true;
   boot.plymouth.theme = "breeze";
