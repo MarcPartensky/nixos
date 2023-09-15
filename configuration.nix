@@ -91,6 +91,7 @@ in
   # services.xserver.displayManager.gdm.enable = true;
 
   programs.hyprland.enable = true;
+  programs.dconf.enable = true; # apply gtk themes in wayland apps
 
   users.users = {
     root = {
@@ -265,8 +266,7 @@ in
       mcfly
       sddm
       sddm-peace-color
-      org.kde.plasmas.extras
-      org.kde.plasmas.core
+      plasma5
       # tokyo-night-sddm
       # sddm-theme-dialog
       # (callPackage ./themes/sddm-theme-dialog.nix {}).sddm-theme-dialog
