@@ -72,10 +72,10 @@ in
       # }; 
       # lightdm = { 
       #   enable = true; 
-      #   greeter.enable = true; 
       # }; 
       gdm = {
         enable = true;
+        greeter.enable = true; 
       };
     };
   };
