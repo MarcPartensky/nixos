@@ -32,7 +32,7 @@ rec {
 
   installPhase = ''
     mkdir -p $out/share/sddm/themes
-    cp -aR $src $out/share/sddm/themes/sddm-peace-color
+    cp -aR $src $out/share/sddm/themes/sddm-aple
   '';
 
 }
