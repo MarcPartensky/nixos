@@ -16,7 +16,7 @@ rec {
     owner = "vfosterm";
     repo = "nixos-sddm-theme-noBlur";
     rev = "master";
-    # sha256 = "sha256-JRCa8JYkQqkBKQ8YYNNjPrUPY3WwiEkq0W3pBmlhbEs=";
+    sha256 = "sha256-Hxifk68xVfnL9EWBicHctzJqyowkCBhAZgSLd7ZZXvg=";
   };
   nativeBuildInputs = [
     wrapQtAppsHook
