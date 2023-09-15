@@ -49,18 +49,18 @@ in
   hardware.bluetooth.enable = true;
 
   # amd support with vulkan
-  hardware.opengl.driSupport  = true;
-  hardware.opengl.extraPackages = with pkgs; [
-     rocm-opencl-icd
-     rocm-opencl-runtime
-     amdvlk
-  ];
+  # hardware.opengl.driSupport  = true;
+  # hardware.opengl.extraPackages = with pkgs; [
+  #    rocm-opencl-icd
+  #    rocm-opencl-runtime
+  #    amdvlk
+  # ];
 
   # Enable the X11 windowing system.
   services.xserver = {
     enable = true;
     layout = "us";
-    videoDrivers = [ "amdgpu" ];
+    # videoDrivers = [ "amdgpu" ];
     # windowManager.i3.enable = true;
     displayManager = { 
       defaultSession = "hyprland"; 
