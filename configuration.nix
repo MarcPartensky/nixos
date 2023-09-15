@@ -5,7 +5,7 @@ let
   kubeMasterIP = "10.1.1.2";
   kubeMasterHostname = "api.kube";
   kubeMasterAPIServerPort = 6443;
-  tokyo-night-sddm = pkgs.libsForQt5.callPackage ./tokyo-night-sddm/default.nix { };
+  tokyo-night-sddm = pkgs.libsForQt5.callPackage ./themes/tokyo-night-sddm.nix { };
 in
 {
   # load module config to top-level configuration
