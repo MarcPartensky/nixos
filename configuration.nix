@@ -17,6 +17,7 @@ in
   else
     throw "refuse to build: git tree is dirty";
 
+
   system.stateVersion = "22.11";
  
   system.activationScripts = {
@@ -39,16 +40,23 @@ in
   networking.wireless.iwd.enable = true;
   networking.networkmanager.wifi.backend = "iwd";
 
-  displayManager = { 
-    defaultSession = "none+i3"; 
-    lightdm = { 
-      enable = true; 
-      greeter.enable = false; 
-      autoLogin = { 
+  # Enable the X11 windowing system.
+  services.xserver = {
+    enable = true;
+    layout = "us";
+    # videoDrivers = [ "nvidia" ];
+    # windowManager.i3.enable = true;
+    displayManager = { 
+      defaultSession = "hyprland"; 
+      lightdm = { 
         enable = true; 
-        user = "dooy"; 
+        greeter.enable = false; 
+        autoLogin = { 
+          enable = true; 
+          user = "marc"; 
+        }; 
       }; 
-    }; 
+    };
   };
 
   # services.xserver.enable = true;
