@@ -31,9 +31,11 @@ in
   };
 
   boot.zfs.forceImportRoot = lib.mkDefault false;
-  boot.initrd.systemd.enable = true;
-  boot.plymouth.enable = true;
-  boot.plymouth.theme = "breeze";
+  # boot.loader.systemd-boot.enable = true;
+  # boot.initrd.systemd.enable = true;
+  # boot.loader.efi.canTouchEfiVariables = true;
+  # boot.plymouth.enable = true;
+  # boot.plymouth.theme = "breeze";
 
   virtualisation.docker.enable = true;
 
@@ -57,26 +59,26 @@ in
   # ];
 
   # Enable the X11 windowing system.
-  services.xserver = {
-    enable = true;
-    layout = "us";
-    # videoDrivers = [ "amdgpu" ];
-    # windowManager.i3.enable = true;
-    displayManager = { 
-      defaultSession = "hyprland"; 
-      autoLogin = { 
-        enable = true; 
-        user = "marc"; 
-      }; 
-      lightdm = { 
-        enable = true; 
-        greeter.enable = false; 
-      }; 
-    };
-  };
+  # services.xserver = {
+  #   enable = true;
+  #   layout = "us";
+  #   # videoDrivers = [ "amdgpu" ];
+  #   # windowManager.i3.enable = true;
+  #   displayManager = { 
+  #     defaultSession = "Hyprland"; 
+  #     # autoLogin = { 
+  #     #   enable = true; 
+  #     #   user = "marc"; 
+  #     # }; 
+  #     lightdm = { 
+  #       enable = true; 
+  #       greeter.enable = false; 
+  #     }; 
+  #   };
+  # };
 
-  # services.xserver.enable = true;
-  # services.xserver.displayManager.gdm.enable = true;
+  services.xserver.enable = true;
+  services.xserver.displayManager.gdm.enable = true;
 
   programs.hyprland.enable = true;
 
