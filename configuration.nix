@@ -67,6 +67,9 @@ in
     layout = "us";
     videoDrivers = [ "amdgpu" ];
     # windowManager.i3.enable = true;
+    desktopManager = {
+        plasma5.enable = true;
+    };
     displayManager = { 
       defaultSession = "hyprland"; 
       # autoLogin = { 
