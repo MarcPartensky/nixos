@@ -72,7 +72,7 @@ in
       # }; 
       lightdm = { 
         enable = true; 
-      #   greeter.enable = false; 
+        greeter.enable = true; 
       }; 
       # gdm = {
       #   enable = true;
