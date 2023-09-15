@@ -6,7 +6,6 @@ let
   kubeMasterHostname = "api.kube";
   kubeMasterAPIServerPort = 6443;
   tokyo-night-sddm = pkgs.libsForQt5.callPackage ./themes/tokyo-night-sddm.nix { };
-  sddm-theme-dialog = pkgs.libsForQt5.callPackage ./themes/sddm-theme-dialog.nix { };
 in
 {
   # load module config to top-level configuration
@@ -264,7 +263,8 @@ in
       mcfly
       sddm
       tokyo-night-sddm
-      sddm-theme-dialog
+      # sddm-theme-dialog
+      (callPackage /home/myusername/Downloads/sddm-theme-dialog.nix {}).sddm-theme-dialog.
     ];
 
 
