@@ -71,16 +71,16 @@ in
       #   user = "marc"; 
       # }; 
       sddm = {
-          enable = true;
-          theme = "sddm-sugar-dark";
+        enable = true;
+        theme = "sddm-sugar-dark";
       };
-      # lightdm = { 
+      lightdm = { 
       #   enable = true; 
       #   greeter.enable = true; 
-      # }; 
-      # gdm = {
+      }; 
+      gdm = {
       #   enable = true;
-      # };
+      };
     };
   };
 
