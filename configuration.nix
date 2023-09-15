@@ -44,6 +44,7 @@ in
   hardware.bluetooth.enable = true;
 
   # amd support with vulkan
+  hardware.opengl.driSupport  = true;
   hardware.opengl.extraPackages = with pkgs; [
      rocm-opencl-icd
      rocm-opencl-runtime
