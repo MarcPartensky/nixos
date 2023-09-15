@@ -76,7 +76,7 @@ in
       # }; 
       gdm = {
         enable = true;
-      }
+      };
     };
   };
 
