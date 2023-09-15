@@ -217,9 +217,33 @@ in
       };
       wantedBy = [ "multi-user.target" ];
   };
+  #
+  # environment.systemPackages = builtins.attrValues {
+  #   inherit (pkgs)
+  #     k3s
+  #     autossh
+  #     jq # other programs
+  #     neovim
+  #     stow
+  #     coreutils
+  #     gnumake
+  #     bat
+  #     gnupg
+  #     home-manager
+  #     htop
+  #     kompose
+  #     kubectl
+  #     kubernetes
+  #     killall
+  #     seatd
+  #     mcfly
+  #     sddm
+  #     # tokyo-night-sddm
+  #   ;
+  # };
 
-  environment.systemPackages = builtins.attrValues {
-    inherit (pkgs)
+  environment.systemPackages = with pkgs;
+    [
       k3s
       autossh
       jq # other programs
@@ -239,8 +263,7 @@ in
       mcfly
       sddm
       # tokyo-night-sddm
-    ;
-  };
+    ];
 
 
   i18n.defaultLocale = "fr_FR.UTF-8";
