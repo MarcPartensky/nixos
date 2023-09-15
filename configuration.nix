@@ -72,6 +72,7 @@ in
       # }; 
       sddm = {
           enable = true;
+          theme = "sddm-sugar-dark";
       };
       # lightdm = { 
       #   enable = true; 
