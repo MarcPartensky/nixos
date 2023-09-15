@@ -164,6 +164,7 @@ in
   # };
 
   boot.zfs.forceImportRoot = lib.mkDefault false;
+  boot.initrd.systemd.enable = true
 
   nix.settings.experimental-features = lib.mkDefault [ "nix-command" "flakes" ];
 
