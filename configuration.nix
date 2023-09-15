@@ -59,26 +59,29 @@ in
   ];
 
   # Enable the X11 windowing system.
-  # services.xserver = {
-  #   enable = true;
-  #   layout = "us";
-  #   # videoDrivers = [ "amdgpu" ];
-  #   # windowManager.i3.enable = true;
-  #   displayManager = { 
-  #     defaultSession = "Hyprland"; 
-  #     # autoLogin = { 
-  #     #   enable = true; 
-  #     #   user = "marc"; 
-  #     # }; 
-  #     lightdm = { 
-  #       enable = true; 
-  #       greeter.enable = false; 
-  #     }; 
-  #   };
-  # };
+  services.xserver = {
+    enable = true;
+    layout = "us";
+    # videoDrivers = [ "amdgpu" ];
+    # windowManager.i3.enable = true;
+    displayManager = { 
+      # defaultSession = "Hyprland"; 
+      # autoLogin = { 
+      #   enable = true; 
+      #   user = "marc"; 
+      # }; 
+      # lightdm = { 
+      #   enable = true; 
+      #   greeter.enable = false; 
+      # }; 
+      gdm = {
+        enable = true;
+      }
+    };
+  };
 
-  services.xserver.enable = true;
-  services.xserver.displayManager.gdm.enable = true;
+  # services.xserver.enable = true;
+  # services.xserver.displayManager.gdm.enable = true;
 
   programs.hyprland.enable = true;
 
