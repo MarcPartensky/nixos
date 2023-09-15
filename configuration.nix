@@ -70,10 +70,13 @@ in
         enable = true; 
         user = "marc"; 
       }; 
-      lightdm = { 
-        enable = true; 
+      ssdm = {
+          enable = true;
+      };
+      # lightdm = { 
+      #   enable = true; 
       #   greeter.enable = true; 
-      }; 
+      # }; 
       # gdm = {
       #   enable = true;
       # };
