@@ -70,7 +70,7 @@ in
         enable = true; 
         user = "marc"; 
       }; 
-      ssdm = {
+      sddm = {
           enable = true;
       };
       # lightdm = { 
