@@ -237,7 +237,6 @@ in
       seatd
       mcfly
       sddm
-      sddm-themes
     ;
   };
 
