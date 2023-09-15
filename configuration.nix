@@ -66,16 +66,16 @@ in
     # windowManager.i3.enable = true;
     displayManager = { 
       defaultSession = "hyprland"; 
-      # autoLogin = { 
-      #   enable = true; 
-      #   user = "marc"; 
-      # }; 
+      autoLogin = { 
+        enable = true; 
+        user = "marc"; 
+      }; 
       # lightdm = { 
       #   enable = true; 
+      #   greeter.enable = true; 
       # }; 
       gdm = {
         enable = true;
-        greeter.enable = true; 
       };
     };
   };
