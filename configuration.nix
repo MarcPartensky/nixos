@@ -266,6 +266,7 @@ in
       mcfly
       sddm
       sddm-apple
+      sddm-kcm
       # plasma-desktop
             # plasma-workspace
             # plasma-workspace-wallpapers
