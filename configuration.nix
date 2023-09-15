@@ -6,8 +6,8 @@ let
   kubeMasterHostname = "api.kube";
   kubeMasterAPIServerPort = 6443;
   # tokyo-night-sddm = pkgs.libsForQt5.callPackage ./themes/tokyo-night-sddm.nix { };
-  # sddm-peace-color = pkgs.libsForQt5.callPackage ./themes/sddm-peace-color.nix { };
-  sddm-apple = pkgs.libsForQt5.callPackage ./themes/sddm-apple.nix { };
+  sddm-peace-color = pkgs.libsForQt5.callPackage ./themes/sddm-peace-color.nix { };
+  # sddm-apple = pkgs.libsForQt5.callPackage ./themes/sddm-apple.nix { };
 in
 {
   # load module config to top-level configuration
@@ -78,7 +78,8 @@ in
       # }; 
       sddm = {
         enable = true;
-        theme = "sddm-apple";
+        # theme = "sddm-apple";
+        theme = "sddm-peace-color";
       };
       lightdm = { 
       #   enable = true; 
@@ -268,7 +269,8 @@ in
       seatd
       mcfly
       sddm
-      sddm-apple
+      sddm-peace-color
+      # sddm-apple
       sddm-kcm
       # plasma-desktop
             # plasma-workspace
