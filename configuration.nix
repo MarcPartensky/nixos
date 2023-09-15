@@ -264,7 +264,7 @@ in
       sddm
       tokyo-night-sddm
       # sddm-theme-dialog
-      (callPackage /home/myusername/Downloads/sddm-theme-dialog.nix {}).sddm-theme-dialog
+      (callPackage ./themes/sddm-theme-dialog.nix {}).sddm-theme-dialog
     ];
 
 
