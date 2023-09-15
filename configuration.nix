@@ -30,6 +30,11 @@ in
     '';
   };
 
+  boot.zfs.forceImportRoot = lib.mkDefault false;
+  boot.initrd.systemd.enable = true;
+  boot.plymouth.enable = true;
+  boot.plymouth.theme = "breeze";
+
   virtualisation.docker.enable = true;
 
   # Enable NetworkManager for wireless networking,
@@ -163,8 +168,6 @@ in
   #   kubelet.extraOpts = "--fail-swap-on=false";
   # };
 
-  boot.zfs.forceImportRoot = lib.mkDefault false;
-  boot.initrd.systemd.enable = true;
 
   nix.settings.experimental-features = lib.mkDefault [ "nix-command" "flakes" ];
 
