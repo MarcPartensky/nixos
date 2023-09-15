@@ -62,7 +62,7 @@ in
   services.xserver = {
     enable = true;
     layout = "us";
-    # videoDrivers = [ "amdgpu" ];
+    videoDrivers = [ "amdgpu" ];
     # windowManager.i3.enable = true;
     displayManager = { 
       # defaultSession = "Hyprland"; 
