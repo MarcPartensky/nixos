@@ -16,7 +16,7 @@ rec {
     owner = "marcpartensky";
     repo = "sddm-peace-color";
     rev = "master";
-    # sha256 = "sha256-JRVVzyefqR2L3UrEK2iWyhUKfPMUNUnfRZmwdz05wL0=";
+    sha256 = "sha256-JRCa8JYkQqkBKQ8YYNNjPrUPY3WwiEkq0W3pBmlhbEs=";
   };
   nativeBuildInputs = [
     wrapQtAppsHook
