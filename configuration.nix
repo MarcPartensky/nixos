@@ -238,7 +238,7 @@ in
       seatd
       mcfly
       sddm
-      tokyo-night-sddm
+      # tokyo-night-sddm
     ;
   };
 
