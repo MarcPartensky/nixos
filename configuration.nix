@@ -65,7 +65,7 @@ in
     videoDrivers = [ "amdgpu" ];
     # windowManager.i3.enable = true;
     displayManager = { 
-      defaultSession = "Hyprland"; 
+      defaultSession = "hyprland"; 
       # autoLogin = { 
       #   enable = true; 
       #   user = "marc"; 
