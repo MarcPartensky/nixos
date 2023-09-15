@@ -15,7 +15,7 @@ rec {
   src = fetchFromGitHub {
     owner = "marcpartensky";
     repo = "sddm-peace-color";
-    # rev = "320c8e74ade1e94f640708eee0b9a75a395697c6";
+    rev = "master";
     # sha256 = "sha256-JRVVzyefqR2L3UrEK2iWyhUKfPMUNUnfRZmwdz05wL0=";
   };
   nativeBuildInputs = [
