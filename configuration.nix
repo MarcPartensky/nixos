@@ -40,6 +40,16 @@ in
   networking.wireless.iwd.enable = true;
   networking.networkmanager.wifi.backend = "iwd";
 
+  hardware.pulseaudio.enable = true;
+  hardware.bluetooth.enable = true;
+
+  # amd support with vulkan
+  hardware.opengl.extraPackages = with pkgs; [
+     rocm-opencl-icd
+     rocm-opencl-runtime
+     amdvlk
+  ];
+
   # Enable the X11 windowing system.
   services.xserver = {
     enable = true;
@@ -62,8 +72,6 @@ in
   # services.xserver.enable = true;
   # services.xserver.displayManager.gdm.enable = true;
 
-  hardware.pulseaudio.enable = true;
-  hardware.bluetooth.enable = true;
   programs.hyprland.enable = true;
 
   users.users = {
