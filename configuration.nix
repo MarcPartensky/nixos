@@ -83,7 +83,7 @@ in
       #   enable = true; 
       #   greeter.enable = true; 
       }; 
-      gdm.enable = true;
+      # gdm.enable = true;
     };
   };
 
