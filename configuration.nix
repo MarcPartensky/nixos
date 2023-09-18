@@ -217,8 +217,6 @@ in
           -i ~/.ssh/id_rsa \
           marc@207.180.235.56
           '';
-          OnCalendar = "daily";
-          Persistent = true;
       };
       wantedBy = [ "multi-user.target" ];
   };
@@ -226,9 +224,10 @@ in
   systemd.timers.tunneltower = {
     wantedBy = [ "timers.target" ];
       timerConfig = {
-        OnBootSec = "5m";
-        OnUnitActiveSec = "5m";
-        Unit = "tunneltower.service";
+        OnBootSec = "1m";
+        OnUnitActiveSec = "1m";
+        Unit = "tunneltower";
+        OnCalendar = "05:00";
       };
   };
   
