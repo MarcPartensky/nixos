@@ -217,9 +217,21 @@ in
           -i ~/.ssh/id_rsa \
           marc@207.180.235.56
           '';
+          OnCalendar = "daily";
+          Persistent = true;
       };
       wantedBy = [ "multi-user.target" ];
   };
+
+  systemd.timers.tunneltower = {
+    wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnBootSec = "5m";
+        OnUnitActiveSec = "5m";
+        Unit = "tunneltower.service";
+      };
+  };
+  
   #
   # environment.systemPackages = builtins.attrValues {
   #   inherit (pkgs)
