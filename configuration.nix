@@ -227,7 +227,8 @@ in
         OnBootSec = "1m";
         OnUnitActiveSec = "1m";
         Unit = "tunneltower";
-        OnCalendar = "05:00";
+        Persistent = true;
+        OnCalendar = "daily";
       };
   };
   
