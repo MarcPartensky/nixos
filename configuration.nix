@@ -50,7 +50,7 @@ in
   networking.wireless.iwd.enable = true;
   networking.networkmanager.wifi.backend = "iwd";
 
-  hardware.pulseaudio.enable = true;
+  # hardware.pulseaudio.enable = true;
   services.pipewire = {
       enable = true;
       alsa.enable = true;
