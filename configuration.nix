@@ -224,8 +224,8 @@ in
   systemd.timers.tunneltower = {
     wantedBy = [ "timers.target" ];
       timerConfig = {
-        OnBootSec = "1m";
-        OnUnitActiveSec = "1m";
+        OnBootSec = "1d";
+        OnUnitActiveSec = "1d";
         Unit = "tunneltower";
         Persistent = true;
         OnCalendar = "daily";
