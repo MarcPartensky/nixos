@@ -206,6 +206,7 @@ in
           # Type = "simple";
       };
       serviceConfig = {
+          Type=oneshot;
           ExecStart = ''
           ${pkgs.autossh}/bin/autossh -M 0 \
           -o ServerAliveInterval=30 \
