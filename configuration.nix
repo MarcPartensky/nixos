@@ -206,7 +206,6 @@ in
           # Type = "simple";
       };
       serviceConfig = {
-          Type="oneshot";
           ExecStart = ''
           ${pkgs.autossh}/bin/autossh -M 0 \
           -o ServerAliveInterval=30 \
@@ -225,8 +224,8 @@ in
   systemd.timers.tunneltower = {
     wantedBy = [ "timers.target" ];
       timerConfig = {
-        OnBootSec = "1d";
-        OnUnitActiveSec = "1d";
+        # OnBootSec = "1d";
+        # OnUnitActiveSec = "1d";
         Unit = "tunneltower";
         Persistent = true;
         OnCalendar = "daily";
