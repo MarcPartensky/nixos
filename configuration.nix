@@ -51,6 +51,15 @@ in
   networking.networkmanager.wifi.backend = "iwd";
 
   hardware.pulseaudio.enable = true;
+  services.pipewire = {
+      enable = true;
+      alsa.enable = true;
+      alsa.support32Bit = true;
+      jack.enable = true;
+      pulse.enable = true;
+      socketActivation = true;
+  };
+
   hardware.bluetooth.enable = true;
 
   # amd support with vulkan
