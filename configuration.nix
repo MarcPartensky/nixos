@@ -237,7 +237,9 @@ in
         # OnUnitActiveSec = "1d";
         Unit = "tunneltower";
         Persistent = true;
-        OnCalendar = "*-*-* 5:00:00";
+        # OnCalendar = "*-*-* 5:00:00";
+        OnBootSec="15min";
+        OnUnitActiveSec="1d";
       };
   };
   
