@@ -51,13 +51,13 @@ in
   networking.networkmanager.wifi.backend = "iwd";
 
   services = {
-    plex = {
-        enable = true;
-        dataDir = "/var/lib/plex";
-        openFirewall = true;
-        user = "plex";
-        group = "plex";
-    };
+    # plex = {
+    #     enable = true;
+    #     dataDir = "/var/lib/plex";
+    #     openFirewall = true;
+    #     user = "plex";
+    #     group = "plex";
+    # };
     # hardware.pulseaudio.enable = true;
     pipewire = {
       enable = true;
