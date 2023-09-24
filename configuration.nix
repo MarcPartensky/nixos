@@ -120,7 +120,7 @@ in
     dina-font
     proggyfonts
     source-code-pro
-    apple-fonts
+    sf-pro
   ];
 
 
