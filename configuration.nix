@@ -67,6 +67,35 @@ in
       pulse.enable = true;
       socketActivation = true;
     };
+    # Enable the X11 windowing system.
+    xserver = {
+      enable = true;
+      layout = "us";
+      videoDrivers = [ "amdgpu" ];
+      # windowManager.i3.enable = true;
+      desktopManager.plasma5.enable = true;
+      displayManager = { 
+        defaultSession = "hyprland"; 
+        # autoLogin = { 
+        #   enable = true; 
+        #   user = "marc"; 
+        # }; 
+        sddm = {
+          enable = true;
+          # theme = "sddm-apple";
+          theme = "sddm-peace-color";
+        };
+        lightdm = { 
+        #   enable = true; 
+        #   greeter.enable = true; 
+        }; 
+        # gdm.enable = true;
+      };
+    };
+    openssh = {
+      enable = lib.mkDefault true;
+      settings = { PasswordAuthentication = lib.mkDefault true; };
+    };
   };
 
   hardware.bluetooth.enable = true;
@@ -79,31 +108,6 @@ in
      amdvlk
   ];
 
-  # Enable the X11 windowing system.
-  services.xserver = {
-    enable = true;
-    layout = "us";
-    videoDrivers = [ "amdgpu" ];
-    # windowManager.i3.enable = true;
-    desktopManager.plasma5.enable = true;
-    displayManager = { 
-      defaultSession = "hyprland"; 
-      # autoLogin = { 
-      #   enable = true; 
-      #   user = "marc"; 
-      # }; 
-      sddm = {
-        enable = true;
-        # theme = "sddm-apple";
-        theme = "sddm-peace-color";
-      };
-      lightdm = { 
-      #   enable = true; 
-      #   greeter.enable = true; 
-      }; 
-      # gdm.enable = true;
-    };
-  };
 
   fonts.fonts = with pkgs; [
     noto-fonts
@@ -154,10 +158,6 @@ in
     # "${inputs.nixpkgs}/nixos/modules/profiles/qemu-guest.nix"
   ];
 
-  services.openssh = {
-    enable = lib.mkDefault true;
-    settings = { PasswordAuthentication = lib.mkDefault true; };
-  };
 
   # kubernetes https://nixos.wiki/wiki/K3s
   networking.firewall.allowedTCPPorts = [ 6443 5900 ];
