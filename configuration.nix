@@ -119,6 +119,7 @@ in
     mplus-outline-fonts.githubRelease
     dina-font
     proggyfonts
+    source-code-pro
   ];
 
 
