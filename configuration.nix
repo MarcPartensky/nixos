@@ -50,21 +50,23 @@ in
   networking.wireless.iwd.enable = true;
   networking.networkmanager.wifi.backend = "iwd";
 
-  services.plex = {
-      enable = true;
-      dataDir = "/var/lib/plex";
-      openFirewall = true;
-      user = "plex";
-      group = "plex";
-  }
-  # hardware.pulseaudio.enable = true;
-  services.pipewire = {
+  services = {
+    plex = {
+        enable = true;
+        dataDir = "/var/lib/plex";
+        openFirewall = true;
+        user = "plex";
+        group = "plex";
+    };
+    # hardware.pulseaudio.enable = true;
+    pipewire = {
       enable = true;
       alsa.enable = true;
       alsa.support32Bit = true;
       jack.enable = true;
       pulse.enable = true;
       socketActivation = true;
+    };
   };
 
   hardware.bluetooth.enable = true;
