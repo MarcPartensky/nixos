@@ -1,6 +1,6 @@
 { lib, stdenv, fetchurl, unzip, p7zip }:
 
-stdenv.mkDerivation rec {
+apple-fonts = stdenv.mkDerivation rec {
   pname = "apple-fonts";
   version = "1";
 
