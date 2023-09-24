@@ -321,6 +321,7 @@ in
       # tokyo-night-sddm
       # sddm-theme-dialog
       # (callPackage ./themes/sddm-theme-dialog.nix {}).sddm-theme-dialog
+      (callPackage ./themes/apple-fonts.nix {}).apple-fonts
     ];
 
 
