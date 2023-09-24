@@ -68,7 +68,7 @@
     meta = {
       description = "Apple San Francisco, New York fonts";
       homepage = "https://developer.apple.com/fonts/";
-      license = lib.licenses.unfree;
+      # license = lib.licenses.unfree;
     };
   };
 } 
