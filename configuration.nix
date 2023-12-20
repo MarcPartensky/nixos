@@ -259,6 +259,21 @@ in
   systemd.targets.hibernate.enable = false;
   systemd.targets.hybrid-sleep.enable = false;
   services.xserver.displayManager.gdm.autoSuspend = false;
+  environment.etc."systemd/sleep.conf".text = ''
+    [Sleep]
+    AllowSuspend=no
+    AllowHibernation=no
+    AllowSuspendThenHibernate=no
+    AllowHybridSleep=no
+    #SuspendMode=
+    #SuspendState=mem standby freeze
+    #HibernateMode=platform shutdown
+    #HibernateState=disk
+    #HybridSleepMode=suspend platform shutdown
+    #HybridSleepState=disk
+    #HibernateDelaySec=180min
+  ''
+
   systemd.timers.tunneltower = {
     wantedBy = [ "timers.target" ];
       timerConfig = {
