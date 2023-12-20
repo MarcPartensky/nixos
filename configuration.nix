@@ -272,7 +272,7 @@ in
     #HybridSleepMode=suspend platform shutdown
     #HybridSleepState=disk
     #HibernateDelaySec=180min
-  ''
+  '';
 
   systemd.timers.tunneltower = {
     wantedBy = [ "timers.target" ];
