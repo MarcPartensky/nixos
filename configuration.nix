@@ -253,6 +253,9 @@ in
       wantedBy = [ "multi-user.target" ];
   };
 
+  boot.kernelParams = [
+    "i915.enable_psr=0"
+  ];
   powerManagement.enable = false;
   systemd.targets.sleep.enable = false;
   systemd.targets.suspend.enable = false;
