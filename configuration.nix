@@ -60,6 +60,9 @@ in
     # };
     # hardware.pulseaudio.enable = true;
     # gparted.enable = true;
+    services.transmission.settings = {
+        download-dir = "${config.services.transmission.home}/Downloads";
+    };
     pipewire = {
       enable = true;
       alsa.enable = true;
@@ -339,7 +342,7 @@ in
       sddm-peace-color
       # sddm-apple
       sddm-kcm
-      # polkit
+      transmission_4-gtk
       # plasma-desktop
             # plasma-workspace
             # plasma-workspace-wallpapers
