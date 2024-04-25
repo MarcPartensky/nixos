@@ -59,6 +59,7 @@ in
     #     group = "plex";
     # };
     # hardware.pulseaudio.enable = true;
+    gparted.enable = true;
     pipewire = {
       enable = true;
       alsa.enable = true;
