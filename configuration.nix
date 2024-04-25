@@ -59,7 +59,6 @@ in
     #     group = "plex";
     # };
     # hardware.pulseaudio.enable = true;
-    gparted.enable = true;
     # services.transmission.settings = {
     #     download-dir = "${config.services.transmission.home}/Downloads";
     # };
