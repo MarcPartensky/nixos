@@ -21,7 +21,7 @@ in
     throw "refuse to build: git tree is dirty";
 
 
-  system.stateVersion = "22.11";
+  system.stateVersion = "23.11";
  
   system.activationScripts = {
     enableLingering = ''
@@ -339,7 +339,7 @@ in
       sddm-peace-color
       # sddm-apple
       sddm-kcm
-      polkit
+      # polkit
       # plasma-desktop
             # plasma-workspace
             # plasma-workspace-wallpapers
