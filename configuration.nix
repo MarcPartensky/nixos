@@ -338,6 +338,7 @@ in
       sddm-peace-color
       # sddm-apple
       sddm-kcm
+      polkit
       # plasma-desktop
             # plasma-workspace
             # plasma-workspace-wallpapers
