@@ -342,7 +342,7 @@ in
       sddm-peace-color
       # sddm-apple
       sddm-kcm
-      transmission_4-gtk
+      transmission-gtk
       # plasma-desktop
             # plasma-workspace
             # plasma-workspace-wallpapers
