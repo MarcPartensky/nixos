@@ -84,13 +84,13 @@ in
         #   user = "marc"; 
         # }; 
         sddm = {
-          enable = true;
+          enable = false;
           # theme = "sddm-apple";
           theme = "sddm-peace-color";
         };
         lightdm = { 
-        #   enable = true; 
-        #   greeter.enable = true; 
+          enable = true; 
+        #   greeter.enable = true; fonts
         }; 
         # gdm.enable = true;
       };
