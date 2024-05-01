@@ -1,5 +1,5 @@
 {
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-23.05";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
   ## after reboot, you can track rolling release by using
   #inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
