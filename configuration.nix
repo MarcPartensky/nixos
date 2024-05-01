@@ -90,12 +90,12 @@ in
         #   user = "marc"; 
         # }; 
         sddm = {
-          enable = false;
+          enable = true;
           # theme = "sddm-apple";
           theme = "sddm-peace-color";
         };
         lightdm = { 
-          enable = true; 
+          enable = false; 
         #   greeter.enable = true; fonts
         }; 
         # gdm.enable = true;
