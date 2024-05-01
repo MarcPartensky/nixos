@@ -33,6 +33,13 @@ in
     '';
   };
 
+  config.systemd.user.services.nixos-activation.unitConfig.ConditionUser =
+    mkForce
+      [
+        "!@system"
+        "!marc"
+      ];
+
   boot.zfs.forceImportRoot = lib.mkDefault false;
   # boot.loader.systemd-boot.enable = true;
   boot.initrd.systemd.enable = true;
