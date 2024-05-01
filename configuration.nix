@@ -23,15 +23,15 @@ in
 
   system.stateVersion = "23.11";
  
-  system.activationScripts = {
-    enableLingering = ''
-      # remove all existing lingering users
-      rm -r /var/lib/systemd/linger
-      mkdir /var/lib/systemd/linger
-      # enable for the subset of declared users
-      touch /var/lib/systemd/linger/marc
-    '';
-  };
+  # system.activationScripts = {
+  #   enableLingering = ''
+  #     # remove all existing lingering users
+  #     rm -r /var/lib/systemd/linger
+  #     mkdir /var/lib/systemd/linger
+  #     # enable for the subset of declared users
+  #     touch /var/lib/systemd/linger/marc
+  #   '';
+  # };
 
   # config.systemd.user.services.nixos-activation.unitConfig.ConditionUser = mkForce
   #   [
