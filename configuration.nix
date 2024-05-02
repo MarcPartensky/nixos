@@ -108,7 +108,7 @@ in
               waitPID=$!
             '';
           }
-        ]
+        ];
         # gdm.enable = true;
       };
     };
