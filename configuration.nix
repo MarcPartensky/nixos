@@ -83,6 +83,7 @@ in
       videoDrivers = [ "amdgpu" ];
       # windowManager.i3.enable = true;
       desktopManager.plasma5.enable = true;
+      desktopManager.xterm.enable = true;
       displayManager = { 
         defaultSession = "hyprland"; 
         # autoLogin = { 
@@ -101,14 +102,14 @@ in
         }; 
         gdm.enable = true;
         session = [
-          {
-            manage = "desktop";
-            name = "xterm";
-            start = ''
-              ${pkgs.xterm}/bin/xterm -ls &
-              waitPID=$!
-            '';
-          }
+          # {
+          #   manage = "desktop";
+          #   name = "xterm";
+          #   start = ''
+          #     ${pkgs.xterm}/bin/xterm -ls &
+          #     waitPID=$!
+          #   '';
+          # }
           {
             manage = "desktop";
             name = "firefox";
