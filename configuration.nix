@@ -359,6 +359,7 @@ in
       # sddm-apple
       sddm-kcm
       transmission-gtk
+      xterm
       # plasma-desktop
             # plasma-workspace
             # plasma-workspace-wallpapers
