@@ -8,7 +8,7 @@ let
   # tokyo-night-sddm = pkgs.libsForQt5.callPackage ./themes/tokyo-night-sddm.nix { };
   sddm-peace-color = pkgs.libsForQt5.callPackage ./themes/sddm-peace-color.nix { };
   # sddm-apple = pkgs.libsForQt5.callPackage ./themes/sddm-apple.nix { };
-  unstable-pkgs = import <nixos-unstable> {};
+  unstable-pkgs = import <nixos-unstable> {config.allowUnfree = true;};
 in
 {
   # load module config to top-level configuration
