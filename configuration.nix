@@ -107,7 +107,7 @@ in
               ${pkgs.xterm}/bin/xterm -ls $
               waitPID=$!
             '';
-          };
+          }
         ]
         # gdm.enable = true;
       };
