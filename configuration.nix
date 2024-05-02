@@ -90,7 +90,7 @@ in
         #   user = "marc"; 
         # }; 
         sddm = {
-          enable = true;
+          enable = false;
           # wayland.enable = true;
           # theme = "sddm-apple";
           theme = "sddm-peace-color";
@@ -99,6 +99,7 @@ in
           enable = false; 
         #   greeter.enable = true; fonts
         }; 
+        gdm.enable = true;
         session = [
           {
             manage = "desktop";
@@ -117,7 +118,6 @@ in
             '';
           }
         ];
-        # gdm.enable = true;
       };
     };
     openssh = {
