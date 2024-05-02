@@ -379,7 +379,7 @@ in
       sddm-kcm
       transmission-gtk
       xterm
-      unstable.alacritty
+      # unstable.alacritty
       # plasma-desktop
             # plasma-workspace
             # plasma-workspace-wallpapers
