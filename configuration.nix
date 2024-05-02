@@ -8,7 +8,7 @@ let
   # tokyo-night-sddm = pkgs.libsForQt5.callPackage ./themes/tokyo-night-sddm.nix { };
   sddm-peace-color = pkgs.libsForQt5.callPackage ./themes/sddm-peace-color.nix { };
   # sddm-apple = pkgs.libsForQt5.callPackage ./themes/sddm-apple.nix { };
-  unstable = import <nixpkgs-unstable> { config.allowUnfree = true; };
+  # unstable = import <nixpkgs-unstable> { config.allowUnfree = true; };
 in
 {
   # load module config to top-level configuration
@@ -332,7 +332,7 @@ in
   #     gnumake
   #     bat
   #     gnupg
-  #     home-manager
+  #     nome-manager
   #     htop
   #     kompose
   #     kubectl
@@ -370,7 +370,7 @@ in
       sddm-kcm
       transmission-gtk
       xterm
-      unstable.alacritty
+      # unstable.alacritty
       # plasma-desktop
             # plasma-workspace
             # plasma-workspace-wallpapers
