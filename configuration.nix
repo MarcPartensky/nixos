@@ -99,14 +99,16 @@ in
           enable = false; 
         #   greeter.enable = true; fonts
         }; 
-        session = {
-          manage = "desktop";
-          name = "xterm";
-          start = ''
-            ${pkgs.xterm}/bin/xterm -ls $
-            waitPID=$!
-          '';
-        };
+        session = [
+          {
+            manage = "desktop";
+            name = "xterm";
+            start = ''
+              ${pkgs.xterm}/bin/xterm -ls $
+              waitPID=$!
+            '';
+          };
+        ]
         # gdm.enable = true;
       };
     };
