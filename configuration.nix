@@ -8,6 +8,7 @@ let
   # tokyo-night-sddm = pkgs.libsForQt5.callPackage ./themes/tokyo-night-sddm.nix { };
   sddm-peace-color = pkgs.libsForQt5.callPackage ./themes/sddm-peace-color.nix { };
   # sddm-apple = pkgs.libsForQt5.callPackage ./themes/sddm-apple.nix { };
+  unstable-pkgs = import <nixpkgs-unstable> {};
 in
 {
   # load module config to top-level configuration
@@ -375,7 +376,9 @@ in
       # tokyo-night-sddm
       # sddm-theme-dialog
       # (callPackage ./themes/sddm-theme-dialog.nix {}).sddm-theme-dialog
-    ];
+    ] ++ (with unstable-pkgs; [
+      alacritty
+    ]);
 
 
   i18n.defaultLocale = "fr_FR.UTF-8";
