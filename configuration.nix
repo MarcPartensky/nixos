@@ -188,6 +188,13 @@ in
     "${inputs.nixpkgs}/nixos/modules/installer/scan/not-detected.nix"
     # "${inputs.nixpkgs}/nixos/modules/profiles/qemu-guest.nix"
   ];
+  nixpkgs = {
+    config = {
+      allowUnfree = true;
+      packageOverrides = pkgs: {
+      unstable = import (fetchTarball "https://github.com/NixOS/nixpkgs/archive/nixos-unstable.tar.gz") {};
+    };
+  };
 
 
   # kubernetes https://nixos.wiki/wiki/K3s
