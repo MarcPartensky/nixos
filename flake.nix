@@ -1,7 +1,7 @@
 {
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
+  # inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
   ## after reboot, you can track rolling release by using
-  # inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
   outputs = { self, nixpkgs }@inputs:
     let
