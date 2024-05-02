@@ -91,6 +91,7 @@ in
         # }; 
         sddm = {
           enable = true;
+          wayland.enable = true;
           # theme = "sddm-apple";
           theme = "sddm-peace-color";
         };
