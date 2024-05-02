@@ -104,7 +104,15 @@ in
             manage = "desktop";
             name = "xterm";
             start = ''
-              ${pkgs.xterm}/bin/xterm -ls $
+              ${pkgs.xterm}/bin/xterm -ls &
+              waitPID=$!
+            '';
+          },
+          {
+            manage = "desktop";
+            name = "firefox";
+            start = ''
+              ${pkgs.firefox}/bin/firefox &
               waitPID=$!
             '';
           }
