@@ -380,6 +380,7 @@ in
       transmission-gtk
       xterm
       alacritty
+      p7zip
       # unstable.alacritty
       # plasma-desktop
             # plasma-workspace
