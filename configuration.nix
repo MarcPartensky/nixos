@@ -9,7 +9,7 @@
     [ # Include the results of the hardware scan.
       home-manager.nixosModules.default
       ./modules/git
-      ./modules/tor
+      # ./modules/tor
     ];
 
   nix.settings.experimental-features = "nix-command flakes";
@@ -97,6 +97,8 @@
     tree
     bat
     httpie
+    dig
+    firejail
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [

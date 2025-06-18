@@ -17,6 +17,8 @@
       invidious
       tor-browser
       signal-desktop
+      kodi
+      mpv
     ];
 
     # programs.zsh.enable = true;
