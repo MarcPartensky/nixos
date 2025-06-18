@@ -1,5 +1,13 @@
-{ pkgs, home-manager, ... }:
+{ pkgs, home-manager, inputs, ... }:
 {
+
+  imports =
+    [
+      ../../modules/git
+      ../../modules/hyprland
+    ];
+
+
 
   home-manager.users.marc = { pkgs, ... }: {
     home.packages = with pkgs; [
