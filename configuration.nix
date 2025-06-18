@@ -9,7 +9,7 @@
     [ # Include the results of the hardware scan.
       home-manager.nixosModules.default
       ./modules/git
-      ./modules/tor/default.nix
+      ./modules/tor
     ];
 
   nix.settings.experimental-features = "nix-command flakes";
