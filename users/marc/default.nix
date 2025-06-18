@@ -19,6 +19,9 @@
       signal-desktop
       kodi
       mpv
+      wpaperd
+      wofi
+      rofi
     ];
 
     # programs.zsh.enable = true;
