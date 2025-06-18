@@ -2,12 +2,12 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 
-{ config, lib, pkgs, home-manager, agenix, nur, ... }:
+{ config, lib, pkgs, inputs, ... }:
 
 {
   imports =
     [ # Include the results of the hardware scan.
-      home-manager.nixosModules.default
+      inputs.home-manager.nixosModules.default
       ./modules/git
       # ./modules/tor
     ];
@@ -90,7 +90,7 @@
     yarn
     gnumake
     just
-    agenix.packages."${system}".default
+    inputs.agenix.packages."${system}".default
     gparted
     lsof
     uv
@@ -102,7 +102,7 @@
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-    "nur.repos.nltch.spotify-adblock"
+    "inputs.nur.repos.nltch.spotify-adblock"
     "spotify"
   ];
 
