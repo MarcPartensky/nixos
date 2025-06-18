@@ -63,6 +63,8 @@
             (extension "bitwarden-password-manager" "{446900e4-71c2-419f-a6a7-df9c091e268b}")
             (extension "tabliss" "extension@tabliss.io")
             (extension "umatrix" "uMatrix@raymondhill.net")
+            (extension "refined_github" "sindresorhus@gmail.com")
+            (extension "videospeed" "codebicycle@gmail.com")
             # (extension "libredirect" "7esoorv3@alefvanoon.anonaddy.me")
              #(extension "clearurls" "{74145f27-f039-47ce-a470-a662b129930a}")
           ];
