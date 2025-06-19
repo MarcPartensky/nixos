@@ -8,7 +8,13 @@
     ];
 
 
-  home-manager.users.marc = { pkgs, ... }: {
+
+  # home.file.".config/hypr/hyprland.conf".source = ../../modules/hyprland/hyprland.conf;
+
+  home-manager.backupFileExtension = "backup";
+
+
+  home-manager.users.marc = { pkgs, inputs, ... }: {
     home.packages = with pkgs; [
       # cli
       bat
@@ -29,6 +35,9 @@
       wpaperd
       wofi
       rofi
+      wdisplays
+      wl-clipboard-rs
+      wayvnc
     ];
 
     # programs.zsh.enable = true;
@@ -43,6 +52,41 @@
     #     "network.cookie.lifetimePolicy" = 0;
     #   };
     # };
+
+    programs.kitty.enable = true; # required for the default Hyprland config
+    wayland.windowManager.hyprland.enable = true; # enable Hyprland
+
+# bind=,XF86AudioRaiseVolume,exec,pamixer -i 5
+# bind=,XF86AudioLowerVolume,exec,pamixer -d 5
+# bind=,XF86AudioMute,exec,pamixer -t
+
+    wayland.windowManager.hyprland.settings = {
+      "$mod" = "SUPER";
+      bind =
+        [
+          "$mod, d, exec, wofi --show drun"
+          ", Print, exec, grimblast copy area"
+          "$mod, v, togglefloating"
+          "$mod, m, fullscreen"
+          "$mod, return, exec, alacritty"
+        ]
+        ++ (
+          # workspaces
+          # binds $mod + [shift +] {1..9} to [move to] workspace {1..9}
+          builtins.concatLists (builtins.genList (i:
+              let ws = i + 1;
+              in [
+                "$mod, code:1${toString i}, workspace, ${toString ws}"
+                "$alt, code:1${toString i}, movetoworkspace, ${toString ws}"
+              ]
+            )
+            9)
+        );
+    };
+   # wayland.windowManager.hyprland.plugins = [
+   #   inputs.hyprland-plugins.packages.${pkgs.stdenv.hostPlatform.system}.hy3
+   #   "/usr/lib/hy3.so"
+   # ];
 
     programs.firefox = {
       enable = true;

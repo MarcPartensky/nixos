@@ -17,28 +17,10 @@
 {inputs, pkgs, ...}: {
   # home.file.".config/hypr/hyprland.conf".source = ./hyprland.conf;
 
+  imports = [
+    # ./plugins.nix
 
-
-  # wayland.windowManager.hyprland.settings = {
-  #   "$mod" = "SUPER";
-  #   bind =
-  #     [
-  #       "$mod, D, exec, wofi --show drun"
-  #       ", Print, exec, grimblast copy area"
-  #     ]
-  #     ++ (
-  #       # workspaces
-  #       # binds $mod + [shift +] {1..9} to [move to] workspace {1..9}
-  #       builtins.concatLists (builtins.genList (i:
-  #           let ws = i + 1;
-  #           in [
-  #             "$mod, code:1${toString i}, workspace, ${toString ws}"
-  #             "ALT, code:1${toString i}, movetoworkspace, ${toString ws}"
-  #           ]
-  #         )
-  #         9)
-  #     );
-  # };
+  ];
 
   nix.settings = {
     substituters = ["https://hyprland.cachix.org"];
