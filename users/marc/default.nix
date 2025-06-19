@@ -55,6 +55,7 @@
 
     programs.kitty.enable = true; # required for the default Hyprland config
     wayland.windowManager.hyprland.enable = true; # enable Hyprland
+    home.sessionVariables.NIXOS_OZONE_WL = "1";
 
 # bind=,XF86AudioRaiseVolume,exec,pamixer -i 5
 # bind=,XF86AudioLowerVolume,exec,pamixer -d 5
@@ -82,6 +83,38 @@
             )
             9)
         );
+    };
+    wayland.windowManager.hyprland.plugins = [
+      pkgs.hyprlandPlugins.hy3
+      pkgs.hyprlandPlugins.hyprspace
+      # pkgs.hyprlandPlugins.hycov
+    ];
+
+    home.pointerCursor = {
+      gtk.enable = true;
+      # x11.enable = true;
+      package = pkgs.bibata-cursors;
+      name = "Bibata-Modern-Classic";
+      size = 16;
+    };
+  
+    gtk = {
+      enable = true;
+  
+      theme = {
+        package = pkgs.flat-remix-gtk;
+        name = "Flat-Remix-GTK-Grey-Darkest";
+      };
+  
+      iconTheme = {
+        package = pkgs.adwaita-icon-theme;
+        name = "Adwaita";
+      };
+  
+      font = {
+        name = "Sans";
+        size = 11;
+      };
     };
    # wayland.windowManager.hyprland.plugins = [
    #   inputs.hyprland-plugins.packages.${pkgs.stdenv.hostPlatform.system}.hy3
@@ -121,6 +154,7 @@
             (extension "umatrix" "uMatrix@raymondhill.net")
             (extension "refined_github" "sindresorhus@gmail.com")
             (extension "videospeed" "codebicycle@gmail.com")
+            (extension "sponsorblock" "dev@ajay.app")
             # (extension "libredirect" "7esoorv3@alefvanoon.anonaddy.me")
              #(extension "clearurls" "{74145f27-f039-47ce-a470-a662b129930a}")
           ];
@@ -131,6 +165,20 @@
           # `jq .applications.gecko.id manifest.json` to get the UUID
       };
     };
+
+  #   services.wpaperd = {
+  #     enable = true;
+  #     settings = {
+  #       default = {
+  #         path = "/home/marc/wallpapers";
+  #         duration = "30m";
+  #         apply-shadow = true;
+  #         sorting = "random";
+  #       };
+  # 
+  #     };
+  #   };
+
   
     # The state version is required and should stay at the version you
     # originally installed.
