@@ -9,16 +9,19 @@
     [ # Include the results of the hardware scan.
       inputs.home-manager.nixosModules.default
       ./modules/git
-      # ./modules/hyprland
+      ./modules/hyprland
       # ./modules/tor
     ];
 
-  wayland.windowManager.hyprland = {
-    enable = true;
-    # set the flake package
-    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
-    portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
-  };
+  # wayland.windowManager.hyprland = {
+  #   enable = true;
+  #   # set the flake package
+  #   package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+  #   portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
+  # };
+
+
+
 
   nix.settings.experimental-features = "nix-command flakes";
 

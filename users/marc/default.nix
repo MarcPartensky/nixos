@@ -4,9 +4,8 @@
   imports =
     [
       ../../modules/git
-      ../../modules/hyprland
+      # ../../modules/hyprland
     ];
-
 
 
   home-manager.users.marc = { pkgs, ... }: {
