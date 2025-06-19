@@ -41,6 +41,7 @@
       ripgrep
       blueberry
       pw-volume
+      nautilus
       # ag
     ];
 
