@@ -38,88 +38,11 @@
       wdisplays
       wl-clipboard-rs
       wayvnc
+      ripgrep
+      blueberry
+      pw-volume
+      # ag
     ];
-
-    # programs.zsh.enable = true;
-    # programs.librewolf = {
-    #   enable = true;
-    #   # Enable WebGL, cookies and history
-    #   settings = {
-    #     "webgl.disabled" = false;
-    #     "privacy.resistFingerprinting" = false;
-    #     "privacy.clearOnShutdown.history" = false;
-    #     "privacy.clearOnShutdown.cookies" = false;
-    #     "network.cookie.lifetimePolicy" = 0;
-    #   };
-    # };
-
-    programs.kitty.enable = true; # required for the default Hyprland config
-    wayland.windowManager.hyprland.enable = true; # enable Hyprland
-    home.sessionVariables.NIXOS_OZONE_WL = "1";
-
-# bind=,XF86AudioRaiseVolume,exec,pamixer -i 5
-# bind=,XF86AudioLowerVolume,exec,pamixer -d 5
-# bind=,XF86AudioMute,exec,pamixer -t
-
-    wayland.windowManager.hyprland.settings = {
-      "$mod" = "SUPER";
-      bind =
-        [
-          "$mod, d, exec, wofi --show drun"
-          ", Print, exec, grimblast copy area"
-          "$mod, v, togglefloating"
-          "$mod, m, fullscreen"
-          "$mod, return, exec, alacritty"
-        ]
-        ++ (
-          # workspaces
-          # binds $mod + [shift +] {1..9} to [move to] workspace {1..9}
-          builtins.concatLists (builtins.genList (i:
-              let ws = i + 1;
-              in [
-                "$mod, code:1${toString i}, workspace, ${toString ws}"
-                "$alt, code:1${toString i}, movetoworkspace, ${toString ws}"
-              ]
-            )
-            9)
-        );
-    };
-    wayland.windowManager.hyprland.plugins = [
-      pkgs.hyprlandPlugins.hy3
-      pkgs.hyprlandPlugins.hyprspace
-      # pkgs.hyprlandPlugins.hycov
-    ];
-
-    home.pointerCursor = {
-      gtk.enable = true;
-      # x11.enable = true;
-      package = pkgs.bibata-cursors;
-      name = "Bibata-Modern-Classic";
-      size = 16;
-    };
-  
-    gtk = {
-      enable = true;
-  
-      theme = {
-        package = pkgs.flat-remix-gtk;
-        name = "Flat-Remix-GTK-Grey-Darkest";
-      };
-  
-      iconTheme = {
-        package = pkgs.adwaita-icon-theme;
-        name = "Adwaita";
-      };
-  
-      font = {
-        name = "Sans";
-        size = 11;
-      };
-    };
-   # wayland.windowManager.hyprland.plugins = [
-   #   inputs.hyprland-plugins.packages.${pkgs.stdenv.hostPlatform.system}.hy3
-   #   "/usr/lib/hy3.so"
-   # ];
 
     programs.firefox = {
       enable = true;
