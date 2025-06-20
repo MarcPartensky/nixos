@@ -246,7 +246,7 @@
           ",XF86AudioLowerVolume,exec,pw-volume change -1%"
           ",XF86AudioMute,exec,pw-volume mute toggle"
 
-          ",XF86MonBrightnessUp,exec,brightnessctl s -1%"
+          ",XF86MonBrightnessUp,exec,brightnessctl s +1%"
           ",XF86MonBrightnessDown,exec,brightnessctl s 1%-"
         ]
         ++ (
