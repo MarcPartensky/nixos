@@ -22,6 +22,9 @@
       typer
       yt-dlp
       uv
+      pw-volume
+      wl-clipboard-rs
+      brightnessctl
 
       # gui
       wasistlos
@@ -36,11 +39,9 @@
       wofi
       rofi
       wdisplays
-      wl-clipboard-rs
       wayvnc
       ripgrep
       blueberry
-      pw-volume
       nautilus
       # ag
     ];
