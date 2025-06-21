@@ -67,6 +67,7 @@
 
       plugins = {
 
+
         hy3 = {
             tabs = {
                 height = 2;

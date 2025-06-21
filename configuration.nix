@@ -106,6 +106,7 @@
     firejail
     tealdeer
     firefoxpwa
+    neofetch
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [

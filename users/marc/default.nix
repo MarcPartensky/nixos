@@ -27,6 +27,7 @@
       librespeed-cli
       pwvucontrol
       sonusmix
+      btop
 
       # gui
       wasistlos
