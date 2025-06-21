@@ -6,6 +6,7 @@
       ../../modules/git
       ../../modules/hyprland
       ../../modules/librewolf
+      ../../modules/ssh
     ];
 
   # home.file.".config/hypr/hyprland.conf".source = ../../modules/hyprland/hyprland.conf;
