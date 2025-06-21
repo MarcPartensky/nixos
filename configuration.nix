@@ -9,7 +9,8 @@
     [ # Include the results of the hardware scan.
       inputs.home-manager.nixosModules.default
       ./modules/git
-      ./modules/hyprland
+      # ./modules/hyprland
+      # ./modules/librewolf
       # ./modules/tor
     ];
 
@@ -104,6 +105,7 @@
     dig
     firejail
     tealdeer
+    firefoxpwa
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
