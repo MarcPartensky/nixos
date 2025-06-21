@@ -25,6 +25,8 @@
       brightnessctl
       acpi
       librespeed-cli
+      pwvucontrol
+      sonusmix
 
       # gui
       wasistlos
