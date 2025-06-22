@@ -107,6 +107,8 @@
     tealdeer
     firefoxpwa
     neofetch
+    acpi
+    ripgrep
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
