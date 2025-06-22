@@ -24,7 +24,6 @@
       pw-volume
       wl-clipboard-rs
       brightnessctl
-      acpi
       librespeed-cli
       pwvucontrol
       sonusmix

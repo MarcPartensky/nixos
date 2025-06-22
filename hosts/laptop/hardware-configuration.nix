@@ -45,6 +45,18 @@
     randomEncryption.enable = true;
   } ];
 
+  # potentiellement avoir une partition dediee au swapfile étant donné qu'il
+  # n'est pas compatible d'utiliser de swapfile avec les datasets zfs
+  # swapDevices = [{device = "/swapfile"; size = 10000;}];
+
+  environment.etc.crypttab = {
+    mode = "0600";
+    text = ''
+      # <volume-name> <encrypted-device> [key-file] [options]
+      cryptstorage PARTUUID=b0c1fc13-c97e-4b45-b964-01822bfec30e
+    '';
+  };
+
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's
   # still possible to use this option, but it's recommended to use it in conjunction
