@@ -125,10 +125,19 @@
     enableSSHSupport = true;
   };
 
+
   # List services that you want to enable:
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
+
+  # Fonts
+  fonts.packages = with pkgs; [
+    # Nerd fonts
+    # nerdfonts
+    nerd-fonts.droid-sans-mono
+    meslo-lgs-nf
+  ];
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
@@ -159,6 +168,5 @@
   #
   # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
   system.stateVersion = "25.05"; # Did you read the comment?
-
 }
 
