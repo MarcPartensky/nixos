@@ -35,6 +35,7 @@
       helm
       mako
       ripgrep
+      spotdl
 
       # gui
       wasistlos
