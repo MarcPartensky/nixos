@@ -9,6 +9,7 @@
       ../../modules/ssh
       ../../modules/virt-manager
       ../../modules/syncthing
+      # ../../modules/kubernetes
     ];
 
   # home.file.".config/hypr/hyprland.conf".source = ../../modules/hyprland/hyprland.conf;
