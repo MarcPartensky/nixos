@@ -112,6 +112,7 @@
     # librespeed-cli
     speedtest
     speedtest-cli
+    ncdu
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [

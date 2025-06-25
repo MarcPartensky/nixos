@@ -30,6 +30,11 @@
       pwvucontrol
       sonusmix
       btop
+      # ag
+      nmap
+      helm
+      mako
+      ripgrep
 
       # gui
       wasistlos
@@ -45,10 +50,10 @@
       rofi
       wdisplays
       wayvnc
-      ripgrep
       blueberry
       nautilus
-      # ag
+      zathura
+      wstunnel
     ];
 
     services.gammastep = {
