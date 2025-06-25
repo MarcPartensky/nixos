@@ -7,6 +7,7 @@
       ../../modules/hyprland
       ../../modules/librewolf
       ../../modules/ssh
+      ../../modules/virt-manager
     ];
 
   # home.file.".config/hypr/hyprland.conf".source = ../../modules/hyprland/hyprland.conf;
