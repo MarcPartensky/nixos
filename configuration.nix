@@ -109,7 +109,9 @@
     neofetch
     acpi
     ripgrep
-    librespeed-cli
+    # librespeed-cli
+    speedtest
+    speedtest-cli
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
