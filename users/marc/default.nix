@@ -58,6 +58,18 @@
       longitude = 2.0;
     };
 
+    systemd.user.services = {
+      wpaperd = {
+          Unit.Description = "wpaperd";
+        Service = {
+          Type = "exec";
+          ExecStart = "${pkgs.wpaperd}/bin/wpaperd";
+          Restart = "on-failure";
+        };
+        Install = { WantedBy = [ "default.target" ]; };
+      };
+    };
+ 
   #   services.wpaperd = {
   #     enable = true;
   #     settings = {
