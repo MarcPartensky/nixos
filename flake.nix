@@ -16,6 +16,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     agenix.url = "github:ryantm/agenix";
+    microvm.url = "github:astro/microvm.nix";
   };
   outputs = { self, nixpkgs, ... } @ inputs: {
     nixosConfigurations = {
