@@ -34,6 +34,11 @@
       options = [ "fmask=0077" "dmask=0077" ];
     };
 
+  fileSystems."/mnt/arch" =
+    { device = "/dev/mapper/arch";
+      fsType = "btrfs";
+    };
+
   # fileSystems."/mnt/arch" =
   #   { device = "/dev/disk/by-uuid/BB98-CA7E";
   #     fsType = "vfat";
@@ -53,7 +58,7 @@
     mode = "0600";
     text = ''
       # <volume-name> <encrypted-device> [key-file] [options]
-      cryptstorage PARTUUID=b0c1fc13-c97e-4b45-b964-01822bfec30e
+      arch PARTUUID=b0c1fc13-c97e-4b45-b964-01822bfec30e
     '';
   };
 
