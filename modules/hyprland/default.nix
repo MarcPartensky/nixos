@@ -243,8 +243,8 @@
           # "$mod alt, mouse:272, resizewindow"
           # "$mod, mouse:273, resizewindow"
 
-          "super,mouse_down,workspace,e+1"
-          "super,mouse_up,workspace,e-1"
+          "$mod,mouse_down,workspace,e+1"
+          "$mod,mouse_up,workspace,e-1"
 
           ",XF86AudioRaiseVolume,exec,pw-volume change +1%"
           ",XF86AudioLowerVolume,exec,pw-volume change -1%"
@@ -252,6 +252,9 @@
 
           ",XF86MonBrightnessUp,exec,brightnessctl s +1%"
           ",XF86MonBrightnessDown,exec,brightnessctl s 1%-"
+
+          ", Print, exec, grimblast copysave area"
+          "$mod, Print, exec, grimblast copysave output"
         ]
         ++ (
           # workspaces
