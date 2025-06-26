@@ -62,11 +62,11 @@
       grim
       slurp
       swappy
-      # protonmail-desktop
       electron-mail
       grimblast
       nwg-dock-hyprland
       nwg-drawer
+      obs-studio
     ];
 
     services.gammastep = {
