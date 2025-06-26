@@ -37,6 +37,7 @@
       mako
       ripgrep
       spotdl
+      wstunnel
 
       # gui
       wasistlos
@@ -55,7 +56,9 @@
       blueberry
       nautilus
       zathura
-      wstunnel
+      element-desktop
+      caprine
+      goldwarden
     ];
 
     services.gammastep = {
