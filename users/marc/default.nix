@@ -59,6 +59,11 @@
       element-desktop
       caprine
       goldwarden
+      grim
+      slurp
+      swappy
+      # protonmail-desktop
+      electron-mail
     ];
 
     services.gammastep = {
