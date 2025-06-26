@@ -64,6 +64,9 @@
       swappy
       # protonmail-desktop
       electron-mail
+      grimblast
+      nwg-dock-hyprland
+      nwg-drawer
     ];
 
     services.gammastep = {
