@@ -239,6 +239,7 @@
           "$mod, b, exec, gtk-launch blueberry"
 
           "$mod, mouse:272, movewindow"
+          "$mod, mouse:273, movewindow"
           # "$mod, mouse:273, resizewindow"
           # "$mod alt, mouse:272, resizewindow"
           # "$mod, mouse:273, resizewindow"
@@ -255,6 +256,9 @@
 
           ", Print, exec, grimblast copysave area"
           "$mod, Print, exec, grimblast copysave output"
+
+          "SUPER+SHIFT,h,hy3:makegroup, h"
+          "SUPER+SHIFT,v,hy3:makegroup, v"
         ]
         ++ (
           # workspaces
