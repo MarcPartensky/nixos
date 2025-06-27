@@ -29,7 +29,10 @@
 
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
       pkgs = import nixpkgs { system = "aarch64-linux"; };
-      modules = [ ./profiles/nix-on-droid/configuration.nix ];
+      modules = [
+        ./profiles/nix-on-droid/configuration.nix
+        ./users.nix
+      ];
     };
 
     nixosConfigurations = {
@@ -37,7 +40,7 @@
         system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
-          ./configuration.nix
+          ./profiles/laptop/configuration.nix
           ./hosts/laptop/hardware-configuration.nix
           ./users.nix
           ./users/marc

@@ -8,7 +8,7 @@
   imports =
     [ # Include the results of the hardware scan.
       inputs.home-manager.nixosModules.default
-      ./modules/git
+      ../../modules/git
       # ./modules/hyprland
       # ./modules/librewolf
       # ./modules/tor
