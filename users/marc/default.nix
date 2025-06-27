@@ -5,6 +5,7 @@
     [
       ../../modules/git
       ../../modules/hyprland
+      ../../modules/waybar
       ../../modules/librewolf
       ../../modules/ssh
       ../../modules/virt-manager
@@ -38,6 +39,7 @@
       ripgrep
       spotdl
       wstunnel
+      talosctl
 
       # gui
       wasistlos
@@ -67,6 +69,7 @@
       nwg-dock-hyprland
       nwg-drawer
       obs-studio
+      # waybar-hyprland
     ];
 
     services.gammastep = {
