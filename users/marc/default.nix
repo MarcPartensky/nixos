@@ -42,6 +42,8 @@
       talosctl
       realesrgan-ncnn-vulkan
       realcugan-ncnn-vulkan
+      compose2nix
+      vtracer
 
 
       # gui
