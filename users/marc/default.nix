@@ -40,6 +40,7 @@
       spotdl
       wstunnel
       talosctl
+      realesrgan-ncnn-vulkan
 
       # gui
       wasistlos
@@ -69,6 +70,7 @@
       nwg-dock-hyprland
       nwg-drawer
       obs-studio
+      qbittorrent
       # waybar-hyprland
     ];
 
