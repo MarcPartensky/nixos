@@ -47,6 +47,8 @@
       tmux
       tmate
       firefoxpwa
+      chatgpt-cli
+      lowfi
 
 
       # gui
