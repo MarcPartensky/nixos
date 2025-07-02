@@ -1,14 +1,14 @@
 { pkgs, ... }:
 {
-  programs.firefox = {
-    nativeMessagingHosts.packages = [ pkgs.firefoxpwa ];
-  };
+  # programs.firefox = {
+  #   nativeMessagingHosts.packages = [ pkgs.firefoxpwa ];
+  # };
 
   home-manager.users.marc = { pkgs, inputs, ... }: {
     programs.firefox = {
       enable = true;
       package = pkgs.librewolf;
-      # nativeMessagingHosts.packages = [ pkgs.firefoxpwa ];
+      nativeMessagingHosts= [ pkgs.firefoxpwa ];
       policies = {
         DisableTelemetry = true;
         DisableFirefoxStudies = true;

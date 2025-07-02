@@ -105,7 +105,6 @@
     dig
     firejail
     tealdeer
-    firefoxpwa
     neofetch
     acpi
     ripgrep

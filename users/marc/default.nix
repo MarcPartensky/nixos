@@ -44,6 +44,9 @@
       realcugan-ncnn-vulkan
       compose2nix
       vtracer
+      tmux
+      tmate
+      firefoxpwa
 
 
       # gui
