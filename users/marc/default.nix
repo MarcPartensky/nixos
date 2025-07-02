@@ -41,6 +41,8 @@
       wstunnel
       talosctl
       realesrgan-ncnn-vulkan
+      realcugan-ncnn-vulkan
+
 
       # gui
       wasistlos
