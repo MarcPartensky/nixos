@@ -118,6 +118,10 @@
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
     "inputs.nur.repos.nltch.spotify-adblock"
     "spotify"
+    "steam"
+    "steam-original"
+    "steam-unwrapped"
+    "steam-run"
   ];
 
   # Some programs need SUID wrappers, can be configured further or are

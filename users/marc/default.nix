@@ -10,6 +10,7 @@
       ../../modules/ssh
       ../../modules/virt-manager
       ../../modules/syncthing
+      ../../modules/steam
       # ../../modules/kubernetes
     ];
 
