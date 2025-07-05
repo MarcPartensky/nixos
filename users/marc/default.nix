@@ -50,7 +50,7 @@
       firefoxpwa
       chatgpt-cli
       lowfi
-
+      ytmdl
 
       # gui
       wasistlos
@@ -81,6 +81,7 @@
       nwg-drawer
       obs-studio
       qbittorrent
+      nuclear
       # waybar-hyprland
     ];
 
