@@ -113,6 +113,7 @@
     ncdu
     nnn
     fastfetch
+    arp-scan-rs
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
