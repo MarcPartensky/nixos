@@ -105,7 +105,6 @@
     dig
     firejail
     tealdeer
-    neofetch
     acpi
     ripgrep
     # librespeed-cli
@@ -113,6 +112,7 @@
     speedtest-cli
     ncdu
     nnn
+    fastfetch
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
