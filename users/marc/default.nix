@@ -51,6 +51,7 @@
       chatgpt-cli
       lowfi
       ytmdl
+      arp-scan-rs
 
       # gui
       wasistlos
