@@ -82,6 +82,7 @@
     wget
     p7zip
     git
+    gitoxide
     gh
     bluetuith
     alacritty
