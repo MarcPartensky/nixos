@@ -109,7 +109,7 @@
     ripgrep
     # librespeed-cli
     speedtest
-    speedtest-cli
+    speedtest-rs
     ncdu
     nnn
     fastfetch
