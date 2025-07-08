@@ -11,6 +11,9 @@
       ../../modules/virt-manager
       ../../modules/syncthing
       ../../modules/steam
+      ../../modules/docker
+      ../../modules/zsh
+      ../../modules/alacritty
       # ../../modules/kubernetes
     ];
 
@@ -82,6 +85,7 @@
       obs-studio
       qbittorrent
       nuclear
+      newtonwars
       # waybar-hyprland
     ];
 
