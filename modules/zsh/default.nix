@@ -18,7 +18,6 @@
     syntaxHighlighting.enable = true;
   
     shellAliases = {
-      git = "gix";
       ll = "ls -l";
       j = "just";
       v = "nvim";
@@ -93,7 +92,6 @@
       syntaxHighlighting.enable = true;
     
       shellAliases = {
-        git = "gix";
         ll = "ls -l";
         j = "just";
         v = "nvim";

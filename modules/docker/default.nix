@@ -6,6 +6,8 @@
     containers.enable = true;
 
     docker = {
+      storageDriver = "zfs";
+
       # enable = true;
       rootless = {
           enable = true;
