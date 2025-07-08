@@ -22,6 +22,7 @@
       gm = "git commit -m";
       gn = "git add -A && git commit -m @";
       gp = "git push";
+      gpl = "git pull";
       update = "sudo nixos-rebuild switch";
     };
     # history.size = 10000;
@@ -70,6 +71,7 @@
         gm = "git commit -m";
         gn = "git add -A && git commit -m @";
         gp = "git push";
+        gpl = "git pull";
         update = "sudo nixos-rebuild switch";
       };
       # history.size = 10000;
