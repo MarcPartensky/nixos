@@ -46,7 +46,19 @@
           ./users/marc
         ];
       };
+
+      tower = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit inputs; };
+        modules = [
+          ./hosts/tower/hardware-configuration.nix
+          ./profiles/laptop/configuration.nix
+          ./users.nix
+          ./users/marc
+        ];
+      };
     };
+
     # homeConfigurations."marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
     #   pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
     #   specialArgs = { inherit inputs; };
