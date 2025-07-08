@@ -15,7 +15,13 @@
   
     shellAliases = {
       ll = "ls -l";
+      j = "just";
       v = "nvim";
+      gs = "git status";
+      ga = "git add -A";
+      gm = "git commit -m";
+      gn = "git add -A && git commit -m @";
+      gp = "git push";
       update = "sudo nixos-rebuild switch";
     };
     # history.size = 10000;
@@ -57,7 +63,13 @@
     
       shellAliases = {
         ll = "ls -l";
+        j = "just";
         v = "nvim";
+        gs = "git status";
+        ga = "git add -A";
+        gm = "git commit -m";
+        gn = "git add -A && git commit -m @";
+        gp = "git push";
         update = "sudo nixos-rebuild switch";
       };
       # history.size = 10000;

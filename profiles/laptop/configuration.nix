@@ -107,9 +107,8 @@
     tealdeer
     acpi
     ripgrep
-    # librespeed-cli
     speedtest
-    speedtest-rs
+    speedtest-go
     ncdu
     nnn
     fastfetch
