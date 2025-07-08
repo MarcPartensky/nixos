@@ -4,11 +4,15 @@
   environment.systemPackages = with pkgs; [
     # "thefuck"
     zsh-powerlevel10k
+    mcfly
+    nixd
   ];
+  # programs.mcfly.enable = true;
+  # programs.mcfly.enableZshIntegration = true;
 
   programs.zsh = {
     enable = true;
-    # enableCompletions = true;
+    enableCompletion = true;
     autosuggestions.enable = true;
     # enableAutosuggestions = true;
     syntaxHighlighting.enable = true;
@@ -21,6 +25,7 @@
       ga = "git add -A";
       gm = "git commit -m";
       gn = "git add -A && git commit -m @";
+      gt = "git add -A && git commit -m @ && git push";
       gp = "git push";
       gpl = "git pull";
       update = "sudo nixos-rebuild switch";
@@ -40,6 +45,8 @@
       # theme = "robbyrussell";
     };
 
+    
+
     # plugins = [
     #   {
     #     name = "powerlevel10k";
@@ -52,13 +59,35 @@
     #     file = "p10k.zsh";
     #   }
     # ];
+
+    interactiveShellInit = ''
+      # # Instant Prompt
+      # if [[ -r "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh" ]]; then
+      #   source "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh"
+      # fi
+
+      # Initialise McFly
+      eval "$(mcfly init zsh)"
+      
+      # Configuration McFly (optionnel)
+      export MCFLY_FUZZY=true  # Activer la recherche floue
+      export MCFLY_RESULTS=50   # Nombre de résultats à afficher
+
+      [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+    '';
+    # home.file.".p10k.zsh".source = ./p10k.zsh;  # chemin personnalisé
+
   };
 
   home-manager.users.marc = { pkgs, inputs, ... }: {
+    # home.packages = with pkgs; [
+    #   zsh-powerlevel10k
+    #   zsh-enhancd
+    # ];
 
     programs.zsh = {
       enable = true;
-      # enableCompletions = true;
+      enableCompletion = true;
       autosuggestion.enable = true;
       syntaxHighlighting.enable = true;
     
@@ -70,6 +99,7 @@
         ga = "git add -A";
         gm = "git commit -m";
         gn = "git add -A && git commit -m @";
+        gt = "git add -A && git commit -m @ && git push";
         gp = "git push";
         gpl = "git pull";
         update = "sudo nixos-rebuild switch";
@@ -77,6 +107,21 @@
       # history.size = 10000;
 
       plugins = [
+        # {
+        #   name = "enhancd";
+        #   src = pkgs.zsh-enhancd.src;
+        #   file = "init.sh";
+        # }
+        {
+          name = "enhancd";
+          file = "init.sh";
+          src = pkgs.fetchFromGitHub {
+            owner = "b4b4r07";
+            repo = "enhancd";
+            rev = "v2.2.1";
+            sha256 = "0iqa9j09fwm6nj5rpip87x3hnvbbz9w9ajgm6wkrd5fls8fn8i5g";
+          };
+        }
         {
           name = "powerlevel10k";
           src = pkgs.zsh-powerlevel10k;
@@ -114,10 +159,18 @@
         # if [[ -r "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh" ]]; then
         #   source "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${(%):-%n}.zsh"
         # fi
+
+        # Initialise McFly
+        eval "$(mcfly init zsh)"
+        
+        # Configuration McFly (optionnel)
+        export MCFLY_FUZZY=true  # Activer la recherche floue
+        export MCFLY_RESULTS=50   # Nombre de résultats à afficher
+
         [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
       '';
 
     };
-    home.file.".p10k.zsh".source = ./p10k.zsh;  # Chemin personnalisé
+    home.file.".p10k.zsh".source = ./p10k.zsh;  # chemin personnalisé
   };
 }
