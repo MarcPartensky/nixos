@@ -8,7 +8,8 @@
   imports =
     [ # Include the results of the hardware scan.
       inputs.home-manager.nixosModules.default
-      ../../modules/git
+      ../../services
+      # ../../modules/git
       # ./modules/hyprland
       # ./modules/librewolf
       # ./modules/tor
@@ -114,6 +115,8 @@
     nnn
     fastfetch
     arp-scan-rs
+    util-linux
+    glances
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
