@@ -86,6 +86,7 @@
       qbittorrent
       nuclear
       newtonwars
+      novnc
       # waybar-hyprland
     ];
 
