@@ -85,8 +85,8 @@
       obs-studio
       qbittorrent
       nuclear
-      newtonwars
       novnc
+      libreoffice
       # waybar-hyprland
     ];
 
