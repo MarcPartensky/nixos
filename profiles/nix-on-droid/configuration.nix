@@ -4,7 +4,7 @@
 
   imports = [
   # ./modules/sshd
-    ../../nod-sshd
+  # ../../nod-sshd
     ../../zsh
   ];
 
