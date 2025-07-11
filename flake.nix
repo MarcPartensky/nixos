@@ -31,7 +31,7 @@
       pkgs = import nixpkgs { system = "aarch64-linux"; };
       modules = [
         ./profiles/nix-on-droid/configuration.nix
-        ./users.nix
+        # ./users.nix
       ];
     };
 
