@@ -87,7 +87,12 @@
       nuclear
       novnc
       libreoffice
+      geary
+      ytmdesktop
+      ytui-music
       # waybar-hyprland
+      whitesur-gtk-theme
+      webcord
     ];
 
     services.gammastep = {
@@ -108,6 +113,15 @@
         Install = { WantedBy = [ "default.target" ]; };
       };
     };
+
+    programs.gpg.enable = true;
+    services.gpg-agent = {
+      enable = true;
+      enableSshSupport = true;
+    };
+
+
+
  
   #   services.wpaperd = {
   #     enable = true;

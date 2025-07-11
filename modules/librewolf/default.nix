@@ -1,14 +1,65 @@
 { pkgs, ... }:
 {
-  # programs.firefox = {
-  #   nativeMessagingHosts.packages = [ pkgs.firefoxpwa ];
-  # };
 
-  home-manager.users.marc = { pkgs, inputs, ... }: {
+  home-manager.users.marc = { pkgs, inputs, ... }:
+  
+  let
+    # Fetch the WhiteSur theme (replace REV and SHA256 with latest from GitHub)
+    whiteSurTheme = pkgs.fetchFromGitHub {
+      owner = "rashadgasimli";
+      repo = "WhiteSur-librewolf-theme";
+      rev = "110470bdec93e2525df1e54f8b0916a00d83f34c"; # Check latest commit
+      sha256 = "sha256-lo9/YURgyt/SXVNwgZndn9HA5FCqquTMAwPY8Shxhss="; # Use nix-prefetch-github
+    };
+  in {
+
+    # Deploy theme files to LibreWolf's chrome directory
+    # home.file.".librewolf/chrome".source = "${whiteSurTheme}/chrome";
+    # programs.firefox = {
+    #   nativeMessagingHosts.packages = [ pkgs.firefoxpwa ];
+    # };
+
+    # home.file."firefox-gnome-theme" = {
+    #     target = ".mozilla/firefox/default/chrome/firefox-gnome-theme";
+    #     source = (fetchTarball "https://github.com/rashadgasimli/WhiteSur-librewolf-theme/archive/refs/tags/2023-10-30.tar.gz");
+    # };
+      # Enable required preferences in user.js
+    # home.file.".librewolf/profiles.ini".text = ''
+    #   [General]
+    #   StartWithLastProfile=1
+    #   [Profile0]
+    #   Name=default
+    #   IsRelative=1
+    #   Path=default/
+    #   Default=1
+    # '';
+
+    # home.file.".librewolf/default/user.js".text = ''
+    #   // Enable userChrome.css
+    #   user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+    #   // Required for SVG icons
+    #   user_pref("svg.context-properties.content.enabled", true);
+    # '';
+
     programs.firefox = {
       enable = true;
       package = pkgs.librewolf;
       nativeMessagingHosts= [ pkgs.firefoxpwa ];
+      # profiles.default = {
+      #    name = "Default";
+      #    settings = {
+      #       "extensions.activeThemeID" = "firefox-compact-dark@mozilla.org";
+
+      #       # For Firefox GNOME theme:
+      #       "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
+      #       "browser.tabs.drawInTitlebar" = true;
+      #       "svg.context-properties.content.enabled" = true;
+      #    };
+      #    userChrome = ''
+      #       @import "firefox-gnome-theme/userChrome.css";
+      #       @import "firefox-gnome-theme/theme/colors/dark.css"; 
+      #    '';
+      # };
       policies = {
         DisableTelemetry = true;
         DisableFirefoxStudies = true;
