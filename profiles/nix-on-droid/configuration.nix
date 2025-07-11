@@ -4,6 +4,8 @@
 
   imports = [
   # ./modules/sshd
+    ../../nod-sshd
+    ../../zsh
   ];
 
   # Simply install just the packages
