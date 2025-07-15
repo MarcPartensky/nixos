@@ -126,6 +126,9 @@
     "steam-original"
     "steam-unwrapped"
     "steam-run"
+    "nvidia-x11"
+    "nvidia-settings"
+    "nvidia-vaapi-driver"
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
