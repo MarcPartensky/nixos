@@ -93,6 +93,7 @@
       # waybar-hyprland
       whitesur-gtk-theme
       webcord
+      pipe-viewer
     ];
 
     services.gammastep = {

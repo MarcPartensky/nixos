@@ -84,6 +84,7 @@
           };
           in listToAttrs [
             # (extension "tree-style-tab" "treestyletab@piro.sakura.ne.jp")
+            (extension "darkreader" "darkreaderapp@gmail.com")
             (extension "ublock-origin" "uBlock0@raymondhill.net")
             (extension "bitwarden-password-manager" "{446900e4-71c2-419f-a6a7-df9c091e268b}")
             (extension "tabliss" "extension@tabliss.io")

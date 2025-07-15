@@ -66,7 +66,12 @@
           "HDMI-A-1,2560x1440@60,0x0,1"
       ];
 
-      env = "DRI_PRIME=0";
+      env = [
+        "DRI_PRIME=0"
+        "LIBVA_DRIVER_NAME,nvidia"
+        "__GLX_VENDOR_LIBRARY_NAME,nvidia"
+      ];
+
 
       plugins = {
 
