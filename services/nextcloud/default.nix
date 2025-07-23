@@ -26,7 +26,7 @@ in {
     config.objectstore.s3 = {
       enable = true;
       bucket = "nextcloud";
-      autocreate = true;
+      verify_bucket_exists = true;
       key = accessKey;
       secretFile = "${pkgs.writeText "secret" "test12345"}";
       hostname = "localhost";
