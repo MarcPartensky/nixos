@@ -85,6 +85,7 @@
     git
     gitoxide
     gh
+    codeberg-cli
     bluetuith
     alacritty
     kitty
