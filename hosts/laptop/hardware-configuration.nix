@@ -6,7 +6,7 @@
 {
   imports =
     [ (modulesPath + "/installer/scan/not-detected.nix")
-    ./nvidia.nix
+    # ./nvidia.nix
     ];
 
   boot.initrd.availableKernelModules = [ "xhci_pci" "nvme" "usb_storage" "sd_mod" "rtsx_usb_sdmmc" ];
@@ -30,7 +30,7 @@
     };
 
   fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/BB98-CA7E";
+    { device = "/dev/disk/by-uuid/BC75-DC98";
       fsType = "vfat";
       options = [ "fmask=0077" "dmask=0077" ];
     };
@@ -46,10 +46,10 @@
   #     options = [ "fmask=0077" "dmask=0077" ];
   #   };
 
-  swapDevices = [ {
-    device = "/dev/disk/by-partuuid/052f0593-0118-41ad-bfc4-72f0249f33ba";
-    randomEncryption.enable = true;
-  } ];
+  # swapDevices = [ {
+  #   device = "/dev/disk/by-partuuid/052f0593-0118-41ad-bfc4-72f0249f33ba";
+  #   randomEncryption.enable = true;
+  # } ];
 
   # potentiellement avoir une partition dediee au swapfile étant donné qu'il
   # n'est pas compatible d'utiliser de swapfile avec les datasets zfs
@@ -60,6 +60,7 @@
     text = ''
       # <volume-name> <encrypted-device> [key-file] [options]
       arch PARTUUID=b0c1fc13-c97e-4b45-b964-01822bfec30e
+      # arch UUID=66f4f949-ef93-491d-9c3b-3e79bc5bea18
     '';
   };
 

@@ -94,6 +94,9 @@
       whitesur-gtk-theme
       webcord
       pipe-viewer
+      minitube
+      freetube
+      # gtk-pipe-viewer
     ];
 
     services.gammastep = {

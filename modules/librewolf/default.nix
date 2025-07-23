@@ -45,21 +45,33 @@
       enable = true;
       package = pkgs.librewolf;
       nativeMessagingHosts= [ pkgs.firefoxpwa ];
-      # profiles.default = {
-      #    name = "Default";
-      #    settings = {
-      #       "extensions.activeThemeID" = "firefox-compact-dark@mozilla.org";
+      profiles.default = {
+         name = "Default";
+         search = {
+           force = true;
+           default = "Startpage";
+           engines = {
+             "Startpage" = {
+               urls = [{ template = "https://www.startpage.com/rvd/search?query={searchTerms}&language=auto"; }];
+               iconUpdateURL = "https://www.startpage.com/sp/cdn/favicons/mobile/android-icon-192x192.png";
+               updateInterval = 24 * 60 * 60 * 1000; # every day
+               definedAliases = [ "@s" ];
+             };
+           };
+         };
+         # settings = {
+         #    "extensions.activeThemeID" = "firefox-compact-dark@mozilla.org";
 
-      #       # For Firefox GNOME theme:
-      #       "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
-      #       "browser.tabs.drawInTitlebar" = true;
-      #       "svg.context-properties.content.enabled" = true;
-      #    };
-      #    userChrome = ''
-      #       @import "firefox-gnome-theme/userChrome.css";
-      #       @import "firefox-gnome-theme/theme/colors/dark.css"; 
-      #    '';
-      # };
+         #    # For Firefox GNOME theme:
+         #    "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
+         #    "browser.tabs.drawInTitlebar" = true;
+         #    "svg.context-properties.content.enabled" = true;
+         # };
+         # userChrome = ''
+         #    @import "firefox-gnome-theme/userChrome.css";
+         #    @import "firefox-gnome-theme/theme/colors/dark.css"; 
+         # '';
+      };
       policies = {
         DisableTelemetry = true;
         DisableFirefoxStudies = true;
