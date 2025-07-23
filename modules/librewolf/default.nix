@@ -96,15 +96,17 @@
           };
           in listToAttrs [
             # (extension "tree-style-tab" "treestyletab@piro.sakura.ne.jp")
-            (extension "darkreader" "darkreaderapp@gmail.com")
+            # (extension "darkreader" "darkreaderapp@gmail.com")
             (extension "ublock-origin" "uBlock0@raymondhill.net")
             (extension "bitwarden-password-manager" "{446900e4-71c2-419f-a6a7-df9c091e268b}")
             (extension "tabliss" "extension@tabliss.io")
             (extension "umatrix" "uMatrix@raymondhill.net")
-            (extension "refined_github" "sindresorhus@gmail.com")
-            (extension "videospeed" "codebicycle@gmail.com")
-            (extension "sponsorblock" "dev@ajay.app")
-            (extension "pwas_for_firefox" "projects@filips.si")
+            (extension "catppuccin-mocha-lavender-git" "{8446b178-c865-4f5c-8ccc-1d7887811ae3}")
+            (extension "refined_github" "{a4c4eda4-fb84-4a84-b4a1-f7c1cbf2a1ad}")
+
+            # (extension "videospeed" "codebicycle@gmail.com")
+            # (extension "sponsorblock" "dev@ajay.app")
+            # (extension "pwas_for_firefox" "projects@filips.si")
             # (extension "libredirect" "7esoorv3@alefvanoon.anonaddy.me")
              #(extension "clearurls" "{74145f27-f039-47ce-a470-a662b129930a}")
           ];
@@ -113,6 +115,43 @@
           # Then, download the XPI by filling it in to the install_url template, unzip it,
           # run `jq .browser_specific_settings.gecko.id manifest.json` or
           # `jq .applications.gecko.id manifest.json` to get the UUID
+        Bookmarks = [
+          {
+            "Title" = "";
+            "URL" = "https://youtube.com";
+            "Placement" = "toolbar";
+          }
+          {
+            "Title" = "";
+            "URL" = "https://music.youtube.com";
+            "Placement" = "toolbar";
+          }
+          {
+            "Title" = "";
+            "URL" = "https://search.nixos.org/packages";
+            "Placement" = "toolbar";
+          }
+          {
+            "Title" = "";
+            "URL" = "https://chat.deepseek.com";
+            "Placement" = "toolbar";
+          }
+          {
+            "Title" = "";
+            "URL" = "https://cloud.marcpartensky.com/apps/deck";
+            "Placement" = "toolbar";
+          }
+          {
+            "Title" = "";
+            "URL" = "https://messenger.com";
+            "Placement" = "toolbar";
+          }
+          {
+            "Title" = "";
+            "URL" = "https://web.whatsapp.com";
+            "Placement" = "toolbar";
+          }
+        ];
       };
     };
   };
