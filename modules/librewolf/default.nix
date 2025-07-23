@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
 
   home-manager.users.marc = { pkgs, inputs, ... }:
@@ -46,6 +46,8 @@
       package = pkgs.librewolf;
       nativeMessagingHosts= [ pkgs.firefoxpwa ];
       profiles.default = {
+         id = 0;
+         # extensions = []
          name = "Default";
          search = {
            force = true;
@@ -95,26 +97,58 @@
             };
           };
           in listToAttrs [
-            # (extension "tree-style-tab" "treestyletab@piro.sakura.ne.jp")
-            # (extension "darkreader" "darkreaderapp@gmail.com")
+            (extension "darkreader" "addon@darkreader.org")
             (extension "ublock-origin" "uBlock0@raymondhill.net")
             (extension "bitwarden-password-manager" "{446900e4-71c2-419f-a6a7-df9c091e268b}")
             (extension "tabliss" "extension@tabliss.io")
             (extension "umatrix" "uMatrix@raymondhill.net")
             (extension "catppuccin-mocha-lavender-git" "{8446b178-c865-4f5c-8ccc-1d7887811ae3}")
             (extension "refined_github" "{a4c4eda4-fb84-4a84-b4a1-f7c1cbf2a1ad}")
-
-            # (extension "videospeed" "codebicycle@gmail.com")
-            # (extension "sponsorblock" "dev@ajay.app")
-            # (extension "pwas_for_firefox" "projects@filips.si")
-            # (extension "libredirect" "7esoorv3@alefvanoon.anonaddy.me")
-             #(extension "clearurls" "{74145f27-f039-47ce-a470-a662b129930a}")
+            (extension "single-file" "{531906d3-e22f-4a6c-a102-8057b88a1a63}")
+            (extension "videospeed" "{7be2ba16-0f1e-4d93-9ebc-5164397477a9}")
+            (extension "tab_stash" "tab-stash@condordes.net")
+            (extension "sponsorblock" "sponsorBlocker@ajay.app")
+            (extension "pwas_for_firefox" "firefoxpwa@filips.si")
           ];
           # To add additional extensions, find it on addons.mozilla.org, find
           # the short ID in the url (like https://addons.mozilla.org/en-US/firefox/addon/!SHORT_ID!/)
           # Then, download the XPI by filling it in to the install_url template, unzip it,
           # run `jq .browser_specific_settings.gecko.id manifest.json` or
           # `jq .applications.gecko.id manifest.json` to get the UUID
+        "3rdparty".Extensions = {
+		  # https://github.com/gorhill/uBlock/blob/master/platform/common/managed_storage.json
+		  "uBlock0@raymondhill.net".adminSettings = {
+		  	userSettings = rec {
+		  	  uiTheme = "dark";
+		  	  uiAccentCustom = true;
+		  	  uiAccentCustom0 = "#8300ff";
+		  	  # cloudStorageEnabled = mkForce false; # Security liability?
+		  	  importedLists = [
+		  	    "https://filters.adtidy.org/extension/ublock/filters/3.txt"
+		  	    "https://github.com/DandelionSprout/adfilt/raw/master/LegitimateURLShortener.txt"
+		  	  ];
+		  	  externalLists = lib.concatStringsSep "\n" importedLists;
+		  	};
+		  	selectedFilterLists = [
+		  	  "CZE-0"
+		  	  "adguard-generic"
+		  	  "adguard-annoyance"
+		  	  "adguard-social"
+		  	  "adguard-spyware-url"
+		  	  "easylist"
+		  	  "easyprivacy"
+		  	  "https://github.com/DandelionSprout/adfilt/raw/master/LegitimateURLShortener.txt"
+		  	  "plowe-0"
+		  	  "ublock-abuse"
+		  	  "ublock-badware"
+		  	  "ublock-filters"
+		  	  "ublock-privacy"
+		  	  "ublock-quick-fixes"
+		  	  "ublock-unbreak"
+		  	  "urlhaus-1"
+		  	];
+		  };
+		};
         Bookmarks = [
           {
             "Title" = "";
