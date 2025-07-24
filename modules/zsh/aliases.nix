@@ -11,4 +11,6 @@
   gpl = "git pull";
   update = "sudo nixos-rebuild switch";
   ipi = "http ipinfo.io";
+  # ns = "nix-search-tv print |
+  #   fzf --preview 'nix-search-tv preview {}' --scheme history";
 }

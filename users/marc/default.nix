@@ -15,6 +15,7 @@
       ../../modules/zsh
       ../../modules/alacritty
       ../../modules/kodi
+      # ../../modules/greetd
       # ../../modules/kubernetes
     ];
 

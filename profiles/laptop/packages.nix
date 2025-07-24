@@ -9,6 +9,10 @@ let
   
   free = with pkgs; [
     inputs.agenix.packages.${pkgs.system}.default
+    # inputs.nix-search-tv.packages.x86_64-linux.default
+    nur.repos.nltch.spotify-adblock  # Accès corrigé
+    television
+    nix-search-tv
     neovim
     wget
     p7zip
@@ -22,7 +26,6 @@ let
     htop
     killall
     fzf
-    nur.repos.nltch.spotify-adblock  # Accès corrigé
     firefox
     stow
     yarn

@@ -1,201 +1,189 @@
 { inputs, pkgs, ... }: {
 
-  # imports = [
-  #   # ./plugins.nix
-
-  # ];
-  # program.waybar.enable = true;
-
-
   home-manager.users.marc = { pkgs, inputs, ... }: {
-    # programs.waybar = {
-    #   enable = true;
-    #   package = inputs.hyprland.packages.${pkgs.system}.waybar-hyprland
-    # };
-    # programs.waybar.package = pkgs.waybar.overrideAttrs (oa: {
-    #   mesonFlags = (oa.mesonFlags or  []) ++ [ "-Dexperimental=true" ];
-    #   patches = (oa.patches or []) ++ [
-    #     (pkgs.fetchpatch {
-    #       name = "fix waybar hyprctl";
-    #       url = "https://aur.archlinux.org/cgit/aur.git/plain/hyprctl.patch?h=waybar-hyprland-git";
-    #       sha256 = "sha256-pY3+9Dhi61Jo2cPnBdmn3NUTSA8bAbtgsk2ooj4y7aQ=";
-    #     })
-    #   ];
-    # });
-    # programs.waybar.systemd.enable = true;
-
-    # home.packages = with pkgs; [
-    #   waybar-hyprland
-    # ];
-
     programs.waybar = {
       enable = true;
-      # package = inputs.hyprland.packages.${pkgs.system}.waybar-hyprland;
       systemd = {
         enable = true;
         target = "graphical-session.target";
       };
       settings = {
         mainBar = {
+          name = "bar0";
           layer = "top";
-          modules-left = [ "custom/nix" "hyprland/workspaces" "custom/cava-internal"];
-          modules-center = [ "clock" ];
-          modules-right = [ "cpu" "memory" "backlight" "pulseaudio" "bluetooth" "network" "battery" ];
-  
-          "custom/nix" = {
-            "format" = "   ";
-            "tooltip" = false;
-            "on-click" = "sh $HOME/.config/rofi/bin/powermenu";
+          position = "top";
+          height = 10;
+          margin = "5";
+          spacing = 10;
+          mode = "top";
+          output = "eDP-1";
+          reload_style_on_change = true;
+
+          modules-left = [ "hyprland/workspaces" ];
+          modules-center = [ "hyprland/window" ];
+          modules-right = [
+            "tray"
+            "idle_inhibitor"
+            "backlight"
+            "wireplumber"
+            "battery"
+            "disk"
+            "memory"
+            "cpu"
+            "temperature"
+            "clock"
+          ];
+
+          idle_inhibitor = {
+            format = "{icon}";
+            format-icons = {
+              activated = "󰛊 ";
+              deactivated = "󰾫 ";
+            };
           };
+
+          backlight = {
+            interval = 2;
+            format = "󰖨 {percent}%";
+            on-scroll-up = "brightnessctl set +4";
+            on-scroll-down = "brightnessctl set 4-";
+          };
+
+          wireplumber = {
+            format = "{icon} {volume}%";
+            format-muted = "󰝟 ";
+            on-click = "amixer sset Master toggle";
+            format-icons = [ "" "" "" "" "" ];
+          };
+
+          battery = {
+            interval = 10;
+            format = "{icon}{capacity}%";
+            format-icons = [ "󰂎" "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
+            tooltip = true;
+            tooltip-format = "{timeTo}";
+          };
+
+          disk = {
+            interval = 30;  # Fixed typo (was intervel)
+            format = "󰋊 {percentage_used}%";
+            tooltip-format = "{used} used out of {total} on \"{path}\" ({percentage_used}%)";
+          };
+
+          memory = {
+            interval = 10;
+            format = " {used}";
+            tooltip-format = "{used}GiB used of {total}GiB ({percentage}%)";
+          };
+
+          cpu = {
+            interval = 10;
+            format = " {usage}%";
+          };
+
+          temperature = {
+            interval = 10;
+          };
+
+          clock = {
+            interval = 1;
+            format = "{:%H:%M:%S}";
+          };
+
           "hyprland/workspaces" = {
-            "format" = "{icon}";
-            "all-outputs" = true;
-            "format-icons" = {
-              "1" = "一";
-              "2" = "二";
-              "3" = "三";
-              "4" = "四";
-              "5" = "五";
-              "6" = "六"; 
-              "7" = "七"; 
-              "8" = "八"; 
-              "9" = "九"; 
-              "10" = "十";
+            show-special = true;
+            persistent-workspaces = {
+              "*" = [1 2 3 4 5 6 7 8 9 10];
+            };
+            format = "{icon}";
+            format-icons = {
+              active = "";
+              empty = "";
+              default = "";
+              urgent = "";
+              special = "󰠱";
             };
           };
-          "custom/cava-internal" = {
-            "exec" = "sleep 1s && cava-internal";
-            "tooltip" = false;
-          };
-  
-          "clock" = {
-            "format" = "<span color='#b4befe'> </span>{:%H:%M}";
-            "tooltip" = true;
-            "tooltip-format" = "{:%Y-%m-%d %a}";
-            "on-click-middle" = "exec default_wallpaper";
-            "on-click-right" = "exec wallpaper_random";
-          };
-  
-          "cpu" = { "format" = "<span color='#b4befe'> </span>{usage}%"; };
-          "memory" = {
-            "interval" = 1;
-            "format" = "<span color='#b4befe'> </span>{used:0.1f}G/{total:0.1f}G";
-          };
-          "backlight" = {
-            "device" = "intel_backlight";
-            "format" = "<span color='#b4befe'>{icon}</span> {percent}%";
-            "format-icons" = ["" "" "" "" "" "" "" "" ""];
-          };
-          "pulseaudio"= {
-            "format" = "<span color='#b4befe'>{icon}</span> {volume}%";
-            "format-muted" = "";
-            "tooltip" = false;
-            "format-icons" = {
-              "headphone" = "";
-              "default" = ["" "" "󰕾" "󰕾" "󰕾" "" "" ""];
+
+          "hyprland/window" = {
+            icon = true;
+            icon-size = 22;
+            rewrite = {
+              "(.*) — Mozilla Firefox" = "$1 - 🦊";
+              "(.*) - Visual Studio Code" = "$1 - 󰨞 ";
+              "(.*) - Discord" = "$1 - 󰙯 ";
+              "^$" = "👾";
             };
-            "scroll-step" = 1;
-            "on-click" = "pavucontrol";
-          };
-          "bluetooth" = {
-            "format" = "<span color='#b4befe'></span> {status}";
-            "format-disabled" = "";
-            "format-connected" = "<span color='#b4befe'></span> {num_connections}";
-            "tooltip-format" = "{device_enumerate}";
-            "tooltip-format-enumerate-connected" = "{device_alias}   {device_address}";
-          };
-          "network" = {
-            "interface" = "wlp3s0";
-            "format" = "{ifname}";
-            "format-wifi" = "<span color='#b4befe'> </span>{essid}";
-            "format-ethernet" = "{ipaddr}/{cidr} ";
-            "format-disconnected" = "<span color='#b4befe'>󰖪 </span>No Network";
-            "tooltip" = false;
-          };
-          "battery" = {
-            "format" = "<span color='#b4befe'>{icon}</span> {capacity}%";
-            "format-icons" =  ["" "" "" "" "" "" "" "" "" ""];
-            "format-charging" = "<span color='#b4befe'></span> {capacity}%";
-            "tooltip" = false;
           };
         };
       };
-  
-      style = ''
-        * {
-          border: none;
-          font-family: 'Fira Code', 'Symbols Nerd Font Mono';
-          font-size: 16px;
-          font-feature-settings: '"zero", "ss01", "ss02", "ss03", "ss04", "ss05", "cv31"';
-          min-height: 45px;
-        }
-  
-        window#waybar {
-          background: transparent;
-        }
-  
-        #custom-nix, 
-        #workspaces {
-          border-radius: 10px;
-          background-color: #11111b;
-          color: #b4befe;
-          margin-top: 15px;
-          margin-right: 15px;
-          padding-top: 1px;
-          padding-left: 10px;
-          padding-right: 10px;
-        }
-  
-        #custom-nix {
-          font-size: 20px;
-          margin-left: 15px;
-          color: #b4befe;
-        }
-  
-        #custom-cava-internal {
-          padding-left: 10px;
-          padding-right: 10px;
-          padding-top: 1px;
-          font-family: "Hack Nerd Font";
-          color: #b4befe;
-          background-color: #11111b;
-          margin-top: 15px;
-          border-radius: 10px;
-        }
-  
-        #workspaces button.active {
-          background: #11111b;
-          color: #b4befe;
-        }
-  
-        #clock, #backlight, #pulseaudio, #bluetooth, #network, #battery, #cpu, #memory{
-          border-radius: 10px;
-          background-color: #11111b;
-          color: #cdd6f4;
-          margin-top: 15px;
-          padding-left: 10px;
-          padding-right: 10px;
-          margin-right: 15px;
-        }
-  
-        #backlight, #bluetooth {
-          border-top-right-radius: 0;
-          border-bottom-right-radius: 0;
-          padding-right: 5px;
-          margin-right: 0
-        }
-  
-        #pulseaudio, #network {
-          border-top-left-radius: 0;
-          border-bottom-left-radius: 0;
-          padding-left: 5px;
-        }
-  
-        #clock {
-          margin-right: 0;
-        }
-    '';
-    };
 
+      # Keep your existing style
+      style = ''
+        window#waybar {
+            font-family: "JetBrains Mono NerdFont";
+            background-color: rgba(0,0,0,0);
+            font-size: 0.8rem;
+            border-radius: 0.5rem;
+        }
+
+        .modules-left, .modules-center {
+            opacity: 1;
+            background: linear-gradient(45deg, rgb(214, 39, 200), rgb(5, 83, 252));
+            border-radius: 0.5rem;
+            padding: 2px;
+        }
+
+        .modules-right {
+            opacity: 1;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 0.5rem;
+            padding: 2px 2px 2px 10px
+        }
+
+        #workspaces {
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 0.5rem;
+            padding: 0 2px;
+        }
+
+        #workspaces button {
+            font-size: 0.6rem;
+            padding: 0 0.3rem 0 0;
+        }
+
+        #window {
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 0.5rem;
+            padding: 2px 5px;
+        }
+
+        #clock {
+            font-weight: bolder;
+            border-radius: 0.5rem;
+            padding: 0 3px 0 0;
+        }
+
+        #battery {
+            color: lightgreen;
+        }
+
+        #memory {
+            color: lightpink;
+        }
+
+        #disk {
+            color: lightskyblue;
+        }
+
+        #cpu {
+            color: lightgoldenrodyellow;
+        }
+
+        #temperature {
+            color: lightslategray;
+        }
+      '';
+    };
   };
 }

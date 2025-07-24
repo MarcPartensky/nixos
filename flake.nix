@@ -3,7 +3,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     hyprland.url = "github:hyprwm/Hyprland";
-    nix-search-tv.url = "github:3timeslazy/nix-search-tv";
+    # nix-search-tv.url = "github:3timeslazy/nix-search-tv";
 
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/release-24.05";
@@ -26,7 +26,7 @@
     microvm.url = "github:astro/microvm.nix";
     nwg-dock-hyprland-pin-nixpkgs.url = "nixpkgs/2098d845d76f8a21ae4fe12ed7c7df49098d3f15";
   };
-  outputs = { self, nixpkgs, nur, ... } @ inputs: {
+  outputs = { self, nixpkgs, ... } @ inputs: {
 
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
       pkgs = import nixpkgs { system = "aarch64-linux"; };
