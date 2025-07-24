@@ -50,6 +50,8 @@ let
     util-linux
     glances
     rbw
+    rofi-rbw-wayland
+    pinentry
   ];
   
   unfree = [

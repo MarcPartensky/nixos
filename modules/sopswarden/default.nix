@@ -10,5 +10,16 @@
       # api-key = { name = "My Service"; user = "admin@example.com"; };
       # ssl-cert = { name = "Certificates"; type = "note"; field = "ssl_cert"; };
     };
+    rbwCommand = "${pkgs.rbw}/bin/rbw";
+
+    # Secret permissions
+    defaultOwner = "root";
+    defaultGroup = "root"; 
+    defaultMode = "0400";
+    
+    # Features
+    enableChangeDetection = true;  # Warn when sync needed
+    installPackages = true;        # Install rbw, sops, age
+    installSyncCommand = true;     # Install sopswarden-sync
   };
 } 

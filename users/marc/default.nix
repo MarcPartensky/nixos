@@ -16,6 +16,7 @@
       ../../modules/alacritty
       ../../modules/kodi
       ../../modules/rbw
+      # ../../modules/sopswarden
       # ../../modules/greetd
       # ../../modules/kubernetes
     ];
@@ -101,6 +102,8 @@
       minitube
       freetube
       # gtk-pipe-viewer
+      onthespot
+      your_spotify
     ];
 
     services.gammastep = {

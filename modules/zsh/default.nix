@@ -1,6 +1,8 @@
 { pkgs, ... }:
 let
-  shellAliases = import ./aliases.nix;
+  aliases = import ./aliases.nix;
+  shellAliases = aliases.shellAliases;
+  shellAbbrs = aliases.shellAbbrs;
 in {
 
   environment.systemPackages = with pkgs; [
