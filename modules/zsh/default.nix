@@ -1,5 +1,7 @@
 { pkgs, ... }:
-{
+let
+  shellAliases = import ./aliases.nix;
+in {
 
   environment.systemPackages = with pkgs; [
     # "thefuck"
@@ -17,19 +19,7 @@
     # enableAutosuggestions = true;
     syntaxHighlighting.enable = true;
   
-    shellAliases = {
-      ll = "ls -l";
-      j = "just";
-      v = "nvim";
-      gs = "git status";
-      ga = "git add -A";
-      gm = "git commit -m";
-      gn = "git add -A && git commit -m @";
-      gt = "git add -A && git commit -m @ && git push";
-      gp = "git push";
-      gpl = "git pull";
-      update = "sudo nixos-rebuild switch";
-    };
+    inherit shellAliases;
     # history.size = 10000;
 
     ohMyZsh = { # "ohMyZsh" without Home Manager
@@ -86,24 +76,12 @@
     # ];
 
     programs.zsh = {
+      inherit shellAliases;
       enable = true;
       enableCompletion = true;
       autosuggestion.enable = true;
       syntaxHighlighting.enable = true;
     
-      shellAliases = {
-        ll = "ls -l";
-        j = "just";
-        v = "nvim";
-        gs = "git status";
-        ga = "git add -A";
-        gm = "git commit -m";
-        gn = "git add -A && git commit -m @";
-        gt = "git add -A && git commit -m @ && git push";
-        gp = "git push";
-        gpl = "git pull";
-        update = "sudo nixos-rebuild switch";
-      };
       # history.size = 10000;
 
       plugins = [
