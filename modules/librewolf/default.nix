@@ -106,9 +106,11 @@
             (extension "refined_github" "{a4c4eda4-fb84-4a84-b4a1-f7c1cbf2a1ad}")
             (extension "single-file" "{531906d3-e22f-4a6c-a102-8057b88a1a63}")
             (extension "videospeed" "{7be2ba16-0f1e-4d93-9ebc-5164397477a9}")
-            (extension "tab_stash" "tab-stash@condordes.net")
             (extension "sponsorblock" "sponsorBlocker@ajay.app")
+
+            (extension "tab_stash" "tab-stash@condordes.net")
             (extension "pwas_for_firefox" "firefoxpwa@filips.si")
+            (extension "privacy_badger17" "jid1-MnnxcxisBPnSXQ@jetpack")
           ];
           # To add additional extensions, find it on addons.mozilla.org, find
           # the short ID in the url (like https://addons.mozilla.org/en-US/firefox/addon/!SHORT_ID!/)

@@ -14,6 +14,7 @@
       ../../modules/docker
       ../../modules/zsh
       ../../modules/alacritty
+      ../../modules/kodi
       # ../../modules/kubernetes
     ];
 
@@ -54,6 +55,7 @@
       chatgpt-cli
       lowfi
       ytmdl
+      playerctl
 
       # gui
       wasistlos
