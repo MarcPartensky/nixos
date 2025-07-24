@@ -9,6 +9,7 @@
   gt = "git add -A && git commit -m @ && git push";
   gp = "git push";
   gpl = "git pull";
+  grsh = "git reset --hard HEAD";
   update = "sudo nixos-rebuild switch";
   ipi = "http ipinfo.io";
   # ns = "nix-search-tv print |
