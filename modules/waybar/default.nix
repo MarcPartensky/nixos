@@ -110,7 +110,7 @@
             icon-size = 22;
             rewrite = {
               "(.*) — Mozilla Firefox" = "$1 - 🦊";
-              "(.*) - Visual Studio Code" = "$1 - 󰨞 ";
+              "(.*) - Neovim" = "$1 - 󰨞 ";
               "(.*) - Discord" = "$1 - 󰙯 ";
               "^$" = "👾";
             };
@@ -119,11 +119,11 @@
       };
 
       # Keep your existing style
-      style = ''
-        window#waybar {
-            font-family: "JetBrains Mono NerdFont";
+       style = ''
+       window#waybar {
+            font-family: "MesloLGS Nerd Font";  /* Changed font */
             background-color: rgba(0,0,0,0);
-            font-size: 0.8rem;
+            font-size: 1.2rem;  /* Increased from 0.8rem (0.8 * 1.5 = 1.2) */
             border-radius: 0.5rem;
         }
 
@@ -148,7 +148,7 @@
         }
 
         #workspaces button {
-            font-size: 0.6rem;
+            font-size: 0.9rem;  /* Increased from 0.6rem (0.6 * 1.5 = 0.9) */
             padding: 0 0.3rem 0 0;
         }
 
