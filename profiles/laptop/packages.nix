@@ -11,7 +11,6 @@ let
     inputs.agenix.packages.${pkgs.system}.default
     # inputs.nix-search-tv.packages.x86_64-linux.default
     nur.repos.nltch.spotify-adblock  # Accès corrigé
-    television
     nix-search-tv
     neovim
     wget
@@ -50,6 +49,7 @@ let
     arp-scan
     util-linux
     glances
+    rbw
   ];
   
   unfree = [

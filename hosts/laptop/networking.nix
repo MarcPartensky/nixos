@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }: {
+{ pkgs, lib, secrets, ... }: {
   
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's
@@ -33,6 +33,10 @@
     networkmanager.enable = true; # enable network manager to start during boot
     networkmanager.wifi.backend = "iwd";
     # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+
+    wireless.networks = {
+        "AP25G".psk = secrets.wifi-ap25g-vaugneray;
+    };
 
     wireless.iwd = {
       enable = true;

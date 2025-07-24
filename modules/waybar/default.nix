@@ -1,6 +1,12 @@
 { inputs, pkgs, ... }: {
 
   home-manager.users.marc = { pkgs, inputs, ... }: {
+
+
+    home.packages = with pkgs; [
+      wttrbar
+    ];
+
     programs.waybar = {
       enable = true;
       systemd = {
@@ -22,7 +28,8 @@
           modules-left = [ "hyprland/workspaces" ];
           modules-center = [ "hyprland/window" ];
           modules-right = [
-            "tray"
+            # "tray"
+            "custom/weather"
             "idle_inhibitor"
             "backlight"
             "wireplumber"
@@ -88,6 +95,14 @@
           clock = {
             interval = 1;
             format = "{:%H:%M:%S}";
+          };
+
+          "custom/weather" = {
+            format = "{}°";
+            tooltip = true;
+            interval = 3600;
+            exec = "wttrbar";
+            return-type = "json";
           };
 
           "hyprland/workspaces" = {
