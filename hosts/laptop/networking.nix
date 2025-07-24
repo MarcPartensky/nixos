@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ pkgs, lib, ... }: {
   
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
   # (the default) this is the recommended approach. When using systemd-networkd it's
@@ -11,14 +11,29 @@
   networking = {
     useDHCP = lib.mkDefault true;
     hostName = "nixos";
-    networkmanager.enable = true; # enable network manager to start during boot
     nameservers = [ "8.8.8.8" "8.8.4.4" ];
     enableIPv6 = false;
+
     # nat = {
     #   enable = true;
     #   internalInterfaces = ["ve-+"];
     #   externalInterface = "enp0s31f6"; # eth interface
     # };
+
+    networkmanager.enable = true; # enable network manager to start during boot
+    networkmanager.wifi.backend = "iwd";
+
+    wireless.iwd = {
+      enable = true;
+      settings = {
+        IPv6 = {
+          Enabled = true;
+        };
+        Settings = {
+          AutoConnect = true;
+        };
+      };
+    };
   };
 
 }
