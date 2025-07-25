@@ -102,8 +102,9 @@
       minitube
       freetube
       # gtk-pipe-viewer
-      onthespot
-      your_spotify
+      # onthespot
+      # your_spotify
+      wofi-power-menu
     ];
 
     services.gammastep = {
