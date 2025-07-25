@@ -1,8 +1,6 @@
 { pkgs, ... }:
 let
-  aliases = import ./aliases.nix;
-  shellAliases = aliases.shellAliases;
-  shellAbbrs = aliases.shellAbbrs;
+  shellAliases = import ./aliases.nix;
 in {
 
   environment.systemPackages = with pkgs; [
@@ -21,7 +19,7 @@ in {
     # enableAutosuggestions = true;
     syntaxHighlighting.enable = true;
   
-    inherit shellAliases;
+    shellAliases = shellAliases;
     # history.size = 10000;
 
     ohMyZsh = { # "ohMyZsh" without Home Manager
@@ -79,6 +77,7 @@ in {
 
     programs.zsh = {
       inherit shellAliases;
+
       enable = true;
       enableCompletion = true;
       autosuggestion.enable = true;
