@@ -1,6 +1,9 @@
 { pkgs, lib, ... }:
 {
 
+  imports = [
+    ./profiles/youtube.nix
+  ];
   home-manager.users.marc = { pkgs, inputs, ... }:
   
   let
@@ -107,6 +110,9 @@
             (extension "single-file" "{531906d3-e22f-4a6c-a102-8057b88a1a63}")
             (extension "videospeed" "{7be2ba16-0f1e-4d93-9ebc-5164397477a9}")
             (extension "sponsorblock" "sponsorBlocker@ajay.app")
+            (extension "watch_later_youtube_shortcut" "WatchLaterShortcutforYouTube@worlthirteen.me")
+            (extension "youtube_anti_translate" "{458160b9-32eb-4f4c-87d1-89ad3bdeb9dc}")
+            (extension "return_youtube_dislikes" "{762f9885-5a13-4abd-9c77-433dcd38b8fd}")
 
             (extension "tab_stash" "tab-stash@condordes.net")
             (extension "pwas_for_firefox" "firefoxpwa@filips.si")

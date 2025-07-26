@@ -17,6 +17,8 @@
       ../../modules/kodi
       ../../modules/rbw
       ../../modules/mako
+      ../../modules/radarr
+      ../../modules/tealdeer
       # ../../modules/sopswarden
       # ../../modules/greetd
       # ../../modules/kubernetes
