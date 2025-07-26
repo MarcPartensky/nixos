@@ -16,12 +16,16 @@
       ../../modules/alacritty
       ../../modules/kodi
       ../../modules/rbw
+      ../../modules/mako
       # ../../modules/sopswarden
       # ../../modules/greetd
       # ../../modules/kubernetes
     ];
 
   # home.file.".config/hypr/hyprland.conf".source = ../../modules/hyprland/hyprland.conf;
+
+  catppuccin.enable = true;
+  catppuccin.flavor = "macchiato";
 
   home-manager.backupFileExtension = "backup";
 
