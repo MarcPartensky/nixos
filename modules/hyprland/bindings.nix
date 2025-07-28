@@ -8,6 +8,7 @@
           "$mod, v, togglefloating"
           "$mod, m, fullscreen"
           "$mod, c, killactive"
+          "alt, w, exec, systemctl restart --user wpaperd"
           "supershift, c, exec, xdotool getwindowfocus windowkill"
           "supershift, q, exit,"
           "super,t,togglegroup,"
