@@ -60,6 +60,8 @@ let
     pkgs.steam-unwrapped
     # pkgs.nvidia-settings
     pkgs.nvidia-vaapi-driver
+    pkgs.code-cursor
+    pkgs.claude-code
   ];
 in {
   all = free ++ unfree;
