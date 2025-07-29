@@ -19,6 +19,7 @@ in {
   security.polkit.enable = true;
   # services.polkit-gnome-authentication-agent.enable = true;
 
+
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
