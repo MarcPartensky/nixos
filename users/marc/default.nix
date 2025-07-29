@@ -19,6 +19,8 @@
       ../../modules/mako
       ../../modules/radarr
       ../../modules/tealdeer
+      ../../modules/polkit
+      # ../../modules/tor-browser
       # ../../modules/sopswarden
       # ../../modules/greetd
       # ../../modules/kubernetes
