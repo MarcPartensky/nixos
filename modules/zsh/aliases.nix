@@ -14,6 +14,7 @@
   grsh = "git reset --hard HEAD";
   grs = "git reset";
   wh = "which";
+  sshp = "cat ~/.ssh/id_ed25519.pub";
   update = "sudo nixos-rebuild switch /etc/nixos#laptop";
   ipi = "http ipinfo.io";
   # ns = "nix-search-tv print |
