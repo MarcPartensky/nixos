@@ -44,6 +44,7 @@
     wayland.windowManager.hyprland.enable = true; # enable Hyprland
     home.sessionVariables.NIXOS_OZONE_WL = "1";
 
+
     wayland.windowManager.hyprland.plugins = [
       pkgs.hyprlandPlugins.hy3
       # pkgs.hyprlandPlugins.hyprspace
@@ -54,6 +55,7 @@
 # bind=,XF86AudioLowerVolume,exec,pamixer -d 5
 # bind=,XF86AudioMute,exec,pamixer -t
 
+    wayland.windowManager.hyprland.systemd.variables = ["--all"];
     wayland.windowManager.hyprland.settings = {
       exec-once = "wpaperd -d";
 
@@ -69,6 +71,7 @@
         "DRI_PRIME=0"
         "LIBVA_DRIVER_NAME,nvidia"
         "__GLX_VENDOR_LIBRARY_NAME,nvidia"
+        "QT_QPA_PLATFORM,wayland"  # Forces Qt apps (like Kodi) to use Wayland
       ];
 
 
