@@ -16,6 +16,8 @@ in {
     ];
 
   nix.settings.experimental-features = "nix-command flakes";
+  security.polkit.enable = true;
+  # services.polkit-gnome-authentication-agent.enable = true;
 
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
