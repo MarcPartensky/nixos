@@ -5,6 +5,7 @@
     hyprland.url = "github:hyprwm/Hyprland";
     # nix-search-tv.url = "github:3timeslazy/nix-search-tv";
     catppuccin.url = "github:catppuccin/nix";
+    newt.url = "github:fosrl/newt";
 
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/release-24.05";
@@ -45,6 +46,14 @@
           ./profiles/laptop/configuration.nix
           ./users.nix
           ./users/marc
+          # {
+          #   home-manager = {
+          #     useGlobalPkgs = true;
+          #     useUserPackages = true;
+          #     users.marc = ./users/marc/home.nix;
+          #     extraSpecialArgs = { inherit inputs; };  # For Home Manager
+          #   };
+          # }
         ];
       };
 
