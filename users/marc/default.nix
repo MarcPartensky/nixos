@@ -26,16 +26,30 @@
       # ../../modules/kubernetes
     ];
 
+
   # home.file.".config/hypr/hyprland.conf".source = ../../modules/hyprland/hyprland.conf;
 
-  catppuccin.enable = true;
-  catppuccin.flavor = "macchiato";
+  # catppuccin.enable = true;
+  # catppuccin.flavor = "macchiato";
 
-  home-manager.backupFileExtension = "backup";
+  # environment.systemPackages = [
+  #   (import inputs.newt { inherit (pkgs) system; }).packages.${pkgs.system}.default
+  # ];
+
+  home-manager = {
+      backupFileExtension = "backup";
+      extraSpecialArgs = { inherit inputs; };
+      useGlobalPkgs = true;
+      useUserPackages = true;
+  };
 
   home-manager.users.marc = { pkgs, inputs, ... }: {
+    # users.your-username = ./home.nix;  // Path to your HM config
     home.packages = with pkgs; [
       # cli
+      # inputs.newt.packages.${pkgs.system}.default
+      # inputs.pangolin-newt.packages.${pkgs.system}.default
+      # pangolin-newt
       bat
       tmate
       typer
@@ -133,16 +147,6 @@
         Install = { WantedBy = [ "default.target" ]; };
       };
     };
-
-    programs.gpg.enable = true;
-    services.gpg-agent = {
-      enable = true;
-      enableSshSupport = true;
-    };
-
-
-
- 
   #   services.wpaperd = {
   #     enable = true;
   #     settings = {
@@ -156,6 +160,11 @@
   #     };
   #   };
 
+    programs.gpg.enable = true;
+    services.gpg-agent = {
+      enable = true;
+      enableSshSupport = true;
+    };
   
     # The state version is required and should stay at the version you
     # originally installed.
