@@ -20,12 +20,12 @@
       ../../modules/radarr
       ../../modules/tealdeer
       ../../modules/polkit
+      ../../modules/thunderbird
       # ../../modules/tor-browser
       # ../../modules/sopswarden
       # ../../modules/greetd
       # ../../modules/kubernetes
     ];
-
 
   # home.file.".config/hypr/hyprland.conf".source = ../../modules/hyprland/hyprland.conf;
 
@@ -56,7 +56,6 @@
       yt-dlp
       uv
       pw-volume
-      wl-clipboard-rs
       brightnessctl
       librespeed-cli
       pwvucontrol
@@ -89,7 +88,6 @@
       invidious
       tor-browser
       signal-desktop
-      kodi
       mpv
       wpaperd
       wofi
@@ -127,7 +125,36 @@
       # onthespot
       # your_spotify
       wofi-power-menu
+      jellyfin
+      libsForQt5.merkuro
+      gcr_4
+      glib-networking
+      evolution-data-server
+      xdg-desktop-portal-gnome
+      gnome-online-accounts-gtk
+      gnome-online-accounts
     ];
+
+    services.gnome-keyring = {
+      enable = true;
+      components = ["secrets" "ssh"];  # Explicitly enable secrets component
+    };
+    # programs.dconf.enable = true;
+    # services.gnome-online-accounts.enable = true;
+
+    # Start Evolution Data Server as user service
+    systemd.user.services.evolution-data-server = {
+      Unit = {
+        Description = "Evolution Data Server";
+        After = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${pkgs.evolution-data-server}/bin/evolution-data-server";
+        Restart = "on-failure";
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+
 
     services.gammastep = {
       enable = true;
@@ -138,7 +165,7 @@
 
     systemd.user.services = {
       wpaperd = {
-          Unit.Description = "wpaperd";
+        Unit.Description = "wpaperd";
         Service = {
           Type = "exec";
           ExecStart = "${pkgs.wpaperd}/bin/wpaperd";
