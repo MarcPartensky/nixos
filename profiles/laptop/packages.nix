@@ -54,16 +54,18 @@ let
     rbw
     rofi-rbw-wayland
     pinentry
+    wl-clipboard-rs
   ];
   
-  unfree = [
-    pkgs.spotify
-    pkgs.steam
-    pkgs.steam-unwrapped
+  unfree = with pkgs; [
+    spotify
+    steam
+    steam-unwrapped
     # pkgs.nvidia-settings
-    pkgs.nvidia-vaapi-driver
-    pkgs.code-cursor
-    pkgs.claude-code
+    nvidia-vaapi-driver
+    code-cursor
+    claude-code
+    morgen
   ];
 in {
   all = free ++ unfree;
