@@ -16,6 +16,19 @@
             columns = 100;
           };
         };
+        keyboard.bindings = [
+          # Copier avec Ctrl+C
+          # { key = "C"; mods = "Control"; action = "Copy"; }
+          # { key = "C"; mods = "Control"; action = "Copy"; }
+          # Envoyer SIGINT (interruption) avec Ctrl+Maj+C
+          # { key = "C"; mods = "Control|Shift"; action = "ReceiveChar"; chars = "\\x03"; }
+          # Coller avec Ctrl+V
+          # { key = "V"; mods = "Control"; action = "Paste"; }
+          { key = "PageUp"; action = "Copy"; }
+          { key = "PageUp"; mode = "Vi|~Search"; action = "Copy"; }
+          { key = "PageDown"; action = "Paste"; }
+          # { key = "PageDown"; mode = "Vi|~Search"; action = "Paste"; }
+        ];
     
         font = {
           normal = {

@@ -44,6 +44,16 @@
     wayland.windowManager.hyprland.enable = true; # enable Hyprland
     home.sessionVariables.NIXOS_OZONE_WL = "1";
 
+    xdg.portal = {
+      enable = true;
+      extraPortals = with pkgs; [
+        xdg-desktop-portal-gtk  # For GTK apps
+        xdg-desktop-portal-hyprland  # Hyprland-specific portal
+      ];
+    };
+
+
+
 
     wayland.windowManager.hyprland.plugins = [
       pkgs.hyprlandPlugins.hy3
@@ -55,9 +65,18 @@
 # bind=,XF86AudioLowerVolume,exec,pamixer -d 5
 # bind=,XF86AudioMute,exec,pamixer -t
 
+
     wayland.windowManager.hyprland.systemd.variables = ["--all"];
     wayland.windowManager.hyprland.settings = {
-      exec-once = "wpaperd -d";
+      exec-once = [
+        "${pkgs.wpaperd}/bin/wpaperd -d"
+        # "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
+        # "${pkgs.systemd}/bin/systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
+        "${pkgs.xdg-desktop-portal-hyprland}/libexec/xdg-desktop-portal-hyprland"
+        "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"
+        "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch cliphist store" #Stores only text data
+        "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch cliphist store" #Stores only image data
+      ];
 
       # plugin = "/usr/lib/libhy3.so";
 
@@ -69,9 +88,19 @@
 
       env = [
         "DRI_PRIME=0"
-        "LIBVA_DRIVER_NAME,nvidia"
-        "__GLX_VENDOR_LIBRARY_NAME,nvidia"
-        "QT_QPA_PLATFORM,wayland"  # Forces Qt apps (like Kodi) to use Wayland
+        "LIBVA_DRIVER_NAME=nvidia"
+        "__GLX_VENDOR_LIBRARY_NAME=nvidia"
+        "QT_QPA_PLATFORM=wayland"  # Forces Qt apps (like Kodi) to use Wayland
+        "GTK_USE_PORTAL=1"
+        "XDG_CURRENT_DESKTOP=Hyprland"
+        "XDG_SESSION_DESKTOP=Hyprland"
+        "QT_QPA_PLATFORM=wayland;xcb"
+        "SDL_VIDEODRIVER=wayland"
+        "CLUTTER_BACKEND=wayland"
+        "NIXOS_OZONE_WL=1"       
+        "GDK_BACKEND=wayland"
+        "QT_WAYLAND_FORCE_DPI=physical"
+        "GDK_DPI_SCALE=1"
       ];
 
 
@@ -107,20 +136,29 @@
       };
 
       input = {
-          kb_layout = "fr";
-          kb_variant = "us";
-          # kb_model=
-          kb_options = "caps:escape";
-          # kb_rules=
+        kb_layout = "fr";
+        kb_variant = "us";
+        # kb_model=
+        # kb_options = "caps:escape";
+        # kb_rules=
       
-          follow_mouse = 1;
-          natural_scroll = true;
-          touchpad = {
-              natural_scroll = true;
-              disable_while_typing = false;
-              middle_button_emulation = true;
-              tap-to-click = true;
-          };
+        follow_mouse = 1;
+        natural_scroll = true;
+        touchpad = {
+            natural_scroll = true;
+            disable_while_typing = false;
+            middle_button_emulation = true;
+            tap-to-click = true;
+        };
+
+        kb_options = "caps:escape,prior:shift_l";
+        # Mapping personnalisé avec XKB
+        # kb_custom_rules = ''
+        #   partial alphanumeric_keys
+        #   xkb_symbols "prior" {
+        #     key <Prior> { [ Shift_L ] };
+        #   };
+        # '';
       };
 
       general  = {
@@ -240,23 +278,59 @@
       size = 16;
     };
   
+  #   gtk = {
+  #     enable = true;
+  # 
+  #     theme = {
+  #       package = pkgs.flat-remix-gtk;
+  #       name = "Flat-Remix-GTK-Grey-Darkest";
+  #     };
+  # 
+  #     iconTheme = {
+  #       package = pkgs.adwaita-icon-theme;
+  #       name = "Adwaita";
+  #     };
+  # 
+  #     font = {
+  #       name = "Sans";
+  #       size = 11;
+  #     };
+  #   };
     gtk = {
       enable = true;
-  
       theme = {
+        # name = "Adwaita";
+        # package = pkgs.adwaita-icon-theme;
         package = pkgs.flat-remix-gtk;
         name = "Flat-Remix-GTK-Grey-Darkest";
       };
-  
       iconTheme = {
-        package = pkgs.adwaita-icon-theme;
         name = "Adwaita";
+        package = pkgs.adwaita-icon-theme;
       };
-  
-      font = {
-        name = "Sans";
-        size = 11;
+      gtk3.extraConfig = {
+        gtk-application-prefer-dark-theme = 0;
+        gtk-xft-antialias = 1;
+        gtk-xft-hinting = 1;
+        gtk-xft-hintstyle = "hintslight";
+        gtk-xft-rgba = "rgb";
       };
     };
   };
+  services.keyd = {
+    enable = true;
+    keyboards = {
+      default = {  # Applique à tous les claviers
+        settings = {
+          main = {
+            # Conservez votre mapping Caps Lock -> Échap
+            capslock = "esc";
+            # Mappez PgDn comme Shift gauche
+            pgdn = "leftshift";
+          };
+        };
+      };
+    };
+  };
+
 }
