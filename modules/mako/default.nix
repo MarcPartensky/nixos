@@ -20,7 +20,8 @@
         border-size = 2;
         border-color = "#92bbed";
         border-radius = 3;
-        progress-color = "over #5588AAFF";
+        # progress-color = "over #5588AAFF";
+        progress-color = "#5588AAFF";
         icons = true;
         markup = true;
         actions = true;
