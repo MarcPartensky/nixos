@@ -6,6 +6,12 @@
     # nix-search-tv.url = "github:3timeslazy/nix-search-tv";
     catppuccin.url = "github:catppuccin/nix";
     newt.url = "github:fosrl/newt";
+    claude-code.url = "github:sadjow/claude-code-nix";
+
+    catppuccin-thunderbird = {
+      url = "github:catppuccin/thunderbird";
+      flake = false; # The repo isn't a flake; use as raw source
+    };
 
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/release-24.05";
