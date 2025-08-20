@@ -21,6 +21,7 @@
       ../../modules/tealdeer
       ../../modules/polkit
       ../../modules/thunderbird
+      # ../../modules/chatgpt
       # ../../modules/tor-browser
       # ../../modules/sopswarden
       # ../../modules/greetd
@@ -80,10 +81,13 @@
       lowfi
       ytmdl
       playerctl
+      wev
+      # xev
+      cliphist
 
       # gui
       wasistlos
-      nextcloud-client
+      # nextcloud-client
       jellyfin-web
       invidious
       tor-browser
@@ -133,6 +137,9 @@
       xdg-desktop-portal-gnome
       gnome-online-accounts-gtk
       gnome-online-accounts
+      versatiles
+      gnome-maps
+      protonmail-bridge
     ];
 
     services.gnome-keyring = {
