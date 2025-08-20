@@ -1,7 +1,7 @@
 { pkgs, ... }:{
   services.radarr = {
     enable = true;
-    openFirewall = true;
+    # openFirewall = true;
     user = "marc";
     group = "users";
     dataDir = "/home/marc/radarr";
