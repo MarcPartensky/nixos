@@ -17,6 +17,7 @@
   sshp = "cat ~/.ssh/id_ed25519.pub";
   update = "sudo nixos-rebuild switch /etc/nixos#laptop";
   ipi = "http ipinfo.io";
+  dc = "docker compose";
   # ns = "nix-search-tv print |
   #   fzf --preview 'nix-search-tv preview {}' --scheme history";
 }
