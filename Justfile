@@ -5,7 +5,7 @@ set dotenv-load
 # export HOST := env_var("HOST")
 
 computer:
-    nixos-rebuild switch --flake /etc/nixos#{{env('HOST')}}
+    sudo nixos-rebuild switch --flake .#{{env('HOST')}}
 
 droid:
     nix-on-droid switch --flake ~/.config/nixos#default

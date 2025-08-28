@@ -12,6 +12,7 @@
       ../../modules/syncthing
       ../../modules/steam
       ../../modules/docker
+      # ../../modules/podman
       ../../modules/zsh
       ../../modules/alacritty
       ../../modules/kodi
@@ -84,6 +85,10 @@
       wev
       # xev
       cliphist
+      grim
+      slurp
+      swappy
+      satty
 
       # gui
       wasistlos
@@ -140,6 +145,7 @@
       versatiles
       gnome-maps
       protonmail-bridge
+      pywalfox-native
     ];
 
     services.gnome-keyring = {
