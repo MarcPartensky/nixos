@@ -1,4 +1,4 @@
-{ pkgs } : {
+{ pkgs, ... } : {
   containers.browser = {
     autoStart = false;
     privateNetwork = true;
@@ -13,7 +13,7 @@
       users.extraUsers.browser = {
         isNormalUser = true;
         home = "/home/browser";
-        openssh.authorizedKeys.keys = [ SSH-KEYS-GO-HERE ];
+        openssh.authorizedKeys.keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINye6ye9NEWOZC2UboNAChnVGTTKuMieQPvuckskvXno" ];
         extraGroups = ["audio" "video"];
       };
     };
@@ -22,9 +22,9 @@
   # Open necessary ports
   networking.firewall.allowedTCPPorts = [ 4713 6000 ];
   hardware.pulseaudio = {
-    enable = true;
-    systemWide = true;
-    support32Bit = true;
+    # enable = true;
+    # systemWide = true;
+    # support32Bit = true;
     tcp = { enable = true; anonymousClients = { allowedIpRanges = ["127.0.0.1" "192.168.7.0/24"]; }; };
   };
   
