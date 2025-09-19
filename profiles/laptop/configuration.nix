@@ -19,11 +19,18 @@ in {
   security.polkit.enable = true;
   # services.polkit-gnome-authentication-agent.enable = true;
 
+  # nix.settings = {
+  #   substituters = [ "https://claude-code.cachix.org" ];
+  #   trusted-public-keys = [ "claude-code.cachix.org-1:YeXf2aNu7UTX8Vwrze0za1WEDS+4DuI2kVeWEE4fsRk=" ];
+  # };
+  # nixpkgs.overlays = [ inputs.claude-code.overlays.default ];
+
 
   # Use the systemd-boot EFI boot loader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   networking.hostId = "c1ae84e2";
+  # networking.firewall.enable = false;
 
   programs.zsh.enable = true;
   users.defaultUserShell = pkgs.zsh;

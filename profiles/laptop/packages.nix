@@ -54,7 +54,9 @@ let
     rbw
     rofi-rbw-wayland
     pinentry
-    wl-clipboard-rs
+    wl-clipboard
+    gpt-cli
+    open-webui
   ];
   
   unfree = with pkgs; [
@@ -66,6 +68,7 @@ let
     code-cursor
     claude-code
     morgen
+
   ];
 in {
   all = free ++ unfree;
