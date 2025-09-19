@@ -22,6 +22,7 @@
       ../../modules/tealdeer
       ../../modules/polkit
       ../../modules/thunderbird
+      # ../../modules/microvm
       # ../../modules/chatgpt
       # ../../modules/tor-browser
       # ../../modules/sopswarden
@@ -89,6 +90,13 @@
       slurp
       swappy
       satty
+      black
+      isort
+      python312Full
+      python312Packages.pynvim
+      gcc
+      nodejs
+
 
       # gui
       wasistlos
@@ -146,6 +154,9 @@
       gnome-maps
       protonmail-bridge
       pywalfox-native
+      electrum
+      sparrow
+      wasabiwallet
     ];
 
     services.gnome-keyring = {
