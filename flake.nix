@@ -2,6 +2,7 @@
   description = "NixOS configuration of Marc";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     hyprland.url = "github:hyprwm/Hyprland";
     # nix-search-tv.url = "github:3timeslazy/nix-search-tv";
     catppuccin.url = "github:catppuccin/nix";
@@ -48,6 +49,7 @@
           inputs.home-manager.nixosModules.default
           inputs.sopswarden.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
+          # inputs.microvm.nixosModules.microvm
           ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
