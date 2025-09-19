@@ -1,25 +1,26 @@
 { pkgs, ... }:
 {
   users.users.marc.extraGroups = [ "docker" ];
+  environment.etc."resolv.conf".text = "nameserver 8.8.8.8\n";
 
   virtualisation = {
     containers.enable = true;
 
     docker = {
       storageDriver = "zfs";
+      enable = true;
+      daemon.settings = {
+        dns = [ "1.1.1.1" "8.8.8.8" ];
+      #   registry-mirrors = [ "https://mirror.gcr.io" ];
+      #  "default-address-pools" = [
+      #     { "base" = "172.27.0.0/16"; "size" = 24; }
+      #   ];
+      };
 
       # enable = true;
       rootless = {
-          enable = true;
-          setSocketVariable = true;
-
-          # daemon.settings = {
-          #   dns = [ "1.1.1.1" "8.8.8.8" ];
-          #   registry-mirrors = [ "https://mirror.gcr.io" ];
-          #  "default-address-pools" = [
-          #     { "base" = "172.27.0.0/16"; "size" = 24; }
-          #   ];
-          # };
+          enable = false;
+          # setSocketVariable = true;
       };
 
       # # Required for containers under podman-compose to be able to talk to each other.
