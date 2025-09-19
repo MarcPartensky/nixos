@@ -4,7 +4,7 @@
       bind =
         [
           "$mod, d, exec, wofi --show drun"
-          ", Print, exec, grimblast copy area"
+          ", Print, exec, grim -g \"$(slurp)\" - | satty -f -"
           "$mod, m, fullscreen"
           "$mod, v, togglefloating"
           "$mod, c, killactive"
@@ -15,6 +15,7 @@
           # "$mod, v, exec, "
           ", Prior, exec, wl-copy"
           ", Next, exec, wl-paste"
+
           # ", Next, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy"
  
 
