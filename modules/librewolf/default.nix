@@ -31,6 +31,27 @@
       privacy-badger
       tab-stash
       youtube-shorts-block
+      about-sync
+      auto-tab-discard
+      catppuccin-mocha-mauve
+      clearurls
+      container-colors
+      don-t-fuck-with-paste
+      export-tabs-urls-and-titles
+      enhanced-github
+      floccus
+      linkwarden
+      pwas-for-firefox
+      pywalfox
+      refined-github
+      session-sync
+      spoof-timezone
+      tab-counter-plus
+      tab-session-manager
+      youtube-high-definition
+      proton-pass
+      # wallabagger
+      # ghostery
       # firefoxpwa
     ];
   in
@@ -63,6 +84,7 @@
     programs.librewolf = {
       enable = true;
       package = pkgs.librewolf;
+      # nativeMessagingHosts.packages = [ pkgs.firefoxpwa ];
 
       policies = {
         Extensions = {
@@ -75,6 +97,15 @@
         ExtensionSettings = {
             "uBlock0@raymondhill.net" = { default_area = "menupanel"; };
             "446900e4-71c2-419f-a6a7-df9c091e268b" = { default_area = "navbar"; };
+            "umatrix@raymondhill.net" = {
+              default_area = "menupanel";
+              filters = [
+                "EasyList"
+                "EasyPrivacy"
+                "Fanboy's Social Blocking List"
+                "uMatrix Filters"
+              ];
+            };
         };
       };
 
@@ -164,6 +195,9 @@
             "extensions.autoDisableScopes" = 0;
             "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
             "svg.context-properties.content.enabled" = true;
+            "network.cookie.cookieBehavior" = 0; # Enable all cookies (Accept All Cookies)
+            "network.cookie.lifetimePolicy" = 2; # Retain cookies until they expire (persistent)
+            "privacy.clearOnShutdown.cookies" = false; # Do not clear cookies on shutdown
           };
 
           # userChrome = ''
