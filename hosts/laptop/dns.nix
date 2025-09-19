@@ -35,4 +35,5 @@ in
   };
 
   systemd.services.dnscrypt-proxy2.serviceConfig.StateDirectory = StateDirectory;
+  services.resolved.enable = false;
 }
