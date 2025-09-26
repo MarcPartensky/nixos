@@ -8,6 +8,11 @@
     catppuccin.url = "github:catppuccin/nix";
     newt.url = "github:fosrl/newt";
     claude-code.url = "github:sadjow/claude-code-nix";
+    
+    hyprtasking = {
+      url = "github:raybbian/hyprtasking";
+      inputs.hyprland.follows = "hyprland";
+    };
 
     catppuccin-thunderbird = {
       url = "github:catppuccin/thunderbird";
@@ -62,6 +67,17 @@
           #     extraSpecialArgs = { inherit inputs; };  # For Home Manager
           #   };
           # }
+        ];
+      };
+
+      rack = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit inputs; };
+        modules = [
+          # ./hosts/tower/hardware-configuration.nix
+          ./profiles/rack/configuration.nix
+          # ./users.nix
+          # ./users/marc
         ];
       };
 
