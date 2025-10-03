@@ -1,34 +1,17 @@
 { config, lib, pkgs, ... }:
 
 {
-
   imports = [
-  # ./modules/sshd
-  # ../../nod-sshd
+    # ./hardware-configuration.nix
+    # ./modules/sshd
+    # ../../nod-sshd
     # ../../zsh
   ];
 
-  # Simply install just the packages
+  # Paquets système
   environment.systemPackages = with pkgs; [
-
-    # Some common stuff that people expect to have
     procps
     killall
-    #diffutils
-    #findutils
-    #utillinux
-    #tzdata
-    #hostname
-    #man
-    #gnugrep
-    #gnupg
-    #gnused
-    #gnutar
-    #bzip2
-    #gzip
-    #xz
-    #zip
-    #unzip
     nano
     openssh
     iproute2
@@ -38,28 +21,49 @@
     git
     gh
     just
-    wayvnc
+    # wayvnc
     stow
     ncdu
-    pangolin
+    # pangolin
     htop
     which
-    podman
-    neofetch
+    # podman
+    fastfetch
   ];
 
-  # Backup etc files instead of failing to activate generation if a file already exists in /etc
+  # SSH root avec clé publique (remplace par ta vraie clé)
+  services.openssh.enable = true;
+  services.openssh.settings.PermitRootLogin = "yes";
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop" 
+  ];
+
+  # Exemple d’utilisateur non-root (optionnel mais recommandé)
+  users.users.marc = {
+    isNormalUser = true;
+    extraGroups = [ "wheel" ]; # sudo
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop"
+    ];
+  };
+  security.sudo.enable = true;
+
+  # Bootloader
+  boot.loader.grub.enable = true;
+  boot.loader.grub.device = "/dev/sda"; # ou /dev/vda selon ton VPS
+
+  # Backup etc files instead of failing to activate generation if a file already existe
   # environment.etcBackupExtension = ".bak";
 
-  # Read the changelog before changing this value
+  # Version du système NixOS
   system.stateVersion = "24.05";
 
-
-  # Set up nix for flakes
+  # Nix flakes
   nix.extraOptions = ''
     experimental-features = nix-command flakes
   '';
 
-  # Set your time zone
+  # Fuseau horaire
   time.timeZone = "Europe/Paris";
 }
+
