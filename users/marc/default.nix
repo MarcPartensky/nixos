@@ -7,6 +7,7 @@
       ../../modules/hyprland
       ../../modules/waybar
       ../../modules/librewolf
+      # ../../modules/firefox
       ../../modules/ssh
       ../../modules/virt-manager
       ../../modules/syncthing
@@ -29,6 +30,10 @@
       # ../../modules/greetd
       # ../../modules/kubernetes
     ];
+
+  environment.variables = {
+    NIX_DEV_SHELL_HOOK = ''zsh'';
+  };
 
   # home.file.".config/hypr/hyprland.conf".source = ../../modules/hyprland/hyprland.conf;
 
@@ -157,7 +162,15 @@
       electrum
       sparrow
       wasabiwallet
+      anki
+      mnemosyne
+      prismlauncher
+      piper
+      libratbag
+      solaar
+      teams-for-linux
     ];
+
 
     services.gnome-keyring = {
       enable = true;
