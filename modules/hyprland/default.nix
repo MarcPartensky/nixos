@@ -57,6 +57,7 @@
 
     wayland.windowManager.hyprland.plugins = [
       pkgs.hyprlandPlugins.hy3
+      # inputs.hyprtasking.packages.${pkgs.system}.hyprtasking
       # pkgs.hyprlandPlugins.hyprspace
       # pkgs.hyprlandPlugins.hycov
     ];
