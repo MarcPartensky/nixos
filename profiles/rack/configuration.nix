@@ -1,34 +1,39 @@
-{ config, lib, pkgs, ... }:
+{ modulesPath, config, lib, pkgs, ... }:
 
 {
+  # imports = [
+  #   # ./hardware-configuration.nix
+  #   # ./modules/sshd
+  #   # ../../nod-sshd
+  #   # ../../zsh
+  # ];
   imports = [
-    # ./hardware-configuration.nix
-    # ./modules/sshd
-    # ../../nod-sshd
-    # ../../zsh
+    (modulesPath + "/installer/scan/not-detected.nix")
+    (modulesPath + "/profiles/qemu-guest.nix")
+    ../../hosts/rack/disk-config.nix
   ];
 
   # Paquets système
   environment.systemPackages = with pkgs; [
-    procps
-    killall
-    nano
-    openssh
-    iproute2
-    shadow
-    neovim
-    zsh
-    git
-    gh
-    just
-    # wayvnc
-    stow
-    ncdu
-    # pangolin
-    htop
-    which
-    # podman
-    fastfetch
+    # procps
+    # killall
+    # nano
+    # openssh
+    # iproute2
+    # shadow
+    # neovim
+    # zsh
+    # git
+    # gh
+    # just
+    # # wayvnc
+    # stow
+    # ncdu
+    # # pangolin
+    # htop
+    # which
+    # # podman
+    # fastfetch
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)
@@ -47,10 +52,6 @@
     ];
   };
   security.sudo.enable = true;
-
-  # Bootloader
-  boot.loader.grub.enable = true;
-  boot.loader.grub.device = "/dev/sda"; # ou /dev/vda selon ton VPS
 
   # Backup etc files instead of failing to activate generation if a file already existe
   # environment.etcBackupExtension = ".bak";

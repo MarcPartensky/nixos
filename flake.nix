@@ -8,7 +8,9 @@
     catppuccin.url = "github:catppuccin/nix";
     newt.url = "github:fosrl/newt";
     claude-code.url = "github:sadjow/claude-code-nix";
+
     disko.url = "github:nix-community/disko";
+    disko.inputs.nixpkgs.follows = "nixpkgs";
     
     hyprtasking = {
       url = "github:raybbian/hyprtasking";
@@ -76,7 +78,7 @@
         specialArgs = { inherit inputs; };
         modules = [
           inputs.disko.nixosModules.disko
-          ./hosts/rack/disk-config.nix
+          # ./hosts/rack/disk-config.nix
           ./profiles/rack/configuration.nix
           # ./users.nix
           # ./users/marc
