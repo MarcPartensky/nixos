@@ -73,14 +73,13 @@
         ];
       };
 
-      rack = nixpkgs.lib.nixosSystem {
+      anywehre = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
           inputs.disko.nixosModules.disko
-          # ./hosts/rack/disk-config.nix
-          ./profiles/rack/configuration.nix
-          # ./users.nix
+          ./profiles/anywhere/configuration.nix
+          ./users.nix
           # ./users/marc
         ];
       };

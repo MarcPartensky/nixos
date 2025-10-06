@@ -34,6 +34,33 @@
     networkmanager.wifi.backend = "iwd";
     # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
+    networkmanager.ensureProfiles.profiles = {
+        wifi-de-marc = {
+            connection = {
+                id = "Wifi de Marc";
+                uuid = "73d1cf32-c497-4fd1-ace3-3e12008ecec0";
+                type = "wifi";
+                autoconnect = true;
+                interface-name = "wlan0";
+            };
+            wifi = {
+                mode = "infrastructure";
+                ssid = "Wifi de Marc";
+            };
+            wifi-security = {
+                key-mgmt = "wpa-psk";
+                psk = "2ipt98gyqf4pud63jeqi";
+            };
+            ipv4 = {
+                method = "auto";
+            };
+            ipv6 = {
+                addr-gen-mode = "default";
+                method = "auto";
+            };
+        };
+    };
+
     wireless.networks = {
         "AP25G".psk = secrets.wifi-ap25g-vaugneray;
     };

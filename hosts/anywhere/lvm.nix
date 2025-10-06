@@ -1,20 +1,20 @@
 { lib, ... }:
 
 {
-  services.qemuGuest.enable = true;
-  # boot.loader.grub.device = "/dev/vda"; # adapte si ton disque est vda/sda/nvme0n1
-  boot.kernelParams = [
-    "console=ttyS0"
-    "boot.shell_on_fail"  # ouvre un shell si l’init échoue
-  ];
+  # services.qemuGuest.enable = true;
+  # # boot.loader.grub.device = "/dev/vda"; # adapte si ton disque est vda/sda/nvme0n1
+  # boot.kernelParams = [
+  #   "console=ttyS0"
+  #   "boot.shell_on_fail"  # ouvre un shell si l’init échoue
+  # ];
 
-  boot.loader.grub = {
-    enable = true;
-    efiSupport = false;
-    # device = "/dev/vda";     # no need to set devices, disko will add all devices that have a EF02 partition to the list already
-  };
+  # boot.loader.grub = {
+  #   enable = true;
+  #   efiSupport = false;
+  #   # device = "/dev/vda";     # no need to set devices, disko will add all devices that have a EF02 partition to the list already
+  # };
 
-  boot.supportedFilesystems = [ "ext4" ];
+  # boot.supportedFilesystems = [ "ext4" ];
 
   disko.devices = {
     disk = {
@@ -75,10 +75,10 @@
           #   };
           # };
           # Optionnel : swap ou thin pool
-          # swap = {
-          #   size = "2G";
-          #   content = { type = "swap"; };
-          # };
+          swap = {
+            size = "4G";
+            content = { type = "swap"; };
+          };
         };
       };
     };
