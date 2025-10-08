@@ -15,6 +15,9 @@
           # "$mod, v, exec, "
           ", Prior, exec, wl-copy"
           ", Next, exec, wl-paste"
+          "alt, d, exec, playerctl -p spotify next"
+          "alt, s, exec, playerctl -p spotify previous"
+          "alt, k, exec, playerctl -p spotify toggle"
 
           # ", Next, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy"
  
