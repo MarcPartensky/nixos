@@ -73,11 +73,11 @@ in
     config.adminpassFile = "/var/lib/nextcloud/adminpass";
   };
 
-  services.pangolin = {
-    enable = true;
-    package = pkgs.pangolin;   # ou ton overlay Nix
-    port = 8082;                # interne, Traefik redirige
-  };
+  # services.pangolin = {
+  #   enable = true;
+  #   package = pkgs.pangolin;   # ou ton overlay Nix
+  #   port = 8082;                # interne, Traefik redirige
+  # };
 
 
 }
