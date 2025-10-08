@@ -78,6 +78,7 @@
         specialArgs = { inherit inputs; };
         modules = [
           inputs.disko.nixosModules.disko
+          inputs.home-manager.nixosModules.default
           ./profiles/anywhere/configuration.nix
           ./users.nix
           # ./users/marc
