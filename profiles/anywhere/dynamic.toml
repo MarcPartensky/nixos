@@ -1,0 +1,4 @@
+[http.routers.api]
+rule = "Host(`traefik.marcpartensky.com`)"
+entryPoints = ["web"]
+service = "api@internal"
