@@ -1,6 +1,6 @@
 { inputs, modulesPath, config, lib, pkgs, ... }:
 let
-  pkgs-unstable = inputs.unstable.legacyPackages.${system};
+  pkgs-unstable = inputs.unstable.legacyPackages."x86_64-linux";
 in
 {
   imports = [
