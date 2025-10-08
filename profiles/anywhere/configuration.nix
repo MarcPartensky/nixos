@@ -1,5 +1,7 @@
-{ modulesPath, config, lib, pkgs, ... }:
-
+{ inputs, modulesPath, config, lib, pkgs, ... }:
+let
+  pkgs-unstable = inputs.unstable.legacyPackages.${system};
+in
 {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
@@ -13,6 +15,7 @@
 
   # Paquets système
   environment.systemPackages = with pkgs; [
+    pkgs-unstable.fosrl-pangolin
     procps
     killall
     openssh
@@ -26,13 +29,11 @@
     # # wayvnc
     stow
     ncdu
-    pangolin
     htop
     which
     # podman
     fastfetch
     bat
-    fosrl-pangolin
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)
