@@ -101,6 +101,7 @@
       python312Packages.pynvim
       gcc
       nodejs
+      compose2nix
 
 
       # gui
@@ -117,9 +118,6 @@
       wdisplays
       wayvnc
       blueberry
-      nautilus
-      zathura
-      element-desktop
       caprine
       goldwarden
       grim
