@@ -31,6 +31,7 @@
     which
     # podman
     fastfetch
+    bat
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)

@@ -1,4 +1,26 @@
-[http.routers.api]
-rule = "Host(`traefik.marcpartensky.com`)"
+# Dashboard Traefik
+[http.routers.traefik]
+rule = "HostRegexp(`{host:.+}`)"
 entryPoints = ["web"]
 service = "api@internal"
+
+# Nextcloud
+[http.services.nextcloud.loadBalancer]
+[[http.services.nextcloud.loadBalancer.servers]]
+url = "http://127.0.0.1:8081"   # port local Nextcloud
+
+[http.routers.nextcloud]
+rule = "HostRegexp(`{host:.+}`)"
+entryPoints = ["web"]
+service = "nextcloud"
+
+# Pangolin
+[http.services.pangolin.loadBalancer]
+[[http.services.pangolin.loadBalancer.servers]]
+url = "http://127.0.0.1:8082"   # port local Pangolin
+
+[http.routers.pangolin]
+rule = "HostRegexp(`{host:.+}`)"
+entryPoints = ["web"]
+service = "pangolin"
+
