@@ -1,11 +1,15 @@
-{ lib, ... }:
+{ lib, pkgs, ... }:
 
 {
+  environment.systemPackages = with pkgs; [
+    zfs
+  ];
+
   disko.devices = {
     disk = {
       main = {
         type = "disk";
-        device = lib.mkDefault "/dev/vda";
+        device = "/dev/vda";
         content = {
           type = "gpt";
           partitions = {
@@ -15,6 +19,26 @@
               size = "1M";
               type = "EF02"; # BIOS boot
             };
+
+          boot = {
+            name = "boot";
+            size = "512M";
+            content = {
+              type = "filesystem";
+              format = "ext4";
+              mountpoint = "/boot";
+            };
+          };
+
+         root = {
+            name = "root";
+            size = "10G"; # taille de / en ext4
+            content = {
+              type = "filesystem";
+              format = "ext4";
+              mountpoint = "/";
+            };
+          };
 
             # Partition ZFS pour le pool
             zfs = {
@@ -33,20 +57,21 @@
     zpool = {
       rpool = {
         type = "zpool";
-        mode = "mirror"; # ou "mirror", "raidz1" si plusieurs disques
+        mode = ""; # ou "mirror", "raidz1" si plusieurs disques
         options.cachefile = "none";
         rootFsOptions = {
+          mountpoint = "none";
           compression = "lz4";
           atime = "off";
           xattr = "sa";
         };
-        mountpoint = "/";
+        # mountpoint = "/";
 
         datasets = {
           # root dataset
-          root = {
+          home = {
             type = "zfs_fs";
-            mountpoint = "/";
+            mountpoint = "/home";
             options.compression = "lz4";
           };
 
