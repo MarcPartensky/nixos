@@ -63,15 +63,15 @@ in
     "d /srv/traefik 0755 root root -"
   ];
 
-  services.nextcloud = {
-    enable = true;
-    hostName = "nextcloud.local";  # pour tests internes, pas besoin de DNS réel
-    package = pkgs.nextcloud29;     # dernière version stable
-    https = false;                  # HTTP pour tests VM, tu peux activer HTTPS plus tard
-    database.createLocally = true;  # SQLite par défaut ou MariaDB/Postgres
-    configureRedis = true;          # cache optionnel
-    config.adminpassFile = "/var/lib/nextcloud/adminpass";
-  };
+  # services.nextcloud = {
+  #   enable = true;
+  #   hostName = "nextcloud.local";  # pour tests internes, pas besoin de DNS réel
+  #   package = pkgs.nextcloud29;     # dernière version stable
+  #   https = false;                  # HTTP pour tests VM, tu peux activer HTTPS plus tard
+  #   database.createLocally = true;  # SQLite par défaut ou MariaDB/Postgres
+  #   configureRedis = true;          # cache optionnel
+  #   config.adminpassFile = "/var/lib/nextcloud/adminpass";
+  # };
 
   # services.pangolin = {
   #   enable = true;
