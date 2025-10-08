@@ -1,11 +1,13 @@
 { config, pkgs, ... }:
-
+let
+  traefikDynamic = ./dynamic.toml;  # chemin relatif depuis cloud.nix
+in
 {
   services.traefik = {
     enable = true;
 
     # Nom de domaine de ton dashboard
-    dynamicConfigFile = "/srv/traefik/dynamic.toml";
+    dynamicConfigFile = traefikDynamic;
 
     # Configuration statique
     staticConfigOptions = {
@@ -19,13 +21,13 @@
         insecure = false; # pas de port 8080 exposé, passe par traefik.marcpartensky.com
       };
 
-      providers = {
-        # Si tu veux garder les fichiers de config (au lieu du docker provider)
-        file = {
-          directory = "/srv/traefik/config";
-          watch = true;
-        };
-      };
+      # providers = {
+      #   # Si tu veux garder les fichiers de config (au lieu du docker provider)
+      #   file = {
+      #     directory = "/srv/traefik/config";
+      #     watch = true;
+      #   };
+      # };
 
       certificatesResolvers = {
         letsencrypt = {
@@ -39,14 +41,14 @@
     };
   };
 
-  # Reverse proxy vers le dashboard Traefik
-  services.traefik.dynamicConfigFile = pkgs.writeText "traefik_dynamic.toml" ''
-    [http.routers]
-      [http.routers.api]
-        rule = "Host(`traefik.marcpartensky.com`)"
-        entryPoints = ["web"]
-        service = "api@internal"
-  '';
+  # # Reverse proxy vers le dashboard Traefik
+  # services.traefik.dynamicConfigFile = pkgs.writeText "traefik_dynamic.toml" ''
+  #   [http.routers]
+  #     [http.routers.api]
+  #       rule = "Host(`traefik.marcpartensky.com`)"
+  #       entryPoints = ["web"]
+  #       service = "api@internal"
+  # '';
 
   # Pare-feu
   networking.firewall.allowedTCPPorts = [ 80 443 ];
