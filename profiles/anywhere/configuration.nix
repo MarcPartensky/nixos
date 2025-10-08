@@ -32,6 +32,7 @@
     # podman
     fastfetch
     bat
+    fosrl-pangolin
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)
