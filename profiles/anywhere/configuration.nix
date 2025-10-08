@@ -6,9 +6,9 @@
     (modulesPath + "/profiles/qemu-guest.nix")
     ../../hosts/anywhere/boot.nix
     ../../hosts/anywhere/lvm.nix
+    ./cloud.nix
     # ../../hosts/anywhere/zfs.nix
     # ../../modules/zsh
-    ../../users.nix
   ];
 
   # Paquets système
