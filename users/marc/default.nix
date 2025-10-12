@@ -23,6 +23,7 @@
       ../../modules/tealdeer
       ../../modules/polkit
       ../../modules/thunderbird
+      ../../modules/tor
       # ../../modules/microvm
       # ../../modules/chatgpt
       # ../../modules/tor-browser
@@ -102,6 +103,9 @@
       gcc
       nodejs
       compose2nix
+
+      # fosrl-newt
+      # fosrl-olm
 
 
       # gui
