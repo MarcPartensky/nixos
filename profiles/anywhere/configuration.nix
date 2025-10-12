@@ -9,6 +9,8 @@ in
     ../../hosts/anywhere/boot.nix
     ../../hosts/anywhere/lvm.nix
     ./cloud.nix
+    ../../services/postgres
+    ../../services/nextcloud
     # ../../hosts/anywhere/zfs.nix
     # ../../modules/zsh
   ];
