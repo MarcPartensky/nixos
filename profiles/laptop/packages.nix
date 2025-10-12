@@ -57,6 +57,7 @@ let
     wl-clipboard
     gpt-cli
     open-webui
+    nautilus
   ];
   
   unfree = with pkgs; [

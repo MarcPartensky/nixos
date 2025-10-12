@@ -36,7 +36,8 @@ in {
   users.defaultUserShell = pkgs.zsh;
 
   # Set your time zone.
-  time.timeZone = "Europe/Paris";
+  # time.timeZone = "Europe/Paris";
+  time.timeZone = "Asia/Bangkok";
 
   # Select internationalisation properties.
   # i18n.defaultLocale = "en_US.UTF-8";
@@ -78,7 +79,7 @@ in {
     enableSSHSupport = true;
   };
 
-  services.ratbagd.enable = true;
+   services.ratbagd.enable = true;
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
