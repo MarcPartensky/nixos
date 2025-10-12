@@ -18,6 +18,7 @@
           "alt, d, exec, playerctl -p spotify next"
           "alt, s, exec, playerctl -p spotify previous"
           "alt, k, exec, playerctl -p spotify toggle"
+          "alt, l, exec, nautilus"
 
           # ", Next, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy"
  
