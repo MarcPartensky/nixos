@@ -5,7 +5,9 @@
   imports = [
   # ./modules/sshd
   # ../../nod-sshd
-    ../../zsh
+    # ../../zsh
+    ../../services/postgres
+    ../../services/nextcloud
   ];
 
   # Simply install just the packages
