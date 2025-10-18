@@ -104,6 +104,7 @@
       gcc
       nodejs
       compose2nix
+      gurk-rs
 
       # fosrl-newt
       # fosrl-olm
@@ -115,8 +116,9 @@
       jellyfin-web
       invidious
       tor-browser
-      # signal-desktop
-      signal-desktop-bin
+      signal-desktop
+      flare-signal
+      # signal-desktop-bin
       mpv
       wpaperd
       wofi
