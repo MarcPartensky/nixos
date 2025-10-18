@@ -68,7 +68,8 @@ let
     nvidia-vaapi-driver
     code-cursor
     claude-code
-    morgen
+    # morgen
+    beeper
 
   ];
 in {

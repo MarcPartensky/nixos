@@ -118,6 +118,7 @@
       tor-browser
       signal-desktop
       flare-signal
+      # beeper
       # signal-desktop-bin
       mpv
       wpaperd
