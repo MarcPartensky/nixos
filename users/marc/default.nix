@@ -24,6 +24,7 @@
       ../../modules/polkit
       ../../modules/thunderbird
       ../../modules/tor
+      # ../../modules/sops
       # ../../modules/microvm
       # ../../modules/chatgpt
       # ../../modules/tor-browser
@@ -114,7 +115,8 @@
       jellyfin-web
       invidious
       tor-browser
-      signal-desktop
+      # signal-desktop
+      signal-desktop-bin
       mpv
       wpaperd
       wofi
