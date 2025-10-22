@@ -171,11 +171,17 @@
       wasabiwallet
       anki
       mnemosyne
+      libGL
       prismlauncher
       piper
       libratbag
       solaar
       teams-for-linux
+      wireguard-ui
+      wg-netmanager
+      openvpn
+      openvpn3
+      protonvpn-gui
     ];
 
 
