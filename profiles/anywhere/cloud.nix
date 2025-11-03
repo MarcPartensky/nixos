@@ -98,27 +98,32 @@ in
   # };
 
   # Vaultwarden service
-  systemd.services.vaultwarden = {
-    description = "Vaultwarden server";
-    after = [ "network.target" ];
-    wants = [ "network.target" ];
-    serviceConfig = {
-      Type = "simple";
-      ExecStart = "${pkgs.vaultwarden}/bin/vaultwarden --port 8083'";
-      Restart = "on-failure";
-      User = "vaultwarden";   # créer l'utilisateur ci-dessous
-      Group = "users";
-      WorkingDirectory = "/var/lib/vaultwarden";
+  services.vaultwarden = {
+    enable = true;
+  
+    # Répertoire de backup (optionnel)
+    backupDir = "/var/local/vaultwarden/backup";
+  
+    # Variables d'environnement sensibles
+    environmentFile = "/var/lib/vaultwarden/vaultwarden.env";
+  
+    config = {
+      DOMAIN = "https://vault.vps.marcpartensky.com";
+      SIGNUPS_ALLOWED = false;
+  
+      ROCKET_ADDRESS = "127.0.0.1";
+      ROCKET_PORT = 8083;   # port interne pour Traefik
+      ROCKET_LOG = "critical";
+  
+      # SMTP (optionnel)
+      # SMTP_HOST = "127.0.0.1";
+      # SMTP_PORT = 25;
+      # SMTP_SSL = false;
+      # SMTP_FROM = "admin@marcpartensky.com";
+      # SMTP_FROM_NAME = "Vaultwarden";
     };
   };
 
-  # Création de l'utilisateur dédié
-  users.users.vaultwarden = {
-    isNormalUser = true;
-    home = "/var/lib/vaultwarden";
-    createHome = true;
-    shell = pkgs.bash;
-  };
 
 
 
