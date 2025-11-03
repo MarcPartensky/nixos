@@ -63,22 +63,22 @@ in
     "d /srv/traefik 0755 root root -"
   ];
 
-  networking.wireguard.enable = true;
-  networking.wireguard.interfaces = {
-  wg0 = {
-    privateKey = "UEKfQ6iKyIWlbkPuD60sqLt1BZ3ceQYUy44PZMczqHw=";       # server or client private key
-    address = [ "10.0.0.1/24" ];                 # your WG subnet
-    listenPort = 51820;                           # optional, default 51820
-    peers = [
-      {
-        publicKey = "Jlur6sLameyTQJHdTGcEp9oT3bfCplgCNuSxNJwlzz0=";
-        allowedIPs = [ "10.0.0.2/32" ];           # peer address
-        endpoint = "1.2.3.4:51820";               # optional
-        persistentKeepalive = 25;                 # optional, for NAT
-      }
-    ];
-  };
-};
+  # networking.wireguard.enable = true;
+  # networking.wireguard.interfaces = {
+  #   wg0 = {
+  #     privateKey = "UEKfQ6iKyIWlbkPuD60sqLt1BZ3ceQYUy44PZMczqHw=";       # server or client private key
+  #     address = [ "10.0.0.1/24" ];                 # your WG subnet
+  #     listenPort = 51820;                           # optional, default 51820
+  #     peers = [
+  #       {
+  #         publicKey = "Jlur6sLameyTQJHdTGcEp9oT3bfCplgCNuSxNJwlzz0=";
+  #         allowedIPs = [ "10.0.0.2/32" ];           # peer address
+  #         endpoint = "1.2.3.4:51820";               # optional
+  #         persistentKeepalive = 25;                 # optional, for NAT
+  #       }
+  #     ];
+  #   };
+  # };
 
 
   # services.nextcloud = {
