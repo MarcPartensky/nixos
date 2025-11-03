@@ -107,7 +107,7 @@ in
       ExecStart = "${pkgs.bash}/bin/bash -c 'vaultwarden --port 8083'";
       Restart = "on-failure";
       User = "vaultwarden";   # créer l'utilisateur ci-dessous
-      Group = "vaultwarden";
+      Group = "users";
       WorkingDirectory = "/var/lib/vaultwarden";
     };
   };
