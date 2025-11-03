@@ -57,8 +57,6 @@ in
   #       service = "api@internal"
   # '';
 
-  # Pare-feu
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
 
   # Pour HTTPS automatique
   security.acme.acceptTerms = true;
