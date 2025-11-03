@@ -97,6 +97,30 @@ in
   #   port = 8082;                # interne, Traefik redirige
   # };
 
+  # Vaultwarden service
+  systemd.services.vaultwarden = {
+    description = "Vaultwarden server";
+    after = [ "network.target" ];
+    wants = [ "network.target" ];
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.bash}/bin/bash -c 'vaultwarden --port 8083'";
+      Restart = "on-failure";
+      User = "vaultwarden";   # créer l'utilisateur ci-dessous
+      Group = "vaultwarden";
+      WorkingDirectory = "/var/lib/vaultwarden";
+    };
+  };
+
+  # Création de l'utilisateur dédié
+  users.users.vaultwarden = {
+    isNormalUser = true;
+    home = "/var/lib/vaultwarden";
+    createHome = true;
+    shell = pkgs.bash;
+  };
+
+
 
 }
 

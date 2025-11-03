@@ -5,6 +5,18 @@ entryPoints = ["websecure"]
 service = "api@internal"
 tls = true
 
+# Vaultwarden
+[http.services.vaultwarden.loadBalancer]
+[[http.services.vaultwarden.loadBalancer.servers]]
+url = "http://127.0.0.1:8083"   # port local Vaultwarden
+
+[http.routers.vaultwarden]
+rule = "Host(`vault.vps.marcpartensky.com`)"
+entryPoints = ["websecure"]
+service = "vaultwarden"
+tls = true
+
+
 # Nextcloud
 # [http.services.nextcloud.loadBalancer]
 # [[http.services.nextcloud.loadBalancer.servers]]
