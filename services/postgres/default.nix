@@ -6,9 +6,10 @@
       #type database  DBuser  auth-method
       local all       all     trust
     '';
-    initialScript = ''
-      CREATE USER vaultwarden WITH PASSWORD 'vaultwarden';
-      CREATE DATABASE vaultwarden OWNER vaultwarden;
+      # Script SQL initial (doit être un fichier réel)
+    initialScript = pkgs.writeText "vaultwarden-init.sql" ''
+      CREATE USER vaultwarden WITH LOGIN PASSWORD 'vaultwarden';
+      GRANT ALL PRIVILEGES ON DATABASE vaultwarden TO vaultwarden;
     '';
   };
 }
