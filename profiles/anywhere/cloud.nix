@@ -19,7 +19,7 @@ in
 
       api = {
         dashboard = true;
-        insecure = false; # pas de port 8080 exposé, passe par traefik.marcpartensky.com
+        insecure = true; # pas de port 8080 exposé, passe par traefik.marcpartensky.com
       };
 
       # providers = {
