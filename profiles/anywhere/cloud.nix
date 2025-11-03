@@ -112,6 +112,7 @@ in
     environmentFile = "/var/lib/vaultwarden/vaultwarden.env";
   
     config = {
+      DATABASE_URL = "postgres://vaultwarden:vaultwarden@127.0.0.1:5432/vaultwarden";
       DOMAIN = "https://vault.vps.marcpartensky.com";
       SIGNUPS_ALLOWED = false;
   

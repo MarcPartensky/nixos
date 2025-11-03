@@ -43,8 +43,16 @@ in
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)
-  services.openssh.enable = true;
-  services.openssh.settings.PermitRootLogin = "yes";
+  services.openssh = {
+    enable = true;
+    permitRootLogin = "yes";
+    extraConfig = ''
+      AllowTcpForwarding yes
+      GatewayPorts no   # si tu veux pas exposer le port à l'extérieur
+      PermitTunnel yes  # optionnel, pour tunelling plus bas niveau
+    '';
+  };
+
   # users.users.root.openssh.authorizedKeys.keys = [
   #   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop" 
   # ];
