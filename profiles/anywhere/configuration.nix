@@ -38,6 +38,7 @@ in
     fastfetch
     bat
     bash
+    busybox
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)
