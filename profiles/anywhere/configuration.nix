@@ -51,15 +51,15 @@ in
 
   programs.zsh.enable = true;
 
-  systemd.services."entrypoint" = {
-    description = "entrypoint";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "network-online.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.bash}/bin/bash /root/git/nixos/profiles/anywhere/entrypoint.sh";
-    };
-  };
+  # systemd.services."entrypoint" = {
+  #   description = "entrypoint";
+  #   wantedBy = [ "multi-user.target" ];
+  #   after = [ "network-online.target" ];
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #     ExecStart = "${pkgs.bash}/bin/bash /root/git/nixos/profiles/anywhere/entrypoint.sh";
+  #   };
+  # };
 
 
   # # Exemple d’utilisateur non-root (optionnel mais recommandé)
