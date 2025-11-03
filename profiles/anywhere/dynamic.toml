@@ -1,26 +1,29 @@
 # Dashboard Traefik
 [http.routers.traefik]
-rule = "HostRegexp(`{host:.+}`)"
-entryPoints = ["web"]
+rule = "Host(`traefik.vps.marcpartensky.com`)"
+entryPoints = ["websecure"]
 service = "api@internal"
+tls = true
 
 # Nextcloud
 [http.services.nextcloud.loadBalancer]
 [[http.services.nextcloud.loadBalancer.servers]]
-url = "http://127.0.0.1:8081"   # port local Nextcloud
+url = "http://127.0.0.1:8081"
 
 [http.routers.nextcloud]
-rule = "HostRegexp(`{host:.+}`)"
-entryPoints = ["web"]
+rule = "Host(`nextcloud.vps.marcpartensky.com`)"
+entryPoints = ["websecure"]
 service = "nextcloud"
+tls = true
 
 # Pangolin
 [http.services.pangolin.loadBalancer]
 [[http.services.pangolin.loadBalancer.servers]]
-url = "http://127.0.0.1:8082"   # port local Pangolin
+url = "http://127.0.0.1:8082"
 
 [http.routers.pangolin]
-rule = "HostRegexp(`{host:.+}`)"
-entryPoints = ["web"]
+rule = "Host(`pangolin.vps.marcpartensky.com`)"
+entryPoints = ["websecure"]
 service = "pangolin"
+tls = true
 
