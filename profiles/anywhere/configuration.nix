@@ -9,7 +9,7 @@ in
     ../../hosts/anywhere/boot.nix
     ../../hosts/anywhere/lvm.nix
     ./cloud.nix
-    # ../../services/postgres
+    ../../services/postgres
     # ../../services/nextcloud
     # ./caddy.nix
     # ../../hosts/anywhere/zfs.nix
