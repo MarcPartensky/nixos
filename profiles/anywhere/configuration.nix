@@ -48,8 +48,6 @@ in
 
   programs.zsh.enable = true;
 
-  { pkgs, ... }:
-
   systemd.services."entrypoint" = {
     description = "entrypoint";
     wantedBy = [ "multi-user.target" ];
