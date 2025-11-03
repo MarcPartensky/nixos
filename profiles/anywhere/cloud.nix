@@ -104,7 +104,7 @@ in
     wants = [ "network.target" ];
     serviceConfig = {
       Type = "simple";
-      ExecStart = "${pkgs.bash}/bin/bash -c 'vaultwarden --port 8083'";
+      ExecStart = "${pkgs.vaultwarden}/bin/vaultwarden --port 8083'";
       Restart = "on-failure";
       User = "vaultwarden";   # créer l'utilisateur ci-dessous
       Group = "users";

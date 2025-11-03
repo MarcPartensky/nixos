@@ -39,6 +39,7 @@ in
     bat
     bash
     busybox
+    vaultwarden
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)
@@ -56,7 +57,7 @@ in
     after = [ "network-online.target" ];
     serviceConfig = {
       Type = "oneshot";
-      ExecStart = "${pkgs.bash}/bin/bash ./profiles/anywhere/entrypoint.sh";
+      ExecStart = "${pkgs.bash}/bin/bash /root/git/nixos/profiles/anywhere/entrypoint.sh";
     };
   };
 
