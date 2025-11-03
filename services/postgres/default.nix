@@ -6,5 +6,9 @@
       #type database  DBuser  auth-method
       local all       all     trust
     '';
+    initialScript = ''
+      CREATE USER vaultwarden WITH PASSWORD 'vaultwarden';
+      CREATE DATABASE vaultwarden OWNER vaultwarden;
+    '';
   };
 }
