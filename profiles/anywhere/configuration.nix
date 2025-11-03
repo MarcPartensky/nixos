@@ -11,7 +11,7 @@ in
     ./cloud.nix
     ../../services/postgres
     ../../services/nextcloud
-    ./caddy.nix
+    # ./caddy.nix
     # ../../hosts/anywhere/zfs.nix
     # ../../modules/zsh
   ];
