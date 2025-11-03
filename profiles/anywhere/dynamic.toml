@@ -6,24 +6,24 @@ service = "api@internal"
 tls = true
 
 # Nextcloud
-[http.services.nextcloud.loadBalancer]
-[[http.services.nextcloud.loadBalancer.servers]]
-url = "http://127.0.0.1:8081"
+# [http.services.nextcloud.loadBalancer]
+# [[http.services.nextcloud.loadBalancer.servers]]
+# url = "http://127.0.0.1:8081"
 
-[http.routers.nextcloud]
-rule = "Host(`nextcloud.vps.marcpartensky.com`)"
-entryPoints = ["websecure"]
-service = "nextcloud"
-tls = true
+# [http.routers.nextcloud]
+# rule = "Host(`nextcloud.vps.marcpartensky.com`)"
+# entryPoints = ["websecure"]
+# service = "nextcloud"
+# tls = true
 
-# Pangolin
-[http.services.pangolin.loadBalancer]
-[[http.services.pangolin.loadBalancer.servers]]
-url = "http://127.0.0.1:8082"
+# # Pangolin
+# [http.services.pangolin.loadBalancer]
+# [[http.services.pangolin.loadBalancer.servers]]
+# url = "http://127.0.0.1:8082"
 
-[http.routers.pangolin]
-rule = "Host(`pangolin.vps.marcpartensky.com`)"
-entryPoints = ["websecure"]
-service = "pangolin"
-tls = true
+# [http.routers.pangolin]
+# rule = "Host(`pangolin.vps.marcpartensky.com`)"
+# entryPoints = ["websecure"]
+# service = "pangolin"
+# tls = true
 
