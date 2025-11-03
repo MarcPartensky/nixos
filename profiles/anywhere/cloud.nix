@@ -4,6 +4,12 @@ let
   pangolin = inputs.unstable.fosrl-pangolin;
 in
 {
+  networking.firewall = {
+    enable = true;                  # active le firewall
+    allowedTCPPorts = [ 80 443 8080 8081 8082 8083 ];  # ajoute les ports à ouvrir
+    allowedUDPPorts = [ ];          # si besoin pour UDP
+  };
+
   services.traefik = {
     enable = true;
 
