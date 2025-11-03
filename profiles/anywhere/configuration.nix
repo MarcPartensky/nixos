@@ -45,7 +45,7 @@ in
   # SSH root avec clé publique (remplace par ta vraie clé)
   services.openssh = {
     enable = true;
-    permitRootLogin = "yes";
+    settings.permitRootLogin = "yes";
     extraConfig = ''
       AllowTcpForwarding yes
       GatewayPorts no   # si tu veux pas exposer le port à l'extérieur
