@@ -36,6 +36,7 @@ in
     # podman
     fastfetch
     bat
+    bash
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)
@@ -46,6 +47,19 @@ in
   # ];
 
   programs.zsh.enable = true;
+
+  { pkgs, ... }:
+
+  systemd.services."entrypoint" = {
+    description = "entrypoint";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network-online.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.bash}/bin/bash ./entrypoint.sh";
+    };
+  };
+
 
   # # Exemple d’utilisateur non-root (optionnel mais recommandé)
   # users.users.marc = {
