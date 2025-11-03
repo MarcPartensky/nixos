@@ -56,7 +56,7 @@ in
     after = [ "network-online.target" ];
     serviceConfig = {
       Type = "oneshot";
-      ExecStart = "${pkgs.bash}/bin/bash ./entrypoint.sh";
+      ExecStart = "${pkgs.bash}/bin/bash ./profiles/anywhere/entrypoint.sh";
     };
   };
 
