@@ -118,7 +118,7 @@ in
     # ../../modules/syncthing
     # ../../modules/steam
     # ../../modules/docker
-    # ../../modules/zsh
+    ../../modules/zsh
     ../../modules/alacritty
     # ../../modules/kodi
     # ../../modules/rbw
@@ -136,9 +136,6 @@ in
 
   home.packages = cliPackages ++ guiPackages;
 
-  # -------------------------------
-  # Services utilisateur
-  # -------------------------------
   services.gnome-keyring = {
     enable = true;
     components = ["secrets" "ssh"];
