@@ -37,6 +37,8 @@ let
     ytmdl
     wev
     cliphist
+    nerdctl
+    # crictl
   ];
 
   # -------------------------------
