@@ -3,12 +3,12 @@ let
   shellAliases = import ./aliases.nix;
 in {
 
-  # home.systemPackages = with pkgs; [
-  #   # "thefuck"
-  #   zsh-powerlevel10k
-  #   mcfly
-  #   nixd
-  # ];
+  home.packages = with pkgs; [
+    # "thefuck"
+    zsh-powerlevel10k
+    mcfly
+    nixd
+  ];
   # programs.mcfly.enable = true;
   # programs.mcfly.enableZshIntegration = true;
 
