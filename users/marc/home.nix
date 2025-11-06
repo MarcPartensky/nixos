@@ -107,10 +107,10 @@ let
 in
 {
   imports = [
-    # ../../modules/git
+    ../../modules/git
     ../../modules/hyprland
     ../../modules/waybar
-    ../../modules/librewolf
+    # ../../modules/librewolf
     # ../../modules/ssh
     # ../../modules/virt-manager
     # ../../modules/syncthing
