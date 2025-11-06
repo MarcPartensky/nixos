@@ -1,71 +1,70 @@
 { pkgs, ... }: {
-  home-manager.users.marc = { pkgs, inputs, ... }: {
-    wayland.windowManager.hyprland.settings = {
-      bind =
-        [
-          "$mod, d, exec, wofi --show drun"
-          ", Print, exec, grim -g \"$(slurp)\" - | satty -f -"
-          "$mod, m, fullscreen"
-          "$mod, v, togglefloating"
-          "$mod, c, killactive"
-          # "$mod, c, exec, wl-copy --trim-newline && hyprctl dispatch sendshortcut 'CTRL,C,'"
-          # "$mod, v, exec, wl-paste --trim-newline && hyprctl dispatch sendshortcut 'CTRL,V,'"
-          # "$mod, v, exec, wl-paste"
-          # "$mod, c, exec, wl-copy"
-          # "$mod, v, exec, "
-          ", Prior, exec, wl-copy"
-          ", Next, exec, wl-paste"
-          "alt, d, exec, playerctl -p spotify next"
-          "alt, s, exec, playerctl -p spotify previous"
-          "alt, k, exec, playerctl -p spotify play-pause"
-          "alt, l, exec, nautilus"
-
-          # ", Next, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy"
- 
-
-          "alt, w, exec, systemctl restart --user wpaperd"
-          "supershift, c, exec, xdotool getwindowfocus windowkill"
-          "supershift, q, exit,"
-          "super,t,togglegroup,"
-
-          "$mod, return, exec, alacritty"
-          "$mod, f, exec, librewolf"
-          "$mod, b, exec, gtk-launch blueberry"
-
-          "$mod, mouse:272, movewindow"
-          "$mod, mouse:273, movewindow"
-          # "$mod, mouse:273, resizewindow"
-          # "$mod alt, mouse:272, resizewindow"
-          # "$mod, mouse:273, resizewindow"
-
-          "$mod,mouse_down,workspace,e+1"
-          "$mod,mouse_up,workspace,e-1"
-
-          ",XF86AudioRaiseVolume,exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%+"
-          ",XF86AudioLowerVolume,exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%-"
-          ",XF86AudioMute,exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
-
-          ",XF86MonBrightnessUp,exec,brightnessctl s +1%"
-          ",XF86MonBrightnessDown,exec,brightnessctl s 1%-"
-
-          ", Print, exec, grimblast copysave area"
-          "$mod, Print, exec, grimblast copysave output"
-
-          "SUPER+SHIFT,h,hy3:makegroup, h"
-          "SUPER+SHIFT,v,hy3:makegroup, v"
-        ]
-        ++ (
-          # workspaces
-          # binds $mod + [shift +] {1..9} to [move to] workspace {1..9}
-          builtins.concatLists (builtins.genList (i:
-              let ws = i + 1;
-              in [
-                "$mod, code:1${toString i}, workspace, ${toString ws}"
-                "$alt, code:1${toString i}, movetoworkspace, ${toString ws}"
-              ]
-            )
-            9)
-        );
-    };
+  # home-manager.users.marc = { pkgs, inputs, ... }: {
+  wayland.windowManager.hyprland.settings = {
+    bind =
+      [
+        "$mod, d, exec, wofi --show drun"
+        ", Print, exec, grim -g \"$(slurp)\" - | satty -f -"
+        "$mod, m, fullscreen"
+        "$mod, v, togglefloating"
+        "$mod, c, killactive"
+        # "$mod, c, exec, wl-copy --trim-newline && hyprctl dispatch sendshortcut 'CTRL,C,'"
+        # "$mod, v, exec, wl-paste --trim-newline && hyprctl dispatch sendshortcut 'CTRL,V,'"
+        # "$mod, v, exec, wl-paste"
+        # "$mod, c, exec, wl-copy"
+        # "$mod, v, exec, "
+        ", Prior, exec, wl-copy"
+        ", Next, exec, wl-paste"
+        "alt, d, exec, playerctl -p spotify next"
+        "alt, s, exec, playerctl -p spotify previous"
+        "alt, k, exec, playerctl -p spotify play-pause"
+        "alt, l, exec, nautilus"
+  
+        # ", Next, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy"
+  
+  
+        "alt, w, exec, systemctl restart --user wpaperd"
+        "supershift, c, exec, xdotool getwindowfocus windowkill"
+        "supershift, q, exit,"
+        "super,t,togglegroup,"
+  
+        "$mod, return, exec, alacritty"
+        "$mod, f, exec, librewolf"
+        "$mod, b, exec, gtk-launch blueberry"
+  
+        "$mod, mouse:272, movewindow"
+        "$mod, mouse:273, movewindow"
+        # "$mod, mouse:273, resizewindow"
+        # "$mod alt, mouse:272, resizewindow"
+        # "$mod, mouse:273, resizewindow"
+  
+        "$mod,mouse_down,workspace,e+1"
+        "$mod,mouse_up,workspace,e-1"
+  
+        ",XF86AudioRaiseVolume,exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%+"
+        ",XF86AudioLowerVolume,exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%-"
+        ",XF86AudioMute,exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+  
+        ",XF86MonBrightnessUp,exec,brightnessctl s +1%"
+        ",XF86MonBrightnessDown,exec,brightnessctl s 1%-"
+  
+        ", Print, exec, grimblast copysave area"
+        "$mod, Print, exec, grimblast copysave output"
+  
+        "SUPER+SHIFT,h,hy3:makegroup, h"
+        "SUPER+SHIFT,v,hy3:makegroup, v"
+      ]
+      ++ (
+        # workspaces
+        # binds $mod + [shift +] {1..9} to [move to] workspace {1..9}
+        builtins.concatLists (builtins.genList (i:
+            let ws = i + 1;
+            in [
+              "$mod, code:1${toString i}, workspace, ${toString ws}"
+              "$alt, code:1${toString i}, movetoworkspace, ${toString ws}"
+            ]
+          )
+          9)
+      );
   };
 }

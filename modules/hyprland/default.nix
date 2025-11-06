@@ -21,319 +21,295 @@
     ./bindings.nix
   ];
 
-  nix.settings = {
-    substituters = ["https://hyprland.cachix.org"];
-    trusted-substituters = ["https://hyprland.cachix.org"];
-    trusted-public-keys = ["hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="];
-  };
+  # nix.settings = {
+  #   substituters = ["https://hyprland.cachix.org"];
+  #   trusted-substituters = ["https://hyprland.cachix.org"];
+  #   trusted-public-keys = ["hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="];
+  # };
 
 
 
-  programs.dconf.enable = true;
-  programs.hyprland = {
+  # programs.dconf.enable = true;
+  # programs.hyprland = {
+  #   enable = true;
+  #   # set the flake package
+  #   package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+  #   # make sure to also set the portal package, so that they are in sync
+  #   portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
+  # };
+
+
+  # home-manager.users.marc = { pkgs, inputs, ... }: {
+  programs.kitty.enable = true; # required for the default Hyprland config
+  wayland.windowManager.hyprland.enable = true; # enable Hyprland
+  home.sessionVariables.NIXOS_OZONE_WL = "1";
+
+  xdg.portal = {
     enable = true;
-    # set the flake package
-    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
-    # make sure to also set the portal package, so that they are in sync
-    portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
+    extraPortals = with pkgs; [
+      xdg-desktop-portal-gtk  # For GTK apps
+      xdg-desktop-portal-hyprland  # Hyprland-specific portal
+    ];
   };
 
 
-  home-manager.users.marc = { pkgs, inputs, ... }: {
-    programs.kitty.enable = true; # required for the default Hyprland config
-    wayland.windowManager.hyprland.enable = true; # enable Hyprland
-    home.sessionVariables.NIXOS_OZONE_WL = "1";
-
-    xdg.portal = {
-      enable = true;
-      extraPortals = with pkgs; [
-        xdg-desktop-portal-gtk  # For GTK apps
-        xdg-desktop-portal-hyprland  # Hyprland-specific portal
-      ];
-    };
 
 
+  wayland.windowManager.hyprland.plugins = [
+    pkgs.hyprlandPlugins.hy3
+    # inputs.hyprtasking.packages.${pkgs.system}.hyprtasking
+    # pkgs.hyprlandPlugins.hyprspace
+    # pkgs.hyprlandPlugins.hycov
+  ];
 
-
-    wayland.windowManager.hyprland.plugins = [
-      pkgs.hyprlandPlugins.hy3
-      # inputs.hyprtasking.packages.${pkgs.system}.hyprtasking
-      # pkgs.hyprlandPlugins.hyprspace
-      # pkgs.hyprlandPlugins.hycov
+  wayland.windowManager.hyprland.systemd.variables = ["--all"];
+  wayland.windowManager.hyprland.settings = {
+    exec-once = [
+      "${pkgs.wpaperd}/bin/wpaperd -d"
+      # "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
+      # "${pkgs.systemd}/bin/systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
+      "${pkgs.xdg-desktop-portal-hyprland}/libexec/xdg-desktop-portal-hyprland"
+      "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"
+      "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch cliphist store" #Stores only text data
+      "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch cliphist store" #Stores only image data
     ];
 
-# bind=,XF86AudioRaiseVolume,exec,pamixer -i 5
-# bind=,XF86AudioLowerVolume,exec,pamixer -d 5
-# bind=,XF86AudioMute,exec,pamixer -t
+    # plugin = "/usr/lib/libhy3.so";
+
+    monitor = [
+        "eDP-1,1920x1080@60,320x1440,1"
+        "DP-1,2560x1440@60,0x0,1"
+        "HDMI-A-1,2560x1440@60,0x0,1"
+    ];
+
+    env = [
+      "DRI_PRIME=0"
+      "LIBVA_DRIVER_NAME=nvidia"
+      "__GLX_VENDOR_LIBRARY_NAME=nvidia"
+      "QT_QPA_PLATFORM=wayland"  # Forces Qt apps (like Kodi) to use Wayland
+      "GTK_USE_PORTAL=1"
+      "XDG_CURRENT_DESKTOP=Hyprland"
+      "XDG_SESSION_DESKTOP=Hyprland"
+      "QT_QPA_PLATFORM=wayland;xcb"
+      "SDL_VIDEODRIVER=wayland"
+      "CLUTTER_BACKEND=wayland"
+      "NIXOS_OZONE_WL=1"       
+      "GDK_BACKEND=wayland"
+      "QT_WAYLAND_FORCE_DPI=physical"
+      "GDK_DPI_SCALE=1"
+    ];
 
 
-    wayland.windowManager.hyprland.systemd.variables = ["--all"];
-    wayland.windowManager.hyprland.settings = {
-      exec-once = [
-        "${pkgs.wpaperd}/bin/wpaperd -d"
-        # "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
-        # "${pkgs.systemd}/bin/systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
-        "${pkgs.xdg-desktop-portal-hyprland}/libexec/xdg-desktop-portal-hyprland"
-        "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"
-        "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch cliphist store" #Stores only text data
-        "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch cliphist store" #Stores only image data
-      ];
-
-      # plugin = "/usr/lib/libhy3.so";
-
-      monitor = [
-          "eDP-1,1920x1080@60,320x1440,1"
-          "DP-1,2560x1440@60,0x0,1"
-          "HDMI-A-1,2560x1440@60,0x0,1"
-      ];
-
-      env = [
-        "DRI_PRIME=0"
-        "LIBVA_DRIVER_NAME=nvidia"
-        "__GLX_VENDOR_LIBRARY_NAME=nvidia"
-        "QT_QPA_PLATFORM=wayland"  # Forces Qt apps (like Kodi) to use Wayland
-        "GTK_USE_PORTAL=1"
-        "XDG_CURRENT_DESKTOP=Hyprland"
-        "XDG_SESSION_DESKTOP=Hyprland"
-        "QT_QPA_PLATFORM=wayland;xcb"
-        "SDL_VIDEODRIVER=wayland"
-        "CLUTTER_BACKEND=wayland"
-        "NIXOS_OZONE_WL=1"       
-        "GDK_BACKEND=wayland"
-        "QT_WAYLAND_FORCE_DPI=physical"
-        "GDK_DPI_SCALE=1"
-      ];
+    plugins = {
 
 
-      plugins = {
-
-
-        hy3 = {
-            tabs = {
-                height = 2;
-	              padding = 6;
-	              render_text = false;
-            };
-
-            autotile = {
-                enable = true;
-                trigger_width = 1500;
-                trigger_height = 500;
-            };
-        };
-        # Hyprspace = {
-        #     overview = {
-        #         close = 0;
-        #         disableGestures = 1;
-        #     };
-        #     gestures = {
-        #         workspace_swipe_fingers = 5;
-        #     };
-        # };
-      };
-
-      debug  = {
-          disable_logs = false;
-      };
-
-      input = {
-        kb_layout = "fr";
-        kb_variant = "us";
-        # kb_model=
-        # kb_options = "caps:escape";
-        # kb_rules=
-      
-        follow_mouse = 1;
-        natural_scroll = true;
-        touchpad = {
-            natural_scroll = true;
-            disable_while_typing = false;
-            middle_button_emulation = true;
-            tap-to-click = true;
-        };
-
-        kb_options = "caps:escape,prior:shift_l";
-        # Mapping personnalisé avec XKB
-        # kb_custom_rules = ''
-        #   partial alphanumeric_keys
-        #   xkb_symbols "prior" {
-        #     key <Prior> { [ Shift_L ] };
-        #   };
-        # '';
-      };
-
-      general  = {
-          # sensitivity=1 # for mouse cursor
-          # main_mod=SUPER
-      
-          gaps_in = 5;
-          gaps_out = 10;
-          # border_size=2
-          border_size = 0;
-          "col.active_border" = "0x66ee1111";
-          "col.inactive_border" = "0x66333333";
-      
-          # apply_sens_to_raw=0 # whether to apply the sensitivity to raw input (e.g. used by games where you aim using your mouse)
-      
-          # damage_tracking=full # leave it on full unless you hate your GPU and want to make it suffer
-          # layout=dwindle
-          layout = "hy3";
-          resize_on_border = true;
-      };
-
-      decoration = {
-          rounding = 5;
-      };
-
-      animations  = {
-          enabled = 1;
-          # bezier=overshot,0.05,0.9,0.1,1.1
-          bezier = "overshot,0.13,0.99,0.29,1.1";
-          animation = [
-            "windows,1,4,overshot,slide"
-            "border,1,10,default"
-            "fade,1,10,default"
-            "workspaces,1,10,overshot,slidevert"
-          ];
-      
-          # animation=workspaces,1,6,overshot,slide
-          # animation=workspaces,11,20,overshot,slide
-      };
-
-      dwindle = {
-          pseudotile = 0; # enable pseudotiling on dwindle
-      };
-      
-      
-      gestures = {
-          workspace_swipe = true;
-          workspace_swipe_fingers = 3;
-      };
-      
-      misc = {
-          disable_hyprland_logo = true;
-      };
-
-
-      windowrule = [
-        "float,title:^(blueberry.py)$"
-        "size 40% 85%,title:^(blueberry.py)$"
-        "center,title:^(blueberry.py)$"
-
-        "float,title:^(org.twosheds.iwgtk)$"
-        "size 40% 85%,title:^(org.twosheds.iwgtk)$"
-        "center,title:^(org.twosheds.iwgtk)$"
-
-        "size 50% 50%,title:^(wdisplays)$"
-        "float,title:^(wdisplays)$"
-        "center,title:^(wdisplays)$"
-
-        "workspace 1,title:^(Alacritty)$"
-        # windowrule=float,^(Alacritty)$
-        # windowrule=size 50% 95%,^(Alacritty)$
-
-        "center,title:^(Alacritty)$"
-        "workspace 2,title:^(firefox)$"
-        "workspace 3,title:^(Spotify)$"
-        "workspace 3,title:^(Spotube)$"
-        "workspace 4,title:^(WebCord)$"
-        "workspace 4,title:^(Discord)$"
-        "workspace 4,title:^(Whatsapp)$"
-        "workspace 4,title:^(Element)$"
-        "workspace 4,title:^(Instagram)$"
-        # windowrule=fakefullscreen,title:^(Signal)$
-
-        "workspace 4,title:^(Signal)$"
-        "workspace 4,title:^(Caprine)$"
-        "workspace 5,title:^(Mailspring)$"
-        # windowrule=fakefullscreen,title:^(Mailspring)$
-        "workspace 5,title:^(Geary)$"
-        "workspace 5,title:^(proton-mail-viewer)$"
-        # windowrule=fakefullscreen,title:^(proton-mail-viewer)$
-        "workspace 9,title:^(nautilus)$"
-        "workspace 10,title:^(Focalboard)$"
-
-        "workspace 1,title:^(youtube)$"
-        "workspace 2,title:^(firefox)$"
-      ];
-
-      workspace = [
-        # workspace=name:myworkspace,gapsin:0,gapsout:
-        "1, name:coding, rounding:true, decorate:false, gapsin:5, gapsout:10, border:true, decorate:true, monitor:eDP-1"
-        "2, name:browser, monitor:eDP-1"
-        "3, name:music, monitor:eDP-1"
-        "4, name:chat, monitor:eDP-1"
-        "5, name:mail, monitor:eDP-1"
-        "10, name:board, monitor:eDP-1"
-      ];
-
-
-      "$mod" = "SUPER";
-    };
-
-    home.pointerCursor = {
-      gtk.enable = true;
-      # x11.enable = true;
-      package = pkgs.bibata-cursors;
-      name = "Bibata-Modern-Classic";
-      size = 16;
-    };
-  
-  #   gtk = {
-  #     enable = true;
-  # 
-  #     theme = {
-  #       package = pkgs.flat-remix-gtk;
-  #       name = "Flat-Remix-GTK-Grey-Darkest";
-  #     };
-  # 
-  #     iconTheme = {
-  #       package = pkgs.adwaita-icon-theme;
-  #       name = "Adwaita";
-  #     };
-  # 
-  #     font = {
-  #       name = "Sans";
-  #       size = 11;
-  #     };
-  #   };
-    gtk = {
-      enable = true;
-      theme = {
-        # name = "Adwaita";
-        # package = pkgs.adwaita-icon-theme;
-        package = pkgs.flat-remix-gtk;
-        name = "Flat-Remix-GTK-Grey-Darkest";
-      };
-      iconTheme = {
-        name = "Adwaita";
-        package = pkgs.adwaita-icon-theme;
-      };
-      gtk3.extraConfig = {
-        gtk-application-prefer-dark-theme = 0;
-        gtk-xft-antialias = 1;
-        gtk-xft-hinting = 1;
-        gtk-xft-hintstyle = "hintslight";
-        gtk-xft-rgba = "rgb";
-      };
-    };
-  };
-  services.keyd = {
-    enable = true;
-    keyboards = {
-      default = {  # Applique à tous les claviers
-        ids = [ "*" ];
-        settings = {
-          main = {
-            # Conservez votre mapping Caps Lock -> Échap
-            # capslock = "esc";
-            # Mappez PgDn comme Shift gauche
-            # pgdn = "leftshift";
-            pagedown = "layer(shift)"; 
+      hy3 = {
+          tabs = {
+              height = 2;
+                padding = 6;
+                render_text = false;
           };
-        };
+
+          autotile = {
+              enable = true;
+              trigger_width = 1500;
+              trigger_height = 500;
+          };
       };
+      # Hyprspace = {
+      #     overview = {
+      #         close = 0;
+      #         disableGestures = 1;
+      #     };
+      #     gestures = {
+      #         workspace_swipe_fingers = 5;
+      #     };
+      # };
     };
+
+    debug  = {
+        disable_logs = false;
+    };
+
+    input = {
+      kb_layout = "fr";
+      kb_variant = "us";
+      # kb_model=
+      # kb_options = "caps:escape";
+      # kb_rules=
+    
+      follow_mouse = 1;
+      natural_scroll = true;
+      touchpad = {
+          natural_scroll = true;
+          disable_while_typing = false;
+          middle_button_emulation = true;
+          tap-to-click = true;
+      };
+
+      kb_options = "caps:escape,prior:shift_l";
+      # Mapping personnalisé avec XKB
+      # kb_custom_rules = ''
+      #   partial alphanumeric_keys
+      #   xkb_symbols "prior" {
+      #     key <Prior> { [ Shift_L ] };
+      #   };
+      # '';
+    };
+
+    general  = {
+        # sensitivity=1 # for mouse cursor
+        # main_mod=SUPER
+    
+        gaps_in = 5;
+        gaps_out = 10;
+        # border_size=2
+        border_size = 0;
+        "col.active_border" = "0x66ee1111";
+        "col.inactive_border" = "0x66333333";
+    
+        # apply_sens_to_raw=0 # whether to apply the sensitivity to raw input (e.g. used by games where you aim using your mouse)
+    
+        # damage_tracking=full # leave it on full unless you hate your GPU and want to make it suffer
+        # layout=dwindle
+        layout = "hy3";
+        resize_on_border = true;
+    };
+
+    decoration = {
+        rounding = 5;
+    };
+
+    animations  = {
+        enabled = 1;
+        # bezier=overshot,0.05,0.9,0.1,1.1
+        bezier = "overshot,0.13,0.99,0.29,1.1";
+        animation = [
+          "windows,1,4,overshot,slide"
+          "border,1,10,default"
+          "fade,1,10,default"
+          "workspaces,1,10,overshot,slidevert"
+        ];
+    
+        # animation=workspaces,1,6,overshot,slide
+        # animation=workspaces,11,20,overshot,slide
+    };
+
+    dwindle = {
+        pseudotile = 0; # enable pseudotiling on dwindle
+    };
+    
+    
+    gestures = {
+        workspace_swipe = true;
+        workspace_swipe_fingers = 3;
+    };
+    
+    misc = {
+        disable_hyprland_logo = true;
+    };
+
+
+    windowrule = [
+      "float,title:^(blueberry.py)$"
+      "size 40% 85%,title:^(blueberry.py)$"
+      "center,title:^(blueberry.py)$"
+
+      "float,title:^(org.twosheds.iwgtk)$"
+      "size 40% 85%,title:^(org.twosheds.iwgtk)$"
+      "center,title:^(org.twosheds.iwgtk)$"
+
+      "size 50% 50%,title:^(wdisplays)$"
+      "float,title:^(wdisplays)$"
+      "center,title:^(wdisplays)$"
+
+      "workspace 1,title:^(Alacritty)$"
+      # windowrule=float,^(Alacritty)$
+      # windowrule=size 50% 95%,^(Alacritty)$
+
+      "center,title:^(Alacritty)$"
+      "workspace 2,title:^(firefox)$"
+      "workspace 3,title:^(Spotify)$"
+      "workspace 3,title:^(Spotube)$"
+      "workspace 4,title:^(WebCord)$"
+      "workspace 4,title:^(Discord)$"
+      "workspace 4,title:^(Whatsapp)$"
+      "workspace 4,title:^(Element)$"
+      "workspace 4,title:^(Instagram)$"
+      # windowrule=fakefullscreen,title:^(Signal)$
+
+      "workspace 4,title:^(Signal)$"
+      "workspace 4,title:^(Caprine)$"
+      "workspace 5,title:^(Mailspring)$"
+      # windowrule=fakefullscreen,title:^(Mailspring)$
+      "workspace 5,title:^(Geary)$"
+      "workspace 5,title:^(proton-mail-viewer)$"
+      # windowrule=fakefullscreen,title:^(proton-mail-viewer)$
+      "workspace 9,title:^(nautilus)$"
+      "workspace 10,title:^(Focalboard)$"
+
+      "workspace 1,title:^(youtube)$"
+      "workspace 2,title:^(firefox)$"
+    ];
+
+    workspace = [
+      # workspace=name:myworkspace,gapsin:0,gapsout:
+      "1, name:coding, rounding:true, decorate:false, gapsin:5, gapsout:10, border:true, decorate:true, monitor:eDP-1"
+      "2, name:browser, monitor:eDP-1"
+      "3, name:music, monitor:eDP-1"
+      "4, name:chat, monitor:eDP-1"
+      "5, name:mail, monitor:eDP-1"
+      "10, name:board, monitor:eDP-1"
+    ];
+
+
+    "$mod" = "SUPER";
   };
 
+  home.pointerCursor = {
+    gtk.enable = true;
+    # x11.enable = true;
+    package = pkgs.bibata-cursors;
+    name = "Bibata-Modern-Classic";
+    size = 16;
+  };
+
+#   gtk = {
+#     enable = true;
+# 
+#     theme = {
+#       package = pkgs.flat-remix-gtk;
+#       name = "Flat-Remix-GTK-Grey-Darkest";
+#     };
+# 
+#     iconTheme = {
+#       package = pkgs.adwaita-icon-theme;
+#       name = "Adwaita";
+#     };
+# 
+#     font = {
+#       name = "Sans";
+#       size = 11;
+#     };
+#   };
+  gtk = {
+    enable = true;
+    theme = {
+      # name = "Adwaita";
+      # package = pkgs.adwaita-icon-theme;
+      package = pkgs.flat-remix-gtk;
+      name = "Flat-Remix-GTK-Grey-Darkest";
+    };
+    iconTheme = {
+      name = "Adwaita";
+      package = pkgs.adwaita-icon-theme;
+    };
+    gtk3.extraConfig = {
+      gtk-application-prefer-dark-theme = 0;
+      gtk-xft-antialias = 1;
+      gtk-xft-hinting = 1;
+      gtk-xft-hintstyle = "hintslight";
+      gtk-xft-rgba = "rgb";
+    };
+  };
 }
