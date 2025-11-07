@@ -9,6 +9,7 @@ in {
   imports =
     [ # Include the results of the hardware scan.
       ../../services
+      # ../../modules/generations
       # ../../modules/git
       # ./modules/hyprland
       # ./modules/librewolf
@@ -36,8 +37,8 @@ in {
   users.defaultUserShell = pkgs.zsh;
 
   # Set your time zone.
-  # time.timeZone = "Europe/Paris";
-  time.timeZone = "Asia/Bangkok";
+  time.timeZone = "Europe/Paris";
+  # time.timeZone = "Asia/Bangkok";
 
   # Select internationalisation properties.
   # i18n.defaultLocale = "en_US.UTF-8";
