@@ -10,9 +10,9 @@
     };
   };
 
-  # Facultatif : `py` lance IPython en mode silencieux
-  programs.bash.aliases = {
-    py = "ipython -q";
-  };
+  # # Facultatif : `py` lance IPython en mode silencieux
+  # programs.zsh.aliases = {
+  #   py = "ipython -q";
+  # };
 }
 
