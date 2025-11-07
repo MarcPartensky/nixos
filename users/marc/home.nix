@@ -39,6 +39,7 @@ let
     cliphist
     nerdctl
     # crictl
+    python313Packages.ipython
   ];
 
   # -------------------------------
@@ -105,6 +106,7 @@ let
     openvpn
     openvpn3
     protonvpn-gui
+    tor-browser
   ];
 in
 {
@@ -112,6 +114,7 @@ in
     ../../modules/git
     ../../modules/hyprland
     ../../modules/waybar
+    # ../../modules/ipython
     # ../../modules/librewolf
     # ../../modules/ssh
     # ../../modules/virt-manager
