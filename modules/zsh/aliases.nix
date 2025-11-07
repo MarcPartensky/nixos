@@ -5,9 +5,10 @@
   ll = "ls -l";
   gs = "git status";
   ga = "git add -A";
-  gm = "git commit -m";
+  gc = "git commit -m";
   gn = "git add -A && git commit -m @";
   gt = "git add -A && git commit -m @ && git push";
+  gd = "git diff";
   gp = "git push";
   gk = "git checkout";
   gpl = "git pull";
