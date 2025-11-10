@@ -3,7 +3,9 @@
 rule = "Host(`traefik.vps.marcpartensky.com`)"
 entryPoints = ["websecure"]
 service = "api@internal"
-tls = true
+# tls = true
+tls = { certResolver = "letsencrypt" }
+
 
 # Vaultwarden
 [http.services.vaultwarden.loadBalancer]
@@ -14,7 +16,9 @@ url = "http://127.0.0.1:8083"   # port local Vaultwarden
 rule = "Host(`vault.vps.marcpartensky.com`)"
 entryPoints = ["websecure"]
 service = "vaultwarden"
-tls = true
+tls = { certResolver = "letsencrypt" }
+
+# tls = true
 
 
 # Nextcloud
