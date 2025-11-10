@@ -57,6 +57,11 @@
       vg0 = {
         type = "lvm_vg";
         lvs = {
+          # la swap avant root
+          swap = {
+            size = "4G";
+            content = { type = "swap"; };
+          };
           root = {
             size = "100%FREE";  # prend tout l'espace disponible
             content = {
@@ -74,11 +79,6 @@
           #     mountpoint = "/home";
           #   };
           # };
-          # Optionnel : swap ou thin pool
-          swap = {
-            size = "4G";
-            content = { type = "swap"; };
-          };
         };
       };
     };
