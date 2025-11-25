@@ -9,6 +9,7 @@
   '';
 in {
   environment.etc."nextcloud-password".text = "nextcloudpassword";
+  environment.etc."nextcloud-password".mode = "0600";
 
   services.nextcloud = {
     enable = true;
