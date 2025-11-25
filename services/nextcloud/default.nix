@@ -8,19 +8,19 @@
     MINIO_ROOT_PASSWORD=test12345
   '';
 in {
-  environment.etc."nextcloud-admin-pass".text = "PWD";
+  environment.etc."nextcloud-password".text = "nextcloudpassword";
 
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud31;
     hostName = "localhost";
-    # config.adminpassFile = "/etc/nextcloud-admin-pass";
     # config.dbtype = "sqlite";
     config = {
         dbtype = "pgsql";
         dbuser = "nextcloud";
         dbhost = "localhost:5432";
-        dbpassFile = "./password.txt";
+        dbpassFile = "/etc/nextcloud-password";
+    # config.adminpassFile = "/etc/nextcloud-admin-pass";
     };
     extraApps = {
       inherit (config.services.nextcloud.package.packages.apps) news contacts
