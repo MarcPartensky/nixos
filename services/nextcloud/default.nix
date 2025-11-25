@@ -22,6 +22,7 @@ in {
         dbhost = "localhost";
         dbport = 5432;
         dbpassFile = "/etc/nextcloud-password";
+        adminuser = "root";
         adminpassFile = "/etc/nextcloud-password";
     };
     extraApps = {
