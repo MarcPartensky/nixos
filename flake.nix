@@ -1,6 +1,8 @@
 {
   description = "NixOS configuration of Marc";
   inputs = {
+    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-24.05";
+    darwin.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     hyprland.url = "github:hyprwm/Hyprland";
@@ -52,6 +54,8 @@
     agenix.url = "github:ryantm/agenix";
     microvm.url = "github:astro/microvm.nix";
     nwg-dock-hyprland-pin-nixpkgs.url = "nixpkgs/2098d845d76f8a21ae4fe12ed7c7df49098d3f15";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs = { self, nixpkgs, ... } @ inputs: {
 
@@ -144,5 +148,8 @@
     #     ];
     #   };
     # };
+    darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {
+      modules = [ ./hosts/macos/configuration.nix ];
+    };
   };
 }
