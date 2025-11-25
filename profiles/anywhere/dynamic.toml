@@ -18,19 +18,17 @@ entryPoints = ["websecure"]
 service = "vaultwarden"
 tls = { certResolver = "letsencrypt" }
 
-# tls = true
-
 
 # Nextcloud
-# [http.services.nextcloud.loadBalancer]
-# [[http.services.nextcloud.loadBalancer.servers]]
-# url = "http://127.0.0.1:8081"
+[http.services.nextcloud.loadBalancer]
+[[http.services.nextcloud.loadBalancer.servers]]
+url = "http://127.0.0.1:8081"
 
-# [http.routers.nextcloud]
-# rule = "Host(`nextcloud.vps.marcpartensky.com`)"
-# entryPoints = ["websecure"]
-# service = "nextcloud"
-# tls = true
+[http.routers.nextcloud]
+rule = "Host(`cloud.vps.marcpartensky.com`)"
+entryPoints = ["websecure"]
+service = "nextcloud"
+tls = { certResolver = "letsencrypt" }
 
 # # Pangolin
 # [http.services.pangolin.loadBalancer]
