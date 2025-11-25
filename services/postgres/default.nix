@@ -6,10 +6,10 @@
 
     # Crée les bases automatiquement
     ensureDatabases = [ "nextcloud" "vaultwarden" ];
-    ensureUsers = [{
-      name = "nextcloud";
-      ensurePermissions."DATABASE nextcloud" = "ALL PRIVILEGES";
-    }];
+    # ensureUsers = [{
+    #   name = "nextcloud";
+    #   ensurePermissions."DATABASE nextcloud" = "ALL PRIVILEGES";
+    # }];
 
 
     # Authentification (locale et localhost)
