@@ -20,8 +20,8 @@ in {
         dbtype = "postgresql";
         dbuser = "nextcloud";
         dbhost = "localhost:5432";
-        dbpassFile = "./password.txt"
-    }
+        dbpassFile = "./password.txt";
+    };
     extraApps = {
       inherit (config.services.nextcloud.package.packages.apps) news contacts
       calendar tasks deck;
