@@ -17,7 +17,7 @@ in {
     # config.adminpassFile = "/etc/nextcloud-admin-pass";
     # config.dbtype = "sqlite";
     config = {
-        dbtype = "postgresql";
+        dbtype = "pgsql";
         dbuser = "nextcloud";
         dbhost = "localhost:5432";
         dbpassFile = "./password.txt";
