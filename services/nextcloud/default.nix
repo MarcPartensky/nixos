@@ -15,7 +15,7 @@ in {
     enable = true;
     package = pkgs.nextcloud31;
     hostName = "localhost";
-    # config.dbtype = "sqlite";
+    autoUpdateApps.enable = true;
     config = {
         dbtype = "pgsql";
         dbuser = "nextcloud";
@@ -51,6 +51,13 @@ in {
   #   consoleAddress = "127.0.0.1:9001";
   #   inherit rootCredentialsFile;
   # };
+
+  systemd = {
+    services."nextcloud-setup" = {
+      requires = [ "postgresql.service" ];
+      after = [ "postgresql.service" ];
+    };
+  };
 
   environment.systemPackages = [ pkgs.minio-client ];
 }
