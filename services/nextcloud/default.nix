@@ -20,7 +20,7 @@ in {
         dbuser = "nextcloud";
         dbhost = "localhost:5432";
         dbpassFile = "/etc/nextcloud-password";
-    # config.adminpassFile = "/etc/nextcloud-admin-pass";
+        adminpassFile = "/etc/nextcloud-password";
     };
     extraApps = {
       inherit (config.services.nextcloud.package.packages.apps) news contacts
