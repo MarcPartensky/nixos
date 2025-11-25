@@ -52,12 +52,6 @@ in {
   #   inherit rootCredentialsFile;
   # };
 
-  systemd = {
-    services."nextcloud-setup" = {
-      requires = [ "postgresql.service" ];
-      after = [ "postgresql.service" ];
-    };
-  };
 
   environment.systemPackages = [ pkgs.minio-client ];
 }

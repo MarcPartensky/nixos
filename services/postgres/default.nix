@@ -6,6 +6,11 @@
 
     # Crée les bases automatiquement
     ensureDatabases = [ "nextcloud" "vaultwarden" ];
+    ensureUsers = [{
+      name = "nextcloud";
+      ensurePermissions."DATABASE nextcloud" = "ALL PRIVILEGES";
+    }];
+
 
     # Authentification (locale et localhost)
     authentication = pkgs.lib.mkOverride 10 ''
@@ -32,5 +37,13 @@
       GRANT ALL PRIVILEGES ON DATABASE vaultwarden TO vaultwarden;
     '';
   };
+
+  # services.postgresqlBackup = {
+  #   enable = true;
+  #   location = "/root/backup/nextcloud";
+  #   databases = [ "nextcloud" ];
+  #   # time to start backup in systemd.time format
+  #   startAt = "*-*-* 5:00:00";
+  # };
 }
 
