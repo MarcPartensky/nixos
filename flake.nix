@@ -1,8 +1,8 @@
 {
   description = "NixOS configuration of Marc";
   inputs = {
-    darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-24.05";
-    darwin.inputs.nixpkgs.follows = "nixpkgs";
+    # darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-24.05";
+    # darwin.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     hyprland.url = "github:hyprwm/Hyprland";
