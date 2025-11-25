@@ -19,7 +19,8 @@ in {
     config = {
         dbtype = "pgsql";
         dbuser = "nextcloud";
-        dbhost = "localhost:5432";
+        dbhost = "localhost";
+        dbport = 5432;
         dbpassFile = "/etc/nextcloud-password";
         adminpassFile = "/etc/nextcloud-password";
     };
