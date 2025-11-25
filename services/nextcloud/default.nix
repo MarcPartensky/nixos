@@ -24,11 +24,11 @@ in {
         adminuser = "root";
         adminpassFile = "/etc/nextcloud-password";
     };
-    extraApps = {
-      inherit (config.services.nextcloud.package.packages.apps) news contacts
-      calendar tasks deck;
-    };
-    extraAppsEnable = true;
+    # extraApps = {
+    #   inherit (config.services.nextcloud.package.packages.apps) news contacts
+    #   calendar tasks deck;
+    # };
+    # extraAppsEnable = true;
     configureRedis = true;
 
     # config.objectstore.s3 = {
