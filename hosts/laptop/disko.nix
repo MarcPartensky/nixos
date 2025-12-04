@@ -1,108 +1,81 @@
-{ lib, ... }:
-
 {
   disko.devices = {
     disk = {
-      main = {
+      root = {
         type = "disk";
-        device = "/dev/nvme0n1";   # adapte si besoin
+        device = "/dev/nvme0n1";
         content = {
           type = "gpt";
           partitions = {
-            bios = {
-              name = "bios";
-              type = "EF02";
-              size = "1M";
-            };
-
-            esp = {
-              name = "esp";
+            ESP = {
+              size = "1G";
               type = "EF00";
-              size = "512M";
               content = {
                 type = "filesystem";
                 format = "vfat";
                 mountpoint = "/boot";
-                mountOptions = [ "fmask=0077" "dmask=0077" ];
+                mountOptions = [ "nofail" ];
               };
             };
-
-            bpool = {
-              name = "bpool";
-              size = "1G";       # petit pool boot
+            zfs = {
+              size = "100%";
               content = {
                 type = "zfs";
-                pool = "bpool";
+                pool = "zroot";
               };
-            };
-
-            rpool = {
-              name = "rpool";
-              size = "50%";      # <<< 50% usage du disque
-              content = {
-                type = "zfs";
-                pool = "rpool";
-              };
-            };
-
-            free = {
-              name = "unused-space";
-              size = "50%";      # <<< 50% laissé vide, GPT réservé
-              # pas de content
             };
           };
         };
       };
     };
-
     zpool = {
-      bpool = {
+      zroot = {
         type = "zpool";
-        options = {
-          ashift = "12";
-          compatibility = "grub2";
-          autotrim = "on";
-        };
         rootFsOptions = {
-          compression = "lz4";
           mountpoint = "none";
-        };
-        datasets = {
-          boot = {
-            mountpoint = "/boot";
-            options.mountpoint = "legacy";
-          };
-        };
-      };
-
-      rpool = {
-        type = "zpool";
-        options = {
-          ashift = "12";
-          autotrim = "on";
-        };
-        rootFsOptions = {
           compression = "zstd";
+          acltype = "posixacl";
           xattr = "sa";
-          atime = "off";
-          mountpoint = "none";
+          "com.sun:auto-snapshot" = "true";
         };
+        options.ashift = "12";
         datasets = {
-          root = {
+          "root" = {
+            type = "zfs_fs";
+            options = {
+              encryption = "aes-256-gcm";
+              keyformat = "passphrase";
+              #keylocation = "file:///tmp/secret.key";
+              keylocation = "prompt";
+            };
             mountpoint = "/";
-            options.mountpoint = "legacy";
+
           };
-          home = {
-            mountpoint = "/home";
-            options.mountpoint = "legacy";
+          "root/nix" = {
+            type = "zfs_fs";
+            options.mountpoint = "/nix";
+            mountpoint = "/nix";
           };
-          store = {
-            mountpoint = "/nix/store";
-            options.mountpoint = "legacy";
+
+          # README MORE: https://wiki.archlinux.org/title/ZFS#Swap_volume
+          "root/swap" = {
+            type = "zfs_volume";
+            size = "10M";
+            content = {
+              type = "swap";
+            };
+            options = {
+              volblocksize = "4096";
+              compression = "zle";
+              logbias = "throughput";
+              sync = "always";
+              primarycache = "metadata";
+              secondarycache = "none";
+              "com.sun:auto-snapshot" = "false";
+            };
           };
         };
       };
     };
   };
 }
-
