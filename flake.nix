@@ -65,13 +65,13 @@
         specialArgs = { inherit inputs; };
         modules = [
           inputs.disko.nixosModules.disko
+          ./hosts/laptop/disko.nix
           inputs.home-manager.nixosModules.default
           # inputs.sopswarden.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops
           # inputs.microvm.nixosModules.microvm
           # ./hosts/laptop/hardware-configuration.nix
-          ./hosts/laptop/disko.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
           ./users/marc
