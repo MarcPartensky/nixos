@@ -68,8 +68,10 @@
           # inputs.sopswarden.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops
+          inputs.disko.nixosModules.disko
           # inputs.microvm.nixosModules.microvm
-          ./hosts/laptop/hardware-configuration.nix
+          # ./hosts/laptop/hardware-configuration.nix
+          ./hosts/laptop/disko.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
           ./users/marc
