@@ -1,66 +1,74 @@
+{ lib, ... }:
+
 {
   disko.devices = {
-    disk.main = {
-      device = "/dev/nvme0n1";
-      type = "disk";
+    disk = {
+      main = {
+        type = "disk";
+        device = "/dev/nvme0n1";   # adapte si besoin
+        content = {
+          type = "gpt";
+          partitions = {
+            bios = {
+              name = "bios";
+              type = "EF02";
+              size = "1M";
+            };
 
-      content = {
-        type = "gpt";
-        partitions = {
-          # BIOS boot (inutile sur UEFI mais ça ne gêne pas)
-          bios = {
-            type = "EF02";
-            size = "1M";
-          };
+            esp = {
+              name = "esp";
+              type = "EF00";
+              size = "512M";
+              content = {
+                type = "filesystem";
+                format = "vfat";
+                mountpoint = "/boot";
+                mountOptions = [ "fmask=0077" "dmask=0077" ];
+              };
+            };
 
-          # /boot EFI
-          esp = {
-            type = "EF00";
-            size = "512M";
-            content = {
-              type = "filesystem";
-              format = "vfat";
-              mountpoint = "/boot";
-              mountOptions = [ "fmask=0077" "dmask=0077" ];
+            bpool = {
+              name = "bpool";
+              size = "1G";       # petit pool boot
+              content = {
+                type = "zfs";
+                pool = "bpool";
+              };
+            };
+
+            rpool = {
+              name = "rpool";
+              size = "50%";      # <<< 50% usage du disque
+              content = {
+                type = "zfs";
+                pool = "rpool";
+              };
+            };
+
+            free = {
+              name = "unused-space";
+              size = "50%";      # <<< 50% laissé vide, GPT réservé
+              # pas de content
             };
           };
-
-          # bpool ZFS (boot pool)
-          bpool = {
-            size = "1G";
-            content = {
-              type = "zfs";
-              pool = "bpool";
-            };
-          };
-
-          # rpool = 50% du disque total
-          rpool = {
-            size = "50%";
-            content = {
-              type = "zfs";
-              pool = "rpool";
-            };
-          };
-
-          # 🎉 Le reste du disque (~50%) est libéré et reste *non partitionné*
         };
       };
     };
 
-    # ZFS pools definition
     zpool = {
       bpool = {
         type = "zpool";
         options = {
           ashift = "12";
           compatibility = "grub2";
+          autotrim = "on";
         };
         rootFsOptions = {
           compression = "lz4";
+          mountpoint = "none";
         };
         datasets = {
-          "boot" = {
+          boot = {
             mountpoint = "/boot";
             options.mountpoint = "legacy";
           };
@@ -69,26 +77,26 @@
 
       rpool = {
         type = "zpool";
-        options = { ashift = "12"; };
+        options = {
+          ashift = "12";
+          autotrim = "on";
+        };
         rootFsOptions = {
           compression = "zstd";
-          atime = "off";
           xattr = "sa";
+          atime = "off";
           mountpoint = "none";
         };
-
         datasets = {
-          "root" = {
+          root = {
             mountpoint = "/";
             options.mountpoint = "legacy";
           };
-
-          "home" = {
+          home = {
             mountpoint = "/home";
             options.mountpoint = "legacy";
           };
-
-          "store" = {
+          store = {
             mountpoint = "/nix/store";
             options.mountpoint = "legacy";
           };
