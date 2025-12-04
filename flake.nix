@@ -70,6 +70,7 @@
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops
           # inputs.microvm.nixosModules.microvm
+          ./hosts/laptop/disko.nix
           # ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
