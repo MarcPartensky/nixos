@@ -65,7 +65,6 @@
         specialArgs = { inherit inputs; };
         modules = [
           inputs.disko.nixosModules.disko
-          ./hosts/laptop/disko.nix
           inputs.home-manager.nixosModules.default
           # inputs.sopswarden.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
