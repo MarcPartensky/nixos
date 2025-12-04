@@ -18,10 +18,10 @@
               };
             };
             zfs = {
-              size = "100%";
+              size = "50%";
               content = {
                 type = "zfs";
-                pool = "zroot";
+                pool = "nixos";
               };
             };
           };
@@ -29,7 +29,7 @@
       };
     };
     zpool = {
-      zroot = {
+      nixos = {
         type = "zpool";
         rootFsOptions = {
           mountpoint = "none";
@@ -60,7 +60,7 @@
           # README MORE: https://wiki.archlinux.org/title/ZFS#Swap_volume
           "root/swap" = {
             type = "zfs_volume";
-            size = "10M";
+            size = "16G";
             content = {
               type = "swap";
             };
