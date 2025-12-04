@@ -6,6 +6,8 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     hyprland.url = "github:hyprwm/Hyprland";
+    hy3.url = "github:outfoxxed/hy3?ref=hl0.30.0";
+    hy3.inputs.hyprland.follows = "hyprland";
     # nix-search-tv.url = "github:3timeslazy/nix-search-tv";
     catppuccin.url = "github:catppuccin/nix";
     newt.url = "github:fosrl/newt";
@@ -66,6 +68,7 @@
         modules = [
           inputs.disko.nixosModules.disko
           inputs.home-manager.nixosModules.default
+	  inputs.hyprland.nixosModules.default
           # inputs.sopswarden.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops

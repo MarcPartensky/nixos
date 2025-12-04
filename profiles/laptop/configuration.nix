@@ -55,6 +55,8 @@ in {
   networking.hostId = "c1ae84e2";
   # networking.firewall.enable = false;
 
+  # programs.home-manager.enable = true;
+
   programs.zsh.enable = true;
   users.defaultUserShell = pkgs.zsh;
 

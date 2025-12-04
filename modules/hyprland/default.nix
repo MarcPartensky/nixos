@@ -4,8 +4,8 @@
 # let cfg = config.modules.hyprland;
 
 # in {
-#     options.modules.hyprland= { enable = mkEnableOption "hyprland"; };
-#     config = mkIf cfg.enable {
+#     options.modules.hyprland= { enable = mkenableoption "hyprland"; };
+#     config = mkif cfg.enable {
 # 	home.packages = with pkgs; [
 # 	    wofi swaybg wlsunset wl-clipboard hyprland
 # 	];
@@ -24,7 +24,7 @@
   # nix.settings = {
   #   substituters = ["https://hyprland.cachix.org"];
   #   trusted-substituters = ["https://hyprland.cachix.org"];
-  #   trusted-public-keys = ["hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="];
+  #   trusted-public-keys = ["hyprland.cachix.org-1:a7pgxzmz7+chwvl3/pzj6jibmioijm7ypfp8pwtkugc="];
   # };
 
 
@@ -33,22 +33,24 @@
   # programs.hyprland = {
   #   enable = true;
   #   # set the flake package
-  #   package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
+  #   package = inputs.hyprland.packages.${pkgs.stdenv.hostplatform.system}.hyprland;
   #   # make sure to also set the portal package, so that they are in sync
-  #   portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
+  #   portalpackage = inputs.hyprland.packages.${pkgs.stdenv.hostplatform.system}.xdg-desktop-portal-hyprland;
   # };
 
 
   # home-manager.users.marc = { pkgs, inputs, ... }: {
-  programs.kitty.enable = true; # required for the default Hyprland config
-  wayland.windowManager.hyprland.enable = true; # enable Hyprland
-  home.sessionVariables.NIXOS_OZONE_WL = "1";
+  programs.kitty.enable = true; # required for the default hyprland config
+  wayland.windowManager.hyprland.enable = true; # enable hyprland
+  home.sessionVariables.nixos_ozone_wl = "1";
+
+  # home.file.".config/hypr/hyprland.conf".source = "./hyprland.conf";
 
   xdg.portal = {
     enable = true;
     extraPortals = with pkgs; [
-      xdg-desktop-portal-gtk  # For GTK apps
-      xdg-desktop-portal-hyprland  # Hyprland-specific portal
+      xdg-desktop-portal-gtk  # for gtk apps
+      xdg-desktop-portal-hyprland  # hyprland-specific portal
     ];
   };
 
@@ -58,46 +60,50 @@
   wayland.windowManager.hyprland.plugins = [
     pkgs.hyprlandPlugins.hy3
     # inputs.hyprtasking.packages.${pkgs.system}.hyprtasking
-    # pkgs.hyprlandPlugins.hyprspace
-    # pkgs.hyprlandPlugins.hycov
+    # pkgs.hyprlandplugins.hyprspace
+    # pkgs.hyprlandplugins.hycov
   ];
 
   wayland.windowManager.hyprland.systemd.variables = ["--all"];
   wayland.windowManager.hyprland.settings = {
+    # bindm = [
+    #   # "super, d, exec, kitty"
+    #   "super, return , exec, kitty"
+    # ];
     exec-once = [
       "${pkgs.wpaperd}/bin/wpaperd -d"
       "${pkgs.kitty}/bin/kitty"
-      # "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
-      # "${pkgs.systemd}/bin/systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
+      # "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd wayland_display xdg_current_desktop"
+      # "${pkgs.systemd}/bin/systemctl --user import-environment wayland_display xdg_current_desktop"
       "${pkgs.xdg-desktop-portal-hyprland}/libexec/xdg-desktop-portal-hyprland"
       "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"
-      "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch cliphist store" #Stores only text data
-      "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch cliphist store" #Stores only image data
+      "${pkgs.wl-clipboard}/bin/wl-paste --type text --watch cliphist store" #stores only text data
+      "${pkgs.wl-clipboard}/bin/wl-paste --type image --watch cliphist store" #stores only image data
     ];
 
     # plugin = "/usr/lib/libhy3.so";
 
     monitor = [
-        "eDP-1,1920x1080@60,320x1440,1"
-        "DP-1,2560x1440@60,0x0,1"
-        "HDMI-A-1,2560x1440@60,0x0,1"
+        "edp-1,1920x1080@60,320x1440,1"
+        "dp-1,2560x1440@60,0x0,1"
+        "hdmi-a-1,2560x1440@60,0x0,1"
     ];
 
     env = [
-      "DRI_PRIME=0"
-      "LIBVA_DRIVER_NAME=nvidia"
-      "__GLX_VENDOR_LIBRARY_NAME=nvidia"
-      "QT_QPA_PLATFORM=wayland"  # Forces Qt apps (like Kodi) to use Wayland
-      "GTK_USE_PORTAL=1"
-      "XDG_CURRENT_DESKTOP=Hyprland"
-      "XDG_SESSION_DESKTOP=Hyprland"
-      "QT_QPA_PLATFORM=wayland;xcb"
-      "SDL_VIDEODRIVER=wayland"
-      "CLUTTER_BACKEND=wayland"
-      "NIXOS_OZONE_WL=1"       
-      "GDK_BACKEND=wayland"
-      "QT_WAYLAND_FORCE_DPI=physical"
-      "GDK_DPI_SCALE=1"
+      "dri_prime=0"
+      "libva_driver_name=nvidia"
+      "__glx_vendor_library_name=nvidia"
+      "qt_qpa_platform=wayland"  # forces qt apps (like kodi) to use wayland
+      "gtk_use_portal=1"
+      "xdg_current_desktop=hyprland"
+      "xdg_session_desktop=hyprland"
+      "qt_qpa_platform=wayland;xcb"
+      "sdl_videodriver=wayland"
+      "clutter_backend=wayland"
+      "nixos_ozone_wl=1"       
+      "gdk_backend=wayland"
+      "qt_wayland_force_dpi=physical"
+      "gdk_dpi_scale=1"
     ];
 
 
@@ -117,10 +123,10 @@
               trigger_height = 500;
           };
       };
-      # Hyprspace = {
+      # hyprspace = {
       #     overview = {
       #         close = 0;
-      #         disableGestures = 1;
+      #         disablegestures = 1;
       #     };
       #     gestures = {
       #         workspace_swipe_fingers = 5;
@@ -149,18 +155,18 @@
       };
 
       kb_options = "caps:escape,prior:shift_l";
-      # Mapping personnalisé avec XKB
+      # mapping personnalisé avec xkb
       # kb_custom_rules = ''
       #   partial alphanumeric_keys
       #   xkb_symbols "prior" {
-      #     key <Prior> { [ Shift_L ] };
+      #     key <prior> { [ shift_l ] };
       #   };
       # '';
     };
 
     general  = {
         # sensitivity=1 # for mouse cursor
-        # main_mod=SUPER
+        # main_mod=super
     
         gaps_in = 5;
         gaps_out = 10;
@@ -171,7 +177,7 @@
     
         # apply_sens_to_raw=0 # whether to apply the sensitivity to raw input (e.g. used by games where you aim using your mouse)
     
-        # damage_tracking=full # leave it on full unless you hate your GPU and want to make it suffer
+        # damage_tracking=full # leave it on full unless you hate your gpu and want to make it suffer
         # layout=dwindle
         layout = "hy3";
         resize_on_border = true;
@@ -224,30 +230,30 @@
       "float,title:^(wdisplays)$"
       "center,title:^(wdisplays)$"
 
-      "workspace 1,title:^(Alacritty)$"
-      # windowrule=float,^(Alacritty)$
-      # windowrule=size 50% 95%,^(Alacritty)$
+      "workspace 1,title:^(alacritty)$"
+      # windowrule=float,^(alacritty)$
+      # windowrule=size 50% 95%,^(alacritty)$
 
-      "center,title:^(Alacritty)$"
+      "center,title:^(alacritty)$"
       "workspace 2,title:^(firefox)$"
-      "workspace 3,title:^(Spotify)$"
-      "workspace 3,title:^(Spotube)$"
-      "workspace 4,title:^(WebCord)$"
-      "workspace 4,title:^(Discord)$"
-      "workspace 4,title:^(Whatsapp)$"
-      "workspace 4,title:^(Element)$"
-      "workspace 4,title:^(Instagram)$"
-      # windowrule=fakefullscreen,title:^(Signal)$
+      "workspace 3,title:^(spotify)$"
+      "workspace 3,title:^(spotube)$"
+      "workspace 4,title:^(webcord)$"
+      "workspace 4,title:^(discord)$"
+      "workspace 4,title:^(whatsapp)$"
+      "workspace 4,title:^(element)$"
+      "workspace 4,title:^(instagram)$"
+      # windowrule=fakefullscreen,title:^(signal)$
 
-      "workspace 4,title:^(Signal)$"
-      "workspace 4,title:^(Caprine)$"
-      "workspace 5,title:^(Mailspring)$"
-      # windowrule=fakefullscreen,title:^(Mailspring)$
-      "workspace 5,title:^(Geary)$"
+      "workspace 4,title:^(signal)$"
+      "workspace 4,title:^(caprine)$"
+      "workspace 5,title:^(mailspring)$"
+      # windowrule=fakefullscreen,title:^(mailspring)$
+      "workspace 5,title:^(geary)$"
       "workspace 5,title:^(proton-mail-viewer)$"
       # windowrule=fakefullscreen,title:^(proton-mail-viewer)$
       "workspace 9,title:^(nautilus)$"
-      "workspace 10,title:^(Focalboard)$"
+      "workspace 10,title:^(focalboard)$"
 
       "workspace 1,title:^(youtube)$"
       "workspace 2,title:^(firefox)$"
@@ -255,23 +261,22 @@
 
     workspace = [
       # workspace=name:myworkspace,gapsin:0,gapsout:
-      "1, name:coding, rounding:true, decorate:false, gapsin:5, gapsout:10, border:true, decorate:true, monitor:eDP-1"
-      "2, name:browser, monitor:eDP-1"
-      "3, name:music, monitor:eDP-1"
-      "4, name:chat, monitor:eDP-1"
-      "5, name:mail, monitor:eDP-1"
-      "10, name:board, monitor:eDP-1"
+      "1, name:coding, rounding:true, decorate:false, gapsin:5, gapsout:10, border:true, decorate:true, monitor:edp-1"
+      "2, name:browser, monitor:edp-1"
+      "3, name:music, monitor:edp-1"
+      "4, name:chat, monitor:edp-1"
+      "5, name:mail, monitor:edp-1"
+      "10, name:board, monitor:edp-1"
     ];
 
 
-    "$mod" = "SUPER";
   };
 
   home.pointerCursor = {
     gtk.enable = true;
     # x11.enable = true;
     package = pkgs.bibata-cursors;
-    name = "Bibata-Modern-Classic";
+    name = "bibata-modern-classic";
     size = 16;
   };
 
@@ -280,29 +285,29 @@
 # 
 #     theme = {
 #       package = pkgs.flat-remix-gtk;
-#       name = "Flat-Remix-GTK-Grey-Darkest";
+#       name = "flat-remix-gtk-grey-darkest";
 #     };
 # 
-#     iconTheme = {
+#     icontheme = {
 #       package = pkgs.adwaita-icon-theme;
-#       name = "Adwaita";
+#       name = "adwaita";
 #     };
 # 
 #     font = {
-#       name = "Sans";
+#       name = "sans";
 #       size = 11;
 #     };
 #   };
   gtk = {
     enable = true;
     theme = {
-      # name = "Adwaita";
+      # name = "adwaita";
       # package = pkgs.adwaita-icon-theme;
       package = pkgs.flat-remix-gtk;
-      name = "Flat-Remix-GTK-Grey-Darkest";
+      name = "flat-remix-gtk-grey-darkest";
     };
     iconTheme = {
-      name = "Adwaita";
+      name = "adwaita";
       package = pkgs.adwaita-icon-theme;
     };
     gtk3.extraConfig = {

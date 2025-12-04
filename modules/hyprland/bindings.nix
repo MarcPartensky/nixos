@@ -1,6 +1,7 @@
 { pkgs, ... }: {
   # home-manager.users.marc = { pkgs, inputs, ... }: {
   wayland.windowManager.hyprland.settings = {
+    "$mod" = "SUPER";
     bind =
       [
         "$mod, d, exec, wofi --show drun"
@@ -51,8 +52,8 @@
         ", Print, exec, grimblast copysave area"
         "$mod, Print, exec, grimblast copysave output"
   
-        "SUPER+SHIFT,h,hy3:makegroup, h"
-        "SUPER+SHIFT,v,hy3:makegroup, v"
+        "$mod+SHIFT,h,hy3:makegroup, h"
+        "$mod+SHIFT,v,hy3:makegroup, v"
       ]
       ++ (
         # workspaces

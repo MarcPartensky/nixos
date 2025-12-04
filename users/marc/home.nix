@@ -40,6 +40,7 @@ let
     nerdctl
     # crictl
     python313Packages.ipython
+    dconf
   ];
 
   # -------------------------------
@@ -143,6 +144,8 @@ in
     enable = true;
     components = ["secrets" "ssh"];
   };
+
+  # programs.dconf.enable = true;
 
   programs.gpg.enable = true;
   services.gpg-agent = {
