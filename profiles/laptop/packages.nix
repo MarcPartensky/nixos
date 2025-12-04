@@ -24,7 +24,7 @@ let
     inxi          # résumé complet du hardware
   
     # 🔹 GPU / drivers / OpenGL / VAAPI / Vulkan
-    mesa-utils    # glxinfo, glxgears
+    # mesa-utils    # glxinfo, glxgears
     vainfo        # VA-API (Intel/AMD video acceleration)
     vulkan-tools  # vulkaninfo
     intel-media-driver # si Intel GPU pour VA-API (optionnel)
