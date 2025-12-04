@@ -39,7 +39,7 @@ in {
 
   hardware.opengl = {
     enable = true;
-    driSupport = true;
+    # driSupport = true;
     driSupport32Bit = true; # si tu utilises Steam ou applis 32-bit
   };
 
