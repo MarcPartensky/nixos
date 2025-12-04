@@ -43,6 +43,9 @@ in {
     driSupport32Bit = true; # si tu utilises Steam ou applis 32-bit
   };
 
+  # TEMPORAIRE
+  nixpkgs.config.allowUnfree = true;
+
 
   # hardware.cpu.intel.updateMicrocode = true;
   # hardware.firmware = [ pkgs.linux-firmware ];
