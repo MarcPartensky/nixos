@@ -66,6 +66,7 @@
   wayland.windowManager.hyprland.settings = {
     exec-once = [
       "${pkgs.wpaperd}/bin/wpaperd -d"
+      "${pkgs.kitty}/bin/kitty"
       # "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
       # "${pkgs.systemd}/bin/systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
       "${pkgs.xdg-desktop-portal-hyprland}/libexec/xdg-desktop-portal-hyprland"

@@ -45,7 +45,8 @@ in {
 
   # TEMPORAIRE
   nixpkgs.config.allowUnfree = true;
-
+  
+  services.networkmanager.enable = true;
 
   # hardware.cpu.intel.updateMicrocode = true;
   # hardware.firmware = [ pkgs.linux-firmware ];

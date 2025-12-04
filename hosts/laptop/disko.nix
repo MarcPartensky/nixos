@@ -3,7 +3,7 @@
     disk = {
       root = {
         type = "disk";
-        device = "/dev/nvme0n1";
+        device = "/dev/sda";
         content = {
           type = "gpt";
           partitions = {
@@ -16,6 +16,11 @@
                 mountpoint = "/boot";
                 mountOptions = [ "nofail" ];
               };
+            };
+            swap = {
+              name = "swap";
+              type = "8200";       # Linux swap
+              size = "16G";
             };
             zfs = {
               size = "1024G";
@@ -57,23 +62,23 @@
             mountpoint = "/nix";
           };
 
-          # README MORE: https://wiki.archlinux.org/title/ZFS#Swap_volume
-          "root/swap" = {
-            type = "zfs_volume";
-            size = "16G";
-            content = {
-              type = "swap";
-            };
-            options = {
-              volblocksize = "4096";
-              compression = "zle";
-              logbias = "throughput";
-              sync = "always";
-              primarycache = "metadata";
-              secondarycache = "none";
-              "com.sun:auto-snapshot" = "false";
-            };
-          };
+          # # README MORE: https://wiki.archlinux.org/title/ZFS#Swap_volume
+          # "root/swap" = {
+          #   type = "zfs_volume";
+          #   size = "16G";
+          #   content = {
+          #     type = "swap";
+          #   };
+          #   options = {
+          #     volblocksize = "4096";
+          #     compression = "zle";
+          #     logbias = "throughput";
+          #     sync = "always";
+          #     primarycache = "metadata";
+          #     secondarycache = "none";
+          #     "com.sun:auto-snapshot" = "false";
+          #   };
+          # };
         };
       };
     };
