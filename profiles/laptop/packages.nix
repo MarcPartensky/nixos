@@ -48,7 +48,7 @@ let
     strace
     lsof
     htop
-    perf
+    # perf
     valgrind         # optionnel pour debug mémoire
 
     neovim
