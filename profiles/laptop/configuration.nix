@@ -9,6 +9,7 @@ in {
   imports =
     [ # Include the results of the hardware scan.
       ../../services
+      ../../hosts/laptop/networking.nix
       # ../../modules/generations
       # ../../modules/git
       # ./modules/hyprland
@@ -46,7 +47,7 @@ in {
   # TEMPORAIRE
   nixpkgs.config.allowUnfree = true;
   
-  services.networkmanager.enable = true;
+  networking.networkmanager.enable = true;
 
   # hardware.cpu.intel.updateMicrocode = true;
   # hardware.firmware = [ pkgs.linux-firmware ];
