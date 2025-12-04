@@ -18,7 +18,7 @@
               };
             };
             zfs = {
-              size = "50%";
+              size = "1024G";
               content = {
                 type = "zfs";
                 pool = "nixos";
