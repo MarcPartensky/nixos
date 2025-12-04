@@ -64,11 +64,11 @@
         system = "x86_64-linux";
         specialArgs = { inherit inputs; };
         modules = [
+          inputs.disko.nixosModules.disko
           inputs.home-manager.nixosModules.default
           # inputs.sopswarden.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops
-          inputs.disko.nixosModules.disko
           # inputs.microvm.nixosModules.microvm
           # ./hosts/laptop/hardware-configuration.nix
           ./hosts/laptop/disko.nix
