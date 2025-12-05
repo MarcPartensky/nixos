@@ -115,6 +115,8 @@ in
     ../../modules/git
     ../../modules/hyprland
     ../../modules/waybar
+    ../../modules/zsh
+    ../../modules/alacritty
     # ../../modules/ipython
     # ../../modules/librewolf
     # ../../modules/ssh
@@ -122,8 +124,6 @@ in
     # ../../modules/syncthing
     # ../../modules/steam
     # ../../modules/docker
-    ../../modules/zsh
-    ../../modules/alacritty
     # ../../modules/kodi
     # ../../modules/rbw
     # ../../modules/mako
