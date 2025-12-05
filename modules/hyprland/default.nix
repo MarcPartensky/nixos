@@ -65,6 +65,12 @@
     # pkgs.hyprlandplugins.hycov
   ];
 
+  # wayland.windowManager.hyprland = {
+  #   extraConfig = ''
+  #     plugin = ${inputs.hy3.packages.x86_64-linux.hy3}/lib/libhy3.so
+  #   '';
+  # };
+
   wayland.windowManager.hyprland.systemd.variables = ["--all"];
   wayland.windowManager.hyprland.settings = {
     # bindm = [
@@ -72,8 +78,7 @@
     #   "super, return , exec, kitty"
     # ];
     exec-once = [
-      "${pkgs.wpaperd}/bin/wpaperd -d"
-      "${pkgs.kitty}/bin/kitty"
+      # "${pkgs.waybar}/bin/waybar"
       # "${pkgs.dbus}/bin/dbus-update-activation-environment --systemd wayland_display xdg_current_desktop"
       # "${pkgs.systemd}/bin/systemctl --user import-environment wayland_display xdg_current_desktop"
       "${pkgs.xdg-desktop-portal-hyprland}/libexec/xdg-desktop-portal-hyprland"
