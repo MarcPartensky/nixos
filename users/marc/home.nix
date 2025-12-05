@@ -117,6 +117,7 @@ in
     ../../modules/waybar
     ../../modules/zsh
     ../../modules/alacritty
+    ../../modules/wallpapers
     # ../../modules/ipython
     # ../../modules/librewolf
     # ../../modules/ssh
@@ -162,13 +163,13 @@ in
       Install.WantedBy = ["default.target"];
     };
 
-    wpaperd = {
-      Unit.Description = "wpaperd";
-      Service.Type = "exec";
-      Service.ExecStart = "${pkgs.wpaperd}/bin/wpaperd";
-      Service.Restart = "on-failure";
-      Install.WantedBy = ["default.target"];
-    };
+    # wpaperd = {
+    #   Unit.Description = "wpaperd";
+    #   Service.Type = "exec";
+    #   Service.ExecStart = "${pkgs.wpaperd}/bin/wpaperd";
+    #   Service.Restart = "on-failure";
+    #   Install.WantedBy = ["default.target"];
+    # };
   };
 
   services.gammastep = {

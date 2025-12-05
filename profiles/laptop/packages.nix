@@ -95,6 +95,7 @@ let
     gpt-cli
     open-webui
     nautilus
+    less
   ];
   
   unfree = with pkgs; [
