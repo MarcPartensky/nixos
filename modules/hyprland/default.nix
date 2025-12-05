@@ -153,6 +153,9 @@
           disable_while_typing = false;
           middle_button_emulation = true;
           tap-to-click = true;
+
+	  # accel-profile = "adaptive";
+	  # pointer-accel = 0.7;
       };
 
       kb_options = "caps:escape,prior:shift_l";
