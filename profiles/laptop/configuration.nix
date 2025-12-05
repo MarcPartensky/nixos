@@ -8,8 +8,9 @@ let
 in {
   imports =
     [ # Include the results of the hardware scan.
-      ../../services
+      # ../../services
       ../../hosts/laptop/networking.nix
+      ../../hosts/laptop/bluetooth.nix
       # ../../modules/generations
       # ../../modules/git
       # ./modules/hyprland
@@ -38,10 +39,10 @@ in {
   hardware.enableAllFirmware = true;
   services.xserver.videoDrivers = [ "intel" ];
 
-  hardware.opengl = {
+  hardware.graphics = {
     enable = true;
     # driSupport = true;
-    driSupport32Bit = true; # si tu utilises Steam ou applis 32-bit
+    enable32Bit = true; # si tu utilises Steam ou applis 32-bit
   };
 
   # TEMPORAIRE
@@ -54,8 +55,6 @@ in {
 
   networking.hostId = "c1ae84e2";
   # networking.firewall.enable = false;
-
-  # programs.home-manager.enable = true;
 
   programs.zsh.enable = true;
   users.defaultUserShell = pkgs.zsh;

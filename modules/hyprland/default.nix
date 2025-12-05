@@ -58,7 +58,8 @@
 
 
   wayland.windowManager.hyprland.plugins = [
-    pkgs.hyprlandPlugins.hy3
+    # pkgs.hyprlandPlugins.hy3
+    inputs.hy3.packages.${pkgs.system}.hy3
     # inputs.hyprtasking.packages.${pkgs.system}.hyprtasking
     # pkgs.hyprlandplugins.hyprspace
     # pkgs.hyprlandplugins.hycov
@@ -298,24 +299,39 @@
 #       size = 11;
 #     };
 #   };
+  # gtk = {
+  #   enable = true;
+  #   theme = {
+  #     # name = "adwaita";
+  #     # package = pkgs.adwaita-icon-theme;
+  #     package = pkgs.flat-remix-gtk;
+  #     name = "flat-remix-gtk-grey-darkest";
+  #   };
+  #   iconTheme = {
+  #     name = "adwaita";
+  #     package = pkgs.adwaita-icon-theme;
+  #   };
+  #   gtk3.extraConfig = {
+  #     gtk-application-prefer-dark-theme = 0;
+  #     gtk-xft-antialias = 1;
+  #     gtk-xft-hinting = 1;
+  #     gtk-xft-hintstyle = "hintslight";
+  #     gtk-xft-rgba = "rgb";
+  #   };
+  # };
   gtk = {
     enable = true;
     theme = {
-      # name = "adwaita";
-      # package = pkgs.adwaita-icon-theme;
-      package = pkgs.flat-remix-gtk;
-      name = "flat-remix-gtk-grey-darkest";
+      name = "Colloid-Dark";
+      package = pkgs.colloid-gtk-theme;
+    };
+    cursorTheme = {
+      package = pkgs.adwaita-icon-theme;
+      name = "Adwaita";
     };
     iconTheme = {
-      name = "adwaita";
-      package = pkgs.adwaita-icon-theme;
-    };
-    gtk3.extraConfig = {
-      gtk-application-prefer-dark-theme = 0;
-      gtk-xft-antialias = 1;
-      gtk-xft-hinting = 1;
-      gtk-xft-hintstyle = "hintslight";
-      gtk-xft-rgba = "rgb";
+      package = pkgs.papirus-icon-theme;
+      name = "Papirus-Dark";
     };
   };
 }
