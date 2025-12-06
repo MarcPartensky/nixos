@@ -9,7 +9,7 @@
       sort = "-time";
       layer = "top";
       anchor = "top-right";
-      font = "meslo-lgs-nf 12";
+      font = "meslo-lgs-nf 10";
       background-color = "#040c16bb";
       text-color = "#cce9ea";
       width = 300;
