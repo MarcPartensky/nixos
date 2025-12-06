@@ -52,8 +52,8 @@
         ", Print, exec, grimblast copysave area"
         "$mod, Print, exec, grimblast copysave output"
   
-        "$mod+SHIFT,h,hy3:makegroup, h"
-        "$mod+SHIFT,v,hy3:makegroup, v"
+        # "$mod+SHIFT,h,hy3:makegroup, h"
+        # "$mod+SHIFT,v,hy3:makegroup, v"
       ]
       ++ (
         # workspaces

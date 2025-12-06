@@ -118,6 +118,7 @@ in
     ../../modules/zsh
     ../../modules/alacritty
     ../../modules/wallpapers
+    ../../modules/mako
     # ../../modules/ipython
     # ../../modules/librewolf
     # ../../modules/ssh
@@ -127,7 +128,6 @@ in
     # ../../modules/docker
     # ../../modules/kodi
     # ../../modules/rbw
-    # ../../modules/mako
     # ../../modules/radarr
     # ../../modules/tealdeer
     # ../../modules/polkit
