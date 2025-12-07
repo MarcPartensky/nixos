@@ -41,6 +41,7 @@ let
     # crictl
     python313Packages.ipython
     dconf
+    playerctl
   ];
 
   # -------------------------------
