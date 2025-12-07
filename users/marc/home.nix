@@ -121,6 +121,7 @@ in
     ../../modules/mako
     ../../modules/syncthing
     ../../modules/ssh
+    ../../modules/tealdeer
     # ../../modules/ipython
     # ../../modules/librewolf
     # ../../modules/virt-manager
@@ -129,7 +130,6 @@ in
     # ../../modules/kodi
     # ../../modules/rbw
     # ../../modules/radarr
-    # ../../modules/tealdeer
     # ../../modules/polkit
     # ../../modules/thunderbird
     # ../../modules/tor
