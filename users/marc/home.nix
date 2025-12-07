@@ -120,9 +120,9 @@ in
     ../../modules/wallpapers
     ../../modules/mako
     ../../modules/syncthing
+    ../../modules/ssh
     # ../../modules/ipython
     # ../../modules/librewolf
-    # ../../modules/ssh
     # ../../modules/virt-manager
     # ../../modules/steam
     # ../../modules/docker
