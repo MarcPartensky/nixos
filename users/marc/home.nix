@@ -109,6 +109,8 @@ let
     openvpn3
     protonvpn-gui
     tor-browser
+    ungoogled-chromium
+    netsurf-browser
   ];
 in
 {
