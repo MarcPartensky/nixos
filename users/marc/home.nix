@@ -119,11 +119,11 @@ in
     ../../modules/alacritty
     ../../modules/wallpapers
     ../../modules/mako
+    ../../modules/syncthing
     # ../../modules/ipython
     # ../../modules/librewolf
     # ../../modules/ssh
     # ../../modules/virt-manager
-    # ../../modules/syncthing
     # ../../modules/steam
     # ../../modules/docker
     # ../../modules/kodi
