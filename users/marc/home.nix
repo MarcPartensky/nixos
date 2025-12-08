@@ -92,8 +92,8 @@ let
     gnome-maps
     protonmail-bridge
     pywalfox-native
-    # electrum
-    # sparrow
+    # electrum # ‘python3.12-ecdsa-0.19.1’ to `permittedInsecurePackages`
+    # sparrow # ‘python3.12-ecdsa-0.19.1’ to `permittedInsecurePackages`
     wasabiwallet
     anki
     mnemosyne
