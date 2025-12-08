@@ -18,7 +18,11 @@ in {
       # ./modules/tor
     ];
 
-  nix.settings.experimental-features = "nix-command flakes";
+  nix.settings = {
+    experimental-features = "nix-command flakes";
+    max-jobs = 6;
+    download-buffer-size = 524288000;
+  };
   security.polkit.enable = true;
   # services.polkit-gnome-authentication-agent.enable = true;
 

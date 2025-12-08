@@ -9,6 +9,8 @@ let
     tmate
     typer
     yt-dlp
+    ytmdl
+    spotdl
     uv
     pw-volume
     brightnessctl
@@ -20,7 +22,6 @@ let
     helm
     mako
     ripgrep
-    spotdl
     wstunnel
     talosctl
     python312Full
@@ -34,7 +35,6 @@ let
     gurk-rs
     chatgpt-cli
     lowfi
-    ytmdl
     wev
     cliphist
     nerdctl
@@ -56,7 +56,7 @@ let
     wdisplays
     wayvnc
     blueberry
-    caprine
+    # caprine
     goldwarden
     grim
     slurp
@@ -75,7 +75,7 @@ let
     ytmdesktop
     ytui-music
     whitesur-gtk-theme
-    webcord
+    # webcord # ‘electron-36.9.5’ to `permittedInsecurePackages`
     pipe-viewer
     minitube
     freetube
@@ -92,8 +92,8 @@ let
     gnome-maps
     protonmail-bridge
     pywalfox-native
-    electrum
-    sparrow
+    # electrum
+    # sparrow
     wasabiwallet
     anki
     mnemosyne
@@ -125,6 +125,7 @@ in
     ../../modules/syncthing
     ../../modules/ssh
     ../../modules/tealdeer
+    ../../modules/neovim
     # ../../modules/ipython
     # ../../modules/librewolf
     # ../../modules/virt-manager
@@ -143,6 +144,10 @@ in
   # };
 
   home.packages = cliPackages ++ guiPackages;
+
+  # nixpkgs.config.permittedInsecurePackages = [
+  #   "electron-36.9.5" # Autorise ce paquet spécifique
+  # ];
 
   services.gnome-keyring = {
     enable = true;

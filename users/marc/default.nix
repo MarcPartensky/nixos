@@ -6,6 +6,9 @@
     useUserPackages = true;
     extraSpecialArgs = { inherit inputs; };
     backupFileExtension = "backup";
+    sharedModules = [
+      inputs.nixvim.homeModules.nixvim
+    ];
   };
 
   services.keyd = {

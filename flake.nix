@@ -18,6 +18,9 @@
     disko.inputs.nixpkgs.follows = "nixpkgs";
     sops.url = "github:Mic92/sops-nix";
 
+    nixvim.url = "github:nix-community/nixvim/nixos-25.05";
+    nixvim.inputs.nixpkgs.follows = "nixpkgs";
+
     # rycee-nurpkgs = {
     #   url = "gitlab:rycee/nur-expressions?dir=pkgs/firefox-addons";
     #   inputs.nixpkgs.follows = "nixpkgs";
@@ -70,6 +73,7 @@
           inputs.disko.nixosModules.disko
           inputs.home-manager.nixosModules.default
 	  inputs.hyprland.nixosModules.default
+	  inputs.nixvim.nixosModules.default
           # inputs.sopswarden.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops
