@@ -4,6 +4,17 @@ let
   # -------------------------------
   # CLI Packages
   # -------------------------------
+  pythonEnv = pkgs.python313.withPackages (ps: with ps; [
+    numpy
+    pandas
+    matplotlib
+    scipy
+    scikit-learn
+    jupyterlab
+    ipython
+    requests
+    pillow
+  ]);
   cliPackages = with pkgs; [
     bat
     tmate
@@ -24,8 +35,6 @@ let
     ripgrep
     wstunnel
     talosctl
-    python312Full
-    python312Packages.pynvim
     black
     isort
     gcc
@@ -39,7 +48,6 @@ let
     cliphist
     nerdctl
     # crictl
-    python313Packages.ipython
     dconf
     playerctl
   ];
@@ -144,7 +152,7 @@ in
   #   NIX_DEV_SHELL_HOOK = "zsh";
   # };
 
-  home.packages = cliPackages ++ guiPackages;
+  home.packages = cliPackages ++ guiPackages ++ [ pythonEnv ];
 
   # nixpkgs.config.permittedInsecurePackages = [
   #   "electron-36.9.5" # Autorise ce paquet spécifique
