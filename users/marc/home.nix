@@ -50,6 +50,7 @@ let
     # crictl
     dconf
     playerctl
+    nushell
   ];
 
   # -------------------------------
@@ -164,6 +165,8 @@ in
     enable = true;
     components = ["secrets" "ssh"];
   };
+
+  programs.pgcli.enable = true;
 
   # Configuration DConf pour Nautilus
   dconf.settings = {
