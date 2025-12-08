@@ -111,6 +111,7 @@ let
     tor-browser
     ungoogled-chromium
     netsurf-browser
+    bitwarden-desktop
   ];
 in
 {
