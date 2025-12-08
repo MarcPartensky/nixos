@@ -161,12 +161,16 @@ in
   #   "electron-36.9.5" # Autorise ce paquet spécifique
   # ];
 
+  services.librespot.enable = true;
+  services.poweralertd.enable = true;
+
   services.gnome-keyring = {
     enable = true;
     components = ["secrets" "ssh"];
   };
 
   programs.pgcli.enable = true;
+  programs.topgrade.enable = true;
 
   # Configuration DConf pour Nautilus
   dconf.settings = {
