@@ -107,7 +107,7 @@ in {
     enableSSHSupport = true;
   };
 
-   services.ratbagd.enable = true;
+  services.ratbagd.enable = true;
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;

@@ -120,6 +120,8 @@ let
     ungoogled-chromium
     netsurf-browser
     bitwarden-desktop
+    feh
+    libheif
   ];
 in
 {
@@ -161,6 +163,17 @@ in
   services.gnome-keyring = {
     enable = true;
     components = ["secrets" "ssh"];
+  };
+
+  # Configuration DConf pour Nautilus
+  dconf.settings = {
+    "org/gnome/nautilus/preferences" = {
+      default-folder-viewer = "'list-view'";
+    };
+    "org/gnome/nautilus/list-view" = {
+      sort-column = "'modified'";
+      sort-order  = "'descending'";
+    };
   };
 
   # programs.dconf.enable = true;
