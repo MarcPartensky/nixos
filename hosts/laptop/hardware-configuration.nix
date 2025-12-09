@@ -12,60 +12,22 @@
     # ./nvidia.nix
     ];
 
-  # boot.initrd.availableKernelModules = [ "xhci_pci" "nvme" "usb_storage" "sd_mod" "rtsx_usb_sdmmc" ];
-  # boot.initrd.kernelModules = [ ];
-  # boot.kernelModules = [ "kvm-intel" ];
-  # boot.extraModulePackages = [ ];
+  # Use the systemd-boot EFI boot loader.
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+  boot.initrd.availableKernelModules = [ "xhci_pci" "nvme" "usb_storage" "sd_mod" "rtsx_usb_sdmmc" ];
+  boot.initrd.kernelModules = [ ];
+  boot.kernelModules = [ "kvm-intel" "i915" ];
+  boot.extraModulePackages = [ ];
+  hardware.enableAllFirmware = true;
+  services.xserver.videoDrivers = [ "intel" ];
 
-  fileSystems."/" =
-    { device = "nixos/root";
-      fsType = "zfs";
-    };
-
-  fileSystems."/nix/store" =
-    { device = "nixos/store";
-      fsType = "zfs";
-    };
-
-  fileSystems."/home" =
-    { device = "nixos/home";
-      fsType = "zfs";
-    };
-
-  fileSystems."/boot" =
-    { device = "/dev/disk/by-uuid/BC75-DC98";
-      fsType = "vfat";
-      options = [ "fmask=0077" "dmask=0077" ];
-    };
-
-  fileSystems."/mnt/arch" =
-    { device = "/dev/mapper/arch";
-      fsType = "btrfs";
-    };
-
-  # fileSystems."/mnt/arch" =
-  #   { device = "/dev/disk/by-uuid/BB98-CA7E";
-  #     fsType = "vfat";
-  #     options = [ "fmask=0077" "dmask=0077" ];
-  #   };
-
-  # swapDevices = [ {
-  #   device = "/dev/disk/by-partuuid/052f0593-0118-41ad-bfc4-72f0249f33ba";
-  #   randomEncryption.enable = true;
-  # } ];
-
-  # potentiellement avoir une partition dediee au swapfile étant donné qu'il
-  # n'est pas compatible d'utiliser de swapfile avec les datasets zfs
-  # swapDevices = [{device = "/swapfile"; size = 10000;}];
-
-  environment.etc.crypttab = {
-    mode = "0600";
-    text = ''
-      # <volume-name> <encrypted-device> [key-file] [options]
-      arch PARTUUID=b0c1fc13-c97e-4b45-b964-01822bfec30e
-      # arch UUID=66f4f949-ef93-491d-9c3b-3e79bc5bea18
-    '';
+  hardware.graphics = {
+    enable = true;
+    # driSupport = true;
+    enable32Bit = true; # si tu utilises Steam ou applis 32-bit
   };
+
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;

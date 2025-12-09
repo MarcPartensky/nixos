@@ -72,13 +72,14 @@
         modules = [
           inputs.disko.nixosModules.disko
           inputs.home-manager.nixosModules.default
-	  inputs.hyprland.nixosModules.default
-	  inputs.nixvim.nixosModules.default
-          # inputs.sopswarden.nixosModules.default
+	        inputs.hyprland.nixosModules.default
+	        inputs.nixvim.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops
+          # inputs.sopswarden.nixosModules.default
           # inputs.microvm.nixosModules.microvm
           ./hosts/laptop/disko.nix
+          ./hosts/laptop/hardware-configuration.nix
           # ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
           ./users.nix

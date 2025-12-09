@@ -32,23 +32,6 @@ in {
   # };
   # nixpkgs.overlays = [ inputs.claude-code.overlays.default ];
 
-
-  # Use the systemd-boot EFI boot loader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.initrd.availableKernelModules = [ "xhci_pci" "nvme" "usb_storage" "sd_mod" "rtsx_usb_sdmmc" ];
-  boot.initrd.kernelModules = [ ];
-  boot.kernelModules = [ "kvm-intel" "i915" ];
-  boot.extraModulePackages = [ ];
-  hardware.enableAllFirmware = true;
-  services.xserver.videoDrivers = [ "intel" ];
-
-  hardware.graphics = {
-    enable = true;
-    # driSupport = true;
-    enable32Bit = true; # si tu utilises Steam ou applis 32-bit
-  };
-
   # TEMPORAIRE
   nixpkgs.config.allowUnfree = true;
   
