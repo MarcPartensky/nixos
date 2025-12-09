@@ -163,6 +163,12 @@ in
   #   "electron-36.9.5" # Autorise ce paquet spécifique
   # ];
 
+  # xdg.userDirs = {
+  #   enable = true;
+  #   download = "${config.home.homeDirectory}/downloads";
+  # };
+
+
   services.librespot.enable = true;
 
   services.gnome-keyring = {
