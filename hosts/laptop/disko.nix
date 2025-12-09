@@ -80,7 +80,7 @@
           };
           "marc/downloads" = {
             type = "zfs_fs";
-            options.mountpoint = "/home/marc/Downloads";
+            options.mountpoint = "/home/marc/downloads";
           };
           "marc/syncthing" = {
             type = "zfs_fs";
