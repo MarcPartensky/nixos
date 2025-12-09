@@ -18,9 +18,14 @@
               };
             };
             swap = {
-              name = "swap";
-              type = "8200";       # Linux swap
+              # name = "swap";
+              # type = "8200";       # Linux swap
               size = "16G";
+              content = {
+                type = "swap";
+                randomEncryption = true;
+                priority = 100;
+              };
             };
             zfs = {
               size = "1024G";
