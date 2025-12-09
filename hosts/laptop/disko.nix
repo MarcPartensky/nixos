@@ -74,6 +74,10 @@
             type = "zfs_fs";
             options.mountpoint = "/home/marc";
           };
+          "marc/git" = {
+            type = "zfs_fs";
+            options.mountpoint = "/home/marc/git";
+          };
           "marc/media" = {
             type = "zfs_fs";
             options.mountpoint = "/home/marc/media";
@@ -84,7 +88,7 @@
           };
           "marc/syncthing" = {
             type = "zfs_fs";
-            options.mountpoint = "/home/marc/syncthing";
+            options.mountpoint = "/home/marc/sync";
           };
 
           # # README MORE: https://wiki.archlinux.org/title/ZFS#Swap_volume
