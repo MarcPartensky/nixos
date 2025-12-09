@@ -83,7 +83,7 @@ let
     geary
     ytmdesktop
     ytui-music
-    whitesur-gtk-theme
+    # whitesur-gtk-theme
     # webcord # ‘electron-36.9.5’ to `permittedInsecurePackages`
     pipe-viewer
     minitube
@@ -139,6 +139,7 @@ in
     ../../modules/tealdeer
     ../../modules/neovim
     ../../modules/gh
+    ../../modules/gtk
     # ../../modules/polkit
     # ../../modules/ipython
     # ../../modules/librewolf

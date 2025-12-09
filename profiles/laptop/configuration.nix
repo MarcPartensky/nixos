@@ -58,17 +58,6 @@ in {
   #   useXkbConfig = true; # use xkb.options in tty.
   # };
 
-  # Enable the X11 windowing system.
-  # services.xserver.enable = true;
-
-  # Enable the GNOME Desktop Environment.
-  # services.xserver.displayManager.gdm.enable = true;
-  # services.xserver.desktopManager.gnome.enable = true;
-
-  # Configure keymap in X11
-  # services.xserver.xkb.layout = "us";
-  # services.xserver.xkb.options = "eurosign:e,caps:escape";
-
   environment.systemPackages = packages.all;
 
   nixpkgs.config.allowUnfreePredicate = pkg:
@@ -108,7 +97,6 @@ in {
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.libinput.enable = true;
-
 
   # Copy the NixOS configuration file and link it from the resulting system
   # (/run/current-system/configuration.nix). This is useful in case you
