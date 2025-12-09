@@ -68,7 +68,7 @@
           };
           "marc" = {
             type = "zfs_fs";
-            options.mountpoint = none;
+            options.mountpoint = "none";
           };
           "marc/data" = {
             type = "zfs_fs";
