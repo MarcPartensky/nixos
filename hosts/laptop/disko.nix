@@ -43,7 +43,7 @@
         type = "zpool";
         rootFsOptions = {
           mountpoint = "none";
-          compression = "zstd";
+          compression = "lz4";
           acltype = "posixacl";
           xattr = "sa";
           "com.sun:auto-snapshot" = "true";
@@ -61,10 +61,30 @@
             mountpoint = "/";
 
           };
-          "root/nix" = {
+          "nix" = {
             type = "zfs_fs";
             options.mountpoint = "/nix";
             mountpoint = "/nix";
+          };
+          "marc" = {
+            type = "zfs_fs";
+            options.mountpoint = none;
+          };
+          "marc/data" = {
+            type = "zfs_fs";
+            options.mountpoint = "/home/marc";
+          };
+          "marc/media" = {
+            type = "zfs_fs";
+            options.mountpoint = "/home/marc/media";
+          };
+          "marc/downloads" = {
+            type = "zfs_fs";
+            options.mountpoint = "/home/marc/Downloads";
+          };
+          "marc/syncthing" = {
+            type = "zfs_fs";
+            options.mountpoint = "/home/marc/syncthing";
           };
 
           # # README MORE: https://wiki.archlinux.org/title/ZFS#Swap_volume
