@@ -138,6 +138,8 @@ in
     ../../modules/ssh
     ../../modules/tealdeer
     ../../modules/neovim
+    ../../modules/gh
+    # ../../modules/polkit
     # ../../modules/ipython
     # ../../modules/librewolf
     # ../../modules/virt-manager
@@ -146,7 +148,6 @@ in
     # ../../modules/kodi
     # ../../modules/rbw
     # ../../modules/radarr
-    # ../../modules/polkit
     # ../../modules/thunderbird
     # ../../modules/tor
   ];
@@ -162,7 +163,6 @@ in
   # ];
 
   services.librespot.enable = true;
-  services.poweralertd.enable = true;
 
   services.gnome-keyring = {
     enable = true;
