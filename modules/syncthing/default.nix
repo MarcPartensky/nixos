@@ -16,7 +16,7 @@
 	  };
         };
       	folders."marc" = {
-	  path = "/home/marc/synthing";
+	  path = "/home/marc/sync";
 	  devices = [ "xiaomi12" ];
 	  type = "sendreceive";
 	  # one of "sendreceive", "sendonly", "receiveonly", "receiveencrypted"
