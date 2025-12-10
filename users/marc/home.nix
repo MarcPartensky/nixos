@@ -169,7 +169,7 @@ in
   # };
 
 
-  services.librespot.enable = true;
+  # services.librespot.enable = true;
 
   services.gnome-keyring = {
     enable = true;
