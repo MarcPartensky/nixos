@@ -1,9 +1,7 @@
 { pkgs, ... }:
 {
   programs.ssh = {
-    enable = true;
-    forwardAgent = true;
-    serverAliveInterval = 60;
+    # enable = true;
     # extraConfig = "
     #   Host rack
     #     Hostname marcpartensky.com
@@ -17,6 +15,8 @@
         user = "root";
         port = 22;
         identityFile = "~/.ssh/id_ed25519";
+    	serverAliveInterval = 60;
+    	forwardAgent = true;
       };
     };
   };

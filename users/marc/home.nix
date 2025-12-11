@@ -93,7 +93,7 @@ let
     # libsForQt5.merkuro
     gcr_4
     glib-networking
-    evolution-data-server
+    # evolution-data-server
     xdg-desktop-portal-gnome
     gnome-online-accounts-gtk
     gnome-online-accounts
@@ -205,23 +205,15 @@ in
     enableSshSupport = true;
   };
 
-  systemd.user.services = {
-    evolution-data-server = {
-      Unit.Description = "Evolution Data Server";
-      Unit.After = ["graphical-session.target"];
-      Service.ExecStart = "${pkgs.evolution-data-server}/bin/evolution-data-server";
-      Service.Restart = "on-failure";
-      Install.WantedBy = ["default.target"];
-    };
-
-    # wpaperd = {
-    #   Unit.Description = "wpaperd";
-    #   Service.Type = "exec";
-    #   Service.ExecStart = "${pkgs.wpaperd}/bin/wpaperd";
-    #   Service.Restart = "on-failure";
-    #   Install.WantedBy = ["default.target"];
-    # };
-  };
+  # systemd.user.services = {
+  #   evolution-data-server = {
+  #     Unit.Description = "Evolution Data Server";
+  #     Unit.After = ["graphical-session.target"];
+  #     Service.ExecStart = "${pkgs.evolution-data-server}/bin/evolution-data-server";
+  #     Service.Restart = "on-failure";
+  #     Install.WantedBy = ["default.target"];
+  #   };
+  # };
 
   services.gammastep = {
     enable = true;
