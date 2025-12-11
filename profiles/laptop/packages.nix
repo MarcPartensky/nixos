@@ -97,6 +97,7 @@ let
     open-webui
     nautilus
     less
+    yq
   ];
   
   unfree = with pkgs; [
