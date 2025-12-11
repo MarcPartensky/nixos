@@ -14,7 +14,7 @@
 #     };
 # }
 
-{inputs, pkgs, ...}: {
+{ inputs, pkgs, ...}: {
   # home.file.".config/hypr/hyprland.conf".source = ./hyprland.conf;
 
   imports = [
@@ -59,7 +59,7 @@
 
   wayland.windowManager.hyprland.plugins = [
     # pkgs.hyprlandPlugins.hy3
-    inputs.hy3.packages.${pkgs.system}.hy3
+    # inputs.hy3.packages.${pkgs.system}.hy3
     # inputs.hyprtasking.packages.${pkgs.system}.hyprtasking
     # pkgs.hyprlandplugins.hyprspace
     # pkgs.hyprlandplugins.hycov
