@@ -140,6 +140,7 @@ in
     ../../modules/neovim
     ../../modules/gh
     ../../modules/gtk
+    ../../modules/xdg
     # ../../modules/polkit
     # ../../modules/ipython
     # ../../modules/librewolf
