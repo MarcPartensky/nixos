@@ -4,10 +4,10 @@ set dotenv-load
 
 # export HOST := env_var("HOST")
 
-home-manager:
+home:
 	home-manager switch --flake .#marc@{{env('HOST')}}
 
-computer:
+nixos:
     sudo nixos-rebuild switch --upgrade --flake .#{{env('HOST')}}
 
 droid:
