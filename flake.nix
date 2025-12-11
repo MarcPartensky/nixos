@@ -3,7 +3,8 @@
   inputs = {
     # darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-24.05";
     # darwin.inputs.nixpkgs.follows = "nixpkgs";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    # nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     hyprland.url = "github:hyprwm/Hyprland?ref=v0.50.0";
     hy3.url = "github:outfoxxed/hy3?ref=hl0.50.0";
@@ -46,7 +47,8 @@
       inputs.hyprland.follows = "hyprland";
     };
     home-manager = {
-      url = "github:nix-community/home-manager/release-25.05";
+      # url = "github:nix-community/home-manager/release-25.05";
+      url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nur = {
@@ -126,11 +128,19 @@
       ];
     };
 
-    homeManagerConfigurations = {
+    homeConfigurations = {
       "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
-        pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-        specialArgs = { inherit inputs; };
+        # system = "x86_64-linux";
+        # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
+        pkgs = import nixpkgs { system = "x86_64-linux"; };
+        # specialArgs = { inherit inputs; };
         modules = [
+          # inputs.disko.homeModule.disko
+          # inputs.home-manager.homeModule.default
+          # inputs.hyprland.homeManagerModules.default
+	        inputs.catppuccin.homeModules.catppuccin
+          inputs.nixvim.homeManagerModules.default
+	        inputs.sops.homeManagerModules.sops
           ./users/marc/home.nix 
         ];
       };

@@ -91,7 +91,7 @@ let
     glances
     rbw
     rofi-rbw-wayland
-    pinentry
+    # pinentry
     wl-clipboard
     gpt-cli
     open-webui

@@ -27,7 +27,7 @@ let
     brightnessctl
     librespeed-cli
     pwvucontrol
-    sonusmix
+    # sonusmix
     btop
     nmap
     helm
@@ -66,7 +66,7 @@ let
     wayvnc
     blueberry
     # caprine
-    goldwarden
+    # goldwarden
     grim
     slurp
     swappy
@@ -90,7 +90,7 @@ let
     freetube
     wofi-power-menu
     jellyfin
-    libsForQt5.merkuro
+    # libsForQt5.merkuro
     gcr_4
     glib-networking
     evolution-data-server
@@ -137,7 +137,7 @@ in
     ../../modules/syncthing
     ../../modules/ssh
     ../../modules/tealdeer
-    ../../modules/neovim
+    # ../../modules/neovim
     ../../modules/gh
     ../../modules/gtk
     ../../modules/xdg
@@ -154,11 +154,17 @@ in
     # ../../modules/tor
   ];
 
+  home = {
+    username = "marc";
+    homeDirectory = "/home/marc";
+  };
+
   # environment.variables = {
   #   NIX_DEV_SHELL_HOOK = "zsh";
   # };
 
   home.packages = cliPackages ++ guiPackages ++ [ pythonEnv ];
+  # programs.delta.enable = true;
 
   # nixpkgs.config.permittedInsecurePackages = [
   #   "electron-36.9.5" # Autorise ce paquet spécifique

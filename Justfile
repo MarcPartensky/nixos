@@ -4,6 +4,9 @@ set dotenv-load
 
 # export HOST := env_var("HOST")
 
+home-manager:
+	home-manager switch --flake .#marc@{{env('HOST')}}
+
 computer:
     sudo nixos-rebuild switch --upgrade --flake .#{{env('HOST')}}
 

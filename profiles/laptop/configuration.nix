@@ -18,6 +18,11 @@ in {
       # ./modules/tor
     ];
 
+  environment.pathsToLink = [
+    "/share/applications"
+    "/share/xdg-desktop-portal"
+  ];
+
   nix.settings = {
     experimental-features = "nix-command flakes";
     max-jobs = 6;
