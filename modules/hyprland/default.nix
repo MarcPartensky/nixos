@@ -215,11 +215,20 @@
         pseudotile = 0; # enable pseudotiling on dwindle
     };
     
+    gesture = [
+      "3, vertical, workspace"
+      # "4, right, mod:SUPER, scale: 1.5, fullscreen"
+      # "4, up, scale: 1.5, fullscreen"
+      "4, up, fullscreen"
+      "4, down, float"
+      # "3, left, scale: 1.5, float"
+
+    ];
     
-    gestures = {
-        workspace_swipe = true;
-        workspace_swipe_fingers = 3;
-    };
+    # gestures = {
+    #     workspace_swipe = true;
+    #     workspace_swipe_fingers = 3;
+    # };
     
     misc = {
         disable_hyprland_logo = true;
