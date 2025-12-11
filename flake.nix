@@ -126,22 +126,15 @@
       ];
     };
 
-    # homeConfigurations."marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
-    #   pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-    #   specialArgs = { inherit inputs; };
-
-    #   modules = [
-    #     {
-    #       wayland.windowManager.hyprland = {
-    #         enable = true;
-    #         # set the flake package
-    #         package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
-    #         portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
-    #       };
-    #     }
-    #     # ...
-    #   ];
-    # };
+    homeManagerConfigurations = {
+      "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
+        pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
+        specialArgs = { inherit inputs; };
+        modules = [
+          ./users/marc/home.nix 
+        ];
+      };
+    };
 
     # homeConfigurations = {
     #   "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
