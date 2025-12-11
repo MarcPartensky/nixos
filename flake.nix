@@ -19,7 +19,7 @@
     disko.inputs.nixpkgs.follows = "nixpkgs";
     sops.url = "github:Mic92/sops-nix";
 
-    nixvim.url = "github:nix-community/nixvim/nixos-25.05";
+    nixvim.url = "github:nix-community/nixvim/nixos-25.11";
     nixvim.inputs.nixpkgs.follows = "nixpkgs";
 
     # rycee-nurpkgs = {

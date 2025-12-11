@@ -1,8 +1,9 @@
 { pkgs, ... }:
 {
+  # home.packages = with pkgs; [ ansible-language-server ];
   programs.nixvim = {
     enable = true;
-    # colorschemes.catppuccin.enable = true;
+    # # colorschemes.catppuccin.enable = true;
     colorschemes.onedark.enable = true;
     opts = {
       number = true;         # Show line numbers
@@ -36,7 +37,7 @@
       treesj
       # session-manager-nvim
       dressing-nvim
-      markdown-preview-nvim
+      # markdown-preview-nvim
       avante-nvim
       # telescope-recent-files-nvim
       toggleterm-nvim

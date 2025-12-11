@@ -137,7 +137,7 @@ in
     ../../modules/syncthing
     ../../modules/ssh
     ../../modules/tealdeer
-    # ../../modules/neovim
+    ../../modules/neovim
     ../../modules/gh
     ../../modules/gtk
     ../../modules/xdg
