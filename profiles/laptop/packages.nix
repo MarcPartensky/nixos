@@ -9,6 +9,7 @@ let
   
   free = with pkgs; [
     inputs.agenix.packages.${pkgs.system}.default
+    home-manager
     # inputs.nix-search-tv.packages.x86_64-linux.default
     # nur.repos.nltch.spotify-adblock # spotify-1.2.59.514.g834e17d4.drv' failed with exit code 11;
     # inputs.newt.packages.${pkgs.system}.default
