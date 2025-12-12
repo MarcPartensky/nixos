@@ -11,11 +11,10 @@ in {
       # ../../services
       ../../hosts/laptop/networking.nix
       ../../hosts/laptop/bluetooth.nix
+			../../modules/iso
       # ../../modules/generations
       # ../../modules/git
-      # ./modules/hyprland
       # ./modules/librewolf
-      # ./modules/tor
     ];
 
   environment.pathsToLink = [

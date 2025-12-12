@@ -86,14 +86,6 @@
           ./profiles/laptop/configuration.nix
           ./users.nix
           ./users/marc
-          # {
-          #   home-manager = {
-          #     useGlobalPkgs = true;
-          #     useUserPackages = true;
-          #     users.marc = ./users/marc/home.nix;
-          #     extraSpecialArgs = { inherit inputs; };  # For Home Manager
-          #   };
-          # }
         ];
       };
 
@@ -119,6 +111,8 @@
         ];
       };
     };
+
+
 
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
       pkgs = import nixpkgs { system = "aarch64-linux"; };
