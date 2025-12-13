@@ -11,7 +11,8 @@ in {
       # ../../services
       ../../hosts/laptop/networking.nix
       ../../hosts/laptop/bluetooth.nix
-			../../modules/root/iso
+			../../modules/nixos/iso
+      ../../modules/nixos/pipewire
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
@@ -90,14 +91,6 @@ in {
 
   # Enable CUPS to print documents.
   # services.printing.enable = true;
-
-  # Enable sound.
-  # services.pulseaudio.enable = true;
-  # OR
-  services.pipewire = {
-    enable = true;
-    pulse.enable = true;
-  };
 
   # Enable touchpad support (enabled default in most desktopManager).
   # services.libinput.enable = true;
