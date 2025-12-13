@@ -141,6 +141,7 @@ in
     ../../modules/gh
     ../../modules/gtk
     ../../modules/xdg
+    ../../modules/satty
     # ../../modules/polkit
     # ../../modules/ipython
     # ../../modules/librewolf
