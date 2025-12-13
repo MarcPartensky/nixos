@@ -13,6 +13,7 @@ in {
       ../../hosts/laptop/bluetooth.nix
 			../../modules/nixos/iso
       ../../modules/nixos/pipewire
+      ../../modules/nixos/keyd
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
