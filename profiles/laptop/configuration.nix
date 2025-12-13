@@ -9,9 +9,9 @@ in {
   imports =
     [ # Include the results of the hardware scan.
       # ../../services
-      ../../hosts/laptop/networking.nix
-      ../../modules/nixos/bluetooth
       # ../../modules/nixos/iso
+      ../../modules/nixos/bluetooth
+      ../../modules/nixos/networking
       ../../modules/nixos/pipewire
       ../../modules/nixos/keyd
       ../../modules/nixos/gnupg
