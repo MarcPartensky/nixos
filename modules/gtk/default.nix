@@ -1,45 +1,31 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 let
-  name = "Colloid-Dark";
-  package = pkgs.colloid-gtk-theme;
+  # name = "Colloid-Dark";
+  #name = "Colloid-Dark";
+  name = "Catppucin-Mocha";
+ #  package = pkgs.colloid-gtk-theme;
+  package = pkgs.catppuccin;
   #   name = "Adwaita-dark";  # ou autre thème
   #   package = pkgs.gnome-themes-extra;
   # package = pkgs.papirus-icon-theme;
   # name = "Papirus-Dark";
 in {
-  # Thème GTK pour GTK3 et GTK4
+
+  catppuccin = {
+    enable = true;
+    flavor = "mocha";
+    accent = "pink";
+  };
+
   gtk = {
     enable = true;
-    theme = {
-      name = name;
-      package = package;
-    };
-    cursorTheme = {
-      name = name;
-      package = package;
-    };
-    iconTheme = {
-      name = name;
-      package = package;
-    };
+    theme.name = lib.mkDefault name;
+    cursorTheme.name = lib.mkDefault name;
+    iconTheme.name = lib.mkDefault name;
+    colorScheme = lib.mkDefault "dark";
     # font = {
     #   name = "sans";
     #   size = 11;
-    # };
-    gtk3.extraConfig = {
-      gtk-application-prefer-dark-theme = 0;
-      gtk-xft-antialias = 1;
-      gtk-xft-hinting = 1;
-      gtk-xft-hintstyle = "hintslight";
-      gtk-xft-rgba = "rgb";
-    };
-    gtk4.extraConfig = {
-      gtk-application-prefer-dark-theme = 0;
-      gtk-xft-antialias = 1;
-      gtk-xft-hinting = 1;
-      gtk-xft-hintstyle = "hintslight";
-      gtk-xft-rgba = "rgb";
-    };
   };
 
   # Forcer l'interface en mode dark (utile pour apps qui respectent gtk-theme-variant)
@@ -60,7 +46,8 @@ in {
     enable = true;
   
     style = {
-      name = name;       # style forcé (dark si ton kvantum est dark)
+      # name = name;       # style forcé (dark si ton kvantum est dark)
+      name = "kvantum";
       package = package;
     };
   

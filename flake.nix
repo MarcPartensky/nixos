@@ -132,9 +132,9 @@
           # inputs.disko.homeModule.disko
           # inputs.home-manager.homeModule.default
           # inputs.hyprland.homeManagerModules.default
-	  inputs.catppuccin.homeModules.catppuccin
+      	  inputs.catppuccin.homeModules.catppuccin
           inputs.nixvim.homeModules.default
-	  inputs.sops.homeManagerModules.sops
+	        inputs.sops.homeManagerModules.sops
           ./users/marc/home.nix 
         ];
       };
