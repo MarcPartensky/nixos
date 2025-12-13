@@ -73,19 +73,18 @@
         specialArgs = { inherit inputs; };
         modules = [
           inputs.disko.nixosModules.disko
-          inputs.home-manager.nixosModules.default
 	        inputs.hyprland.nixosModules.default
 	        inputs.nixvim.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops
           # inputs.sopswarden.nixosModules.default
           # inputs.microvm.nixosModules.microvm
+          # inputs.home-manager.nixosModules.default
           ./hosts/laptop/disko.nix
           ./hosts/laptop/hardware-configuration.nix
-          # ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
-          ./users/marc
+          # ./users/marc
         ];
       };
 
@@ -140,24 +139,10 @@
       };
     };
 
-    # homeConfigurations = {
-    #   "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
-    #     pkgs = nixpkgs.legacyPackages.x86_64-linux;
-    #     specialArgs = { inherit inputs; };
-    #     modules = [
-    #       {
-    #         wayland.windowManager.hyprland = {
-    #           enable = true;
-    #           # set the flake package
-    #           package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
-    #           portalPackage = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.xdg-desktop-portal-hyprland;
-    #         };
-    #       }
-    #     ];
-    #   };
-    # };
     darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {
-      modules = [ ./hosts/macos/configuration.nix ];
+      modules = [
+        ./hosts/macos/configuration.nix
+      ];
     };
   };
 }

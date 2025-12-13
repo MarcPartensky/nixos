@@ -11,7 +11,7 @@ in {
       # ../../services
       ../../hosts/laptop/networking.nix
       ../../hosts/laptop/bluetooth.nix
-			../../modules/nixos/iso
+      # ../../modules/nixos/iso
       ../../modules/nixos/pipewire
       ../../modules/nixos/keyd
       ../../modules/nixos/gnupg
