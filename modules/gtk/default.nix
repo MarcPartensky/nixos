@@ -14,7 +14,8 @@ in {
   catppuccin = {
     enable = true;
     flavor = "mocha";
-    accent = "pink";
+    # accent = "pink";
+    accent = "lavender";
   };
 
   gtk = {
