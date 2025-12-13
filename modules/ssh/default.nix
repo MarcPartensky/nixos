@@ -1,7 +1,9 @@
 { pkgs, ... }:
 {
   programs.ssh = {
-    # enable = true;
+    enable = true;
+    enableDefaultConfig = false;
+
     # extraConfig = "
     #   Host rack
     #     Hostname marcpartensky.com
