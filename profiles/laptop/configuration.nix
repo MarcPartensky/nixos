@@ -11,7 +11,7 @@ in {
       # ../../services
       ../../hosts/laptop/networking.nix
       ../../hosts/laptop/bluetooth.nix
-			../../modules/iso
+			../../modules/root/iso
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf

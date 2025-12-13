@@ -127,33 +127,33 @@ let
 in
 {
   imports = [
-    ../../modules/git
-    ../../modules/hyprland
-    ../../modules/waybar
-    ../../modules/zsh
-    ../../modules/alacritty
-    ../../modules/wallpapers
-    ../../modules/mako
-    ../../modules/syncthing
-    ../../modules/ssh
-    ../../modules/tealdeer
-    ../../modules/neovim
-    ../../modules/gh
-    ../../modules/gtk
-    ../../modules/xdg
-    ../../modules/satty
-    ../../modules/pgcli
-    # ../../modules/virt-manager
-    # ../../modules/polkit
-    # ../../modules/ipython
-    # ../../modules/librewolf
-    # ../../modules/steam
-    # ../../modules/docker
-    # ../../modules/kodi
-    # ../../modules/rbw
-    # ../../modules/radarr
-    # ../../modules/thunderbird
-    # ../../modules/tor
+    ../../modules/home/git
+    ../../modules/home/hyprland
+    ../../modules/home/waybar
+    ../../modules/home/zsh
+    ../../modules/home/alacritty
+    ../../modules/home/wallpapers
+    ../../modules/home/mako
+    ../../modules/home/syncthing
+    ../../modules/home/ssh
+    ../../modules/home/tealdeer
+    ../../modules/home/neovim
+    ../../modules/home/gh
+    ../../modules/home/gtk
+    ../../modules/home/xdg
+    ../../modules/home/satty
+    ../../modules/home/pgcli
+    # ../../modules/home/virt-manager
+    # ../../modules/home/polkit
+    # ../../modules/home/ipython
+    # ../../modules/home/librewolf
+    # ../../modules/home/steam
+    # ../../modules/home/docker
+    # ../../modules/home/kodi
+    # ../../modules/home/rbw
+    # ../../modules/home/radarr
+    # ../../modules/home/thunderbird
+    # ../../modules/home/tor
   ];
 
   home = {
