@@ -8,6 +8,6 @@
         vi = true;
       };
       # "named queries".simple = "select * from abc where a is not Null";
-    }
+    };
   };
 }

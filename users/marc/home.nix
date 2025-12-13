@@ -142,10 +142,11 @@ in
     ../../modules/gtk
     ../../modules/xdg
     ../../modules/satty
+    ../../modules/pgcli
+    # ../../modules/virt-manager
     # ../../modules/polkit
     # ../../modules/ipython
     # ../../modules/librewolf
-    # ../../modules/virt-manager
     # ../../modules/steam
     # ../../modules/docker
     # ../../modules/kodi
@@ -165,7 +166,6 @@ in
   # };
 
   home.packages = cliPackages ++ guiPackages ++ [ pythonEnv ];
-  # programs.delta.enable = true;
 
   # nixpkgs.config.permittedInsecurePackages = [
   #   "electron-36.9.5" # Autorise ce paquet spécifique
@@ -184,7 +184,6 @@ in
     components = ["secrets" "ssh"];
   };
 
-  programs.pgcli.enable = true;
   programs.topgrade.enable = true;
 
   # Configuration DConf pour Nautilus
