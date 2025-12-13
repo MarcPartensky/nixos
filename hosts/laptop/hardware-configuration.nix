@@ -6,9 +6,7 @@
 {
   imports =
     [ (modulesPath + "/installer/scan/not-detected.nix")
-    ./bluetooth.nix
     ./networking.nix
-    ./dns.nix
     # ./nvidia.nix
     ];
 
