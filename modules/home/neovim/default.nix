@@ -5,13 +5,9 @@
     enable = true;
     # # colorschemes.catppuccin.enable = true;
     colorschemes.onedark.enable = true;
-    opts = {
-      number = true;         # Show line numbers
-      relativenumber = true; # Show relative line numbers
-      shiftwidth = 2;        # Tab width should be 2
-      tabstop = 2;
-      expandtab = false;
-    };
+    opts = import ./options.nix;
+    keymaps = import ./keymaps.nix;
+
     plugins.lualine = {
       enable = true;
       settings = {
