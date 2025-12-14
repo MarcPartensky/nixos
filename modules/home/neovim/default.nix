@@ -4,7 +4,6 @@
   programs.nixvim = {
     enable = true;
     # # colorschemes.catppuccin.enable = true;
-    colorschemes.onedark.enable = true;
     opts = import ./options.nix;
     keymaps = import ./keymaps.nix;
 
@@ -14,6 +13,10 @@
         colorscheme = "wombat";
       };
     };
+
+    colorschemes.onedark.enable = true;
+    extraConfigLua = builtins.readFile ./extra_config.lua;
+
     extraPlugins = with pkgs.vimPlugins; [
       vim-toml
       lualine-nvim

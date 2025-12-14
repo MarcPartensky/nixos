@@ -24,6 +24,8 @@
   hlsearch = false;
   incsearch = true;
   wrap = false; # Désactiver le wrapping général
+  termguicolors = true; # Permet à Neovim d'utiliser les vraies couleurs
+  winblend = 0;         # Transparence pour les fenêtres flottantes (0 = opaque, 100 = transparent)
   
   # TABS / INDENTS
   expandtab = true;
@@ -31,4 +33,5 @@
   tabstop = 4;
   softtabstop = 4;
   shiftwidth = 4;
+
 }
