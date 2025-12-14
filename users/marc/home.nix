@@ -143,6 +143,7 @@ in
     ../../modules/home/xdg
     ../../modules/home/satty
     ../../modules/home/pgcli
+    ../../modules/home/gpg
     # ../../modules/home/virt-manager
     # ../../modules/home/polkit
     # ../../modules/home/ipython
@@ -198,12 +199,6 @@ in
   };
 
   # programs.dconf.enable = true;
-
-  programs.gpg.enable = true;
-  services.gpg-agent = {
-    enable = true;
-    enableSshSupport = true;
-  };
 
   # systemd.user.services = {
   #   evolution-data-server = {
