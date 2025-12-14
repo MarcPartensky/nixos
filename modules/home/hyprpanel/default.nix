@@ -22,6 +22,8 @@
 
       bar.launcher.autoDetectIcon = true;
       bar.workspaces.show_icons = true;
+      bar.clock.format = "%H:%M:%S";
+      bar.battery.label = true;
 
       menus.clock = {
         time = {

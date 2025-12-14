@@ -129,7 +129,6 @@ in
   imports = [
     ../../modules/home/git
     ../../modules/home/hyprland
-    # ../../modules/home/waybar
     ../../modules/home/zsh
     ../../modules/home/alacritty
     ../../modules/home/wallpapers
@@ -144,6 +143,7 @@ in
     ../../modules/home/pgcli
     ../../modules/home/gpg
     ../../modules/home/wofi
+    # ../../modules/home/waybar
     # ../../modules/home/mako
     ../../modules/home/hyprpanel
     ../../modules/home/gammastep
