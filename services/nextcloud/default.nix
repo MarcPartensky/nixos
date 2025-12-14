@@ -10,10 +10,14 @@
 in {
   environment.etc."nextcloud-password".text = "nextcloudpassword";
   environment.etc."nextcloud-password".mode = "0600";
+  environment.systemPackages = with pkgs; [
+    minio-client
+    nextcloud32
+  ];
 
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud31;
+    package = pkgs.nextcloud32;
     hostName = "localhost";
     autoUpdateApps.enable = true;
     config = {
@@ -45,6 +49,18 @@ in {
     # };
   };
 
+  services.postgresql = {
+    ensureDatabases = [ "nextcloud" ];
+    ensureUsers = [
+      {
+        name = "nextcloud";
+        ensureDBOwnership = true;
+        # Since you use 'trust' in authentication below, we don't strictly need a password here
+        # provided Nextcloud connects from localhost.
+      }
+    ];
+  };
+
   # services.minio = {
   #   enable = true;
   #   listenAddress = "127.0.0.1:9000";
@@ -53,5 +69,4 @@ in {
   # };
 
 
-  environment.systemPackages = [ pkgs.minio-client ];
 }

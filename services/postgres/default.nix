@@ -5,11 +5,19 @@
     enable = true;
 
     # Crée les bases automatiquement
-    ensureDatabases = [ "nextcloud" "vaultwarden" ];
+    ensureDatabases = [ "vaultwarden" ];
     # ensureUsers = [{
     #   name = "nextcloud";
     #   ensurePermissions."DATABASE nextcloud" = "ALL PRIVILEGES";
     # }];
+
+    ensureUsers = [
+      {
+        name = "root";
+        ensureClauses = { superuser = true; login = true; };
+        # Password setting via Nix is complex, usually handled manually or via socket auth
+      }
+    ];
 
 
     # Authentification (locale et localhost)
@@ -24,18 +32,18 @@
       host all all ::1/128 trust
     '';
 
-    # Script SQL initial pour créer utilisateurs et droits
-    initialScript = pkgs.writeText "init.sql" ''
-      CREATE USER root WITH LOGIN PASSWORD 'rootpassword' SUPERUSER;
-
-      -- Nextcloud
-      CREATE USER nextcloud WITH LOGIN PASSWORD 'nextcloudpassword';
-      GRANT ALL PRIVILEGES ON DATABASE nextcloud TO nextcloud;
-
-      -- Vaultwarden
-      CREATE USER vaultwarden WITH LOGIN PASSWORD 'vaultwarden';
-      GRANT ALL PRIVILEGES ON DATABASE vaultwarden TO vaultwarden;
-    '';
+    # # Script SQL initial pour créer utilisateurs et droits
+    # initialScript = pkgs.writeText "init.sql" ''
+    #   CREATE USER root WITH LOGIN PASSWORD 'rootpassword' SUPERUSER;
+    #
+    #   -- Nextcloud
+    #   CREATE USER nextcloud WITH LOGIN PASSWORD 'nextcloudpassword';
+    #   GRANT ALL PRIVILEGES ON DATABASE nextcloud TO nextcloud;
+    #
+    #   -- Vaultwarden
+    #   CREATE USER vaultwarden WITH LOGIN PASSWORD 'vaultwarden';
+    #   GRANT ALL PRIVILEGES ON DATABASE vaultwarden TO vaultwarden;
+    # '';
   };
 
   # services.postgresqlBackup = {
