@@ -146,6 +146,7 @@ in
     ../../modules/home/gpg
     ../../modules/home/wofi
     ../../modules/home/hyprpanel
+    ../../modules/home/gammastep
     # ../../modules/home/virt-manager
     # ../../modules/home/polkit
     # ../../modules/home/ipython
@@ -209,13 +210,6 @@ in
   #   };
   # };
 
-  services.gammastep = {
-    enable = true;
-    provider = "manual";
-    latitude = 48.0;
-    longitude = 2.0;
-  };
-
-  home.stateVersion = "25.05";
+  home.stateVersion = "25.11";
 }
 
