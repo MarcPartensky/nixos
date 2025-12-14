@@ -145,6 +145,7 @@ in
     ../../modules/home/pgcli
     ../../modules/home/gpg
     ../../modules/home/wofi
+    ../../modules/home/hyprpanel
     # ../../modules/home/virt-manager
     # ../../modules/home/polkit
     # ../../modules/home/ipython
