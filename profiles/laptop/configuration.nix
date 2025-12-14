@@ -16,6 +16,7 @@ in {
       ../../modules/nixos/keyd
       ../../modules/nixos/gnupg
       ../../modules/nixos/zsh
+      ../../modules/nixos/zfs
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
