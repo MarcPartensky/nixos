@@ -36,5 +36,6 @@
   grs = "git reset";
 
   sshp = "cat ~/.ssh/id_ed25519.pub";
-  update = "just -f $HOME/git/nixos/Justfile;
+  update = "just -f $HOME/git/nixos/Justfile";
+  ch = "cd $(git rev-parse --show-toplevel)";
 }
