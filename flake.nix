@@ -3,7 +3,6 @@
   inputs = {
     # darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-24.05";
     # darwin.inputs.nixpkgs.follows = "nixpkgs";
-    # nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     hyprland.url = "github:hyprwm/Hyprland?ref=v0.50.0";
@@ -79,12 +78,10 @@
           inputs.sops.nixosModules.sops
           # inputs.sopswarden.nixosModules.default
           # inputs.microvm.nixosModules.microvm
-          # inputs.home-manager.nixosModules.default
           ./hosts/laptop/disko.nix
           ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
-          # ./users/marc
         ];
       };
 
