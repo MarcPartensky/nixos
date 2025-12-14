@@ -18,8 +18,9 @@ in {
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud32;
-    hostName = "localhost";
+    hostName = "localhost:8081";
     autoUpdateApps.enable = true;
+    appstoreEnable = true;
     config = {
         dbtype = "pgsql";
         dbuser = "nextcloud";
