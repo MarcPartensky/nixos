@@ -2,6 +2,16 @@
   j = "just";
   v = "nvim";
   u = "update";
+  s = "sudo";
+  l = "ls";
+  c = "cd";
+  m = "make";
+  f = "find";
+  d = "docker";
+  r = "restart";
+  g = "grep";
+
+  sy = "systemctl";
   ll = "ls -l";
   gs = "git status";
   ga = "git add -A";
@@ -21,4 +31,5 @@
   dc = "docker compose";
   # ns = "nix-search-tv print |
   #   fzf --preview 'nix-search-tv preview {}' --scheme history";
+
 }
