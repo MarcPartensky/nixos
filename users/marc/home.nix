@@ -144,6 +144,7 @@ in
     ../../modules/home/satty
     ../../modules/home/pgcli
     ../../modules/home/gpg
+    ../../modules/home/wofi
     # ../../modules/home/virt-manager
     # ../../modules/home/polkit
     # ../../modules/home/ipython
