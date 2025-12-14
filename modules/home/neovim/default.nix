@@ -14,10 +14,21 @@
       };
     };
 
+    plugins.neo-tree = {
+      enable = true;
+      settings = import ./plugins/neo-tree.nix;
+    };
+    plugins.auto-session = {
+      enable = true;
+      settings = import .plugins/auto-session.nix;
+
+    };
+
     colorschemes.onedark.enable = true;
     extraConfigLua = builtins.readFile ./extra_config.lua;
 
     extraPlugins = with pkgs.vimPlugins; [
+      auto-session
       vim-toml
       lualine-nvim
       onedark-nvim
