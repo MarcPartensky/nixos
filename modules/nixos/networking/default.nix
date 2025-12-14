@@ -21,6 +21,7 @@
   networking = {
     useDHCP = lib.mkDefault true;
     hostName = "nixos";
+    hostId = "c1ae84e2";
     nameservers = [ "8.8.8.8" "8.8.4.4" ];
     enableIPv6 = false;
 
@@ -30,35 +31,37 @@
     #   externalInterface = "enp0s31f6"; # eth interface
     # };
 
-    networkmanager.enable = true; # enable network manager to start during boot
-    networkmanager.wifi.backend = "iwd";
     # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
-    networkmanager.ensureProfiles.profiles = {
+    networkmanager = {
+      enable = true;
+      wifi.backend = "iwd";
+      ensureProfiles.profiles = {
         wifi-de-marc = {
-            connection = {
-                id = "Wifi de Marc";
-                uuid = "73d1cf32-c497-4fd1-ace3-3e12008ecec0";
-                type = "wifi";
-                autoconnect = true;
-                interface-name = "wlan0";
-            };
-            wifi = {
-                mode = "infrastructure";
-                ssid = "Wifi de Marc";
-            };
-            wifi-security = {
-                key-mgmt = "wpa-psk";
-                psk = "2ipt98gyqf4pud63jeqi";
-            };
-            ipv4 = {
-                method = "auto";
-            };
-            ipv6 = {
-                addr-gen-mode = "default";
-                method = "auto";
-            };
+          connection = {
+            id = "Wifi de Marc";
+            uuid = "73d1cf32-c497-4fd1-ace3-3e12008ecec0";
+            type = "wifi";
+            autoconnect = true;
+            interface-name = "wlan0";
+          };
+          wifi = {
+            mode = "infrastructure";
+            ssid = "Wifi de Marc";
+          };
+          wifi-security = {
+            key-mgmt = "wpa-psk";
+            psk = "2ipt98gyqf4pud63jeqi";
+          };
+          ipv4 = {
+            method = "auto";
+          };
+          ipv6 = {
+            addr-gen-mode = "default";
+            method = "auto";
+          };
         };
+      };
     };
 
     wireless.networks = {
@@ -79,5 +82,4 @@
   };
 
   services.gnome.gnome-keyring.enable = true;
-
 }

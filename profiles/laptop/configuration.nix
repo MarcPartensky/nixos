@@ -43,12 +43,8 @@ in {
   # TEMPORAIRE
   nixpkgs.config.allowUnfree = true;
   
-  networking.networkmanager.enable = true;
-
   # hardware.cpu.intel.updateMicrocode = true;
   # hardware.firmware = [ pkgs.linux-firmware ];
-
-  networking.hostId = "c1ae84e2";
   # networking.firewall.enable = false;
 
   programs.zsh.enable = true;
@@ -116,6 +112,6 @@ in {
   # and migrated your data accordingly.
   #
   # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
-  system.stateVersion = "25.05"; # Did you read the comment?
+  system.stateVersion = "25.11"; # Did you read the comment?
 }
 
