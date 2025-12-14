@@ -179,9 +179,6 @@ in
   #   download = "${config.home.homeDirectory}/downloads";
   # };
 
-
-  # services.librespot.enable = true;
-
   services.gnome-keyring = {
     enable = true;
     components = ["secrets" "ssh"];
