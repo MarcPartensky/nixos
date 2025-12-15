@@ -19,6 +19,10 @@
   hardware.enableAllFirmware = true;
   services.xserver.videoDrivers = [ "intel" ];
 
+  boot.supportedFilesystems = [ "exfat" ];
+  services.udisks2.enable = true;
+  services.gvfs.enable = true;
+
   hardware.graphics = {
     enable = true;
     # driSupport = true;

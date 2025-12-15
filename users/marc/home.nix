@@ -51,6 +51,9 @@ let
     dconf
     playerctl
     nushell
+    # glib
+    # gsettings-desktop-schemas
+    udiskie
   ];
 
   # -------------------------------
@@ -143,10 +146,12 @@ in
     ../../modules/home/pgcli
     ../../modules/home/gpg
     ../../modules/home/wofi
-    # ../../modules/home/waybar
-    # ../../modules/home/mako
+    ../../modules/home/dconf
+    # ../../modules/home/waybar (incompatible hyprpanel)
+    # ../../modules/home/mako (incompatible hyprpanel)
     ../../modules/home/hyprpanel
     ../../modules/home/gammastep
+    ../../modules/home/udiskie
     # ../../modules/home/virt-manager
     # ../../modules/home/polkit
     # ../../modules/home/ipython
@@ -159,6 +164,13 @@ in
     # ../../modules/home/thunderbird
     # ../../modules/home/tor
   ];
+
+  home.sessionVariables = {
+    GSETTINGS_SCHEMA_DIR =
+      "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
+    DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
+  };
+
 
   home = {
     username = "marc";
@@ -186,19 +198,6 @@ in
   };
 
   programs.topgrade.enable = true;
-
-  # Configuration DConf pour Nautilus
-  dconf.settings = {
-    "org/gnome/nautilus/preferences" = {
-      default-folder-viewer = "'list-view'";
-    };
-    "org/gnome/nautilus/list-view" = {
-      sort-column = "'modified'";
-      sort-order  = "'descending'";
-    };
-  };
-
-  # programs.dconf.enable = true;
 
   # systemd.user.services = {
   #   evolution-data-server = {

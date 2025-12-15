@@ -98,6 +98,9 @@ let
     nautilus
     less
     yq
+    gsettings-desktop-schemas
+    glib
+    exfatprogs
   ];
   
   unfree = with pkgs; [
