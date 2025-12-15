@@ -94,6 +94,7 @@
           inputs.home-manager.nixosModules.default
           ./profiles/anywhere/configuration.nix
           ./users.nix
+          ./cloud.nix
         ];
       };
 
