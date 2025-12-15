@@ -39,6 +39,7 @@ in
     busybox
     vaultwarden
     pgcli
+    nix-du
   ];
 
   # SSH root avec clé publique (remplace par ta vraie clé)
