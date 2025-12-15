@@ -54,6 +54,7 @@ let
     # glib
     # gsettings-desktop-schemas
     udiskie
+    nix-du
   ];
 
   # -------------------------------
