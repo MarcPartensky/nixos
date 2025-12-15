@@ -20,8 +20,6 @@ in {
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
-      ../../services/postgres
-      ../../services/nextcloud
     ];
 
   environment.pathsToLink = [

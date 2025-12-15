@@ -1,8 +1,9 @@
 { pkgs, config, ... } :
 {
     imports = [
-        ./nextcloud
+        # ./nextcloud
         ./postgres
+        ./vaultwarden
         # ./newt # attendre maj flakes
     ];
 }

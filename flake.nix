@@ -81,6 +81,7 @@
           ./hosts/laptop/disko.nix
           ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
+          ./services
           ./users.nix
         ];
       };

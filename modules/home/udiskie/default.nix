@@ -5,6 +5,6 @@
     automount = true;
     notify = true;
     # settings = {};
-    tray = "always";
+    tray = "never";
   };
 }
