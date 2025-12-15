@@ -20,7 +20,7 @@
     };
     plugins.auto-session = {
       enable = true;
-      settings = import .plugins/auto-session.nix;
+      settings = import ./plugins/auto-session.nix;
 
     };
 
