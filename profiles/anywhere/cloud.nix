@@ -1,6 +1,5 @@
 { config, pkgs, inputs, ... }:
 let
-  traefikDynamic = ./dynamic.toml;  # chemin relatif depuis cloud.nix
   pangolin = inputs.unstable.fosrl-pangolin;
 in
 {

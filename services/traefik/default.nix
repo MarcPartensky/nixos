@@ -4,7 +4,7 @@
     enable = true;
 
     # Nom de domaine de ton dashboard
-    dynamicConfigFile = traefikDynamic;
+    dynamicConfigFile = ./dynamic.toml;
 
     # Configuration statique
     staticConfigOptions = {
