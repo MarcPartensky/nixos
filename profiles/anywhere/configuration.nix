@@ -8,6 +8,7 @@ in
     (modulesPath + "/profiles/qemu-guest.nix")
     ../../hosts/anywhere/boot.nix
     ../../hosts/anywhere/lvm.nix
+    ../../modules/nixos/zsh
     ./cloud.nix
     # ./caddy.nix
     # ../../hosts/anywhere/zfs.nix
