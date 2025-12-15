@@ -95,6 +95,7 @@
           ./profiles/anywhere/configuration.nix
           ./users.nix
           ./services
+          ./services/traefik
         ];
       };
 

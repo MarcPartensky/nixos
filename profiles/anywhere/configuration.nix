@@ -77,13 +77,6 @@ in
   #   ];
   # };
 
-  # Exemple de dossier pour Nextcloud (Docker ou systemd service)
-  # services.nextcloud = {
-  #   enable = true;
-  #   dataDir = "/var/lib/nextcloud/data";
-  #   dbType = "sqlite"; # ou "mysql" si tu préfères
-  # };
-
   # Pangolin (si tu utilises pangolin-service de nixpkgs)
   # services.pangolin = {
   #   enable = true;
@@ -96,7 +89,7 @@ in
   # environment.etcBackupExtension = ".bak";
 
   # Version du système NixOS
-  system.stateVersion = "24.05";
+  system.stateVersion = "25.11";
 
   # Nix flakes
   nix.extraOptions = ''
