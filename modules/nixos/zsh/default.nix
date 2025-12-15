@@ -19,7 +19,9 @@ in
 
     shellAliases = shellAliases;
 
-    ohMyZsh.plugins = [
+    ohMyZsh = {
+      enable = true;
+      plugins = [
       # {
       #   name = "enhancd";
       #   file = "init.sh";
