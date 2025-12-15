@@ -43,12 +43,11 @@ in
   ];
 
   nix = {
-    # Nettoyage automatique toutes les 7 jours
-    auto-optimise-store = true;
+    settings.auto-optimise-store = true;
     gc = {
       automatic = true;
-      dates = "6h30";      # "daily", "weekly", "monthly"
-      options = "--delete-older-than 30d";  # Supprime les paquets inutilisés plus vieux que 30 jours
+      dates = "6:30";      # "daily", "weekly", "monthly"
+      options = "--delete-older-than 30d";
     };
   };
 
