@@ -153,6 +153,7 @@ in
     ../../modules/home/hyprpanel
     ../../modules/home/gammastep
     ../../modules/home/udiskie
+    ../../modules/home/starship
     # ../../modules/home/virt-manager
     # ../../modules/home/polkit
     # ../../modules/home/ipython
