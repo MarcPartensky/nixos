@@ -155,13 +155,13 @@ in
     ../../modules/home/gammastep
     ../../modules/home/udiskie
     ../../modules/home/starship
+    ../../modules/home/kodi
     # ../../modules/home/virt-manager
     # ../../modules/home/polkit
     # ../../modules/home/ipython
     # ../../modules/home/librewolf
     # ../../modules/home/steam
     # ../../modules/home/docker
-    # ../../modules/home/kodi
     # ../../modules/home/rbw
     # ../../modules/home/thunderbird
     # ../../modules/home/tor

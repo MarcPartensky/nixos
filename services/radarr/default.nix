@@ -10,7 +10,7 @@
       # update.mechanism = "internal";
       server = {
         urlbase = "localhost";
-        port = 7878;
+        port = 8086;
         bindaddress = "*";
       };
     };
