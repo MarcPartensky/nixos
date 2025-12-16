@@ -132,6 +132,7 @@ let
     bitwarden-desktop
     feh
     libheif
+    yazi
   ];
 in
 {
