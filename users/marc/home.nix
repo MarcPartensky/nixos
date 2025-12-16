@@ -56,6 +56,10 @@ let
     udiskie
     nix-du
     wireguard-tools
+    moodle-dl
+    power-profiles-daemon
+    upower
+    libgtop
   ];
 
   # -------------------------------
