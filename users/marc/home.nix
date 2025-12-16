@@ -162,7 +162,6 @@ in
     # ../../modules/home/docker
     # ../../modules/home/kodi
     # ../../modules/home/rbw
-    # ../../modules/home/radarr
     # ../../modules/home/thunderbird
     # ../../modules/home/tor
   ];
