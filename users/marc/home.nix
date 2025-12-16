@@ -171,6 +171,7 @@ in
     GSETTINGS_SCHEMA_DIR =
       "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
     DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
+    SAL_USE_VCLPLUGIN = "gen";
   };
 
 
