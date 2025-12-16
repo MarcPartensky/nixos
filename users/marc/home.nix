@@ -55,6 +55,7 @@ let
     # gsettings-desktop-schemas
     udiskie
     nix-du
+    wireguard-tools
   ];
 
   # -------------------------------
