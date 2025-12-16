@@ -5,6 +5,7 @@
         ./postgres
         ./vaultwarden
         ./radarr
+        ./sonarr
         ./qbittorrent
         # ./newt # attendre maj flakes
     ];
