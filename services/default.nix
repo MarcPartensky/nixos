@@ -6,6 +6,7 @@
         ./vaultwarden
         ./radarr
         ./sonarr
+        ./prowlarr
         ./qbittorrent
         # ./newt # attendre maj flakes
     ];
