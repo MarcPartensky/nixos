@@ -162,8 +162,7 @@ in
     ../../modules/home/udiskie
     ../../modules/home/starship
     ../../modules/home/kodi
-    # ../../modules/home/virt-manager
-    # ../../modules/home/polkit
+    ../../modules/home/polkit
     # ../../modules/home/ipython
     # ../../modules/home/librewolf
     # ../../modules/home/steam
