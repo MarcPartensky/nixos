@@ -133,6 +133,7 @@ let
     feh
     libheif
     yazi
+    virt-manager
   ];
 in
 {
