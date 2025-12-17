@@ -18,6 +18,7 @@ in {
       ../../modules/nixos/zsh
       ../../modules/nixos/zfs
       ../../modules/nixos/virt-manager
+      ../../modules/nixos/podman
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
