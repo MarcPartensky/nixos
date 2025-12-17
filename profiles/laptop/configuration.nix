@@ -17,6 +17,7 @@ in {
       ../../modules/nixos/gnupg
       ../../modules/nixos/zsh
       ../../modules/nixos/zfs
+      ../../modules/nixos/virt-manager
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
