@@ -1,6 +1,7 @@
 { pkgs, home-manager, inputs, ... }:
 
 let
+  home = "/home/marc";
   # -------------------------------
   # CLI Packages
   # -------------------------------
@@ -134,6 +135,8 @@ let
     libheif
     yazi
     virt-manager
+    flatpak
+    gnome-software # for flatpak
   ];
 in
 {
@@ -162,7 +165,7 @@ in
     ../../modules/home/udiskie
     ../../modules/home/starship
     ../../modules/home/kodi
-    ../../modules/home/polkit
+    # ../../modules/home/polkit
     # ../../modules/home/ipython
     # ../../modules/home/librewolf
     # ../../modules/home/steam
@@ -177,7 +180,36 @@ in
       "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
     DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
     SAL_USE_VCLPLUGIN = "gen";
+    # XDG_DATA_HOME      = "${home}/.local/share";
+    # XDG_CONFIG_HOME    = "${home}/.config";
+    # XDG_CACHE_HOME     = "${home}/.cache";
+    # # XDG_RUNTIME_DIR    = "/run/user/${toString config.home.uid}";
+    # XDG_DATA_DIRS = ''
+    #   /var/lib/flatpak/exports/share
+    #   ${home}/.local/share/flatpak/exports/share
+    #   ${home}/.local/state/nix/profile/share
+    #   ${home}/.nix-profile/share
+    #   /nix/profile/share
+    #   /etc/profiles/per-user/marc/share
+    #   /nix/var/nix/profiles/default/share
+    #   /run/current-system/sw/share
+    # '';
+    # XDG_CONFIG_DIRS    = "/etc/xdg";
+    # PATH = "${home}/.local/bin:$PATH";
   };
+
+  xdg.enable = true;
+  xdg.systemDirs.data = [
+    "/var/lib/flatpak/exports/share"
+    "/home/marc/.local/share/flatpak/exports/share"
+    "/run/current-system/sw/share"
+    "/nix/var/nix/profiles/default/share"
+    "/etc/profiles/per-user/marc/share"
+    "/home/marc/.local/state/nix/profile/share"
+    "/nix/profile/share"
+    "/home/marc/.nix-profile/share"
+  ];
+
 
 
   home = {

@@ -19,6 +19,7 @@ in {
       ../../modules/nixos/zfs
       ../../modules/nixos/virt-manager
       ../../modules/nixos/podman
+      ../../modules/nixos/flatpak
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
