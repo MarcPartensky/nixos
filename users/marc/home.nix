@@ -149,7 +149,8 @@ in
 {
   imports = [
     ../../modules/home/git
-    ../../modules/home/hyprland
+    # ../../modules/home/hyprland
+    ../../modules/home/niri
     ../../modules/home/zsh
     ../../modules/home/alacritty
     ../../modules/home/wallpapers

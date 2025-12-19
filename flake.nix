@@ -14,9 +14,14 @@
     newt.url = "github:fosrl/newt";
     claude-code.url = "github:sadjow/claude-code-nix";
 
+    niri.url = "github:sodiboo/niri-flake";
+    niri.inputs.nixpkgs.follows = "nixpkgs";
+
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
+
     sops.url = "github:Mic92/sops-nix";
+    sops.inputs.nixpkgs.follows = "nixpkgs";
 
     nixvim.url = "github:nix-community/nixvim/nixos-25.11";
     nixvim.inputs.nixpkgs.follows = "nixpkgs";
@@ -134,6 +139,7 @@
           inputs.nixvim.homeModules.default
           inputs.sops.homeManagerModules.sops
           inputs.sopswarden.homeManagerModules.default
+          inputs.niri.homeModules.niri
           ./users/marc/home.nix 
         ];
       };
