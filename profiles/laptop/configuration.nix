@@ -21,7 +21,8 @@ in {
       ../../modules/nixos/podman
       ../../modules/nixos/flatpak
       ../../modules/nixos/sopswarden
-      ../../modules/nixos/ly
+      # ../../modules/nixos/ly
+      ../../modules/nixos/greetd
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
