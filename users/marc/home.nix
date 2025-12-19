@@ -138,6 +138,8 @@ let
     flatpak
     gnome-software # for flatpak
     pkgs.nur.repos.nltch.spotify-adblock
+    code-cursor
+    claude-code
   ];
 in
 {

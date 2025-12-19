@@ -56,23 +56,19 @@ let
     wget
     p7zip
     git
-    gitoxide
     gh
     codeberg-cli
     bluetuith
-    alacritty
     kitty
     htop
     killall
     fzf
-    firefox
     stow
     yarn
     gnumake
     just
     gparted
     lsof
-    uv
     tree
     bat
     httpie
@@ -89,13 +85,7 @@ let
     arp-scan
     util-linux
     glances
-    rbw
-    rofi-rbw-wayland
     # pinentry
-    wl-clipboard
-    gpt-cli
-    open-webui
-    nautilus
     less
     yq
     gsettings-desktop-schemas
@@ -104,16 +94,11 @@ let
   ];
   
   unfree = with pkgs; [
-    spotify
     steam
     steam-unwrapped
     # pkgs.nvidia-settings
     nvidia-vaapi-driver
-    code-cursor
-    claude-code
     # morgen
-    beeper
-
   ];
 in {
   all = free ++ unfree;
