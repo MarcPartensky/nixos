@@ -144,6 +144,7 @@ let
     code-cursor
     claude-code
     nautilus
+    beeper
   ];
 in
 {
@@ -166,9 +167,9 @@ in
     ../../modules/home/gpg
     ../../modules/home/wofi
     ../../modules/home/dconf
-    # ../../modules/home/waybar (incompatible hyprpanel)
-    # ../../modules/home/mako (incompatible hyprpanel)
-    ../../modules/home/hyprpanel
+    ../../modules/home/waybar # (incompatible hyprpanel)
+    ../../modules/home/mako # (incompatible hyprpanel)
+    # ../../modules/home/hyprpanel
     ../../modules/home/gammastep
     ../../modules/home/udiskie
     ../../modules/home/starship
@@ -189,6 +190,7 @@ in
     "spotify"
     "cursor"
     "claude-code"
+    "beeper"
   ];
 
   home.sessionVariables = {

@@ -7,12 +7,25 @@
   ];
 
   # 1. FIX D-BUS : Permet à dconf de s'activer sans erreur
-  dconf.settings = {
+  # dconf.settings = {
     # On force une config vide ou minimale si nécessaire pour éviter l'erreur "address is empty"
-  };
+  # };
 
   # On s'assure que les services dbus utilisateur sont là
   #services.dbus.enable = true;
+  home.sessionVariables = {
+    # Force Electron/Chromium à utiliser Wayland
+    NIXOS_OZONE_WL = "1";
+    # Indique aux applis Qt d'utiliser wayland
+    QT_QPA_PLATFORM = "wayland";
+    # Indique aux applis SDL d'utiliser wayland
+    SDL_VIDEODRIVER = "wayland";
+    # Pour Mozilla (si besoin)
+    MOZ_ENABLE_WAYLAND = "1";
+    # Variables XDG standards
+    XDG_SESSION_TYPE = "wayland";
+    XDG_CURRENT_DESKTOP = "niri";
+  };
 
   programs.niri = {
     package = pkgs.niri;
@@ -91,6 +104,7 @@
       # Lancement automatique
       spawn-at-startup = [
         { argv = [ "alacritty" ]; } # Ouvre un terminal au démarrage
+        { argv = [ "dbus-update-activation-environment" "--systemd" "DISPLAY" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP" "NIXOS_OZONE_WL" ]; }
       ];
 
       overview.zoom = 0.2;
