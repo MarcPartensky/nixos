@@ -125,15 +125,20 @@
       "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
         # system = "x86_64-linux";
         # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-        pkgs = import nixpkgs { system = "x86_64-linux"; };
-        # specialArgs = { inherit inputs; };
+        # pkgs = import nixpkgs { system = "x86_64-linux"; };
+        pkgs = import nixpkgs {
+          system = "x86_64-linux";
+          overlays = [ inputs.nur.overlays.default ];
+        };
         modules = [
+          # inputs.nur.modules.nixos.defaults
+          # { nixpkgs.overlays = [ inputs.nur.overlays.default ]; }
           # inputs.disko.homeModule.disko
           # inputs.home-manager.homeModule.default
           # inputs.hyprland.homeManagerModules.default
       	  inputs.catppuccin.homeModules.catppuccin
           inputs.nixvim.homeModules.default
-	        inputs.sops.homeManagerModules.sops
+          inputs.sops.homeManagerModules.sops
           ./users/marc/home.nix 
         ];
       };

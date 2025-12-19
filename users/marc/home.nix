@@ -1,4 +1,4 @@
-{ pkgs, home-manager, inputs, ... }:
+{ pkgs, home-manager, lib, ... }:
 
 let
   home = "/home/marc";
@@ -137,6 +137,7 @@ let
     virt-manager
     flatpak
     gnome-software # for flatpak
+    pkgs.nur.repos.nltch.spotify-adblock
   ];
 in
 {
@@ -208,6 +209,10 @@ in
     "/home/marc/.local/state/nix/profile/share"
     "/nix/profile/share"
     "/home/marc/.nix-profile/share"
+  ];
+
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+    "spotify"
   ];
 
 
