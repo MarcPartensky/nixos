@@ -166,6 +166,7 @@ in
     ../../modules/home/udiskie
     ../../modules/home/starship
     ../../modules/home/kodi
+    ../../modules/home/topgrade
     # ../../modules/home/polkit
     # ../../modules/home/ipython
     # ../../modules/home/librewolf
@@ -241,8 +242,6 @@ in
     enable = true;
     components = ["secrets" "ssh"];
   };
-
-  programs.topgrade.enable = true;
 
   # systemd.user.services = {
   #   evolution-data-server = {
