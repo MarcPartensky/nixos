@@ -66,6 +66,7 @@
 
     wireless.networks = {
         "AP25G".psk = secrets.wifi-ap25g-vaugneray;
+        "HKT".psk = secrets.wifi-hkt;
     };
 
     wireless.iwd = {

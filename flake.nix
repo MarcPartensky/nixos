@@ -72,8 +72,8 @@
         specialArgs = { inherit inputs; };
         modules = [
           inputs.disko.nixosModules.disko
-	        inputs.hyprland.nixosModules.default
-	        inputs.nixvim.nixosModules.default
+	      inputs.hyprland.nixosModules.default
+	      inputs.nixvim.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           inputs.sops.nixosModules.sops
           # inputs.sopswarden.nixosModules.default

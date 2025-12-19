@@ -10,7 +10,7 @@
         ./qbittorrent
         ./dnscrypt
         ./adguard
-        ./syncserver
+        # ./syncserver
         # ./newt # attendre maj flakes
     ];
 }
