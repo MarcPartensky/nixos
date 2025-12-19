@@ -61,6 +61,8 @@ let
     power-profiles-daemon
     upower
     libgtop
+    bitwarden-cli
+    wl-clipboard-rs
   ];
 
   # -------------------------------

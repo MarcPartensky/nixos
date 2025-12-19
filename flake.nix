@@ -25,12 +25,10 @@
     #   url = "gitlab:rycee/nur-expressions?dir=pkgs/firefox-addons";
     #   inputs.nixpkgs.follows = "nixpkgs";
     # };
-    
     hyprtasking = {
       url = "github:raybbian/hyprtasking";
       inputs.hyprland.follows = "hyprland";
     };
-
     catppuccin-thunderbird = {
       url = "github:catppuccin/thunderbird";
       flake = false; # The repo isn't a flake; use as raw source
@@ -46,7 +44,6 @@
       inputs.hyprland.follows = "hyprland";
     };
     home-manager = {
-      # url = "github:nix-community/home-manager/release-25.05";
       url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
@@ -54,10 +51,10 @@
       url = "github:nix-community/NUR";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # sopswarden = {
-    #   url = "github:pfassina/sopswarden";
-    #   inputs.nixpkgs.follows = "nixpkgs";
-    # };
+    sopswarden = {
+      url = "github:pfassina/sopswarden";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     agenix.url = "github:ryantm/agenix";
     microvm.url = "github:astro/microvm.nix";
     nwg-dock-hyprland-pin-nixpkgs.url = "nixpkgs/2098d845d76f8a21ae4fe12ed7c7df49098d3f15";
@@ -75,8 +72,8 @@
 	      inputs.hyprland.nixosModules.default
 	      inputs.nixvim.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
-          inputs.sops.nixosModules.sops
-          # inputs.sopswarden.nixosModules.default
+          # inputs.sops.nixosModules.sops
+          inputs.sopswarden.nixosModules.default
           # inputs.microvm.nixosModules.microvm
           ./hosts/laptop/disko.nix
           ./hosts/laptop/hardware-configuration.nix
@@ -125,20 +122,18 @@
       "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
         # system = "x86_64-linux";
         # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-        # pkgs = import nixpkgs { system = "x86_64-linux"; };
         pkgs = import nixpkgs {
           system = "x86_64-linux";
           overlays = [ inputs.nur.overlays.default ];
         };
         modules = [
-          # inputs.nur.modules.nixos.defaults
-          # { nixpkgs.overlays = [ inputs.nur.overlays.default ]; }
           # inputs.disko.homeModule.disko
           # inputs.home-manager.homeModule.default
           # inputs.hyprland.homeManagerModules.default
       	  inputs.catppuccin.homeModules.catppuccin
           inputs.nixvim.homeModules.default
           inputs.sops.homeManagerModules.sops
+          inputs.sopswarden.homeManagerModules.default
           ./users/marc/home.nix 
         ];
       };
