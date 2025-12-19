@@ -143,6 +143,7 @@ let
     pkgs.nur.repos.nltch.spotify-adblock
     code-cursor
     claude-code
+    nautilus
   ];
 in
 {
@@ -172,6 +173,7 @@ in
     ../../modules/home/starship
     ../../modules/home/kodi
     ../../modules/home/topgrade
+    # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
     # ../../modules/home/librewolf

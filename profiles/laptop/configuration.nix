@@ -20,6 +20,7 @@ in {
       ../../modules/nixos/virt-manager
       ../../modules/nixos/podman
       ../../modules/nixos/flatpak
+      ../../modules/nixos/sopswarden
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
