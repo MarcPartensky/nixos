@@ -32,9 +32,6 @@
 
       # Les raccourcis clavier
       binds = {
-        # Ouvrir Alacritty (L'équivalent de bind = $mainMod, T, exec, alacritty)
-        "Mod+T".action.spawn = [ "alacritty" ];
-
         # Fermer la fenêtre active
         "Mod+Q".action.close-window = [ ];
 
@@ -49,8 +46,46 @@
         # Quitter Niri
         "Mod+Shift+E".action.quit = [ ];
 
-        "XF86AudioRaiseVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.1+"];
-        "XF86AudioLowerVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "0.1-"];
+        # --- Applications ---
+        "Mod+D".action.spawn = [ "wofi" "--show" "drun" ];
+        "Mod+Return".action.spawn = "alacritty";
+        "Mod+F".action.spawn = "librewolf";
+        "Mod+B".action.spawn = [ "gtk-launch" "blueberry" ];
+        "Alt+L".action.spawn = "nautilus";
+
+        # --- Gestion des fenêtres ---
+        "Mod+M".action.maximize-column = [ ]; # Équivalent fullscreen/maximise
+        "Mod+V".action.toggle-window-floating = [ ];
+        "Mod+C".action.close-window = [ ];
+        "Super+Shift+C".action.close-window = [ ]; # Doublon pour ton xdotool kill
+        "Super+Shift+Q".action.quit.skip-confirmation = true;
+
+        # --- Screenshot (Grimblast & Satty) ---
+        "Print".action.spawn = [ "sh" "-c" "grim -g \"$(slurp)\" - | satty -f -" ];
+        # Alternative grimblast d'après ta conf
+        # "Print".action.spawn = [ "grimblast" "copysave" "area" ];
+        "Mod+Print".action.spawn = [ "grimblast" "copysave" "output" ];
+
+        # --- Presse-papier & Multimédia ---
+        "Prior".action.spawn = "wl-copy";
+        "Next".action.spawn = "wl-paste";
+        
+        "Alt+D".action.spawn = [ "playerctl" "-p" "spotify" "next" ];
+        "Alt+S".action.spawn = [ "playerctl" "-p" "spotify" "previous" ];
+        "Alt+K".action.spawn = [ "playerctl" "-p" "spotify" "play-pause" ];
+        "Alt+W".action.spawn = [ "systemctl" "--user" "restart" "wpaperd" ];
+
+        # --- Contrôles Matériels (Audio/Luminosité) ---
+        "XF86AudioRaiseVolume".action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%+" ];
+        "XF86AudioLowerVolume".action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%-" ];
+        "XF86AudioMute".action.spawn = [ "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle" ];
+
+        "XF86MonBrightnessUp".action.spawn = [ "brightnessctl" "s" "+1%" ];
+        "XF86MonBrightnessDown".action.spawn = [ "brightnessctl" "s" "1%-" ];
+
+        # --- Souris ---
+        # Note : Niri gère le déplacement/redimensionnement à la souris via des réglages dédiés
+        # mais on peut binder les clics si nécessaire.
       };
 
       # Lancement automatique
