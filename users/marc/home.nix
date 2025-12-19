@@ -137,6 +137,7 @@ let
     virt-manager
     flatpak
     gnome-software # for flatpak
+    # spotify
     pkgs.nur.repos.nltch.spotify-adblock
     code-cursor
     claude-code
@@ -179,6 +180,12 @@ in
     # ../../modules/home/tor
   ];
 
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+    "spotify"
+    "cursor"
+    "claude-code"
+  ];
+
   home.sessionVariables = {
     GSETTINGS_SCHEMA_DIR =
       "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
@@ -214,9 +221,6 @@ in
     "/home/marc/.nix-profile/share"
   ];
 
-  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-    "spotify"
-  ];
 
 
 
