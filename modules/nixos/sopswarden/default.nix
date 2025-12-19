@@ -3,8 +3,8 @@
     enable = true;
     secrets = {
       # Simple secrets - just specify the Bitwarden item name
-      wifi.ap25g-vaugneray = "wifi - AP25G Vaugneray";
-      wifi.hkt = "wifi - HKT";
+      wifi-ap25g-vaugneray = "wifi - AP25G Vaugneray";
+      wifi-hkt = "wifi - HKT";
       # database-url = "Production Database";
       
       # Complex secrets - specify user, type, or field

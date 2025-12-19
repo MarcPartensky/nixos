@@ -173,13 +173,13 @@ in
     ../../modules/home/starship
     ../../modules/home/kodi
     ../../modules/home/topgrade
+    ../../modules/home/rbw
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
     # ../../modules/home/librewolf
     # ../../modules/home/steam
     # ../../modules/home/docker
-    # ../../modules/home/rbw
     # ../../modules/home/thunderbird
     # ../../modules/home/tor
   ];
