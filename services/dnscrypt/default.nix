@@ -9,6 +9,7 @@ in
     enable = true;
     # See https://github.com/DNSCrypt/dnscrypt-proxy/blob/master/dnscrypt-proxy/example-dnscrypt-proxy.toml
     settings = {
+      listen_addresses = [ "127.0.0.1:5053" ];
       sources.public-resolvers = {
         urls = [
           "https://raw.githubusercontent.com/DNSCrypt/dnscrypt-resolvers/master/v3/public-resolvers.md"
@@ -25,6 +26,8 @@ in
       require_dnssec = true;
       require_nolog = false;
       require_nofilter = true;
+
+      # cache = true;
 
       # If you want, choose a specific set of servers that come from your sources.
       # Here it's from https://github.com/DNSCrypt/dnscrypt-resolvers/blob/master/v3/public-resolvers.md
