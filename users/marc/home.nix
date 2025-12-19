@@ -145,6 +145,7 @@ let
     claude-code
     nautilus
     beeper
+    firefox
   ];
 in
 {
