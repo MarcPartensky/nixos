@@ -138,10 +138,11 @@
 
       # Lancement automatique
       spawn-at-startup = [
-        { argv = [ "alacritty" ]; } # Ouvre un terminal au démarrage
-        { argv = [ "dbus-update-activation-environment" "--systemd" "DISPLAY" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP" "NIXOS_OZONE_WL" ]; }
-        { argv = [ "Xwayland" ]; }
         { argv = [ "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal" ]; }
+        { argv = [ "dbus-update-activation-environment" "--systemd" "all" ]; }
+        { argv = [ "systemctl" "--user" "import-environment" "PATH" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP" ]; }
+        { argv = [ "Xwayland" ]; }
+        { argv = [ "alacritty" ]; } # Ouvre un terminal au démarrage
       ];
 
       overview.zoom = 0.2;
