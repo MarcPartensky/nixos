@@ -217,6 +217,7 @@ in
     # PATH = "${home}/.local/bin:$PATH";
   };
 
+
   xdg.enable = true;
   xdg.systemDirs.data = [
     "/var/lib/flatpak/exports/share"
@@ -235,13 +236,14 @@ in
   home = {
     username = "marc";
     homeDirectory = "/home/marc";
+  	packages = cliPackages ++ guiPackages ++ [ pythonEnv ];
   };
 
   # environment.variables = {
   #   NIX_DEV_SHELL_HOOK = "zsh";
   # };
 
-  home.packages = cliPackages ++ guiPackages ++ [ pythonEnv ];
+	# home.backupFileExtension = "backup";
 
   # nixpkgs.config.permittedInsecurePackages = [
   #   "electron-36.9.5" # Autorise ce paquet spécifique

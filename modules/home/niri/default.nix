@@ -4,7 +4,32 @@
   home.packages = [
     pkgs.alacritty
     pkgs.niri
+    pkgs.xwayland
   ];
+
+  xdg.portal = {
+    enable = true;
+    config.common.default = "*";
+    extraPortals = with pkgs; [
+      xdg-desktop-portal-gtk # fallback UI
+      xdg-desktop-portal-gnome
+    ];
+  };
+
+  dconf.settings = {
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+    };
+  };
+
+  gtk = {
+    enable = true;
+    theme = {
+      name = "Adwaita-dark";
+      package = pkgs.gnome-themes-extra;
+    };
+  };
+
 
   # 1. FIX D-BUS : Permet à dconf de s'activer sans erreur
   # dconf.settings = {
@@ -105,6 +130,8 @@
       spawn-at-startup = [
         { argv = [ "alacritty" ]; } # Ouvre un terminal au démarrage
         { argv = [ "dbus-update-activation-environment" "--systemd" "DISPLAY" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP" "NIXOS_OZONE_WL" ]; }
+        { argv = [ "Xwayland" ]; }
+        { argv = [ "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal" ]; }
       ];
 
       overview.zoom = 0.2;
@@ -113,14 +140,14 @@
       outputs = {
         "eDP-1" = {
           enable = true;
-          scale = 0.8;
+          scale = 1;
         };
       };
 
       # Quelques réglages visuels pour ne pas être perdu
       layout = {
         default-column-width = {
-          proportion = 0.25;
+          proportion = 0.5;
         };
         border = {
           enable = true;
