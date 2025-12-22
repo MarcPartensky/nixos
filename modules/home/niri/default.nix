@@ -146,6 +146,7 @@
 
       overview.zoom = 0.2;
       input.mouse.natural-scroll = true;
+      input.focus-follows-mouse.enable = true;
 
       outputs = {
         "eDP-1" = {
@@ -159,16 +160,25 @@
         default-column-width = {
           proportion = 0.5;
         };
-        border = {
-          enable = true;
-          width = 5;
-        };
-
-        focus-ring = {
-          enable = true;
-        };
+        border.enable = false;
+        focus-ring.enable = false;
         shadow.enable = true;
       };
+
+      window-rules = [
+        {
+          # Pour toutes les fenêtres qui n'ont PAS le focus
+          matches = [{ is-active = false; }];
+          
+          # On réduit l'ombre (plus petite, plus transparente)
+          shadow = {
+            enable = true;
+            softness = 10;
+            spread = 2;
+            color = "#00000044"; # Ombre très discrète
+          };
+        }
+      ];
     };
   };
 }
