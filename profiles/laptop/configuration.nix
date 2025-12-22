@@ -74,6 +74,10 @@ in {
   nixpkgs.config.allowUnfreePredicate = pkg:
     builtins.elem (lib.getName pkg) (map (p: lib.getName p) packages.unfree);
 
+    # Dans votre configuration.nix (système)
+  services.dbus.enable = true;
+  xdg.portal.enable = true;
+
   # Fonts
   fonts.packages = with pkgs; [
     # Nerd fonts

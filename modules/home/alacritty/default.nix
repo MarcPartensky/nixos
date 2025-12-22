@@ -7,6 +7,7 @@
       window = {
         title = "Terminal";
         opacity = 0.9;
+        decorations = "None";
   
         padding = { y = 5; };
         dimensions = {

@@ -1,22 +1,36 @@
-{ pkgs, ... } : {
-  services = {
-    greetd = {
-      enable = true;
-      settings = {
-        initial_session = {
-          # Change "Hyprland" to the command to run your window manager. ^Note1
-          command = "Hyprland";
-          # Change "${user}" to your username or to your username variable.
-          user = "${user}";
-        };
-        # By adding default_session it ensures you can still access the tty terminal if you logout of your windows manager otherwise you would just relaunch into it.
-        default_session = {
-          # Again here just change "-cmd Hyprland" to "-cmd your-start-command".
-          command = "${pkgs.greetd.tuigreet}/bin/tuigreet --greeting 'Welcome To NixOS' --asterisks --remember --remember-user-session --time -cmd Hyprland";
-          # DO NOT CHANGE THIS USER
-          user = "greeter";
-        };
+{ pkgs, ... }:
+let
+  # On définit l'utilisateur ici ou via une variable de ton flake
+  user = "marc"; 
+in
+{
+  services.greetd = {
+    enable = true;
+    settings = {
+      # Autologin : lance Niri directement au démarrage
+      initial_session = {
+        # dbus-run-session est la clé pour fixer ton erreur Spotify/D-Bus
+        command = "dbus-run-session niri";
+        user = "${user}";
+      };
+      # Session par défaut : ce qui s'affiche si tu te délogues
+      default_session = {
+        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd 'dbus-run-session niri'";
+        user = "greeter";
       };
     };
   };
+
+  # Pour que tuigreet puisse fonctionner sans erreur de permissions
+  systemd.services.greetd.serviceConfig = {
+    Type = "simple";
+    StandardInput = "tty";
+    StandardOutput = "tty";
+    StandardError = "journal"; # Aide pour débugger
+    TTYReset = true;
+    TTYVHangup = true;
+    TTYVTDisallocate = true;
+  };
+
+  security.pam.services.greetd.enableGnomeKeyring = true;
 }
