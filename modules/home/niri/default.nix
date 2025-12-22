@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 {
   # Assure-toi que niri et alacritty sont installés
   home.packages = [
@@ -124,7 +124,17 @@
         # --- Souris ---
         # Note : Niri gère le déplacement/redimensionnement à la souris via des réglages dédiés
         # mais on peut binder les clics si nécessaire.
-      };
+      } // lib.attrsets.mergeAttrsList (map (i: 
+        let
+          ws = toString i;
+        in {
+          # Alt + Chiffre : Envoyer l'application au Workspace X
+          "Alt+${ws}".action.move-window-to-workspace = i;
+          
+          # Mod (Super) + Chiffre : Aller voir le Workspace X
+          "Mod+${ws}".action.focus-workspace = i;
+        }
+      ) [ 1 2 3 4 5 6 7 8 9 ]);
 
       # Lancement automatique
       spawn-at-startup = [
