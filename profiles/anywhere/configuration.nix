@@ -43,6 +43,8 @@ in
     nix-du
   ];
 
+  networking.hostname = "anywhere";
+
   nix = {
     settings.auto-optimise-store = true;
     gc = {
