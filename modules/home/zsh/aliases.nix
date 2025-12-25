@@ -38,4 +38,6 @@
   sshp = "cat ~/.ssh/id_ed25519.pub";
   update = "just -f $HOME/git/nixos/Justfile";
   ch = "cd $(git rev-parse --show-toplevel)";
+
+  password = "gpg --gen-random --armor 1 14";
 }
