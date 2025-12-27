@@ -146,6 +146,7 @@ let
     nautilus
     beeper
     firefox
+    helvum
   ];
 in
 {
@@ -177,6 +178,7 @@ in
     ../../modules/home/kodi
     ../../modules/home/topgrade
     ../../modules/home/rbw
+    ../../modules/home/mpv
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
