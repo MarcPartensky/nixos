@@ -86,6 +86,12 @@
     action = "<cmd>Telescope find_files<cr>";
     options.desc = "Telescope Find Files (Ctrl+p)";
   }
+  {
+    mode = "n";
+    key = "<C-g>";
+    action = "<cmd>Telescope live_grep<cr>";
+    options.desc = "Telescope Live Grep (Ctrl+g)";
+  }
 
   # 3.2. Neo-tree (Explorateur de fichiers)
   {
