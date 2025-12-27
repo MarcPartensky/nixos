@@ -13,6 +13,7 @@ in
   programs.zsh = {
     enable = true;
     enableCompletion = true;
+    initExtra = builtins.readFile ./profile.sh;
 
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
