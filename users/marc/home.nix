@@ -147,7 +147,7 @@ let
     beeper
     firefox
     helvum
-    inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
+    # inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 in
 {
@@ -181,6 +181,7 @@ in
     ../../modules/home/rbw
     ../../modules/home/mpv
     ../../modules/home/eww
+    ../../modules/home/zen-browser
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
@@ -203,6 +204,12 @@ in
       "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
     DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
     SAL_USE_VCLPLUGIN = "gen";
+
+    DEFAULT_BROWSER =
+      inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
+    BROWSER =
+      inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
+
     # XDG_DATA_HOME      = "${home}/.local/share";
     # XDG_CONFIG_HOME    = "${home}/.config";
     # XDG_CACHE_HOME     = "${home}/.cache";
@@ -221,6 +228,16 @@ in
     # PATH = "${home}/.local/bin:$PATH";
   };
 
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "text/html" = [ "zen.desktop" ];
+      "x-scheme-handler/http" = [ "zen.desktop" ];
+      "x-scheme-handler/https" = [ "zen.desktop" ];
+      "x-scheme-handler/about" = [ "zen.desktop" ];
+      "x-scheme-handler/unknown" = [ "zen.desktop" ];
+    };
+  };
 
   xdg.enable = true;
   xdg.systemDirs.data = [
