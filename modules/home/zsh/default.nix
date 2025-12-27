@@ -13,7 +13,7 @@ in
   programs.zsh = {
     enable = true;
     enableCompletion = true;
-    initExtra = builtins.readFile ./profile.sh;
+    initContent = builtins.readFile ./profile.sh;
 
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
@@ -44,16 +44,6 @@ in
         file = "p10k.zsh";
       }
     ];
-
-    initContent = ''
-      # McFly
-      eval "$(mcfly init zsh)"
-      export MCFLY_FUZZY=true
-      export MCFLY_RESULTS=50
-
-      # Chargement du thème P10K
-      [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
-    '';
   };
 
   home.file.".p10k.zsh".source = ./p10k.zsh;

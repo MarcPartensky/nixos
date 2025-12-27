@@ -1,5 +1,14 @@
 #!/bin/env sh
 
+# McFly
+eval "$(mcfly init zsh)"
+export MCFLY_FUZZY=true
+export MCFLY_RESULTS=50
+
+# Chargement du thème P10K
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+
+
 PROGRAMS_PATH=~/git
 
 trysh() {
