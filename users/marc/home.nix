@@ -179,6 +179,7 @@ in
     ../../modules/home/topgrade
     ../../modules/home/rbw
     ../../modules/home/mpv
+    ../../modules/home/eww
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython

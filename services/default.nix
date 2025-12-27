@@ -4,6 +4,7 @@
         # ./nextcloud
         ./postgres
         ./vaultwarden
+        ./nextcloud
         ./radarr
         ./sonarr
         ./prowlarr

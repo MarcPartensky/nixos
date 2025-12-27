@@ -8,8 +8,8 @@
     MINIO_ROOT_PASSWORD=test12345
   '';
 in {
-  environment.etc."nextcloud-password".text = "nextcloudpassword";
-  environment.etc."nextcloud-password".mode = "0600";
+  # environment.etc."nextcloud-password".text = "nextcloudpassword";
+  # environment.etc."nextcloud-password".mode = "0600";
   environment.systemPackages = with pkgs; [
     minio-client
     nextcloud32
@@ -25,9 +25,11 @@ in {
         dbtype = "pgsql";
         dbuser = "nextcloud";
         dbhost = "localhost:5432";
-        dbpassFile = "/etc/nextcloud-password";
-        adminuser = "root";
-        adminpassFile = "/etc/nextcloud-password";
+        # dbpassFile = "/etc/nextcloud-password";
+        # passFile = config.sops.secrets."nextcloud/password".path;
+        adminuser = config.sops.secrets."nextcloud/adminUser".path;
+        # adminpassFile = "/etc/nextcloud-password";
+        adminpassFile = config.sops.secrets."nextcloud/adminPassword".path;
     };
     # extraApps = {
     #   inherit (config.services.nextcloud.package.packages.apps) news contacts
@@ -60,6 +62,11 @@ in {
         # provided Nextcloud connects from localhost.
       }
     ];
+    # On s'assure que le socket est accessible
+    authentication = pkgs.lib.mkOverride 10 ''
+      # TYPE  DATABASE        USER            METHOD
+      local   nextcloud       nextcloud       peer
+    '';
   };
 
   # services.minio = {

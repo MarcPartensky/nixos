@@ -1,36 +1,32 @@
 { pkgs, ... }:
+
 let
-  # On définit l'utilisateur ici ou via une variable de ton flake
-  user = "marc"; 
+  user = "marc";
+  # On crée un script de lancement propre
+  niri-session = pkgs.writeShellScriptBin "niri-session" ''
+    # 1. On exporte les variables cruciales vers le bus systemd
+    # Cela permet à Spotify de "voir" le bus D-Bus déjà lancé par NixOS
+    dbus-update-activation-environment --systemd --all
+    
+    # 2. On lance Niri
+    exec niri
+  '';
 in
 {
   services.greetd = {
     enable = true;
     settings = {
-      # Autologin : lance Niri directement au démarrage
       initial_session = {
-        # dbus-run-session est la clé pour fixer ton erreur Spotify/D-Bus
-        command = "dbus-run-session niri";
+        command = "${niri-session}/bin/niri-session";
         user = "${user}";
       };
-      # Session par défaut : ce qui s'affiche si tu te délogues
       default_session = {
-        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd 'dbus-run-session niri'";
+        command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --cmd niri";
         user = "greeter";
       };
     };
   };
 
-  # Pour que tuigreet puisse fonctionner sans erreur de permissions
-  systemd.services.greetd.serviceConfig = {
-    Type = "simple";
-    StandardInput = "tty";
-    StandardOutput = "tty";
-    StandardError = "journal"; # Aide pour débugger
-    TTYReset = true;
-    TTYVHangup = true;
-    TTYVTDisallocate = true;
-  };
-
+  # Optionnel mais recommandé : débloquer le keyring GNOME sans mot de passe à l'autologin
   security.pam.services.greetd.enableGnomeKeyring = true;
 }

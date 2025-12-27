@@ -1,0 +1,24 @@
+(defvar bar_visible false)
+
+(defwindow bar
+  :monitor 0
+  :geometry (geometry :x "0%" :y "0%" :width "100%" :height "42px" :anchor "top center")
+  :stacking "fg"
+  :exclusive false
+  :focusable false
+  (eventbox :onhover "${EWW_CMD} update bar_visible=true"
+            :onhoverlost "${EWW_CMD} update bar_visible=false"
+    (box :orientation "v" :space-evenly false
+      (revealer :transition "slidedown" :reveal bar_visible :duration "250ms"
+        (box :class "bar-main" :orientation "h" :height 40
+          (box :halign "start" "Niri")
+          (box :halign "center" "${time}")
+          (box :halign "end" "100%")
+        )
+      )
+      (box :class "trigger-zone" :height 2)
+    )
+  )
+)
+
+(defpoll time :interval "1s" "date '+%H:%M:%S'")

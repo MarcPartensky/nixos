@@ -1,0 +1,16 @@
+* { all: unset; }
+
+window, .background, box { 
+  background-color: transparent; 
+}
+
+.bar-main {
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+  border-bottom: 2px solid #89b4fa;
+  padding: 0 10px;
+}
+
+.trigger-zone { 
+  background-color: transparent; 
+}
