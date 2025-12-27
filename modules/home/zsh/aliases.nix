@@ -23,6 +23,7 @@
   syur = "systemctl --user restart";
 
 
+  gi = "git init";
   gs = "git status";
   ga = "git add -A";
   gc = "git commit -m";
@@ -38,6 +39,8 @@
   sshp = "cat ~/.ssh/id_ed25519.pub";
   update = "just -f $HOME/git/nixos/Justfile";
   ch = "cd $(git rev-parse --show-toplevel)";
+
+  py = "python";
 
   password = "gpg --gen-random --armor 1 14";
 }
