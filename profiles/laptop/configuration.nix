@@ -49,12 +49,34 @@ in {
 
   # TEMPORAIRE
   nixpkgs.config.allowUnfree = true;
-  
+
+  hardware.graphics.enable = true;
+
+  services.xserver.videoDrivers = [ "nvidia" ];
+
+  hardware.nvidia = {
+    modesetting.enable = true;
+    powerManagement.enable = false;
+    open = false; # La MX150 est ancienne, utilise les drivers propriétaires
+    nvidiaSettings = true;
+
+    # Configuration PRIME (Offload)
+    prime = {
+      offload = {
+        enable = true;
+        enableOffloadCmd = true;
+      };
+      # Trouve tes IDs avec `lspci | grep -E "VGA|3D"`
+      # Généralement pour un i7-8550U + MX150 c'est :
+      intelBusId = "PCI:0:2:0";
+      nvidiaBusId = "PCI:1:0:0";
+    };
+  };
+
   # hardware.cpu.intel.updateMicrocode = true;
   # hardware.firmware = [ pkgs.linux-firmware ];
   # networking.firewall.enable = false;
 
-  programs.zsh.enable = true;
   users.defaultUserShell = pkgs.zsh;
 
   # Set your time zone.
@@ -120,7 +142,7 @@ in {
   # out of date, out of support, or vulnerable.
   #
   # Do NOT change this value unless you have manually inspected all the changes it would make to your configuration,
-  # and migrated your data accordingly.
+  # and migrted your data accordingly.
   #
   # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
   system.stateVersion = "25.11"; # Did you read the comment?
