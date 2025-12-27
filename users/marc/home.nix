@@ -1,4 +1,4 @@
-{ pkgs, home-manager, lib, ... }:
+{ inputs, pkgs, home-manager, lib, ... }:
 
 let
   home = "/home/marc";
@@ -147,6 +147,7 @@ let
     beeper
     firefox
     helvum
+    inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 in
 {
