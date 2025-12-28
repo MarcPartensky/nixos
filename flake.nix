@@ -65,9 +65,14 @@
     };
     agenix.url = "github:ryantm/agenix";
     microvm.url = "github:astro/microvm.nix";
+
     nwg-dock-hyprland-pin-nixpkgs.url = "nixpkgs/2098d845d76f8a21ae4fe12ed7c7df49098d3f15";
+
     nix-darwin.url = "github:nix-darwin/nix-darwin/master";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+
+    # nixgl.url = "github:guibou/nixGL";
+    # nixgl.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs = { self, nixpkgs, ... } @ inputs: {
 

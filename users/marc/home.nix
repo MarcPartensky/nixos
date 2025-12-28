@@ -63,6 +63,11 @@ let
     libgtop
     bitwarden-cli
     wl-clipboard-rs
+
+    # log minecraft
+    zenity
+    mesa-demos
+    vulkan-tools
   ];
 
   # -------------------------------
@@ -202,31 +207,21 @@ in
   home.sessionVariables = {
     GSETTINGS_SCHEMA_DIR =
       "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
-    DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
+    # DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
     SAL_USE_VCLPLUGIN = "gen";
 
-    DEFAULT_BROWSER =
-      inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
-    BROWSER =
-      inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default;
+    # Use string interpolation to force the package to its store path string
+    DEFAULT_BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
+    BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
 
     # XDG_DATA_HOME      = "${home}/.local/share";
     # XDG_CONFIG_HOME    = "${home}/.config";
     # XDG_CACHE_HOME     = "${home}/.cache";
     # # XDG_RUNTIME_DIR    = "/run/user/${toString config.home.uid}";
-    # XDG_DATA_DIRS = ''
-    #   /var/lib/flatpak/exports/share
-    #   ${home}/.local/share/flatpak/exports/share
-    #   ${home}/.local/state/nix/profile/share
-    #   ${home}/.nix-profile/share
-    #   /nix/profile/share
-    #   /etc/profiles/per-user/marc/share
-    #   /nix/var/nix/profiles/default/share
-    #   /run/current-system/sw/share
-    # '';
     # XDG_CONFIG_DIRS    = "/etc/xdg";
     # PATH = "${home}/.local/bin:$PATH";
   };
+
 
   xdg.mimeApps = {
     enable = true;
@@ -263,8 +258,6 @@ in
   # environment.variables = {
   #   NIX_DEV_SHELL_HOOK = "zsh";
   # };
-
-	# home.backupFileExtension = "backup";
 
   # nixpkgs.config.permittedInsecurePackages = [
   #   "electron-36.9.5" # Autorise ce paquet spécifique
