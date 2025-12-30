@@ -90,6 +90,8 @@ in {
   #   keyMap = "us";
   #   useXkbConfig = true; # use xkb.options in tty.
   # };
+  boot.kernelModules = [ "uinput" "hid-nintendo" "uhid" ];
+
 
   environment.systemPackages = packages.all;
 
