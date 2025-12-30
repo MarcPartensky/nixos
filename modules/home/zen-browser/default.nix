@@ -8,7 +8,7 @@ let
     ublock-origin
     bitwarden
     tabliss
-    umatrix
+    # umatrix
     refined-github
     single-file
     videospeed
@@ -84,9 +84,13 @@ in {
   nixpkgs.overlays = [ inputs.nur.overlays.default ];
 
   home.packages = [
+    pkgs.firefoxpwa
     (pkgs.wrapFirefox
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.zen-browser-unwrapped
       {
+        nativeMessagingHosts = [
+          pkgs.firefoxpwa
+        ];
         extraPolicies = {
           DisableTelemetry = true;
           DisableFirefoxAccounts = false;
