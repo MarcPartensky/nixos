@@ -4,9 +4,14 @@
   hardware.bluetooth.powerOnBoot = true; # powers up the default Bluetooth controller on boot
   hardware.bluetooth.settings = {
     General = {
-        ControllerMode = "bredr"; # Fix frequent Bluetooth audio dropouts
+        # ControllerMode = "bredr"; # Fix frequent Bluetooth audio dropouts
         Experimental = true;
         FastConnectable = true;
+        Disable = "input";
+        ClassicBondedOnly = false;
+          # Indispensable pour l'appairage avec la Switch
+        Class = "0x000540"; 
+        ControllerMode = "dual";
       };
       Policy = {
         ReconnectAttempts = 10;
