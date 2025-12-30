@@ -22,19 +22,6 @@
     };
   };
 
-  gtk = {
-    enable = true;
-    theme = {
-      name = "Adwaita-dark";
-      package = pkgs.gnome-themes-extra;
-    };
-  };
-
-
-  # 1. FIX D-BUS : Permet à dconf de s'activer sans erreur
-  # dconf.settings = {
-    # On force une config vide ou minimale si nécessaire pour éviter l'erreur "address is empty"
-  # };
 
   # On s'assure que les services dbus utilisateur sont là
   #services.dbus.enable = true;
