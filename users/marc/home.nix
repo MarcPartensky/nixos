@@ -52,7 +52,7 @@ let
     dconf
     playerctl
     nushell
-    # glib
+    glib
     # gsettings-desktop-schemas
     udiskie
     nix-du
@@ -187,6 +187,7 @@ in
     ../../modules/home/mpv
     ../../modules/home/eww
     ../../modules/home/zen-browser
+    ../../modules/home/nxbt
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
