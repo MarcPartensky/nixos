@@ -46,6 +46,13 @@ let
   };
 
   prefs = {
+    # Dark theme
+    "ui.systemUsesDarkTheme" = 1;
+    "browser.theme.content-theme" = 0;
+    "browser.theme.toolbar-theme" = 0;
+    "layout.css.prefers-color-scheme.content-override" = 0;
+    "extensions.activeThemeID" = "firefox-compact-dark@mozilla.org";
+
     # Configuration des telechargements
     "browser.download.dir" = "/home/marc/downloads";
     "browser.download.folderList" = 2;
