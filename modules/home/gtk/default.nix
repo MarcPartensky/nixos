@@ -1,59 +1,60 @@
 { config, pkgs, lib, ... }:
 let
-  # name = "Colloid-Dark";
-  #name = "Colloid-Dark";
-  name = "Catppucin-Mocha";
- #  package = pkgs.colloid-gtk-theme;
-  package = pkgs.catppuccin;
-  #   name = "Adwaita-dark";  # ou autre thème
-  #   package = pkgs.gnome-themes-extra;
-  # package = pkgs.papirus-icon-theme;
-  # name = "Papirus-Dark";
+  cursorName = "catppuccin-mocha-lavender-cursors";
+  cursorPackage = pkgs.catppuccin-cursors.mochaLavender;
+  themeName = "Catppuccin-Mocha-Standard-Lavender-Dark";
 in {
 
   catppuccin = {
     enable = true;
     flavor = "mocha";
-    # accent = "pink";
     accent = "lavender";
+    cursors.enable = true;
   };
 
   gtk = {
     enable = true;
-    theme.name = lib.mkDefault name;
-    cursorTheme.name = lib.mkDefault name;
-    iconTheme.name = lib.mkDefault name;
-    colorScheme = lib.mkDefault "dark";
-    # font = {
-    #   name = "sans";
-    #   size = 11;
-  };
-
-  # Forcer l'interface en mode dark (utile pour apps qui respectent gtk-theme-variant)
-  # dconf.settings."org/gnome/desktop/interface" = {
-  #   color-scheme = "prefer-dark";
-  #   gtk-theme = "Adwaita-dark";
-  # };
-
-  home.pointerCursor = {
-    gtk.enable = true;
-    # x11.enable = true;
-    name = name;
-    package = package;
-    size = 16;
+    theme.name = lib.mkDefault themeName;
+    cursorTheme.name = lib.mkDefault cursorName;
+    # cursorTheme.package = lib.mkDefault cursorPackage;
+    iconTheme.name = lib.mkDefault "Papirus-Dark";
+    iconTheme.package = lib.mkDefault pkgs.papirus-icon-theme;
+    
+    gtk3.extraConfig.gtk-application-prefer-dark-theme = 1;
+    gtk4.extraConfig.gtk-application-prefer-dark-theme = 1;
   };
 
   qt = {
     enable = true;
-  
-    style = {
-      # name = name;       # style forcé (dark si ton kvantum est dark)
-      name = "kvantum";
-      package = package;
-    };
-  
-    # Indique à toutes les apps Qt que tu es en dark mode
-    platformTheme.name = "gtk3";   # Qt suit le thème sombre GTK
+    style.name = lib.mkDefault "kvantum";
+    platformTheme.name = lib.mkDefault "gtk3";
   };
 
+  dconf.settings = {
+    "org/gnome/desktop/interface" = {
+      color-scheme = "prefer-dark";
+    };
+  };
+
+  home.sessionVariables = {
+    PRISM_LAUNCHER_DARK_MODE = "1";
+    GTK_THEME = themeName;
+    ELECTRON_OZONE_PLATFORM_HINT = "auto";
+  };
+
+  # xdg.desktopEntries.beeper = {
+  #   name = "Beeper";
+  #   exec = "beeper --enable-features=WebUIDarkMode --force-dark-mode %U";
+  #   terminal = false;
+  #   icon = "beeper";
+  #   categories = [ "Network" "Chat" ];
+  # };
+
+  # xdg.desktopEntries."org.prismlauncher.PrismLauncher" = {
+  #   name = "Prism Launcher";
+  #   exec = "prismlauncher -style Fusion";
+  #   icon = "org.prismlauncher.PrismLauncher";
+  #   terminal = false;
+  # };
 }
+

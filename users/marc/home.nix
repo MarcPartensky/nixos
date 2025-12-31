@@ -153,6 +153,8 @@ let
     firefox
     helvum
     # inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
+    gtk3 # necessaire pour gtk-launch
+    gtk4 # a uniquement gtk4-launch
   ];
 in
 {
@@ -214,6 +216,8 @@ in
     # Use string interpolation to force the package to its store path string
     DEFAULT_BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
     BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
+
+    ELECTRON_OZONE_PLATFORM_HINT = "wayland";
 
     # XDG_DATA_HOME      = "${home}/.local/share";
     # XDG_CONFIG_HOME    = "${home}/.config";
