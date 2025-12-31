@@ -88,6 +88,11 @@ let
     "extensions.autoDisableScopes" = 0;
     "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
     "browser.startup.homepage" = "https://duckduckgo.com";
+
+
+    # No popup
+    "browser.translations.enable" = false;
+    "signon.rememberSignons" = false;
   };
 
 in {
@@ -103,6 +108,8 @@ in {
           pkgs.pywalfox-native
         ];
         extraPolicies = {
+          PasswordManagerEnabled = false;
+          OfferToSaveLogins = false;
           DisableTelemetry = true;
           DisableFirefoxAccounts = false;
           ExtensionSettings = builtins.listToAttrs (map makeExtensionPolicy extensionList);
