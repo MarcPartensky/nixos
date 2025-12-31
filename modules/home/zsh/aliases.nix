@@ -22,6 +22,8 @@
   syus = "systemctl --user status";
   syur = "systemctl --user restart";
 
+  spd = "librespeed-cli";
+
 
   gi = "git init";
   gs = "git status";
