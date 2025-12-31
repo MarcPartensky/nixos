@@ -34,7 +34,7 @@ let
     tab-counter-plus
     tab-session-manager
     youtube-high-definition
-    proton-pass
+    # proton-pass
   ];
 
   makeExtensionPolicy = addon: {
@@ -61,14 +61,17 @@ let
     "browser.helperApps.alwaysAsk.force" = false;
 
     # Confidentialite (Hardening LibreWolf/Arkenfox)
-    "privacy.resistFingerprinting" = true;
+    # Pas besoin de se reco apres un reboot
+    "network.cookie.cookieBehavior" = 1;
+    "privacy.clearOnShutdown.cookies" = false;
+    "privacy.clearOnShutdown.history" = false;
+    "privacy.sanitize.sanitizeOnShutdown" = false;
+    "privacy.resistFingerprinting" = false;
+
+    # Le reste on protege 
     "privacy.trackingprotection.enabled" = true;
     "privacy.trackingprotection.fingerprinting.enabled" = true;
     "privacy.trackingprotection.cryptomining.enabled" = true;
-    "network.cookie.cookieBehavior" = 1;
-    "privacy.sanitize.sanitizeOnShutdown" = true;
-    "privacy.clearOnShutdown.cookies" = true;
-    "privacy.clearOnShutdown.history" = true;
     "network.http.referer.XOriginPolicy" = 2;
     "network.dns.disablePrefetch" = true;
     "network.prefetch-next" = false;
@@ -97,6 +100,7 @@ in {
       {
         nativeMessagingHosts = [
           pkgs.firefoxpwa
+          pkgs.pywalfox-native
         ];
         extraPolicies = {
           DisableTelemetry = true;
