@@ -39,7 +39,6 @@ in {
   home.sessionVariables = {
     PRISM_LAUNCHER_DARK_MODE = "1";
     GTK_THEME = themeName;
-    ELECTRON_OZONE_PLATFORM_HINT = "auto";
   };
 
   # xdg.desktopEntries.beeper = {
