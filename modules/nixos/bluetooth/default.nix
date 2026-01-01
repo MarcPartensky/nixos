@@ -12,6 +12,7 @@
           # Indispensable pour l'appairage avec la Switch
         Class = "0x000540"; 
         ControllerMode = "dual";
+        Enable = "Source,Sink,Media,Socket";
       };
       Policy = {
         ReconnectAttempts = 10;
@@ -19,6 +20,12 @@
         AutoEnable = true;
       };
   };
+
+  # systemd.services.bluetooth.serviceConfig.ExecStart = [
+  #   "" 
+  #   "${pkgs.bluez}/get/bluetooth/bluetoothd --compat"
+  # ];
+
   services.blueman.enable = true;
 
   systemd.user.services.mpris-proxy = {
@@ -27,4 +34,5 @@
     wantedBy = [ "default.target" ];
     serviceConfig.ExecStart = "${pkgs.bluez}/bin/mpris-proxy";
   };
+
 }
