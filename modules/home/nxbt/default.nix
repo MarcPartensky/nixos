@@ -1,44 +1,51 @@
 { pkgs, ... }:
-
 let
-  nxbt = pkgs.python3Packages.buildPythonApplication rec {
+  # pythonPackages = pkgs.python311Packages;
+  pythonPackages = pkgs.python311Packages.override {
+    overrides = self: super: {
+      # On désactive les tests spécifiquement pour pytest-benchmark
+      pytest-benchmark = super.pytest-benchmark.overridePythonAttrs (old: {
+        doCheck = false;
+      });
+      # Si d'autres paquets bloquent (ex: cryptography), tu peux les ajouter ici :
+      # cryptography = super.cryptography.overridePythonAttrs (old: { doCheck = false; });
+    };
+  };
+
+  nxbt = pythonPackages.buildPythonApplication rec {
     pname = "nxbt";
     version = "0.1.4";
-
-    src = pkgs.python3Packages.fetchPypi {
+    src = pkgs.python3Packages.fetchPypi rec {
       inherit pname version;
       sha256 = "sha256-PryY4jT442AMwllvUn7w744jlqfnA9AWB5k359XFo54=";
     };
-
     pyproject = true;
-    
-    # On définit le système de build
     build-system = [
-      pkgs.python3Packages.setuptools
-      pkgs.python3Packages.wheel
+      pythonPackages.setuptools
+      pythonPackages.wheel
     ];
-
-    # On nettoie les contraintes de versions périmées de 2021
     postPatch = ''
-      sed -i 's/==[0-9.]*//g' setup.py
-      # On remplace le chemin codé en dur par un chemin accessible
       substituteInPlace nxbt/bluez.py \
-        --replace "/lib/systemd/system/bluetooth.service" "/tmp/bluetooth.service.fake"
+        --replace-fail "/lib/systemd/system/bluetooth.service" "${pkgs.bluez}/etc/systemd/system/bluetooth.service"
       
-      # On s'assure que le fichier existe lors du build (ou on le créera avant de lancer)
-      touch /tmp/bluetooth.service.fake
+      # --- Completely neutralise toggle_clean_bluez on NixOS ---
+      # Replace the whole function definition with a no-op
+      # substituteInPlace nxbt/bluez.py \
+      #   --replace-fail 'def toggle_clean_bluez(toggle):\n    .*time.sleep(0\.5)' \
+      #   'def toggle_clean_bluez(toggle): return'
+
+
+
+      # --- Fix secrets.txt path (avoid /nix/store) ---
+      substituteInPlace nxbt/web/app.py \
+          --replace-fail \
+          'os.path.dirname(__file__)' \
+          '"/tmp"'
+
     '';
-
-    nativeBuildInputs = [
-      pkgs.pkg-config
-    ];
-
-    buildInputs = [
-      pkgs.bluez
-      pkgs.dbus
-    ];
-
-    propagatedBuildInputs = with pkgs.python3Packages; [
+    nativeBuildInputs = [ pkgs.pkg-config ];
+    buildInputs = [ pkgs.bluez pkgs.dbus ];
+    propagatedBuildInputs = with pythonPackages; [
       dbus-python
       flask
       flask-socketio
@@ -49,11 +56,7 @@ let
       blessed
       cryptography
     ];
-
-    # Désactive la vérification stricte des versions au runtime
-    # C'est ce qui remplace le hook qui manquait
     dontCheckRuntimeDeps = true;
-
     doCheck = false;
   };
 in
