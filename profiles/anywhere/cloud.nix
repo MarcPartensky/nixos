@@ -3,13 +3,25 @@ let
   pangolin = inputs.unstable.fosrl-pangolin;
 in
 {
+
   networking.firewall = {
-    enable = true;                  # active le firewall
+    enable = true;
+
     allowedTCPPorts = [
-      80 443 8080 8081 8082 8083 5432 3000 3002
-    ];  # ajoute les ports à ouvrir
-    allowedUDPPorts = [ ];          # si besoin pour UDP
-  };
+      # --- Web & Reverse Proxy ---
+      80   # HTTP (ACME & Redirect)
+      443  # HTTPS (Webmail & Management)
+
+      # --- Stalwart Mail Server ---
+      25   # SMTP (Réception de mails)
+      465  # SMTP Submissions (Envoi client)
+      993  # IMAP sécurisé (Lecture client)
+
+      # --- Vos autres services ---
+      8080 8081 8082 8083 # Pangolin / Apps
+      5432                # PostgreSQL
+      3000 3002           # Apps Web (ex: Grafana, Node)
+    ];
 
 
   # networking.wireguard.enable = true;
