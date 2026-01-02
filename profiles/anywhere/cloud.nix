@@ -22,6 +22,7 @@ in
       5432                # PostgreSQL
       3000 3002           # Apps Web (ex: Grafana, Node)
     ];
+  };
 
 
   # networking.wireguard.enable = true;
