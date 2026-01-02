@@ -15,6 +15,10 @@
     openFirewall = true;
     settings = {
       server = {
+        tracer.stdout = {
+          level = "debug"; # Changez "info" en "debug"
+          type = "stdout";
+        };
         hostname = "mx1.marcpartensky.com";
         tls = {
           enable = true;
