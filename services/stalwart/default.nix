@@ -39,6 +39,7 @@
             # bind = [ "127.0.0.1:8090" ];
             bind = [ "0.0.0.0:8090" ];
             protocol = "http";
+            url = "https://mail.vps.marcpartensky.com";
           };
         };
       };
