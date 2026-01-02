@@ -207,6 +207,14 @@ in
     "beeper"
   ];
 
+  nixpkgs.config.electron.commandLineArgs = ""
+  + "--ozone-platform-hint=auto "
+  + "--ozone-platform=wayland "
+  + "--disable-gpu-sandbox "
+  + "--no-sandbox "
+  + "--enable-features=WaylandWindowDecorations"
+  ;
+
   home.sessionVariables = {
     GSETTINGS_SCHEMA_DIR =
       "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
@@ -218,6 +226,9 @@ in
     BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
 
     ELECTRON_OZONE_PLATFORM_HINT = "wayland";
+    NIXOS_OZONE_WL = "1";
+    GTK_USE_PORTAL = "1"; # Force l'usage des portails proprement
+    GDK_BACKEND = "wayland";
 
     # XDG_DATA_HOME      = "${home}/.local/share";
     # XDG_CONFIG_HOME    = "${home}/.config";
