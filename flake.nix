@@ -109,7 +109,7 @@
           ./services/postgres
           ./services/vaultwarden
           # ./services/nextcloud
-          # ./services/pangolin
+          ./services/pangolin
         ];
       };
 
