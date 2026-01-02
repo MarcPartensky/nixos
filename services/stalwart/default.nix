@@ -81,14 +81,14 @@
   };
 
   # 3. Reverse Proxy Caddy pour l'interface Web
-  services.caddy = {
-    enable = true;
-    virtualHosts = {
-      "mail.marcpartensky.com" = {
-        extraConfig = ''
-          reverse_proxy 127.0.0.1:8080
-        '';
-      };
-    };
-  };
+  # services.caddy = {
+  #   enable = true;
+  #   virtualHosts = {
+  #     "mail.marcpartensky.com" = {
+  #       extraConfig = ''
+  #         reverse_proxy 127.0.0.1:8080
+  #       '';
+  #     };
+  #   };
+  # };
 }

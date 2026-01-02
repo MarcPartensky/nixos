@@ -46,6 +46,18 @@ tls = { certResolver = "letsencrypt" }
 [http.routers.pangolin.tls]
 certResolver = "letsencrypt"   # INDISPENSABLE pour éviter l'erreur "Default Cert"
 
+# Stalwart Mail Interface & JMAP
+[http.services.stalwart.loadBalancer]
+  [[http.services.stalwart.loadBalancer.servers]]
+    url = "http://127.0.0.1:8080"
+
+[http.routers.stalwart]
+  rule = "Host(`mail.vps.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "stalwart"
+  [http.routers.stalwart.tls]
+    certResolver = "letsencrypt"
+
 # # Pangolin
 # [http.services.pangolin.loadBalancer]
 # [[http.services.pangolin.loadBalancer.servers]]
