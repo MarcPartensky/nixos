@@ -1,4 +1,4 @@
-{ pkgs, ...}:
+{ pkgs, lib, ...}:
 {
   services.traefik = {
     enable = true;
@@ -30,7 +30,8 @@
         letsencrypt = {
           acme = {
             email = "marc.partensky@proton.me";
-            storage = "/var/lib/traefik/acme.json";
+            # peut etre remplacer par pangolin
+            storage = lib.mkDefault "/var/lib/traefik/acme.json";
             httpChallenge.entryPoint = "web";
           };
         };
