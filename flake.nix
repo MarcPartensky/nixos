@@ -159,21 +159,6 @@
           ./users/marc/home.nix 
         ];
       };
-      "marc@anywhere" = inputs.home-manager.lib.homeManagerConfiguration {
-        # system = "x86_64-linux";
-        # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-        extraSpecialArgs = { inherit inputs; };
-        pkgs = import nixpkgs {
-          system = "x86_64-linux";
-          overlays = [ inputs.nur.overlays.default ];
-        };
-        modules = [
-          inputs.nixvim.homeModules.default
-          inputs.sops.homeManagerModules.sops
-          # inputs.sopswarden.homeManagerModules.default
-          ./modules/home/neovim
-        ];
-      };
     };
 
     darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {

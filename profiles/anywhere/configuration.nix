@@ -44,6 +44,20 @@ in
     nix-du
   ];
 
+  programs.zsh.enable = true;
+
+  home-manager.users.root = {
+    home.stateVersion = "25.11";
+    imports = [ 
+      inputs.nixvim.homeModules.default 
+      ../../modules/home/neovim
+      ../../modules/home/zsh
+      ../../modules/home/git
+      ../../modules/home/ssh
+      ../../modules/home/gh
+    ];
+  };
+
   networking.hostName = "anywhere";
 
   nix = {
@@ -70,7 +84,6 @@ in
   #   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop" 
   # ];
 
-  programs.zsh.enable = true;
 
   # systemd.services."entrypoint" = {
   #   description = "entrypoint";
