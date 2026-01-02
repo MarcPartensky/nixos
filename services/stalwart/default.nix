@@ -54,7 +54,7 @@
         directory = "https://acme-v02.api.letsencrypt.org/directory";
         challenge = "dns-01";
         contact = "admin@marcpartensky.com";
-        domains = [ "marcpartensky.com" "mx1.marcpartensky.com" "mail.marcpartensky.com" ];
+        domains = [ "marcpartensky.com" "mx1.marcpartensky.com" "mail.vps.marcpartensky.com" ];
         provider = "cloudflare"; # Assurez-vous d'utiliser le bon provider
         secret = "%{file:/etc/stalwart/acme-secret}%";
       };
