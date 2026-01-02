@@ -102,7 +102,8 @@
         modules = [
           inputs.disko.nixosModules.disko
           inputs.home-manager.nixosModules.default
-          inputs.sopswarden.homeManagerModules.default
+	      inputs.nixvim.nixosModules.default
+          # inputs.sopswarden.homeManagerModules.default
           ./profiles/anywhere/configuration.nix
           ./users.nix
           # ./services
@@ -111,7 +112,7 @@
           ./services/vaultwarden
           # ./services/nextcloud
           ./services/pangolin
-          ./services/stalwart
+          # ./services/stalwart
         ];
       };
 
