@@ -1,72 +1,54 @@
-# Dashboard Traefik
-[http.routers.traefik]
-rule = "Host(`traefik.vps.marcpartensky.com`)"
-entryPoints = ["websecure"]
-service = "api@internal"
-# tls = true
-tls = { certResolver = "letsencrypt" }
+# --- SERVICES ---
 
-
-# Vaultwarden
 [http.services.vaultwarden.loadBalancer]
-    [[http.services.vaultwarden.loadBalancer.servers]]
-        url = "http://127.0.0.1:8083"   # port local Vaultwarden
+  [[http.services.vaultwarden.loadBalancer.servers]]
+    url = "http://127.0.0.1:8083"
 
-[http.routers.vaultwarden]
-rule = "Host(`vault.vps.marcpartensky.com`)"
-entryPoints = ["websecure"]
-service = "vaultwarden"
-tls = { certResolver = "letsencrypt" }
-
-
-# Nextcloud
 [http.services.nextcloud.loadBalancer]
-[[http.services.nextcloud.loadBalancer.servers]]
-url = "http://127.0.0.1:8081"
+  [[http.services.nextcloud.loadBalancer.servers]]
+    url = "http://127.0.0.1:8081"
 
-[http.routers.nextcloud]
-rule = "Host(`cloud.vps.marcpartensky.com`)"
-entryPoints = ["websecure"]
-service = "nextcloud"
-tls = { certResolver = "letsencrypt" }
-
-# --- PANGOLIN (C'est ici que ça bloquait) ---
 [http.services.pangolin.loadBalancer]
   [[http.services.pangolin.loadBalancer.servers]]
-    url = "http://127.0.0.1:8082" # Vérifie que Pangolin écoute bien sur ce port
+    url = "http://127.0.0.1:8082"
 
-[http.routers.pangolin]
-  # ATTENTION: Dans tes logs d'erreur, tu appelais "pangolin.marcpartensky.com"
-  # Ici tu configures "pangolin.vps.marcpartensky.com".
-  # Choisis le bon ! Si tu veux sans 'vps', retire-le ci-dessous :
-  rule = "Host(`pangolin.vps.marcpartensky.com`)"
-  entryPoints = ["websecure"]
-  service = "pangolin"
-
-[http.routers.pangolin.tls]
-certResolver = "letsencrypt"   # INDISPENSABLE pour éviter l'erreur "Default Cert"
-
-# Stalwart Mail Interface & JMAP
 [http.services.stalwart.loadBalancer]
   [[http.services.stalwart.loadBalancer.servers]]
     url = "http://127.0.0.1:8090"
 
+# --- ROUTERS ---
+
+# Dashboard Traefik
+[http.routers.traefik]
+  rule = "Host(`traefik.vps.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "api@internal"
+  tls = { certResolver = "letsencrypt" }
+
+# Vaultwarden
+[http.routers.vaultwarden]
+  rule = "Host(`vault.vps.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "vaultwarden"
+  tls = { certResolver = "letsencrypt" }
+
+# Nextcloud
+[http.routers.nextcloud]
+  rule = "Host(`cloud.vps.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "nextcloud"
+  tls = { certResolver = "letsencrypt" }
+
+# Pangolin
+[http.routers.pangolin]
+  rule = "Host(`pangolin.vps.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "pangolin"
+  tls = { certResolver = "letsencrypt" }
+
+# Stalwart Mail Interface
 [http.routers.stalwart]
   rule = "Host(`mail.vps.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "stalwart"
-  [http.routers.stalwart.tls]
-    certResolver = "letsencrypt"
-
-# # Pangolin
-# [http.services.pangolin.loadBalancer]
-# [[http.services.pangolin.loadBalancer.servers]]
-# url = "http://127.0.0.1:8082"
-
-# [http.routers.pangolin]
-# rule = "Host(`pangolin.vps.marcpartensky.com`)"
-# entryPoints = ["websecure"]
-# service = "pangolin"
-# tls = true
-
-
+  tls = { certResolver = "letsencrypt" }
