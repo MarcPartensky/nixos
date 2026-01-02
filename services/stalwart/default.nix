@@ -9,6 +9,31 @@
     "stalwart/acme-secret".text = "votre_cle_api_dns_cloudflare"; # Si challenge dns-01
   };
 
+   # Configuration de sops
+  sops = {
+    defaultSopsFile = ./secrets/anywhere.yml;
+    # age.keyFile = "/var/lib/sops-nix/key.txt";
+    
+    # Définition des secrets
+    secrets = {
+      "stalwart/mail-pw1" = {
+        owner = "stalwart-mail";
+        group = "stalwart-mail";
+        mode = "0400";
+      };
+      "stalwart/admin-pw" = {
+        owner = "stalwart-mail";
+        group = "stalwart-mail";
+        mode = "0400";
+      };
+      "stalwart/acme-secret" = {
+        owner = "stalwart-mail";
+        group = "stalwart-mail";
+        mode = "0400";
+      };
+    };
+  };
+
   # 2. Service Stalwart Mail
   services.stalwart-mail = {
     enable = true;
