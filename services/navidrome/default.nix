@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   services.navidrome = {
@@ -15,15 +15,17 @@
     };
   };
 
-  # systemd.services.navidrome = {
-  #   serviceConfig = {
-  #     StateDirectory = "navidrome";
-  #     DeviceAllow = "";
-  #     LockPersonality = true;
-  #     PrivateDevices = true;
-  #     RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
-  #   };
-  # };
+  systemd.services.navidrome = {
+    serviceConfig = {
+      StateDirectory = "navidrome";
+      DeviceAllow = "";
+      LockPersonality = true;
+      PrivateDevices = true;
+      RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
+      ProtectHome = lib.mkForce "read-only";
+      BindPaths = [ "/home/marc/media/music" ];
+    };
+  };
 
   # networking.firewall.allowedTCPPorts = [ 4533 ];
 }

@@ -13,6 +13,7 @@
         ./qbittorrent
         ./dnscrypt
         ./adguard
+        ./navidrome
         # ./syncserver
         # ./newt # attendre maj flakes
     ];
