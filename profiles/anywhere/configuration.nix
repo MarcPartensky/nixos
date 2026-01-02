@@ -9,6 +9,7 @@ in
     ../../hosts/anywhere/boot.nix
     ../../hosts/anywhere/lvm.nix
     ../../modules/nixos/zsh
+    ../../modules/home/neovim
     ./cloud.nix
     # ./caddy.nix
     # ../../hosts/anywhere/zfs.nix
