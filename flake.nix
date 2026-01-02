@@ -110,6 +110,7 @@
           ./services/vaultwarden
           # ./services/nextcloud
           ./services/pangolin
+          ./services/stalwart
         ];
       };
 
