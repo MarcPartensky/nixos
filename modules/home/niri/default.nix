@@ -138,7 +138,10 @@
         { argv = [ "dbus-update-activation-environment" "--systemd" "all" ]; }
         { argv = [ "systemctl" "--user" "import-environment" "PATH" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP" ]; }
         { argv = [ "Xwayland" ]; }
-        { argv = [ "alacritty" ]; } # Ouvre un terminal au démarrage
+
+        { argv = [ "alacritty" ]; }
+        { argv = [ "zen" ]; }
+        { argv = [ "spotify" ]; }
       ];
 
       overview.zoom = 0.2;
@@ -163,6 +166,21 @@
       };
 
       window-rules = [
+        # Alacritty -> Workspace 1
+        {
+          matches = [{ app-id = "Alacritty"; }];
+          open-on-workspace = "1";
+        }
+        # Zen Browser -> Workspace 2
+        {
+          matches = [{ app-id = "^zen"; }]; # Regex pour matcher zen ou zen-alpha
+          open-on-workspace = "2";
+        }
+        # Spotify -> Workspace 3
+        {
+          matches = [{ app-id = "Spotify"; }]; # Spotify utilise souvent XWayland
+          open-on-workspace = "3";
+        }
         {
           # Pour toutes les fenêtres qui n'ont PAS le focus
           matches = [{ is-active = false; }];
