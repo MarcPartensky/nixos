@@ -36,7 +36,8 @@
             tls.implicit = true;
           };
           management = {
-            bind = [ "127.0.0.1:8090" ];
+            # bind = [ "127.0.0.1:8090" ];
+            bind = [ "0.0.0.0:8090" ];
             protocol = "http";
           };
         };
