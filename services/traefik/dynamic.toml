@@ -30,6 +30,22 @@ entryPoints = ["websecure"]
 service = "nextcloud"
 tls = { certResolver = "letsencrypt" }
 
+# --- PANGOLIN (C'est ici que ça bloquait) ---
+[http.services.pangolin.loadBalancer]
+  [[http.services.pangolin.loadBalancer.servers]]
+    url = "http://127.0.0.1:8082" # Vérifie que Pangolin écoute bien sur ce port
+
+[http.routers.pangolin]
+  # ATTENTION: Dans tes logs d'erreur, tu appelais "pangolin.marcpartensky.com"
+  # Ici tu configures "pangolin.vps.marcpartensky.com".
+  # Choisis le bon ! Si tu veux sans 'vps', retire-le ci-dessous :
+  rule = "Host(`pangolin.vps.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "pangolin"
+
+[http.routers.pangolin.tls]
+certResolver = "letsencrypt"   # INDISPENSABLE pour éviter l'erreur "Default Cert"
+
 # # Pangolin
 # [http.services.pangolin.loadBalancer]
 # [[http.services.pangolin.loadBalancer.servers]]

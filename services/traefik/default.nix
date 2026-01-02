@@ -9,7 +9,13 @@
     # Configuration statique
     staticConfigOptions = {
       entryPoints = {
-        web.address = ":80";
+        web = {
+          address = ":80";
+          # Force la redirection HTTP -> HTTPS pour tout le monde
+          http.redirections.entryPoint = {
+            to = "websecure";
+            scheme = "https";
+          };
         websecure.address = ":443";
       };
 
