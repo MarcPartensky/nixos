@@ -9,8 +9,8 @@ tls = { certResolver = "letsencrypt" }
 
 # Vaultwarden
 [http.services.vaultwarden.loadBalancer]
-[[http.services.vaultwarden.loadBalancer.servers]]
-url = "http://127.0.0.1:8083"   # port local Vaultwarden
+    [[http.services.vaultwarden.loadBalancer.servers]]
+        url = "http://127.0.0.1:8083"   # port local Vaultwarden
 
 [http.routers.vaultwarden]
 rule = "Host(`vault.vps.marcpartensky.com`)"
@@ -49,7 +49,7 @@ certResolver = "letsencrypt"   # INDISPENSABLE pour éviter l'erreur "Default Ce
 # Stalwart Mail Interface & JMAP
 [http.services.stalwart.loadBalancer]
   [[http.services.stalwart.loadBalancer.servers]]
-    url = "http://127.0.0.1:8080"
+    url = "http://127.0.0.1:8090"
 
 [http.routers.stalwart]
   rule = "Host(`mail.vps.marcpartensky.com`)"
