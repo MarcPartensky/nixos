@@ -15,20 +15,30 @@ in {
       ../../modules/nixos/pipewire
       ../../modules/nixos/keyd
       ../../modules/nixos/gnupg
-      ../../modules/nixos/zsh
+      # ../../modules/nixos/zsh
       ../../modules/nixos/zfs
       ../../modules/nixos/virt-manager
       ../../modules/nixos/podman
       ../../modules/nixos/flatpak
       ../../modules/nixos/sopswarden
       ../../modules/nixos/xdg
-      # ../../modules/nixos/ly
-      # ../../modules/nixos/greetd
-      ../../modules/nixos/sddm
+      ../../modules/nixos/sddm # greetd or ly
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
     ];
+
+  programs.zsh.enable = true;
+
+  home-manager.users.root = {
+    home.stateVersion = "25.11";
+    imports = [ 
+      inputs.nixvim.homeModules.default 
+      ../../modules/home/neovim
+      # ../../modules/home/zsh
+      # ../../modules/home/git
+    ];
+  };
 
   environment.pathsToLink = [
     "/share/applications"
