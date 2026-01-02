@@ -106,7 +106,7 @@
           ./users.nix
           # ./services
           ./services/traefik
-          ./services/postgresql
+          ./services/postgres
           ./services/vaultwarden
           # ./services/nextcloud
           # ./services/pangolin
