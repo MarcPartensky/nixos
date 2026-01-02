@@ -159,6 +159,11 @@ let
     spotdl
     harmonoid
     feishin
+
+    beekeeper-studio
+    dbgate
+    antares
+    pgweb
   ];
 in
 {
@@ -210,6 +215,10 @@ in
     "claude-code"
     "beeper"
     "harmonoid"
+  ];
+
+  nixpkgs.config.permittedInsecurePackages = [
+    "beekeeper-studio-5.3.4"
   ];
 
   nixpkgs.config.electron.commandLineArgs = ""
