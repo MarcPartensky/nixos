@@ -59,6 +59,7 @@ let
     gh
     codeberg-cli
     bluetuith
+    bluetui
     kitty
     htop
     killall
