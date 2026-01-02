@@ -4,6 +4,7 @@
         # ./nextcloud
         ./postgres
         ./vaultwarden
+        ./newt
         # ./nextcloud
         ./readarr
         ./radarr
