@@ -19,12 +19,11 @@
         };
         websecure.address = ":443";
       };
-    };
 
-    api = {
-      dashboard = true;
-      insecure = true; # pas de port 8080 exposé, passe par traefik.marcpartensky.com
-    };
+      api = {
+        dashboard = true;
+        insecure = true; # pas de port 8080 exposé, passe par traefik.marcpartensky.com
+      };
 
     # providers = {
     #   # Si tu veux garder les fichiers de config (au lieu du docker provider)
@@ -34,17 +33,17 @@
     #   };
     # };
 
-    certificatesResolvers = {
-      letsencrypt = {
-        acme = {
-          email = "marc.partensky@proton.me";
-          # peut etre remplacer par pangolin
-          storage = lib.mkDefault "/var/lib/traefik/acme.json";
-          httpChallenge.entryPoint = "web";
+      certificatesResolvers = {
+        letsencrypt = {
+          acme = {
+            email = "marc.partensky@proton.me";
+            # peut etre remplacer par pangolin
+            storage = lib.mkDefault "/var/lib/traefik/acme.json";
+            httpChallenge.entryPoint = "web";
+          };
         };
       };
     };
-    
   };
 
   # # Reverse proxy vers le dashboard Traefik
