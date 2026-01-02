@@ -155,6 +155,7 @@ let
     # inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     gtk3 # necessaire pour gtk-launch
     gtk4 # a uniquement gtk4-launch
+    onionshare
   ];
 in
 {
