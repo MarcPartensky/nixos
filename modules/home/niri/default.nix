@@ -7,6 +7,15 @@
     pkgs.xwayland
   ];
 
+  systemd.user.sessionVariables = {
+    NIXOS_OZONE_WL = "1";
+    ELECTRON_OZONE_PLATFORM_HINT = "wayland";
+    GDK_BACKEND = "wayland";
+    QT_QPA_PLATFORM = "wayland";
+    XDG_CURRENT_DESKTOP = "niri";
+    XDG_SESSION_TYPE = "wayland";
+  };
+
   xdg.portal = {
     enable = true;
     config.common.default = "*";
