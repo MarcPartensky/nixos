@@ -22,7 +22,7 @@
   syus = "systemctl --user status";
   syur = "systemctl --user restart";
 
-  spd = "librespeed-cli";
+  spd = "speedtest-go";
 
 
   gi = "git init";
