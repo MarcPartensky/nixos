@@ -5,7 +5,9 @@ in
 {
   networking.firewall = {
     enable = true;                  # active le firewall
-    allowedTCPPorts = [ 80 443 8080 8081 8082 8083 5432 ];  # ajoute les ports à ouvrir
+    allowedTCPPorts = [
+      80 443 8080 8081 8082 8083 5432 3000 3002
+    ];  # ajoute les ports à ouvrir
     allowedUDPPorts = [ ];          # si besoin pour UDP
   };
 
