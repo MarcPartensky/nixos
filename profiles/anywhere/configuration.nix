@@ -104,11 +104,6 @@ in
   #   ];
   # };
 
-  # Pangolin (si tu utilises pangolin-service de nixpkgs)
-  # services.pangolin = {
-  #   enable = true;
-  #   # config par défaut, tu peux préciser ports ou options ici
-  # };
 
   security.sudo.enable = true;
 
