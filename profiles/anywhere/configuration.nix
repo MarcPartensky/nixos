@@ -40,6 +40,7 @@ in
     vaultwarden
     pgcli
     nix-du
+    ripgrep # for telescope neovim
   ];
 
   programs.zsh.enable = true;
