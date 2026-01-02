@@ -23,6 +23,7 @@ in {
       ../../modules/nixos/sopswarden
       # ../../modules/nixos/ly
       ../../modules/nixos/greetd
+      ../../modules/nixos/xdg
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
@@ -32,6 +33,9 @@ in {
     "/share/applications"
     "/share/xdg-desktop-portal"
   ];
+
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.login.enableGnomeKeyring = true;
 
   nix.settings = {
     experimental-features = "nix-command flakes";
