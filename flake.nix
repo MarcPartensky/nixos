@@ -104,8 +104,12 @@
           inputs.home-manager.nixosModules.default
           ./profiles/anywhere/configuration.nix
           ./users.nix
-          ./services
+          # ./services
           ./services/traefik
+          ./services/postgresql
+          ./services/vaultwarden
+          # ./services/nextcloud
+          # ./services/pangolin
         ];
       };
 
