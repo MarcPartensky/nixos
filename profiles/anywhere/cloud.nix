@@ -16,6 +16,8 @@ in
       25   # SMTP (Réception de mails)
       465  # SMTP Submissions (Envoi client)
       993  # IMAP sécurisé (Lecture client)
+      8090 # stalwart admin
+
 
       # --- Vos autres services ---
       8080 8081 8082 8083 # Pangolin / Apps
