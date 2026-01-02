@@ -156,6 +156,9 @@ let
     gtk3 # necessaire pour gtk-launch
     gtk4 # a uniquement gtk4-launch
     onionshare
+    spotdl
+    harmonoid
+    feishin
   ];
 in
 {
@@ -206,6 +209,7 @@ in
     "cursor"
     "claude-code"
     "beeper"
+    "harmonoid"
   ];
 
   nixpkgs.config.electron.commandLineArgs = ""
