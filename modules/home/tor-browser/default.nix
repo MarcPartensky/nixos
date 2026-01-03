@@ -1,42 +1,20 @@
-{ pkgs, ... } : {
-  containers.browser = {
-    autoStart = false;
-    privateNetwork = true;
-    hostAddress = "192.168.7.10";
-    localAddress = "192.168.7.11";
-    config = {config, pkgs, ... }: {
-      services.openssh = {
-        enable = true;
-        forwardX11 = true;
+{ config, pkgs, ... }:
+
+{
+  # Assure-toi que Tor Browser est installé
+  home.packages = [ pkgs.tor-browser ];
+
+  # Création forcée du fichier de politique
+  home.file.".tor-browser/app/distribution/policies.json".text = builtins.toJSON {
+    policies = {
+      ExtensionSettings = {
+        "uBlock0@raymondhill.net" = {
+          installation_mode = "force_installed";
+          install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
+        };
       };
-  
-      users.extraUsers.browser = {
-        isNormalUser = true;
-        home = "/home/browser";
-        openssh.authorizedKeys.keys = [ "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINye6ye9NEWOZC2UboNAChnVGTTKuMieQPvuckskvXno" ];
-        extraGroups = ["audio" "video"];
-      };
+      # Optionnel : Empêcher la désactivation de l'extension
+      DisableAppUpdate = true;
     };
   };
-  
-  # Open necessary ports
-  networking.firewall.allowedTCPPorts = [ 4713 6000 ];
-  hardware.pulseaudio = {
-    # enable = true;
-    # systemWide = true;
-    # support32Bit = true;
-    tcp = { enable = true; anonymousClients = { allowedIpRanges = ["127.0.0.1" "192.168.7.0/24"]; }; };
-  };
-  
-  # Configuring NAT
-  networking.nat.enable = true;
-  networking.nat.internalInterfaces = ["ve-browser"];
-  networking.nat.externalInterface = "YOUR-EXTERNAL-INTERFACE";
-  
-  # Depending on your use of global or home configuration, you will have to install "socat"
-  environment.systemPackages = [
-    pkgs.socat
-  ];
-  
-  
 }

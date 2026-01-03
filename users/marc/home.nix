@@ -69,6 +69,9 @@ let
     mesa-demos
     vulkan-tools
     jre
+
+    ffmpegthumbnailer
+    # gstreamer1.0-libav
   ];
 
   # -------------------------------
@@ -201,6 +204,7 @@ in
     ../../modules/home/mpv
     ../../modules/home/eww
     ../../modules/home/zen-browser
+    ../../modules/home/tor-browser
     ../../modules/home/nxbt
     ../../modules/home/yt-dlp
     # ../../modules/home/sopswarden
