@@ -34,6 +34,13 @@ in {
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
     };
+     "org/gnome/nautilus/preferences" = {
+      # "always" permet d'afficher les miniatures même pour les fichiers distants (ex: SMB)
+      # "local-only" est la valeur par défaut
+      show-image-thumbnails = "always";
+      # Augmenter la limite de taille si vos vidéos sont lourdes (en Mo)
+      thumbnail-limit = 100; 
+    };
   };
 
   home.sessionVariables = {
