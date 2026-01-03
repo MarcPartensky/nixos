@@ -4,10 +4,11 @@
   home.packages = [
     pkgs.alacritty
     pkgs.niri
-    pkgs.xwayland
+    pkgs.xwayland-satellite
   ];
 
   systemd.user.sessionVariables = {
+    DISPLAY = ":0";
     NIXOS_OZONE_WL = "1";
     ELECTRON_OZONE_PLATFORM_HINT = "wayland";
     GDK_BACKEND = "wayland";
@@ -137,7 +138,7 @@
         { argv = [ "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal" ]; }
         { argv = [ "dbus-update-activation-environment" "--systemd" "all" ]; }
         { argv = [ "systemctl" "--user" "import-environment" "PATH" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP" ]; }
-        { argv = [ "Xwayland" ]; }
+        { argv = [ "xwayland-satellite" ":" ]; }
 
         { argv = [ "alacritty" ]; }
         { argv = [ "zen" ]; }

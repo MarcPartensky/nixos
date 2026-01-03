@@ -68,6 +68,7 @@ let
     zenity
     mesa-demos
     vulkan-tools
+    jre
   ];
 
   # -------------------------------
@@ -96,7 +97,6 @@ let
     qbittorrent
     nuclear
     novnc
-    libreoffice
     geary
     ytmdesktop
     ytui-music
@@ -164,6 +164,9 @@ let
     dbgate
     antares
     pgweb
+
+    # libreoffice
+    libreoffice-fresh
   ];
 in
 {
@@ -233,7 +236,6 @@ in
     GSETTINGS_SCHEMA_DIR =
       "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
     # DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
-    SAL_USE_VCLPLUGIN = "gen";
 
     # Use string interpolation to force the package to its store path string
     DEFAULT_BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
@@ -243,6 +245,10 @@ in
     NIXOS_OZONE_WL = "1";
     GTK_USE_PORTAL = "1"; # Force l'usage des portails proprement
     GDK_BACKEND = "wayland";
+
+    SAL_USE_VCLPLUGIN = "gtk3"; # gen or qt6
+    XDG_SESSION_TYPE = "wayland";
+    QT_QPA_PLATFORM = "wayland";
 
     # XDG_DATA_HOME      = "${home}/.local/share";
     # XDG_CONFIG_HOME    = "${home}/.config";
