@@ -9,6 +9,7 @@
     settings = {
       user.name = "marc";
       user.email = "marc@marcpartensky.com";
+      pull.rebase = false;
       # global = {
       # 	name = "marc";
       #  	email = "marc@marcpartensky.com";
