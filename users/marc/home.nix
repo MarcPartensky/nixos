@@ -202,6 +202,7 @@ in
     ../../modules/home/eww
     ../../modules/home/zen-browser
     ../../modules/home/nxbt
+    ../../modules/home/yt-dlp
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
