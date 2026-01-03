@@ -43,6 +43,7 @@
   ch = "cd $(git rev-parse --show-toplevel)";
 
   py = "python";
+  dlp = "yt-dlp";
 
   password = "gpg --gen-random --armor 1 14";
 }
