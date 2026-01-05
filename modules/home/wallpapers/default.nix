@@ -1,51 +1,88 @@
-{ pkgs, home-manager, ... }:
+{ pkgs, config, lib, ... }:
 
 let
-  wallpapers = pkgs.fetchFromGitHub {
-    owner = "marcpartensky";
-    repo = "wallpapers";
-    rev = "master"; # tu peux mettre un commit SHA précis pour la reproductibilité
-    sha256 = "sha256-byN9lbt0ErhCLPV8avfpoMlEbqVEn4HLCi0vWOISri8="; # remplacer après premier build avec nix
+  # Création du script exécutable
+  autoWallpaper = pkgs.writers.writePython3Bin "auto-wallpaper" {
+    libraries = [ pkgs.python3Packages.pyyaml ]; 
+    flakeIgnore = [ "E" "W" ]; # Ignore les lignes trop longues (linter)
+  } (builtins.readFile ./auto_wallpaper.py); 
+
+  # On définit la configuration ici, de manière centralisée
+  wallpaperConfig = {
+    pool_size = 10;
+    weather_factors = {
+      "rain" = 0.7;
+      "cloud" = 0.8;
+      "overcast" = 0.7;
+      "clear" = 1.0;
+      "snow" = 0.9;
+    };
+    swww = {
+      transition_type = "fade";
+    };
   };
-  wallpapersDir = "/home/marc/.local/share/wallpapers";
 in
 {
-  # ---------------------------------------
-  # Packages utilisateur
-  # ---------------------------------------
-  home.packages = with pkgs; [
-    wpaperd
+  # Installation des paquets
+  home.packages = with pkgs; [ 
+    swww          
+    imagemagick   
+    curl          
+    autoWallpaper # Le script qu'on vient de créer
   ];
 
-  # ---------------------------------------
-  # Copier les wallpapers dans le home
-  # ---------------------------------------
-  home.file.".local/share/wallpapers".source = wallpapers;
+  home.file."git/wallpapers/config.yml".text = builtins.toJSON wallpaperConfig;
 
-  # ---------------------------------------
-  # Configuration de wpaperd
-  # ---------------------------------------
-  home.file.".config/wpaperd/config.toml".text = ''
-    [default]
-    path = "${wallpapers}"
-    duration = "6m"
+  # --- 1. Service One-Shot : Le script qui change le wallpaper ---
+  systemd.user.services.auto-wallpaper = {
+    Unit = {
+      Description = "Automated wallpaper changer based on light and weather";
+      After = [ "swww-daemon.service" ]; # Doit se lancer APRES le daemon
+      Wants = [ "swww-daemon.service" ];
+    };
+    
+    Service = {
+      # On ajoute les dépendances au PATH du service
+      Path = with pkgs; [ swww imagemagick curl coreutils ];
+      ExecStart = "${autoWallpaper}/bin/auto-wallpaper";
+      Type = "oneshot";
+      IOSchedulingClass = "idle";
+    };
+    
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
+    };
+  };
 
-    [eDP-1]
-    path = "${wallpapers}"
-    duration = "5m"
-    # apply-shadow = true
-  '';
+  # --- 2. Timer : Lance le script toutes les 30 min ---
+  systemd.user.timers.auto-wallpaper = {
+    Unit = {
+      Description = "Timer for auto-wallpaper";
+    };
+    Timer = {
+      OnBootSec = "2m";        
+      OnUnitActiveSec = "30m"; 
+      Unit = "auto-wallpaper.service";
+    };
+    Install = {
+      WantedBy = [ "timers.target" ];
+    };
+  };
 
-  # ---------------------------------------
-  # Service wpaperd
-  # ---------------------------------------
-  systemd.user.services.wpaperd = {
-    Unit.Description = "wpaperd wallpaper daemon";
-    Unit.After = [ "graphical-session.target" ];
-    Service.Type = "simple";
-    Service.ExecStart = "${pkgs.wpaperd}/bin/wpaperd";
-    Service.Restart = "always";
-    Install.WantedBy = [ "default.target" ];
+  # --- 3. Le Daemon SWWW (Doit tourner en permanence) ---
+  systemd.user.services.swww-daemon = {
+    Unit = {
+      Description = "swww wallpaper daemon";
+      After = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.swww}/bin/swww-daemon";
+      Restart = "always";
+      RestartSec = 3;
+    };
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
+    };
   };
 }
-

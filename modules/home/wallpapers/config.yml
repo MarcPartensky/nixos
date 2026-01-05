@@ -1,0 +1,29 @@
+# config.yml
+
+# Dossier contenant les images
+wall_dir: "/home/marc/git/wallpapers"
+
+# Combien d'images "proches" de la cible garder pour le tirage au sort
+# Exemple : 10 signifie qu'on prend les 10 images dont la luminosité est la plus proche
+# de la cible, puis on en choisit une au hasard parmi ces 10.
+variability_pool: 10
+
+# Paramètres de transition swww
+swww:
+  transition_type: "grow"
+  transition_pos: "0.5,0.5"
+  transition_fps: "60"
+  transition_duration: "2"
+
+# Facteurs météo (1.0 = luminosité normale)
+weather_factors:
+  Sunny: 1.0
+  Clear: 1.0
+  Partly cloudy: 0.9
+  Cloudy: 0.8
+  Overcast: 0.7
+  Mist: 0.7
+  Patchy rain possible: 0.7
+  Rain: 0.6
+  Snow: 0.8
+  Thunderstorm: 0.5
