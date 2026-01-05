@@ -72,6 +72,7 @@ let
 
     ffmpegthumbnailer
     # gstreamer1.0-libav
+    tlp
   ];
 
   # -------------------------------
@@ -179,6 +180,7 @@ in
     ../../modules/home/niri
     ../../modules/home/zsh
     ../../modules/home/alacritty
+    # ../../modules/home/wpaperd
     ../../modules/home/wallpapers
     ../../modules/home/syncthing
     ../../modules/home/ssh
@@ -207,6 +209,7 @@ in
     ../../modules/home/tor-browser
     ../../modules/home/nxbt
     ../../modules/home/yt-dlp
+    ../../modules/home/flatpak
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
@@ -294,6 +297,11 @@ in
     username = "marc";
     homeDirectory = "/home/marc";
   	packages = cliPackages ++ guiPackages ++ [ pythonEnv ];
+  };
+
+  services.darkman = {
+    enable = true;
+    settings = { lat = 48.8; lng = 2.3; }; # Paris
   };
 
   # environment.variables = {

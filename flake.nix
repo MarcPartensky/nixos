@@ -14,6 +14,8 @@
     newt.url = "github:fosrl/newt";
     claude-code.url = "github:sadjow/claude-code-nix";
 
+    nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=latest";
+
     niri.url = "github:sodiboo/niri-flake";
     niri.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -155,6 +157,7 @@
           inputs.sops.homeManagerModules.sops
           inputs.sopswarden.homeManagerModules.default
           inputs.niri.homeModules.niri
+          inputs.nix-flatpak.homeManagerModules.nix-flatpak
           ./users/marc/home.nix 
         ];
       };
