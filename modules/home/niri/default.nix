@@ -65,20 +65,23 @@
         mod-key-nested = "Super";
       };
 
-      # Les raccourcis clavier
       binds = {
-        # Fermer la fenêtre active
-        "Mod+Q".action.close-window = [ ];
 
-        # Navigation horizontale (Le cœur de Niri)
+        # --- Navigation Vim ---
+        # Colonnes (Gauche / Droite)
+        "Mod+H".action.focus-column-left = [ ];
+        "Mod+L".action.focus-column-right = [ ];
+        
+        # Workspaces (Suivant / Precedent)
+        "Mod+J".action.focus-workspace-down = [ ];
+        "Mod+K".action.focus-workspace-up = [ ];
+
+        # --- Navigation existante ---
+        "Mod+Q".action.close-window = [ ];
         "Mod+Left".action.focus-column-left = [ ];
         "Mod+Right".action.focus-column-right = [ ];
-        
-        # Navigation entre les fenêtres dans une colonne
         "Mod+Up".action.focus-window-or-monitor-up = [ ];
         "Mod+Down".action.focus-window-or-monitor-down = [ ];
-
-        # Quitter Niri
         "Mod+Shift+E".action.quit = [ ];
 
         # --- Applications ---
@@ -89,46 +92,36 @@
         "Alt+L".action.spawn = "nautilus";
 
         # --- Gestion des fenêtres ---
-        "Mod+M".action.maximize-column = [ ]; # Équivalent fullscreen/maximise
+        "Mod+M".action.maximize-column = [ ];
         "Mod+V".action.toggle-window-floating = [ ];
         "Mod+C".action.close-window = [ ];
-        "Super+Shift+C".action.close-window = [ ]; # Doublon pour ton xdotool kill
+        "Super+Shift+C".action.close-window = [ ];
         "Super+Shift+Q".action.quit.skip-confirmation = true;
 
-        # --- Screenshot (Grimblast & Satty) ---
+        # --- Screenshot ---
         "Print".action.spawn = [ "sh" "-c" "grim -g \"$(slurp)\" - | satty -f -" ];
-        # Alternative grimblast d'après ta conf
-        # "Print".action.spawn = [ "grimblast" "copysave" "area" ];
         "Mod+Print".action.spawn = [ "grimblast" "copysave" "output" ];
 
-        # --- Presse-papier & Multimédia ---
+        # --- Multimedia ---
         "Prior".action.spawn = "wl-copy";
         "Next".action.spawn = "wl-paste";
-        
         "Alt+D".action.spawn = [ "playerctl" "-p" "spotify" "next" ];
         "Alt+S".action.spawn = [ "playerctl" "-p" "spotify" "previous" ];
         "Alt+K".action.spawn = [ "playerctl" "-p" "spotify" "play-pause" ];
-        "Alt+W".action.spawn = [ "systemctl" "--user" "restart" "wpaperd" ];
+        "Alt+W".action.spawn = [ "auto-wallpaper" ];
 
-        # --- Contrôles Matériels (Audio/Luminosité) ---
+        # --- Materiel ---
         "XF86AudioRaiseVolume".action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%+" ];
         "XF86AudioLowerVolume".action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%-" ];
         "XF86AudioMute".action.spawn = [ "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle" ];
-
         "XF86MonBrightnessUp".action.spawn = [ "brightnessctl" "s" "+1%" ];
         "XF86MonBrightnessDown".action.spawn = [ "brightnessctl" "s" "1%-" ];
 
-        # --- Souris ---
-        # Note : Niri gère le déplacement/redimensionnement à la souris via des réglages dédiés
-        # mais on peut binder les clics si nécessaire.
-      } // lib.attrsets.mergeAttrsList (map (i: 
-        let
+      } // lib.attrsets.mergeAttrsList (map (i:
+         let
           ws = toString i;
         in {
-          # Alt + Chiffre : Envoyer l'application au Workspace X
           "Alt+${ws}".action.move-window-to-workspace = i;
-          
-          # Mod (Super) + Chiffre : Aller voir le Workspace X
           "Mod+${ws}".action.focus-workspace = i;
         }
       ) [ 1 2 3 4 5 6 7 8 9 ]);
