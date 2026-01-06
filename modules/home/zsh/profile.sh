@@ -1,5 +1,7 @@
 #!/bin/env sh
 
+cd ~/git/nixos
+
 # McFly
 eval "$(mcfly init zsh)"
 export MCFLY_FUZZY=true
