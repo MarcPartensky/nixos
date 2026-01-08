@@ -73,6 +73,9 @@ let
     ffmpegthumbnailer
     # gstreamer1.0-libav
     tlp
+    ffmpeg          # Pour créer la vidéo
+    poppler-utils   # Pour l'outil pdftoppm (conversion PDF -> Images)
+    imagemagick     # Optionnel, mais utile pour fusionner les images
   ];
 
   # -------------------------------
@@ -194,7 +197,7 @@ in
     ../../modules/home/gpg
     ../../modules/home/wofi
     ../../modules/home/dconf
-    ../../modules/home/waybar # (incompatible hyprpanel)
+    # ../../modules/home/waybar # (incompatible hyprpanel)
     ../../modules/home/mako # (incompatible hyprpanel)
     # ../../modules/home/hyprpanel
     ../../modules/home/gammastep
