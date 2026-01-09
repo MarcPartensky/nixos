@@ -23,6 +23,7 @@ in {
       ../../modules/nixos/sopswarden
       ../../modules/nixos/xdg
       ../../modules/nixos/sddm # greetd or ly
+      ../../modules/nixos/polkit
       # ../../modules/generations
       # ../../modules/git
       # ./modules/librewolf
