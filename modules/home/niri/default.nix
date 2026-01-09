@@ -1,4 +1,10 @@
 { pkgs, lib, ... }:
+let
+  # --- CONFIGURATION SCREENSHOTS ---
+  screenshotDir = "~/media/screenshots";
+  # Format : Année-Mois-Jour_Heure-Min-Sec (ex: 2024-05-20_14-30-05)
+  screenshotFormat = "$(date +%Y-%m-%d_%H-%M-%S).png";
+in
 {
   # Assure-toi que niri et alacritty sont installés
   home.packages = [
@@ -47,6 +53,7 @@
     # Variables XDG standards
     XDG_SESSION_TYPE = "wayland";
     XDG_CURRENT_DESKTOP = "niri";
+    GTK_IS_WIDGET = 0;
   };
 
   programs.niri = {
@@ -98,9 +105,19 @@
         "Super+Shift+C".action.close-window = [ ];
         "Super+Shift+Q".action.quit.skip-confirmation = true;
 
-        # --- Screenshot ---
-        "Print".action.spawn = [ "sh" "-c" "grim -g \"$(slurp)\" - | satty -f -" ];
-        "Mod+Print".action.spawn = [ "grimblast" "copysave" "output" ];
+        # PRINT : Direct -> Dossier + Presse-papier (Automatique)
+        "Print".action.spawn = [ 
+          "sh" "-c" 
+          "grim -g \"$(slurp)\" - | tee ${screenshotDir}/${screenshotFormat} | wl-copy" 
+        ];
+
+        # MOD + PRINT : Edit -> Satty (Interactif)
+        # Satty permet de choisir ensuite de sauver ou copier via son interface
+        "Mod+Print".action.spawn = [ 
+          "sh" "-c" 
+          "grim -g \"$(slurp)\" - | satty -f - --output-filename ${screenshotDir}/${screenshotFormat}" 
+        ];
+
 
         # --- Multimedia ---
         "Prior".action.spawn = "wl-copy";
