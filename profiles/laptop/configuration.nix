@@ -50,6 +50,8 @@ in {
 
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.login.enableGnomeKeyring = true;
+  sops.defaultSopsFile = ../../secrets/laptop.yml;
+  # Le fichier est chiffré avec SOPS, donc pas besoin de désactiver la validation
 
   nix.settings = {
     experimental-features = "nix-command flakes";
