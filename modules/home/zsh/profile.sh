@@ -30,6 +30,14 @@ fp() {
 	cd "$PROGRAMS_PATH/$(env ls -1 $PROGRAMS_PATH | fzf)"
 }
 
+gc() {
+  if command -v geminicommit >/dev/null 2>&1; then
+    geminicommit "$@"
+  else
+    git commit -m "$*"
+  fi
+}
+
 dlp() {
     yt-dlp \
         -ciw \

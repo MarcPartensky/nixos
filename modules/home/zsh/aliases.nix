@@ -28,7 +28,6 @@
   gi = "git init";
   gs = "git status";
   ga = "git add -A";
-  gc = "git commit -m";
   gn = "git add -A && git commit -m @";
   gt = "git add -A && git commit -m @ && git push";
   gd = "git diff";
