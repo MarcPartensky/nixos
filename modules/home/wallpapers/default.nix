@@ -47,6 +47,7 @@ in
       ExecStart = "${autoWallpaper}/bin/auto-wallpaper";
       Type = "oneshot";
       IOSchedulingClass = "idle";
+      X-RestartIfChanged = false;
     };
     
     Install = {
@@ -80,6 +81,7 @@ in
       ExecStart = "${pkgs.swww}/bin/swww-daemon";
       Restart = "always";
       RestartSec = 3;
+      X-RestartIfChanged = false;
     };
     Install = {
       WantedBy = [ "graphical-session.target" ];
