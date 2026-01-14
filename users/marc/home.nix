@@ -76,6 +76,9 @@ let
     ffmpeg          # Pour créer la vidéo
     poppler-utils   # Pour l'outil pdftoppm (conversion PDF -> Images)
     imagemagick     # Optionnel, mais utile pour fusionner les images
+    direnv
+    gemini-cli-bin
+    geminicommit
   ];
 
   # -------------------------------
