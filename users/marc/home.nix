@@ -264,6 +264,9 @@ in
     XDG_SESSION_TYPE = "wayland";
     QT_QPA_PLATFORM = "wayland";
 
+    EDITOR = "nvim";
+    VISUAL = "nvim";
+
     # XDG_DATA_HOME      = "${home}/.local/share";
     # XDG_CONFIG_HOME    = "${home}/.config";
     # XDG_CACHE_HOME     = "${home}/.cache";
