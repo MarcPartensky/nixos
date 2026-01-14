@@ -1,11 +1,10 @@
 { pkgs, config, ... } :
 {
     imports = [
-        # ./nextcloud
+        ./nextcloud
         ./postgres
         ./vaultwarden
         ./newt
-        # ./nextcloud
         ./readarr
         ./radarr
         ./sonarr
