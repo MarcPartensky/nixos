@@ -20,6 +20,10 @@ in
 
     shellAliases = shellAliases;
 
+    sessionVariables = {
+      EDITOR = "nvim";
+    };
+
     plugins = [
       # {
       #   name = "enhancd";
