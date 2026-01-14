@@ -216,6 +216,7 @@ in
     ../../modules/home/nxbt
     ../../modules/home/yt-dlp
     ../../modules/home/flatpak
+    ../../modules/home/clipcat
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
