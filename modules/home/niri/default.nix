@@ -60,6 +60,25 @@ in
     package = pkgs.niri;
     # package = inputs.niri.packages.${pkgs.system}.niri-stable;
     settings = {
+      outputs = {
+        "eDP-1" = {
+          mode = {
+            width = 1920;
+            height = 1080;
+            refresh = 60.027;
+          };
+          position = { x = 0; y = 0; };
+        };
+
+        "DP-1" = {
+          mode = {
+            width = 2560;
+            height = 1440;
+            refresh = 59.951;
+          };
+          position = { x = -320; y = -1440; };
+        };
+      };
       # Configuration du clavier (important pour un utilisateur FR)
       input.keyboard.xkb = {
         layout = "fr";
