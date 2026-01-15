@@ -79,7 +79,9 @@ in
           position = { x = -320; y = -1440; };
         };
       };
-      # Configuration du clavier (important pour un utilisateur FR)
+
+      prefer-no-csd = true; # no bar
+
       input.keyboard.xkb = {
         layout = "fr";
         variant = "us"; # "us" pour avoir le layout qwerty mais typé FR

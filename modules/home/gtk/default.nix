@@ -37,12 +37,6 @@ in {
     };
   };
 
-  # xdg.portal = {
-  #   enable = true;
-  #   extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-  #   config.common.default = [ "gtk" ];
-  # };
-
   home.sessionVariables = {
     PRISM_LAUNCHER_DARK_MODE = "1";
     GTK_THEME = themeName;
@@ -56,5 +50,13 @@ in {
     terminal = false;
     icon = "beeper";
     categories = [ "Network" "Chat" ];
+  };
+
+  xdg.desktopEntries.electron-mail = {
+    name = "Electron Mail";
+    exec = "electron-mail --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --force-dark-mode %U";
+    terminal = false;
+    icon = "electron-mail";
+    categories = [ "Network" "Email" ];
   };
 }
