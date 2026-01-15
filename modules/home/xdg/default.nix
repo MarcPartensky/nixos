@@ -1,4 +1,4 @@
-{ pkgs, ...} : {
+{ ...} : {
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
@@ -6,9 +6,9 @@
       "application/pdf" = [ "firefox.desktop" ];
     };
   };
-  xdg.portal = {
-    enable = true;
-    config.common.default = "*";
-    extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
-  };
+  # xdg.portal = {
+  #   enable = true;
+  #   config.common.default = "*";
+  #   extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
+  # };
 }
