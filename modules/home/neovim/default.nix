@@ -1,23 +1,17 @@
-{pkgs, ...}: let
-  selectOpts = ''
-    {
-      behavior = cmp.SelectBehavior.Insert
-    }
-  '';
-in {
+{pkgs, ...}: {
+  imports = [
+    ./plugins/cmp.nix
+    ./plugins/lsp.nix
+    ./plugins/conform.nix
+    ./plugins/ui.nix
+  ];
+
   # home.packages = with pkgs; [ ansible-language-server ];
   programs.nixvim = {
     enable = true;
     # # colorschemes.catppuccin.enable = true;
     opts = import ./options.nix;
     keymaps = import ./keymaps.nix;
-
-    imports = [
-      ./plugins/cmp.nix
-      ./plugins/lsp.nix
-      ./plugins/conform.nix
-      ./plugins/ui.nix
-    ];
 
     plugins = {
       avante.enable = true;
@@ -28,6 +22,7 @@ in {
           colorscheme = "wombat";
         };
       };
+    };
 
     plugins.neo-tree = {
       enable = true;
