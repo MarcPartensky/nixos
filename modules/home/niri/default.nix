@@ -172,6 +172,7 @@ in
         { argv = [ "alacritty" ]; }
         { argv = [ "zen" ]; }
         { argv = [ "spotify" ]; }
+        { argv = [ "beeper" ]; }
       ];
 
       overview.zoom = 0.2;
@@ -196,31 +197,29 @@ in
       };
 
       window-rules = [
-        # Alacritty -> Workspace 1
         {
           matches = [{ app-id = "Alacritty"; }];
           open-on-workspace = "1";
         }
-        # Zen Browser -> Workspace 2
         {
-          matches = [{ app-id = "^zen"; }]; # Regex pour matcher zen ou zen-alpha
+          matches = [{ app-id = "^zen"; }];
           open-on-workspace = "2";
         }
-        # Spotify -> Workspace 3
         {
-          matches = [{ app-id = "Spotify"; }]; # Spotify utilise souvent XWayland
+          matches = [{ app-id = "Spotify"; }];
           open-on-workspace = "3";
         }
         {
-          # Pour toutes les fenêtres qui n'ont PAS le focus
+          matches = [{ app-id = "beeper"; }];
+          open-on-workspace = "4";
+        }
+        {
           matches = [{ is-active = false; }];
-          
-          # On réduit l'ombre (plus petite, plus transparente)
           shadow = {
             enable = true;
             softness = 10;
             spread = 2;
-            color = "#00000044"; # Ombre très discrète
+            color = "#00000044";
           };
         }
       ];
