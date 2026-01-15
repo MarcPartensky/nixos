@@ -7,10 +7,18 @@ let
 in
 {
   # Assure-toi que niri et alacritty sont installés
-  home.packages = [
+  home.packages = with pkgs; [
     pkgs.alacritty
     pkgs.niri
     pkgs.xwayland-satellite
+
+    # Ton script "à part"
+    (writeShellScriptBin "niri-reset" ''
+      ${bluez}/bin/bluetoothctl devices | cut -f2 -d' ' | while read -r uuid; do
+        ${bluez}/bin/bluetoothctl connect "$uuid"
+      done
+      systemctl restart NetworkManager
+    '')
   ];
 
   systemd.user.sessionVariables = {
@@ -120,6 +128,7 @@ in
         "Alt+L".action.spawn = "nautilus";
 
         # --- Gestion des fenêtres ---
+        "Mod+R".action.spawn = [ "niri-reset" ];
         "Mod+M".action.maximize-column = [ ];
         "Mod+V".action.toggle-window-floating = [ ];
         "Mod+C".action.close-window = [ ];
