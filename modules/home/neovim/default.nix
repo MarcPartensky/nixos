@@ -1,5 +1,10 @@
-{ pkgs, ... }:
-{
+{pkgs, ...}: let
+  selectOpts = ''
+    {
+      behavior = cmp.SelectBehavior.Insert
+    }
+  '';
+in {
   # home.packages = with pkgs; [ ansible-language-server ];
   programs.nixvim = {
     enable = true;
@@ -7,12 +12,22 @@
     opts = import ./options.nix;
     keymaps = import ./keymaps.nix;
 
-    plugins.lualine = {
-      enable = true;
-      settings = {
-        colorscheme = "wombat";
+    imports = [
+      ./plugins/cmp.nix
+      ./plugins/lsp.nix
+      ./plugins/conform.nix
+      ./plugins/ui.nix
+    ];
+
+    plugins = {
+      avante.enable = true;
+
+      lualine = {
+        enable = true;
+        settings = {
+          colorscheme = "wombat";
+        };
       };
-    };
 
     plugins.neo-tree = {
       enable = true;
@@ -21,7 +36,6 @@
     plugins.auto-session = {
       enable = true;
       settings = import ./plugins/auto-session.nix;
-
     };
 
     colorschemes.onedark.enable = true;
