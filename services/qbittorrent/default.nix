@@ -4,7 +4,7 @@
   services.qbittorrent = {
     enable = true;
     webuiPort = 8084;
-    # torrentingPort = 8085;
+    torrentingPort = 8085;
     serverConfig = {
       LegalNotice.Accepted = true; # Souvent nécessaire pour le démarrage
       Preferences = {
