@@ -133,6 +133,7 @@ in
         "Mod+V".action.toggle-window-floating = [ ];
         "Mod+C".action.close-window = [ ];
         "Mod+T".action.set-column-width = "50%";
+        "Mod+Y".action.set-column-width = "33%";
         "Super+Shift+C".action.close-window = [ ];
         "Super+Shift+Q".action.quit.skip-confirmation = true;
 
@@ -201,7 +202,7 @@ in
       # Quelques réglages visuels pour ne pas être perdu
       layout = {
         default-column-width = {
-          proportion = 0.5;
+          proportion = 0.33;
         };
         border.enable = false;
         focus-ring.enable = false;
