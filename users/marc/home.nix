@@ -79,6 +79,11 @@ let
     direnv
     gemini-cli-bin
     geminicommit
+
+    pandoc
+    pandoc-katex
+    texlive.combined.scheme-small
+    gemini-cli
   ];
 
   # -------------------------------
@@ -174,9 +179,11 @@ let
     dbgate
     antares
     pgweb
-
-    # libreoffice
     libreoffice-fresh
+    zathura
+    zettlr
+    # psst # better rust spotify needs premium
+    your_spotify
   ];
 in
 {
@@ -216,7 +223,10 @@ in
     ../../modules/home/nxbt
     ../../modules/home/yt-dlp
     ../../modules/home/flatpak
-    ../../modules/home/clipcat
+    ../../modules/home/batsignal
+    ../../modules/home/playsched
+    ../../modules/home/zathura
+    # ../../modules/home/clipcat
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
     # ../../modules/home/ipython
