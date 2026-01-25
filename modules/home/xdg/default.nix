@@ -2,8 +2,8 @@
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
-      # "application/pdf" = [ "org.pwmt.zathura.desktop" ];
-      "application/pdf" = [ "firefox.desktop" ];
+      "application/pdf" = [ "org.pwmt.zathura.desktop" ];
+      # "application/pdf" = [ "firefox.desktop" ];
     };
   };
   # xdg.portal = {
