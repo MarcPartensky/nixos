@@ -7,7 +7,8 @@ let
     darkreader
     ublock-origin
     bitwarden
-    tabliss
+    # tabliss
+    sidebery
     # umatrix
     refined-github
     single-file
