@@ -86,7 +86,7 @@
           inputs.disko.nixosModules.disko
 	      inputs.nixvim.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
-          # inputs.sops.nixosModules.sops
+          # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
           inputs.sopswarden.nixosModules.default
           # inputs.microvm.nixosModules.microvm
           inputs.home-manager.nixosModules.default
