@@ -1,4 +1,7 @@
 .env
-.sops.yml
-secrets/*
+# .sops.yml devrait être commité normalement (contient les clés publiques)
+# secrets/*.yml chiffrés peuvent être commités
+# secrets/*.dec fichiers déchiffrés temporaires
+secrets/*.dec
+secrets/*.unencrypted
 result
