@@ -132,6 +132,7 @@ in
         "Mod+M".action.maximize-column = [ ];
         "Mod+V".action.toggle-window-floating = [ ];
         "Mod+C".action.close-window = [ ];
+        "Mod+T".action.set-column-width = "50%";
         "Super+Shift+C".action.close-window = [ ];
         "Super+Shift+Q".action.quit.skip-confirmation = true;
 
