@@ -7,7 +7,6 @@
     daemonSettings = {
       # OBLIGATOIRE : false pour que systemd gère le processus sans erreur
       daemonize = false;
-      
       max_history = 50;
 
       # SUPPRIME 'path = null'. 
