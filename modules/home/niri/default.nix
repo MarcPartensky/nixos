@@ -202,7 +202,8 @@ in
       # Quelques réglages visuels pour ne pas être perdu
       layout = {
         default-column-width = {
-          proportion = 0.33;
+          # proportion = 0.33;
+          proportion = 0.5;
         };
         border.enable = false;
         focus-ring.enable = false;
