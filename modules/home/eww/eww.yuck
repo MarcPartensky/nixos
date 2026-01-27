@@ -1,24 +1,24 @@
 (defvar bar_visible false)
 
+(defpoll time :interval "5s" "date '+%H:%M'")
+(defpoll battery_percent :interval "30s" "cat /sys/class/power_supply/BAT0/capacity")
+(defpoll bluetooth_device :interval "5s" "bluetoothctl info | grep 'Name:' | sed 's/Name: //g' || echo 'Disconnected'")
+
 (defwindow bar
   :monitor 0
-  :geometry (geometry :x "0%" :y "0%" :width "100%" :height "42px" :anchor "top center")
+  :geometry (geometry :x "0%" :y "0px" :width "100%" :height "45px" :anchor "top center")
   :stacking "fg"
   :exclusive false
-  :focusable false
   (eventbox :onhover "${EWW_CMD} update bar_visible=true"
             :onhoverlost "${EWW_CMD} update bar_visible=false"
     (box :orientation "v" :space-evenly false
       (revealer :transition "slidedown" :reveal bar_visible :duration "250ms"
-        (box :class "bar-main" :orientation "h" :height 40
-          (box :halign "start" "Niri")
-          (box :halign "center" "${time}")
-          (box :halign "end" "100%")
-        )
-      )
-      (box :class "trigger-zone" :height 2)
-    )
-  )
-)
-
-(defpoll time :interval "1s" "date '+%H:%M:%S'")
+        (box :class "bar-main" :height 40
+          (box :halign "start" :space-evenly false :class "bt-box"
+            (label :class "bt-label" :text "󰂱 ${bluetooth_device}"))
+          (box :halign "center" 
+            (label :text ""))
+          (box :halign "end" :space-evenly false :class "sys-box"
+            (label :class "tm-label" :text "󱑂 ${time}")
+            (label :class "bat-label" :text "󰁹 ${battery_percent}%"))))
+      (box :class "trigger" :height 2))))

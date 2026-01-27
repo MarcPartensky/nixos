@@ -1,16 +1,21 @@
+// Reset global
 * { all: unset; }
 
-window, .background, box { 
-  background-color: transparent; 
+// Fenêtre fantôme
+window, .background {
+  background-color: rgba(0, 0, 0, 0);
 }
 
+// Le style qui apparait au survol
 .bar-main {
   background-color: #1e1e2e;
   color: #cdd6f4;
   border-bottom: 2px solid #89b4fa;
-  padding: 0 10px;
+  border-radius: 0 0 12px 12px;
+  padding: 0 15px;
 }
 
-.trigger-zone { 
-  background-color: transparent; 
-}
+// Classes pour les modules
+.bluetooth-label { color: #89b4fa; font-weight: bold; margin-right: 10px; }
+.time-label { color: #f5c2e7; font-weight: bold; margin: 0 10px; }
+.bat-label { color: #a6e3a1; font-weight: bold; }
