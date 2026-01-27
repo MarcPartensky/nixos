@@ -1,21 +1,44 @@
-// Reset global
+$bg-color: #1e1e2e;
+$speed: 25s;
+
 * { all: unset; }
 
-// Fenêtre fantôme
-window, .background {
-  background-color: rgba(0, 0, 0, 0);
-}
-
-// Le style qui apparait au survol
 .bar-main {
-  background-color: #1e1e2e;
+  background-color: $bg-color;
   color: #cdd6f4;
   border-bottom: 2px solid #89b4fa;
   border-radius: 0 0 12px 12px;
-  padding: 0 15px;
+  padding: 0 20px;
 }
 
-// Classes pour les modules
-.bluetooth-label { color: #89b4fa; font-weight: bold; margin-right: 10px; }
-.time-label { color: #f5c2e7; font-weight: bold; margin: 0 10px; }
+.moving-zone {
+  min-width: 10000px; // Massive width for long strings
+  animation-name: scroll_smooth;
+  animation-duration: $speed;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.ticker-text {
+  color: #fab387;
+  font-weight: bold;
+  // white-space: nowrap;
+}
+
+@keyframes scroll_smooth {
+  from { margin-left: 700px; }
+  to { margin-left: -5000px; }
+}
+
+.fade-left {
+  background-image: linear-gradient(to right, $bg-color, rgba(30, 30, 46, 0));
+}
+
+.fade-right {
+  background-image: linear-gradient(to left, $bg-color, rgba(30, 30, 46, 0));
+}
+
+.bt-label { color: #89b4fa; font-weight: bold; }
+.tm-label { color: #f5c2e7; font-weight: bold; margin: 0 15px; }
 .bat-label { color: #a6e3a1; font-weight: bold; }
+.trigger { background-color: transparent; }
