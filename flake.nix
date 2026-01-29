@@ -5,6 +5,8 @@
     # darwin.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    clawdbot.url = "github:clawdbot/nix-clawdbot";
+    clawdbot.inputs.nixpkgs.follows = "nixpkgs";
     # hyprland.url = "github:hyprwm/Hyprland?ref=v0.50.0";
     # hy3.url = "github:outfoxxed/hy3?ref=hl0.50.0";
     # hy3.url = "github:outfoxxed/hy3";
@@ -148,7 +150,7 @@
         extraSpecialArgs = { inherit inputs; };
         pkgs = import nixpkgs {
           system = "x86_64-linux";
-          overlays = [ inputs.nur.overlays.default ];
+          overlays = [ inputs.nur.overlays.default inputs.clawdbot.overlays.default ];
         };
         modules = [
           # inputs.disko.homeModule.disko
@@ -158,6 +160,7 @@
           inputs.sopswarden.homeManagerModules.default
           inputs.niri.homeModules.niri
           inputs.nix-flatpak.homeManagerModules.nix-flatpak
+          inputs.clawdbot.homeManagerModules.clawdbot
           ./users/marc/home.nix 
         ];
       };
