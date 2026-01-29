@@ -3,6 +3,9 @@
     enable = true;
     inlayHints = true;
     servers = {
+      pyright.enable = true;
+      pylsp.enable = true;
+      # basedpyright.enable = true;
       jsonls.enable = true;
       marksman.enable = true;
       nil_ls.enable = true;

@@ -6,12 +6,21 @@
     ./plugins/ui.nix
   ];
 
-  # home.packages = with pkgs; [ ansible-language-server ];
+  home.packages = with pkgs; [
+  ];
+
   programs.nixvim = {
     enable = true;
     # # colorschemes.catppuccin.enable = true;
     opts = import ./options.nix;
     keymaps = import ./keymaps.nix;
+
+    filetype = {
+      extension = {
+        yuck = "yuck";
+      };
+    };
+
 
     plugins = {
       avante.enable = true;
@@ -20,6 +29,15 @@
         enable = true;
         settings = {
           colorscheme = "wombat";
+        };
+      };
+      treesitter = {
+        enable = true;
+        # Assure-toi que le parser yuck est bien chargé
+        nixGrammars = true; # Utilise les paquets Nix pour les grammaires
+        settings = {
+          ensure_installed = [ "yuck" "nix" "lua" "bash" "markdown" ]; # Ajoute "yuck" ici
+          highlight.enable = true;
         };
       };
     };
