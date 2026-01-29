@@ -30,6 +30,7 @@ in {
     ];
 
   programs.zsh.enable = true;
+  programs.ydotool.enable = true;
 
   home-manager.users.root = {
     home.stateVersion = "25.11";
