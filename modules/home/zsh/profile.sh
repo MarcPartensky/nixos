@@ -1,6 +1,6 @@
 #!/bin/env sh
 
-cd ~/git/nixos
+# cd ~/git/nixos
 
 # McFly
 eval "$(mcfly init zsh)"
