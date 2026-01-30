@@ -84,6 +84,7 @@ let
     pandoc-katex
     texlive.combined.scheme-small
     gemini-cli
+    img2pdf
   ];
 
   # -------------------------------
@@ -222,10 +223,11 @@ in
     ../../modules/home/tor-browser
     ../../modules/home/nxbt
     ../../modules/home/yt-dlp
-    ../../modules/home/flatpak
+    # ../../modules/home/flatpak
     ../../modules/home/batsignal
     ../../modules/home/playsched
     ../../modules/home/zathura
+    # ../../modules/home/clawdbot
     # ../../modules/home/clipcat
     # ../../modules/home/sopswarden
     # ../../modules/home/polkit
@@ -295,6 +297,7 @@ in
       "x-scheme-handler/https" = [ "zen.desktop" ];
       "x-scheme-handler/about" = [ "zen.desktop" ];
       "x-scheme-handler/unknown" = [ "zen.desktop" ];
+      "video/mp4" = [ "mpv.desktop" ];
     };
   };
 
