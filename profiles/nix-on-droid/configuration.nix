@@ -43,7 +43,7 @@
     wayvnc
     stow
     ncdu
-    pangolin
+    # pangolin
     htop
     which
     podman
