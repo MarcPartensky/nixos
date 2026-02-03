@@ -73,10 +73,10 @@
   home-manager.useUserPackages = true;
   home-manager.backupFileExtension = "hm-backup";
 
-  environment.pathsToLink = [
-    "/share/applications"
-    "/share/xdg-desktop-portal"
-  ];
+  # environment.pathsToLink = [
+  #   "/share/applications"
+  #   "/share/xdg-desktop-portal"
+  # ];
 
   # Backup etc files instead of failing to activate generation if a file already exists in /etc
   environment.etcBackupExtension = ".bak";
