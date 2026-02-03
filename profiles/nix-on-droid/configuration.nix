@@ -1,10 +1,13 @@
-{ config, lib, pkgs, inputs, ... }:
-
 {
-
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}: {
   imports = [
-  # ./modules/sshd
-  # ../../nod-sshd
+    # ./modules/sshd
+    # ../../nod-sshd
     # ../../zsh
     # ../../services/postgres
     # ../../services/nextcloud
@@ -13,7 +16,6 @@
 
   # Simply install just the packages
   environment.packages = with pkgs; [
-
     # Some common stuff that people expect to have
     procps
     killall
@@ -58,20 +60,19 @@
 
   home-manager.config = {
     home.stateVersion = "24.05";
-    imports = [ 
-      inputs.nixvim.homeManagerModules.default 
+    imports = [
+      inputs.nixvim.homeManagerModules.default
       # ../../modules/home/yt-dlp
       ../../modules/home/neovim
-      # ../../modules/home/zsh
-      # ../../modules/home/git
-      # ../../modules/home/ssh
-      # ../../modules/home/gh
+      ../../modules/home/zsh
+      ../../modules/home/git
+      ../../modules/home/ssh
+      ../../modules/home/gh
     ];
   };
 
   user.shell = "${pkgs.zsh}/bin/zsh";
 
-    
   # Ces options activent l'intégration Home Manager
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
@@ -87,7 +88,6 @@
 
   # Read the changelog before changing this value
   system.stateVersion = "24.05";
-
 
   # Set up nix for flakes
   nix.extraOptions = ''
