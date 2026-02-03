@@ -49,7 +49,7 @@
     which
     podman
     neofetch
-    gemini-cli-bin
+    # gemini-cli-bin
     tmate
     bat
   ];
