@@ -153,7 +153,7 @@
 
 
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
-      pkgs = import nixpkgs {
+      pkgs = import inputs.nixpkgs-droid {
         system = "aarch64-linux";
       };
       extraSpecialArgs = { 
