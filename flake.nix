@@ -47,17 +47,18 @@
     };
 
     # On crée une entrée SPÉCIALE pour le téléphone
-    nixpkgs-droid.url = "github:NixOS/nixpkgs/nixos-24.05";
+    # nixpkgs-droid.url = "github:NixOS/nixpkgs/nixos-24.05";
 
     nix-on-droid = {
-      url = "github:nix-community/nix-on-droid/release-24.05";
+      url = "github:nix-community/nix-on-droid/master";
+      # url = "github:nix-community/nix-on-droid/release-24.05";
       
       # C'EST LA LIGNE CRUCIALE :
       # On lui dit de suivre la version Droid, pas la version Laptop.
-      inputs.nixpkgs.follows = "nixpkgs-droid"; 
+      # inputs.nixpkgs.follows = "nixpkgs-droid"; 
       
       # On aligne aussi le home-manager interne de nix-on-droid
-      inputs.home-manager.follows = "home-manager-droid"; 
+      # inputs.home-manager.follows = "home-manager-droid"; 
     };
     
     # On définit aussi un home-manager compatible 24.05 pour le tel
