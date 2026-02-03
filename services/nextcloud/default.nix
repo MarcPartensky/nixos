@@ -1,80 +1,81 @@
-{ pkgs, config, ... }:
-  let
-  accessKey = "nextcloud";
-  secretKey = "test12345";
+{ pkgs, config, lib, ... }:
 
-  rootCredentialsFile = pkgs.writeText "minio-credentials-full" ''
-    MINIO_ROOT_USER=nextcloud
-    MINIO_ROOT_PASSWORD=test12345
-  '';
-in {
-  # environment.etc."nextcloud-password".text = "nextcloudpassword";
-  # environment.etc."nextcloud-password".mode = "0600";
-  environment.systemPackages = with pkgs; [
-    minio-client
-    nextcloud32
-  ];
+{
+  environment.systemPackages = [ pkgs.nextcloud32 ];
 
+  sops.secrets = {
+    # Le nom à gauche (ex: "nextcloud/adminUser") sera le nom du fichier dans /run/secrets/
+    # La clé "key" pointe vers la structure dans ton fichier YAML (ex: nextcloud: adminUser: ...)
+    
+    "nextcloud/admin_user" = {
+      owner = "nextcloud"; # Important : Nextcloud doit pouvoir lire ce fichier
+      group = "nextcloud";
+      key = "nextcloud_admin_user"; 
+    };
+    
+    "nextcloud/admin_password" = {
+      owner = "nextcloud";
+      group = "nextcloud";
+      key = "nextcloud_admin_password";
+    };
+
+    # Mot de passe de la base de données
+    "nextcloud/password" = {
+      owner = "nextcloud";
+      group = "nextcloud";
+      key = "nextcloud_password";
+    };
+  };
+
+  # ---------------------------------------------------------------------------
+  # CONFIGURATION NEXTCLOUD
+  # ---------------------------------------------------------------------------
   services.nextcloud = {
     enable = true;
     package = pkgs.nextcloud32;
-    hostName = "localhost:8081";
+    
+    # TODO: Changer localhost par ton nom de domaine final
+    hostName = "localhost"; 
+
+    # Mises à jour automatiques des apps Nextcloud
     autoUpdateApps.enable = true;
     appstoreEnable = true;
-    config = {
-        dbtype = "pgsql";
-        dbuser = "nextcloud";
-        dbhost = "localhost:5432";
-        # dbpassFile = "/etc/nextcloud-password";
-        # passFile = config.sops.secrets."nextcloud/password".path;
-        adminuser = config.sops.secrets."nextcloud/adminUser".path;
-        # adminpassFile = "/etc/nextcloud-password";
-        adminpassFile = config.sops.secrets."nextcloud/adminPassword".path;
-    };
-    # extraApps = {
-    #   inherit (config.services.nextcloud.package.packages.apps) news contacts
-    #   calendar tasks deck;
-    # };
-    # extraAppsEnable = true;
+
+    # Performance : Redis est fortement recommandé
     configureRedis = true;
 
-    # config.objectstore.s3 = {
-    #   enable = true;
-    #   bucket = "nextcloud";
-    #   verify_bucket_exists = true;
-    #   key = accessKey;
-    #   secretFile = "${pkgs.writeText "secret" "test12345"}";
-    #   hostname = "localhost";
-    #   useSsl = false;
-    #   port = 9000;
-    #   usePathStyle = true;
-    #   region = "us-east-1";
-    # };
+    config = {
+      dbtype = "pgsql";
+      dbuser = "nextcloud";
+      
+      # Utilisation du socket Unix (plus performant et sécurisé)
+      dbhost = "/run/postgresql"; 
+      
+      # Injection des secrets via les chemins générés par SOPS
+      adminuser = config.sops.secrets."nextcloud/admin_user".path;
+      adminpassFile = config.sops.secrets."nextcloud/admin_password".path;
+      dbpassFile = config.sops.secrets."nextcloud/password".path;
+    };
   };
 
+  # ---------------------------------------------------------------------------
+  # CONFIGURATION BASE DE DONNÉES (PostgreSQL)
+  # ---------------------------------------------------------------------------
   services.postgresql = {
+    enable = true;
+    
+    # Création automatique de la DB et de l'utilisateur
     ensureDatabases = [ "nextcloud" ];
-    ensureUsers = [
-      {
-        name = "nextcloud";
-        ensureDBOwnership = true;
-        # Since you use 'trust' in authentication below, we don't strictly need a password here
-        # provided Nextcloud connects from localhost.
-      }
-    ];
-    # On s'assure que le socket est accessible
-    authentication = pkgs.lib.mkOverride 10 ''
-      # TYPE  DATABASE        USER            METHOD
-      local   nextcloud       nextcloud       peer
+    ensureUsers = [{
+      name = "nextcloud";
+      ensureDBOwnership = true;
+    }];
+
+    # Authentification "Peer" via Socket
+    authentication = lib.mkOverride 10 ''
+      # TYPE  DATABASE    USER        METHOD
+      local   nextcloud   nextcloud   peer
+      local   all         all         peer
     '';
   };
-
-  # services.minio = {
-  #   enable = true;
-  #   listenAddress = "127.0.0.1:9000";
-  #   consoleAddress = "127.0.0.1:9001";
-  #   inherit rootCredentialsFile;
-  # };
-
-
 }

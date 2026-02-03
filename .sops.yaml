@@ -4,8 +4,10 @@
 # for a more complex example.
 keys:
   - &primary age13tc3mtr45glx0msgsygf8zc3dh9kaxcestdx8uhzztpy0mawhems4l0wsz
+  - &laptop age15n96t74lj62gxyk2wd8ac9aew5lpfkx2l7p8u3k5hc0hcek4hejszyp48h
 creation_rules:
   - path_regex: secrets/[^/]+\.(yml|json|env|ini)$
     key_groups:
       - age:
         - *primary
+        - *laptop

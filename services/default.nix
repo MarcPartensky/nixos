@@ -10,7 +10,7 @@
         ./sonarr
         ./prowlarr
         ./qbittorrent
-        ./dnscrypt
+        # ./dnscrypt
         ./adguard
         ./navidrome
         ./tor
