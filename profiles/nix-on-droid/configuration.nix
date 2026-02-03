@@ -6,8 +6,8 @@
   # ./modules/sshd
   # ../../nod-sshd
     # ../../zsh
-    ../../services/postgres
-    ../../services/nextcloud
+    # ../../services/postgres
+    # ../../services/nextcloud
   ];
 
   # Simply install just the packages
