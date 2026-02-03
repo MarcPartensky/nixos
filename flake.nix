@@ -138,6 +138,7 @@
         system = "aarch64-linux";
       };
       modules = [
+        inputs.home-manager.nixosModules.default
         ./profiles/nix-on-droid/configuration.nix
         # ./users.nix
       ];
