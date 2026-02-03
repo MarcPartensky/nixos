@@ -34,14 +34,10 @@
     enable = true;
     package = pkgs.nextcloud32;
     
-    # TODO: Changer localhost par ton nom de domaine final
-    hostName = "localhost"; 
+    hostName = "localhost:8081"; 
 
-    # Mises à jour automatiques des apps Nextcloud
     autoUpdateApps.enable = true;
     appstoreEnable = true;
-
-    # Performance : Redis est fortement recommandé
     configureRedis = true;
 
     config = {
@@ -64,7 +60,6 @@
   services.postgresql = {
     enable = true;
     
-    # Création automatique de la DB et de l'utilisateur
     ensureDatabases = [ "nextcloud" ];
     ensureUsers = [{
       name = "nextcloud";
