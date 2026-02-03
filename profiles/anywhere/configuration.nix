@@ -1,8 +1,13 @@
-{ inputs, modulesPath, config, lib, pkgs, ... }:
-let
-  pkgs-unstable = inputs.unstable.legacyPackages."x86_64-linux";
-in
 {
+  inputs,
+  modulesPath,
+  config,
+  lib,
+  pkgs,
+  ...
+}: let
+  pkgs-unstable = inputs.unstable.legacyPackages."x86_64-linux";
+in {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
     (modulesPath + "/profiles/qemu-guest.nix")
@@ -43,12 +48,14 @@ in
     ripgrep # for telescope neovim
   ];
 
+  sops.defaultSopsFile = ../../secrets/anywhere.yml;
+
   programs.zsh.enable = true;
 
   home-manager.users.root = {
     home.stateVersion = "25.11";
-    imports = [ 
-      inputs.nixvim.homeModules.default 
+    imports = [
+      inputs.nixvim.homeModules.default
       ../../modules/home/neovim
       ../../modules/home/zsh
       ../../modules/home/git
@@ -63,7 +70,7 @@ in
     settings.auto-optimise-store = true;
     gc = {
       automatic = true;
-      dates = "6:30";      # "daily", "weekly", "monthly"
+      dates = "6:30"; # "daily", "weekly", "monthly"
       options = "--delete-older-than 30d";
     };
   };
@@ -80,9 +87,8 @@ in
   };
 
   # users.users.root.openssh.authorizedKeys.keys = [
-  #   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop" 
+  #   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop"
   # ];
-
 
   # systemd.services."entrypoint" = {
   #   description = "entrypoint";
@@ -94,7 +100,6 @@ in
   #   };
   # };
 
-
   # # Exemple d’utilisateur non-root (optionnel mais recommandé)
   # users.users.marc = {
   #   isNormalUser = true;
@@ -103,7 +108,6 @@ in
   #     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop"
   #   ];
   # };
-
 
   security.sudo.enable = true;
 
@@ -121,4 +125,3 @@ in
   # Fuseau horaire
   time.timeZone = "Europe/Paris";
 }
-
