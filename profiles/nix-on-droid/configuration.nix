@@ -56,7 +56,7 @@
   ];
 
   home-manager.config = {
-    home.stateVersion = "25.11";
+    home.stateVersion = "24.05";
     imports = [ 
       inputs.nixvim.homeModules.default 
       ../../modules/home/neovim
@@ -82,7 +82,7 @@
   environment.etcBackupExtension = ".bak";
 
   # Read the changelog before changing this value
-  system.stateVersion = "25.11";
+  system.stateVersion = "24.05";
 
 
   # Set up nix for flakes
