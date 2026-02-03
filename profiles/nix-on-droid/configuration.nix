@@ -58,7 +58,7 @@
     home.stateVersion = "24.05";
     imports = [ 
       inputs.nixvim.homeModules.default 
-      ../../modules/home/neovim
+      # ../../modules/home/neovim
       # ../../modules/home/zsh
       # ../../modules/home/git
       # ../../modules/home/ssh
