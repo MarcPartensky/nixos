@@ -61,7 +61,7 @@
   ];
 
   home-manager.config = {
-    home.stateVersion = "24.05";
+    home.stateVersion = "25.11";
     imports = [
       inputs.nixvim.homeManagerModules.default
       # ../../modules/home/yt-dlp
