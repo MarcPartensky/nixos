@@ -52,6 +52,7 @@
     # gemini-cli-bin
     tmate
     bat
+    ripgrep
   ];
 
   home-manager.config = {
