@@ -153,16 +153,18 @@
 
 
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
-      pkgs = import inputs.nixpkgs-droid {
+      # pkgs = import inputs.nixpkgs-droid {
+      pkgs = import inputs.nixpkgs {
         system = "aarch64-linux";
       };
-      extraSpecialArgs = { 
-        inputs = inputs // {
-          nixpkgs = inputs.nixpkgs-droid;
-          home-manager = inputs.home-manager-droid;
-          nixvim = inputs.nixvim-droid;
-        };
-      };
+      extraSpecialArgs = { inherit inputs; };
+      # extraSpecialArgs = { 
+      #   inputs = inputs // {
+      #     nixpkgs = inputs.nixpkgs-droid;
+      #     home-manager = inputs.home-manager-droid;
+      #     nixvim = inputs.nixvim-droid;
+      #   };
+      # };
       modules = [
         # inputs.home-manager.nixosModules.default
         ./profiles/nix-on-droid/configuration.nix
