@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs, ... }:
 
 {
 
@@ -50,7 +50,22 @@
     neofetch
     gemini-cli
     tmate
+    bat
+    exa
   ];
+
+  home-manager.users.root = {
+    home.stateVersion = "25.11";
+    imports = [ 
+      inputs.nixvim.homeModules.default 
+      ../../modules/home/neovim
+      ../../modules/home/zsh
+      ../../modules/home/git
+      ../../modules/home/ssh
+      ../../modules/home/gh
+    ];
+  };
+
 
   # Backup etc files instead of failing to activate generation if a file already exists in /etc
   environment.etcBackupExtension = ".bak";
