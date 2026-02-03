@@ -67,6 +67,8 @@
     ];
   };
 
+  user.shell = "${pkgs.zsh}/bin/zsh";
+
     
   # Ces options activent l'intégration Home Manager
   home-manager.useGlobalPkgs = true;
