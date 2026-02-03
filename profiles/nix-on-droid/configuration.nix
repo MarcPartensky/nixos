@@ -16,6 +16,7 @@
     # Some common stuff that people expect to have
     procps
     killall
+    fastfetch
     #diffutils
     #findutils
     #utillinux
@@ -66,12 +67,16 @@
     ];
   };
 
+    
+  # Ces options activent l'intégration Home Manager
+  home-manager.useGlobalPkgs = true;
+  home-manager.useUserPackages = true;
+  home-manager.backupFileExtension = "hm-backup";
+
   environment.pathsToLink = [
     "/share/applications"
     "/share/xdg-desktop-portal"
   ];
-
-
 
   # Backup etc files instead of failing to activate generation if a file already exists in /etc
   environment.etcBackupExtension = ".bak";
