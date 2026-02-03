@@ -93,6 +93,16 @@ let
     gcr
     libgdata
     gnome-control-center
+
+    alejandra
+    stylua
+    yamlfmt
+    opentofu
+
+    fd
+    tree-sitter
+    ripgrep
+    jq
   ];
 
   # -------------------------------
