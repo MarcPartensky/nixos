@@ -11,6 +11,9 @@
   r = "restart";
   g = "grep";
 
+  jn = "just nixos";
+  jd = "just droid";
+
   ll = "ls -l";
   wh = "which";
   dc = "docker compose";
