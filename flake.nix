@@ -128,7 +128,8 @@
         modules = [
           inputs.disko.nixosModules.disko
           inputs.home-manager.nixosModules.default
-          inputs.sopswarden.homeManagerModules.default
+          inputs.sops.nixosModules.sops
+          # inputs.sopswarden.homeManagerModules.default
           ./profiles/anywhere/configuration.nix
           ./users.nix
           # ./services
