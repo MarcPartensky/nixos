@@ -56,6 +56,8 @@
     tmate
     bat
     ripgrep
+
+    pinentry-curses
   ];
 
   home-manager.config = {
