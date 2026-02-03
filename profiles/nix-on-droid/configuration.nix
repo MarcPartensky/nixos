@@ -8,6 +8,7 @@
     # ../../zsh
     # ../../services/postgres
     # ../../services/nextcloud
+    # ../../services/radarr
   ];
 
   # Simply install just the packages
@@ -59,7 +60,8 @@
     home.stateVersion = "24.05";
     imports = [ 
       inputs.nixvim.homeManagerModules.default 
-      # ../../modules/home/neovim
+      # ../../modules/home/yt-dlp
+      ../../modules/home/neovim
       # ../../modules/home/zsh
       # ../../modules/home/git
       # ../../modules/home/ssh
