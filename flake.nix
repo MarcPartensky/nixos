@@ -66,6 +66,9 @@
       inputs.nixpkgs.follows = "nixpkgs-droid";
     };
 
+    nixvim-droid.url = "github:nix-community/nixvim/nixos-24.05";
+    nixvim-droid.inputs.nixpkgs.follows = "nixpkgs-droid";
+
 
     # hyprland-plugins = {
     #   url = "github:hyprwm/hyprland-plugins";
