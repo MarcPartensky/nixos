@@ -62,14 +62,13 @@
     };
     
     # On définit aussi un home-manager compatible 24.05 pour le tel
-    home-manager-droid = {
-      url = "github:nix-community/home-manager/release-24.05";
-      inputs.nixpkgs.follows = "nixpkgs-droid";
-    };
+    # home-manager-droid = {
+    #   url = "github:nix-community/home-manager/release-24.05";
+    #   inputs.nixpkgs.follows = "nixpkgs-droid";
+    # };
 
-    nixvim-droid.url = "github:nix-community/nixvim/nixos-24.05";
-    nixvim-droid.inputs.nixpkgs.follows = "nixpkgs-droid";
-
+    # nixvim-droid.url = "github:nix-community/nixvim/nixos-24.05";
+    # nixvim-droid.inputs.nixpkgs.follows = "nixpkgs-droid";
 
     # hyprland-plugins = {
     #   url = "github:hyprwm/hyprland-plugins";
