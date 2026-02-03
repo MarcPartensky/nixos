@@ -113,7 +113,7 @@
           ./services/traefik
           ./services/postgres
           ./services/vaultwarden
-          # ./services/nextcloud
+          ./services/nextcloud
           ./services/pangolin
           # ./services/stalwart
         ];
