@@ -22,6 +22,7 @@
           "input"
           "network"
           "manager"
+          "ydotool"
         ];
         # openssh.authorizedKeys.keys =
         shell = pkgs.zsh;
