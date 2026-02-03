@@ -62,7 +62,7 @@
       # ../../modules/home/zsh
       # ../../modules/home/git
       # ../../modules/home/ssh
-      ../../modules/home/gh
+      # ../../modules/home/gh
     ];
   };
 
