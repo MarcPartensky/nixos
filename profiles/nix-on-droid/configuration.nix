@@ -52,7 +52,6 @@
     gemini-cli
     tmate
     bat
-    exa
   ];
 
   home-manager.config = {
