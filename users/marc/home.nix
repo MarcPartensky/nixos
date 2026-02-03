@@ -85,6 +85,14 @@ let
     texlive.combined.scheme-small
     gemini-cli
     img2pdf
+
+    # geary support
+    libsecret
+    gnome-online-accounts
+    evolution-data-server
+    gcr
+    libgdata
+    gnome-control-center
   ];
 
   # -------------------------------
@@ -249,6 +257,7 @@ in
 
   nixpkgs.config.permittedInsecurePackages = [
     "beekeeper-studio-5.3.4"
+    "libsoup-2.74.3"
   ];
 
   nixpkgs.config.electron.commandLineArgs = ""
