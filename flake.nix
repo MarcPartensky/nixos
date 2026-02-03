@@ -52,15 +52,15 @@
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/master";
       # url = "github:nix-community/nix-on-droid/release-24.05";
-      
+
       # C'EST LA LIGNE CRUCIALE :
       # On lui dit de suivre la version Droid, pas la version Laptop.
-      # inputs.nixpkgs.follows = "nixpkgs-droid"; 
-      
+      # inputs.nixpkgs.follows = "nixpkgs-droid";
+
       # On aligne aussi le home-manager interne de nix-on-droid
-      # inputs.home-manager.follows = "home-manager-droid"; 
+      # inputs.home-manager.follows = "home-manager-droid";
     };
-    
+
     # On définit aussi un home-manager compatible 24.05 pour le tel
     # home-manager-droid = {
     #   url = "github:nix-community/home-manager/release-24.05";
@@ -97,15 +97,18 @@
     # nixgl.url = "github:guibou/nixGL";
     # nixgl.inputs.nixpkgs.follows = "nixpkgs";
   };
-  outputs = { self, nixpkgs, ... } @ inputs: {
-
+  outputs = {
+    self,
+    nixpkgs,
+    ...
+  } @ inputs: {
     nixosConfigurations = {
       laptop = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { inherit inputs; };
+        specialArgs = {inherit inputs;};
         modules = [
           inputs.disko.nixosModules.disko
-	      inputs.nixvim.nixosModules.default
+          inputs.nixvim.nixosModules.default
           inputs.catppuccin.nixosModules.catppuccin
           # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
           inputs.sopswarden.nixosModules.default
@@ -121,11 +124,11 @@
 
       anywhere = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { inherit inputs; };
+        specialArgs = {inherit inputs;};
         modules = [
           inputs.disko.nixosModules.disko
           inputs.home-manager.nixosModules.default
-          # inputs.sopswarden.homeManagerModules.default
+          inputs.sopswarden.homeManagerModules.default
           ./profiles/anywhere/configuration.nix
           ./users.nix
           # ./services
@@ -140,7 +143,7 @@
 
       tower = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { inherit inputs; };
+        specialArgs = {inherit inputs;};
         modules = [
           ./hosts/tower/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
@@ -150,15 +153,13 @@
       };
     };
 
-
-
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
       # pkgs = import inputs.nixpkgs-droid {
       pkgs = import inputs.nixpkgs {
         system = "aarch64-linux";
       };
-      extraSpecialArgs = { inherit inputs; };
-      # extraSpecialArgs = { 
+      extraSpecialArgs = {inherit inputs;};
+      # extraSpecialArgs = {
       #   inputs = inputs // {
       #     nixpkgs = inputs.nixpkgs-droid;
       #     home-manager = inputs.home-manager-droid;
@@ -176,21 +177,21 @@
       "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
         # system = "x86_64-linux";
         # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-        extraSpecialArgs = { inherit inputs; };
+        extraSpecialArgs = {inherit inputs;};
         pkgs = import nixpkgs {
           system = "x86_64-linux";
-          overlays = [ inputs.nur.overlays.default inputs.clawdbot.overlays.default ];
+          overlays = [inputs.nur.overlays.default inputs.clawdbot.overlays.default];
         };
         modules = [
           # inputs.disko.homeModule.disko
-      	  inputs.catppuccin.homeModules.catppuccin
+          inputs.catppuccin.homeModules.catppuccin
           inputs.nixvim.homeModules.default
           inputs.sops.homeManagerModules.sops
           inputs.sopswarden.homeManagerModules.default
           inputs.niri.homeModules.niri
           inputs.nix-flatpak.homeManagerModules.nix-flatpak
           inputs.clawdbot.homeManagerModules.clawdbot
-          ./users/marc/home.nix 
+          ./users/marc/home.nix
         ];
       };
     };
