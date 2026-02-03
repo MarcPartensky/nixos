@@ -57,7 +57,7 @@
   home-manager.config = {
     home.stateVersion = "24.05";
     imports = [ 
-      inputs.nixvim-droid.homeModules.default 
+      inputs.nixvim.homeModules.default 
       # ../../modules/home/neovim
       # ../../modules/home/zsh
       # ../../modules/home/git
