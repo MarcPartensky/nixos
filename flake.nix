@@ -139,7 +139,7 @@
       };
       extraSpecialArgs = { inherit inputs; };
       modules = [
-        inputs.home-manager.nixosModules.default
+        # inputs.home-manager.nixosModules.default
         ./profiles/nix-on-droid/configuration.nix
         # ./users.nix
       ];

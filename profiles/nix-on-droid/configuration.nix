@@ -55,7 +55,7 @@
     exa
   ];
 
-  home-manager.users.root = {
+  home-manager.config = {
     home.stateVersion = "25.11";
     imports = [ 
       inputs.nixvim.homeModules.default 
