@@ -46,11 +46,26 @@
       flake = false; # The repo isn't a flake; use as raw source
     };
 
+    # On crée une entrée SPÉCIALE pour le téléphone
+    nixpkgs-droid.url = "github:NixOS/nixpkgs/nixos-24.05";
+
     nix-on-droid = {
-      # url = "github:nix-community/nix-on-droid/master";
       url = "github:nix-community/nix-on-droid/release-24.05";
-      inputs.nixpkgs.follows = "nixpkgs";
+      
+      # C'EST LA LIGNE CRUCIALE :
+      # On lui dit de suivre la version Droid, pas la version Laptop.
+      inputs.nixpkgs.follows = "nixpkgs-droid"; 
+      
+      # On aligne aussi le home-manager interne de nix-on-droid
+      inputs.home-manager.follows = "home-manager-droid"; 
     };
+    
+    # On définit aussi un home-manager compatible 24.05 pour le tel
+    home-manager-droid = {
+      url = "github:nix-community/home-manager/release-24.05";
+      inputs.nixpkgs.follows = "nixpkgs-droid";
+    };
+
 
     # hyprland-plugins = {
     #   url = "github:hyprwm/hyprland-plugins";
@@ -138,7 +153,13 @@
       pkgs = import nixpkgs {
         system = "aarch64-linux";
       };
-      extraSpecialArgs = { inherit inputs; };
+      extraSpecialArgs = { 
+        inputs = inputs // {
+          nixpkgs = inputs.nixpkgs-droid;
+          home-manager = inputs.home-manager-droid;
+          nixvim = inputs.nixvim-droid;
+        };
+      };
       modules = [
         # inputs.home-manager.nixosModules.default
         ./profiles/nix-on-droid/configuration.nix
