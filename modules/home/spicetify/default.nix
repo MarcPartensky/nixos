@@ -18,10 +18,15 @@ in {
       bookmark
       keyboardShortcut
       history
+      wikify
+      # showQueueDuration
+      queueTime
+      betterGenres
     ];
     enabledCustomApps = with spicePkgs.apps; [
       localFiles
-      # historyInSideBar
+      historyInSidebar
+      marketplace
     ];
     # theme = spicePkgs.themes.catppuccin;
     # theme = spicePkgs.themes.lucid;
