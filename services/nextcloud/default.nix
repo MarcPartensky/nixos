@@ -12,6 +12,12 @@
       group = "nextcloud";
       key = "nextcloud_admin_user"; 
     };
+
+    "nextcloud/user" = {
+      owner = "nextcloud"; # Important : Nextcloud doit pouvoir lire ce fichier
+      group = "nextcloud";
+      key = "nextcloud_user"; 
+    };
     
     "nextcloud/admin_password" = {
       owner = "nextcloud";
@@ -27,6 +33,11 @@
     };
   };
 
+  services.nginx.virtualHosts."localhost" = {
+    listen = [ { addr = "0.0.0.0"; port = 8081; } ];
+  };
+
+
   # ---------------------------------------------------------------------------
   # CONFIGURATION NEXTCLOUD
   # ---------------------------------------------------------------------------
@@ -34,7 +45,7 @@
     enable = true;
     package = pkgs.nextcloud32;
     
-    hostName = "localhost:8081"; 
+    hostName = "localhost"; 
 
     autoUpdateApps.enable = true;
     appstoreEnable = true;
@@ -48,7 +59,9 @@
       dbhost = "/run/postgresql"; 
       
       # Injection des secrets via les chemins générés par SOPS
-      adminuser = config.sops.secrets."nextcloud/admin_user".path;
+      # user = config.sops.secrets."nextcloud/user".path;
+      # adminuser = config.sops.secrets."nextcloud/admin_user";
+      adminuser = "root";
       adminpassFile = config.sops.secrets."nextcloud/admin_password".path;
       dbpassFile = config.sops.secrets."nextcloud/password".path;
     };
