@@ -33,6 +33,9 @@
     zen-browser.url = "github:youwen5/zen-browser-flake";
     zen-browser.inputs.nixpkgs.follows = "nixpkgs";
 
+    spicetify.url = "github:Gerg-L/spicetify-nix";
+    spicetify.inputs.nixpkgs.follows = "nixpkgs";
+
     # rycee-nurpkgs = {
     #   url = "gitlab:rycee/nur-expressions?dir=pkgs/firefox-addons";
     #   inputs.nixpkgs.follows = "nixpkgs";
@@ -192,6 +195,7 @@
           inputs.niri.homeModules.niri
           inputs.nix-flatpak.homeManagerModules.nix-flatpak
           inputs.clawdbot.homeManagerModules.clawdbot
+          inputs.spicetify.homeManagerModules.spicetify
           ./users/marc/home.nix
         ];
       };
