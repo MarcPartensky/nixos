@@ -1,21 +1,26 @@
-{ inputs, pkgs, home-manager, lib, ... }:
-
-let
+{
+  inputs,
+  pkgs,
+  home-manager,
+  lib,
+  ...
+}: let
   home = "/home/marc";
   # -------------------------------
   # CLI Packages
   # -------------------------------
-  pythonEnv = pkgs.python313.withPackages (ps: with ps; [
-    numpy
-    pandas
-    matplotlib
-    scipy
-    scikit-learn
-    jupyterlab
-    ipython
-    requests
-    pillow
-  ]);
+  pythonEnv = pkgs.python313.withPackages (ps:
+    with ps; [
+      numpy
+      pandas
+      matplotlib
+      scipy
+      scikit-learn
+      jupyterlab
+      ipython
+      requests
+      pillow
+    ]);
   cliPackages = with pkgs; [
     bat
     tmate
@@ -73,9 +78,9 @@ let
     ffmpegthumbnailer
     # gstreamer1.0-libav
     tlp
-    ffmpeg          # Pour créer la vidéo
-    poppler-utils   # Pour l'outil pdftoppm (conversion PDF -> Images)
-    imagemagick     # Optionnel, mais utile pour fusionner les images
+    ffmpeg # Pour créer la vidéo
+    poppler-utils # Pour l'outil pdftoppm (conversion PDF -> Images)
+    imagemagick # Optionnel, mais utile pour fusionner les images
     direnv
     gemini-cli-bin
     geminicommit
@@ -179,7 +184,7 @@ let
     flatpak
     gnome-software # for flatpak
     # spotify
-    pkgs.nur.repos.nltch.spotify-adblock
+    # pkgs.nur.repos.nltch.spotify-adblock
     code-cursor
     claude-code
     nautilus
@@ -204,8 +209,7 @@ let
     # psst # better rust spotify needs premium
     your_spotify
   ];
-in
-{
+in {
   imports = [
     ../../modules/home/git
     # ../../modules/home/hyprland
@@ -245,6 +249,7 @@ in
     ../../modules/home/batsignal
     ../../modules/home/playsched
     ../../modules/home/zathura
+    ../../modules/home/spicetify
     # ../../modules/home/clawdbot
     # ../../modules/home/clipcat
     # ../../modules/home/sopswarden
@@ -257,30 +262,30 @@ in
     # ../../modules/home/tor
   ];
 
-  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
-    "spotify"
-    "cursor"
-    "claude-code"
-    "beeper"
-    "harmonoid"
-  ];
+  nixpkgs.config.allowUnfreePredicate = pkg:
+    builtins.elem (lib.getName pkg) [
+      "spotify"
+      "cursor"
+      "claude-code"
+      "beeper"
+      "harmonoid"
+    ];
 
   nixpkgs.config.permittedInsecurePackages = [
     "beekeeper-studio-5.3.4"
     "libsoup-2.74.3"
   ];
 
-  nixpkgs.config.electron.commandLineArgs = ""
-  + "--ozone-platform-hint=auto "
-  + "--ozone-platform=wayland "
-  + "--disable-gpu-sandbox "
-  + "--no-sandbox "
-  + "--enable-features=WaylandWindowDecorations"
-  ;
+  nixpkgs.config.electron.commandLineArgs =
+    ""
+    + "--ozone-platform-hint=auto "
+    + "--ozone-platform=wayland "
+    + "--disable-gpu-sandbox "
+    + "--no-sandbox "
+    + "--enable-features=WaylandWindowDecorations";
 
   home.sessionVariables = {
-    GSETTINGS_SCHEMA_DIR =
-      "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
+    GSETTINGS_SCHEMA_DIR = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
     # DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
 
     # Use string interpolation to force the package to its store path string
@@ -292,7 +297,7 @@ in
     GTK_USE_PORTAL = "1"; # Force l'usage des portails proprement
     GDK_BACKEND = "wayland";
 
-    SAL_USE_VCLPLUGIN = "gtk3"; # gen or qt6
+    # SAL_USE_VCLPLUGIN = "gtk3"; # gen or qt6
     XDG_SESSION_TYPE = "wayland";
     QT_QPA_PLATFORM = "wayland";
 
@@ -307,16 +312,15 @@ in
     # PATH = "${home}/.local/bin:$PATH";
   };
 
-
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
-      "text/html" = [ "zen.desktop" ];
-      "x-scheme-handler/http" = [ "zen.desktop" ];
-      "x-scheme-handler/https" = [ "zen.desktop" ];
-      "x-scheme-handler/about" = [ "zen.desktop" ];
-      "x-scheme-handler/unknown" = [ "zen.desktop" ];
-      "video/mp4" = [ "mpv.desktop" ];
+      "text/html" = ["zen.desktop"];
+      "x-scheme-handler/http" = ["zen.desktop"];
+      "x-scheme-handler/https" = ["zen.desktop"];
+      "x-scheme-handler/about" = ["zen.desktop"];
+      "x-scheme-handler/unknown" = ["zen.desktop"];
+      "video/mp4" = ["mpv.desktop"];
     };
   };
 
@@ -332,18 +336,18 @@ in
     "/home/marc/.nix-profile/share"
   ];
 
-
-
-
   home = {
     username = "marc";
     homeDirectory = "/home/marc";
-  	packages = cliPackages ++ guiPackages ++ [ pythonEnv ];
+    packages = cliPackages ++ guiPackages ++ [pythonEnv];
   };
 
   services.darkman = {
     enable = true;
-    settings = { lat = 48.8; lng = 2.3; }; # Paris
+    settings = {
+      lat = 48.8;
+      lng = 2.3;
+    }; # Paris
   };
 
   # environment.variables = {
@@ -376,4 +380,3 @@ in
 
   home.stateVersion = "25.11";
 }
-
