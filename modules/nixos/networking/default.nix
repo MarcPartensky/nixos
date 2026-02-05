@@ -5,35 +5,30 @@
   ...
 }: let
   # ====================================================================
-  # CONFIGURATION DES RÉSEAUX
-  # Ajoute tes réseaux ici. La clé est le SSID (nom du wifi).
+  # LISTE SIMPLE (Ce que tu voulais)
   # ====================================================================
   wifiNetworksList = [
     "Wifi de Marc"
-    "Wifi AP25G"
-    "Wifi HKT"
+    "Wifi de Marc 2.4G"
+    "AP25G"
+    "HKT"
   ];
 
-  # ====================================================================
-  # MAGIE NOIRE (Génération automatique)
-  # ====================================================================
-
-  # 1. Fonction pour nettoyer le nom (ex: "Wifi de Marc" -> "wifi_de_marc")
+  # 1. Nettoyage : tout en minuscule, remplace espaces/tirets/points par "_"
   sanitize = str: lib.strings.toLower (builtins.replaceStrings [" " "-"] ["_" "_"] str);
 
-  # 2. Fonction pour générer un UUID stable à partir du SSID (Hash MD5)
-  # On découpe le hash pour qu'il ressemble à un UUID : 8-4-4-4-12
+  # 2. Règle Stricte : Le secret s'appelle TOUJOURS "wifi_" + nom nettoyé
+  getSecretName = ssid: "wifi_${sanitize ssid}";
+
+  # 3. UUID stable basé sur le hash du nom
   mkUuid = str: let
     hash = builtins.hashString "md5" str;
   in "${builtins.substring 0 8 hash}-${builtins.substring 8 4 hash}-${builtins.substring 12 4 hash}-${builtins.substring 16 4 hash}-${builtins.substring 20 12 hash}";
 
-  # 3. Fonction qui construit la config complète pour un SSID
   createNetworkConfig = ssid: let
-    cleanName = sanitize ssid;
-    uuid = mkUuid ssid;
-    secretName = "${cleanName}"; # On suppose que la clé sops s'appelle comme ça
+    secretName = getSecretName ssid;
   in {
-    name = "wifi-${builtins.replaceStrings [" "] ["-"] ssid}.nmconnection";
+    name = "wifi-${sanitize ssid}.nmconnection";
     value = {
       mode = "0600";
       owner = "root";
@@ -41,7 +36,7 @@
       content = lib.generators.toINI {} {
         connection = {
           id = ssid;
-          uuid = uuid;
+          uuid = mkUuid ssid;
           type = "wifi";
           autoconnect = true;
           interface-name = "wlan0";
@@ -53,7 +48,6 @@
         };
         wifi-security = {
           key-mgmt = "wpa-psk";
-          # On va chercher le secret sops automatiquement basé sur le nom
           psk = config.sops.placeholder.${secretName};
           "psk-flags" = "0";
         };
@@ -65,28 +59,21 @@
       };
     };
   };
-
-  # On transforme la liste simple en format attendu par sops et nm
-  wifiConfigs = lib.listToAttrs (map (ssid: {
-      name = ssid;
-      value = createNetworkConfig ssid;
-    })
-    wifiNetworksList);
 in {
+  # Génération des secrets attendus (wifi_ap25g, wifi_wifi_de_marc, etc.)
   sops.secrets = lib.listToAttrs (map (ssid: {
-      name = "${sanitize ssid}";
+      name = getSecretName ssid;
       value = {};
     })
     wifiNetworksList);
 
-  # 2. Génération des fichiers de config NetworkManager
+  # Génération des fichiers NetworkManager
   sops.templates = lib.mapAttrs (n: v: v.value) (lib.listToAttrs (map (ssid: {
-      name = "wifi-${sanitize ssid}"; # Nom unique pour le template
+      name = "wifi-${sanitize ssid}";
       value = createNetworkConfig ssid;
     })
     wifiNetworksList));
 
-  # 3. Configuration système standard
   networking = {
     useDHCP = lib.mkDefault true;
     hostName = "nixos";
@@ -97,16 +84,6 @@ in {
     networkmanager = {
       enable = true;
       wifi.backend = "iwd";
-      # Plus besoin de ensureProfiles ni de wireless.networks !
-      # Tout est géré par les fichiers générés dans /etc/NetworkManager/system-connections/
-    };
-
-    wireless.iwd = {
-      enable = true;
-      settings = {
-        IPv6.Enabled = true;
-        Settings.AutoConnect = true;
-      };
     };
   };
 
