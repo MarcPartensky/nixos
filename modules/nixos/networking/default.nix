@@ -1,83 +1,111 @@
-{ pkgs, lib, secrets, ... }: {
-  
-  # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
-  # (the default) this is the recommended approach. When using systemd-networkd it's
-  # still possible to use this option, but it's recommended to use it in conjunction
-  # with explicit per-interface declarations with `networking.interfaces.<interface>.useDHCP`.
-  # networking.interfaces.enp0s20f0u4u4c2.useDHCP = lib.mkDefault true;
-  # networking.interfaces.wlp4s0.useDHCP = lib.mkDefault true;
+{
+  pkgs,
+  lib,
+  config,
+  ...
+}: let
+  # ====================================================================
+  # CONFIGURATION DES RÉSEAUX
+  # Ajoute tes réseaux ici. La clé est le SSID (nom du wifi).
+  # ====================================================================
+  wifiNetworksList = [
+    "Wifi de Marc"
+    "Wifi AP25G"
+    "Wifi HKT"
+  ];
 
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
+  # ====================================================================
+  # MAGIE NOIRE (Génération automatique)
+  # ====================================================================
 
+  # 1. Fonction pour nettoyer le nom (ex: "Wifi de Marc" -> "wifi_de_marc")
+  sanitize = str: lib.strings.toLower (builtins.replaceStrings [" " "-"] ["_" "_"] str);
 
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+  # 2. Fonction pour générer un UUID stable à partir du SSID (Hash MD5)
+  # On découpe le hash pour qu'il ressemble à un UUID : 8-4-4-4-12
+  mkUuid = str: let
+    hash = builtins.hashString "md5" str;
+  in "${builtins.substring 0 8 hash}-${builtins.substring 8 4 hash}-${builtins.substring 12 4 hash}-${builtins.substring 16 4 hash}-${builtins.substring 20 12 hash}";
 
+  # 3. Fonction qui construit la config complète pour un SSID
+  createNetworkConfig = ssid: let
+    cleanName = sanitize ssid;
+    uuid = mkUuid ssid;
+    secretName = "${cleanName}"; # On suppose que la clé sops s'appelle comme ça
+  in {
+    name = "wifi-${builtins.replaceStrings [" "] ["-"] ssid}.nmconnection";
+    value = {
+      mode = "0600";
+      owner = "root";
+      path = "/etc/NetworkManager/system-connections/${ssid}.nmconnection";
+      content = lib.generators.toINI {} {
+        connection = {
+          id = ssid;
+          uuid = uuid;
+          type = "wifi";
+          autoconnect = true;
+          interface-name = "wlan0";
+          permissions = "";
+        };
+        wifi = {
+          mode = "infrastructure";
+          ssid = ssid;
+        };
+        wifi-security = {
+          key-mgmt = "wpa-psk";
+          # On va chercher le secret sops automatiquement basé sur le nom
+          psk = config.sops.placeholder.${secretName};
+          "psk-flags" = "0";
+        };
+        ipv4 = {method = "auto";};
+        ipv6 = {
+          method = "auto";
+          addr-gen-mode = "default";
+        };
+      };
+    };
+  };
+
+  # On transforme la liste simple en format attendu par sops et nm
+  wifiConfigs = lib.listToAttrs (map (ssid: {
+      name = ssid;
+      value = createNetworkConfig ssid;
+    })
+    wifiNetworksList);
+in {
+  sops.secrets = lib.listToAttrs (map (ssid: {
+      name = "${sanitize ssid}";
+      value = {};
+    })
+    wifiNetworksList);
+
+  # 2. Génération des fichiers de config NetworkManager
+  sops.templates = lib.mapAttrs (n: v: v.value) (lib.listToAttrs (map (ssid: {
+      name = "wifi-${sanitize ssid}"; # Nom unique pour le template
+      value = createNetworkConfig ssid;
+    })
+    wifiNetworksList));
+
+  # 3. Configuration système standard
   networking = {
     useDHCP = lib.mkDefault true;
     hostName = "nixos";
     hostId = "c1ae84e2";
-    nameservers = [ "8.8.8.8" "8.8.4.4" ];
+    nameservers = ["8.8.8.8" "8.8.4.4"];
     enableIPv6 = false;
-
-    # nat = {
-    #   enable = true;
-    #   internalInterfaces = ["ve-+"];
-    #   externalInterface = "enp0s31f6"; # eth interface
-    # };
-
-    # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
 
     networkmanager = {
       enable = true;
       wifi.backend = "iwd";
-      ensureProfiles.profiles = {
-        wifi-de-marc = {
-          connection = {
-            id = "Wifi de Marc";
-            uuid = "73d1cf32-c497-4fd1-ace3-3e12008ecec0";
-            type = "wifi";
-            autoconnect = true;
-            interface-name = "wlan0";
-          };
-          wifi = {
-            mode = "infrastructure";
-            ssid = "Wifi de Marc";
-          };
-          wifi-security = {
-            key-mgmt = "wpa-psk";
-            psk = "2ipt98gyqf4pud63jeqi";
-          };
-          ipv4 = {
-            method = "auto";
-          };
-          ipv6 = {
-            addr-gen-mode = "default";
-            method = "auto";
-          };
-        };
-      };
-    };
-
-    wireless.networks = {
-        "AP25G".psk = secrets.wifi-ap25g-vaugneray;
-        "HKT".psk = secrets.wifi-hkt;
+      # Plus besoin de ensureProfiles ni de wireless.networks !
+      # Tout est géré par les fichiers générés dans /etc/NetworkManager/system-connections/
     };
 
     wireless.iwd = {
       enable = true;
       settings = {
-        IPv6 = {
-          Enabled = true;
-        };
-        Settings = {
-          AutoConnect = true;
-        };
+        IPv6.Enabled = true;
+        Settings.AutoConnect = true;
       };
     };
   };
