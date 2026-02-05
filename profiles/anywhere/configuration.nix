@@ -32,6 +32,7 @@ in {
     git
     gh
     just
+    fzf
     # # wayvnc
     stow
     ncdu
@@ -46,6 +47,7 @@ in {
     pgcli
     nix-du
     ripgrep # for telescope neovim
+    gcc
   ];
 
   sops.defaultSopsFile = ../../secrets/anywhere.yml;
