@@ -9,15 +9,6 @@
   pkgs-unstable = inputs.unstable.legacyPackages."x86_64-linux";
   pythonEnv = pkgs.python313.withPackages (ps:
     with ps; [
-      numpy
-      pandas
-      matplotlib
-      scipy
-      scikit-learn
-      jupyterlab
-      ipython
-      requests
-      pillow
       edge-tts
     ]);
 in {
