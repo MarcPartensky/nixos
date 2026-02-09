@@ -7,6 +7,19 @@
   ...
 }: let
   pkgs-unstable = inputs.unstable.legacyPackages."x86_64-linux";
+  pythonEnv = pkgs.python313.withPackages (ps:
+    with ps; [
+      numpy
+      pandas
+      matplotlib
+      scipy
+      scikit-learn
+      jupyterlab
+      ipython
+      requests
+      pillow
+      edge-tts
+    ]);
 in {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
@@ -20,37 +33,37 @@ in {
   ];
 
   # Paquets système
-  environment.systemPackages = with pkgs; [
-    pkgs-unstable.fosrl-pangolin
-    procps
-    killall
-    openssh
-    iproute2
-    shadow
-    neovim
-    zsh
-    git
-    gh
-    just
-    fzf
-    # # wayvnc
-    stow
-    ncdu
-    htop
-    which
-    # podman
-    fastfetch
-    bat
-    bash
-    busybox
-    vaultwarden
-    pgcli
-    nix-du
-    ripgrep # for telescope neovim
-    gcc
-  ];
-
-  sops.defaultSopsFile = ../../secrets/anywhere.yml;
+  environment.systemPackages = with pkgs;
+    [
+      pkgs-unstable.fosrl-pangolin
+      procps
+      killall
+      openssh
+      iproute2
+      shadow
+      neovim
+      zsh
+      git
+      gh
+      just
+      fzf
+      # # wayvnc
+      stow
+      ncdu
+      htop
+      which
+      # podman
+      fastfetch
+      bat
+      bash
+      busybox
+      vaultwarden
+      pgcli
+      nix-du
+      ripgrep # for telescope neovim
+      gcc
+    ]
+    ++ [pythonEnv];
 
   programs.zsh.enable = true;
 

@@ -20,6 +20,7 @@
       ipython
       requests
       pillow
+      edge-tts
     ]);
   cliPackages = with pkgs; [
     bat
