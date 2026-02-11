@@ -24,9 +24,9 @@
   syr = "systemctl restart";
   syus = "systemctl --user status";
   syur = "systemctl --user restart";
+  syrn = "systemctl restart NetworkManager";
 
   spd = "speedtest-go";
-
 
   gi = "git init";
   gs = "git status";
