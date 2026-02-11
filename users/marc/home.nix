@@ -9,23 +9,34 @@
   # -------------------------------
   # CLI Packages
   # -------------------------------
-  pythonEnv = pkgs.python313.withPackages (ps:
-    with ps; [
-      numpy
-      pandas
-      matplotlib
-      scipy
-      scikit-learn
-      jupyterlab
-      ipython
-      requests
-      pillow
-      edge-tts
-    ]);
+  pythonEnv =
+    (pkgs.python313.override {
+      packageOverrides = self: super: {
+        # Resolves conflict: forces packages wanting 'typer-slim' to use 'typer'
+        # typer-slim = super.typer;
+        weasel = super.weasel.overridePythonAttrs (old: {
+          dontCheckRuntimeDeps = true;
+        });
+      };
+    }).withPackages (ps:
+      with ps; [
+        playwright
+        numpy
+        pandas
+        matplotlib
+        scipy
+        scikit-learn
+        jupyterlab
+        ipython
+        requests
+        pillow
+        edge-tts
+        # kokoro
+      ]);
   cliPackages = with pkgs; [
     bat
     tmate
-    typer
+    # typer
     yt-dlp
     ytmdl
     spotdl
@@ -109,6 +120,8 @@
     tree-sitter
     ripgrep
     jq
+    # piper-tts
+    playwright
   ];
 
   # -------------------------------
@@ -165,7 +178,7 @@
     mnemosyne
     libGL
     prismlauncher
-    piper
+    # piper
     libratbag
     solaar
     teams-for-linux
@@ -208,7 +221,7 @@
     zathura
     zettlr
     # psst # better rust spotify needs premium
-    your_spotify
+    # your_spotify
   ];
 in {
   imports = [
