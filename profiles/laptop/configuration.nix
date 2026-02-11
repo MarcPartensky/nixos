@@ -1,41 +1,46 @@
 # Edit this configuration file to define what should be installed on
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
-
-{ config, sops, lib, pkgs, inputs, ... }:
-let
-    packages = import ./packages.nix { inherit pkgs inputs; };
+{
+  config,
+  sops,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}: let
+  packages = import ./packages.nix {inherit pkgs inputs;};
 in {
-  imports =
-    [ # Include the results of the hardware scan.
-      # ../../services
-      # ../../modules/nixos/iso
-      ../../modules/nixos/bluetooth
-      ../../modules/nixos/networking
-      ../../modules/nixos/pipewire
-      ../../modules/nixos/keyd
-      ../../modules/nixos/gnupg
-      # ../../modules/nixos/zsh
-      ../../modules/nixos/zfs
-      ../../modules/nixos/virt-manager
-      ../../modules/nixos/podman
-      ../../modules/nixos/flatpak
-      ../../modules/nixos/sopswarden
-      ../../modules/nixos/xdg
-      ../../modules/nixos/sddm # greetd or ly
-      ../../modules/nixos/polkit
-      # ../../modules/generations
-      # ../../modules/git
-      # ./modules/librewolf
-    ];
+  imports = [
+    # Include the results of the hardware scan.
+    # ../../services
+    # ../../modules/nixos/iso
+    ../../modules/nixos/bluetooth
+    ../../modules/nixos/networking
+    ../../modules/nixos/pipewire
+    ../../modules/nixos/keyd
+    ../../modules/nixos/gnupg
+    # ../../modules/nixos/zsh
+    ../../modules/nixos/zfs
+    ../../modules/nixos/virt-manager
+    ../../modules/nixos/podman
+    ../../modules/nixos/flatpak
+    ../../modules/nixos/sopswarden
+    ../../modules/nixos/xdg
+    ../../modules/nixos/sddm # greetd or ly
+    ../../modules/nixos/polkit
+    # ../../modules/generations
+    # ../../modules/git
+    # ./modules/librewolf
+  ];
 
   programs.zsh.enable = true;
   programs.ydotool.enable = true;
 
   home-manager.users.root = {
     home.stateVersion = "25.11";
-    imports = [ 
-      inputs.nixvim.homeModules.default 
+    imports = [
+      inputs.nixvim.homeModules.default
       ../../modules/home/neovim
       ../../modules/home/zsh
       ../../modules/home/git
@@ -73,7 +78,7 @@ in {
 
   hardware.graphics.enable = true;
 
-  services.xserver.videoDrivers = [ "nvidia" ];
+  services.xserver.videoDrivers = ["nvidia"];
 
   hardware.nvidia = {
     modesetting.enable = true;
@@ -111,15 +116,14 @@ in {
   #   keyMap = "us";
   #   useXkbConfig = true; # use xkb.options in tty.
   # };
-  boot.kernelModules = [ "uinput" "hid-nintendo" "uhid" ];
-
+  boot.kernelModules = ["uinput" "hid-nintendo" "uhid"];
 
   environment.systemPackages = packages.all;
 
   nixpkgs.config.allowUnfreePredicate = pkg:
     builtins.elem (lib.getName pkg) (map (p: lib.getName p) packages.unfree);
 
-    # Dans votre configuration.nix (système)
+  # Dans votre configuration.nix (système)
   services.dbus.enable = true;
   xdg.portal.enable = true;
 
@@ -141,6 +145,13 @@ in {
 
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
+
+  programs.nix-ld.enable = true;
+  programs.nix-ld.libraries = with pkgs; [
+    stdenv.cc.cc
+    zlib
+    # Ajoute d'autres libs ici si d'autres packages pleurent
+  ];
 
   # Enable CUPS to print documents.
   # services.printing.enable = true;
@@ -172,4 +183,3 @@ in {
   # For more information, see `man configuration.nix` or https://nixos.org/manual/nixos/stable/options#opt-system.stateVersion .
   system.stateVersion = "25.11"; # Did you read the comment?
 }
-
