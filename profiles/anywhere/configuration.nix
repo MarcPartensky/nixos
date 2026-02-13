@@ -1,8 +1,6 @@
 {
   inputs,
   modulesPath,
-  config,
-  lib,
   pkgs,
   ...
 }: let
@@ -69,6 +67,8 @@ in {
       ../../modules/home/gh
     ];
   };
+
+  sops.defaultSopsFile = ../../secrets/anywhere.yml;
 
   networking.hostName = "anywhere";
 
