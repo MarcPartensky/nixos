@@ -51,6 +51,16 @@
     appstoreEnable = true;
     configureRedis = true;
 
+    settings = {
+      trusted_domains = [
+        "localhost"
+        "127.0.0.1"
+        "cloud.vps.marcpartensky.com" # Ajoute ici le domaine que tu utiliseras via Traefik
+      ];
+      # Si Traefik est en HTTPS et Nextcloud en HTTP derrière :
+      overwriteprotocol = "https";
+    };
+
     config = {
       dbtype = "pgsql";
       dbuser = "nextcloud";
@@ -64,7 +74,13 @@
       adminuser = "root";
       adminpassFile = config.sops.secrets."nextcloud/admin_password".path;
       dbpassFile = config.sops.secrets."nextcloud/password".path;
+
     };
+
+    extraApps = {
+      inherit (config.services.nextcloud.package.packages.apps) news contacts tasks;
+    };
+    extraAppsEnable = true;
   };
 
   # ---------------------------------------------------------------------------
