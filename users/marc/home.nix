@@ -147,7 +147,7 @@
     nwg-dock-hyprland
     nwg-drawer
     obs-studio
-    qbittorrent
+    # qbittorrent # useless bc of firefoxpwa
     nuclear
     novnc
     geary
