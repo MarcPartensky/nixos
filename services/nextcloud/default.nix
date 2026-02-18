@@ -78,7 +78,8 @@
     };
 
     extraApps = {
-      inherit (config.services.nextcloud.package.packages.apps) news contacts tasks;
+      inherit (config.services.nextcloud.package.packages.apps) news contacts
+      tasks calendar deck memories notes;
     };
     extraAppsEnable = true;
   };
