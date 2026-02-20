@@ -264,6 +264,7 @@ in {
     ../../modules/home/playsched
     ../../modules/home/zathura
     ../../modules/home/spicetify
+    ../../modules/home/watt-monitor
     # ../../modules/home/clawdbot
     # ../../modules/home/clipcat
     # ../../modules/home/sopswarden
