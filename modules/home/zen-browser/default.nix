@@ -1,12 +1,15 @@
-{ inputs, pkgs, lib, ... }:
-
-let
+{
+  inputs,
+  pkgs,
+  lib,
+  ...
+}: let
   firefoxAddons = pkgs.nur.repos.rycee.firefox-addons;
 
   extensionList = with firefoxAddons; [
     darkreader
     ublock-origin
-    bitwarden
+    # bitwarden
     # tabliss
     sidebery
     # umatrix
@@ -69,7 +72,7 @@ let
     "privacy.sanitize.sanitizeOnShutdown" = false;
     "privacy.resistFingerprinting" = false;
 
-    # Le reste on protege 
+    # Le reste on protege
     "privacy.trackingprotection.enabled" = true;
     "privacy.trackingprotection.fingerprinting.enabled" = true;
     "privacy.trackingprotection.cryptomining.enabled" = true;
@@ -90,18 +93,17 @@ let
     "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
     "browser.startup.homepage" = "https://duckduckgo.com";
 
-
     # No popup
     "browser.translations.enable" = false;
     "signon.rememberSignons" = false;
   };
-
 in {
-  nixpkgs.overlays = [ inputs.nur.overlays.default ];
+  nixpkgs.overlays = [inputs.nur.overlays.default];
 
   home.packages = [
     pkgs.firefoxpwa
-    (pkgs.wrapFirefox
+    (
+      pkgs.wrapFirefox
       inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.zen-browser-unwrapped
       {
         nativeMessagingHosts = [
@@ -136,7 +138,8 @@ in {
         extraPrefs = lib.concatLines (
           lib.mapAttrsToList (
             name: value: ''lockPref(${lib.strings.toJSON name}, ${lib.strings.toJSON value});''
-          ) prefs
+          )
+          prefs
         );
       }
     )
