@@ -1,11 +1,13 @@
-{ pkgs, lib, ... }:
-let
+{
+  pkgs,
+  lib,
+  ...
+}: let
   # --- CONFIGURATION SCREENSHOTS ---
   screenshotDir = "~/media/screenshots";
   # Format : Année-Mois-Jour_Heure-Min-Sec (ex: 2024-05-20_14-30-05)
   screenshotFormat = "$(date +%Y-%m-%d_%H-%M-%S).png";
-in
-{
+in {
   # Assure-toi que niri et alacritty sont installés
   home.packages = with pkgs; [
     pkgs.alacritty
@@ -46,7 +48,6 @@ in
     };
   };
 
-
   # On s'assure que les services dbus utilisateur sont là
   #services.dbus.enable = true;
   home.sessionVariables = {
@@ -75,7 +76,10 @@ in
             height = 1080;
             refresh = 60.027;
           };
-          position = { x = 0; y = 0; };
+          position = {
+            x = 0;
+            y = 0;
+          };
         };
 
         "DP-1" = {
@@ -84,7 +88,10 @@ in
             height = 1440;
             refresh = 59.951;
           };
-          position = { x = -320; y = -1440; };
+          position = {
+            x = -320;
+            y = -1440;
+          };
         };
       };
 
@@ -101,91 +108,93 @@ in
         mod-key-nested = "Super";
       };
 
-      binds = {
+      binds =
+        {
+          # --- Navigation Vim ---
+          # Colonnes (Gauche / Droite)
+          "Mod+H".action.focus-column-left = [];
+          "Mod+L".action.focus-column-right = [];
 
-        # --- Navigation Vim ---
-        # Colonnes (Gauche / Droite)
-        "Mod+H".action.focus-column-left = [ ];
-        "Mod+L".action.focus-column-right = [ ];
-        
-        # Workspaces (Suivant / Precedent)
-        "Mod+J".action.focus-workspace-down = [ ];
-        "Mod+K".action.focus-workspace-up = [ ];
+          # Workspaces (Suivant / Precedent)
+          "Mod+J".action.focus-workspace-down = [];
+          "Mod+K".action.focus-workspace-up = [];
 
-        # --- Navigation existante ---
-        "Mod+Q".action.close-window = [ ];
-        "Mod+Left".action.focus-column-left = [ ];
-        "Mod+Right".action.focus-column-right = [ ];
-        "Mod+Up".action.focus-window-or-monitor-up = [ ];
-        "Mod+Down".action.focus-window-or-monitor-down = [ ];
-        "Mod+Shift+E".action.quit = [ ];
+          # --- Navigation existante ---
+          "Mod+Q".action.close-window = [];
+          "Mod+Left".action.focus-column-left = [];
+          "Mod+Right".action.focus-column-right = [];
+          "Mod+Up".action.focus-window-or-monitor-up = [];
+          "Mod+Down".action.focus-window-or-monitor-down = [];
+          "Mod+Shift+E".action.quit = [];
+          "Mod+Space".action.toggle-overview = [];
 
-        # --- Applications ---
-        "Mod+D".action.spawn = [ "wofi" "--show" "drun" ];
-        "Mod+Return".action.spawn = "alacritty";
-        "Mod+F".action.spawn = "librewolf";
-        "Mod+B".action.spawn = [ "gtk-launch" "blueberry" ];
-        "Alt+L".action.spawn = "nautilus";
+          # --- Applications ---
+          "Mod+D".action.spawn = ["wofi" "--show" "drun"];
+          "Mod+Return".action.spawn = "alacritty";
+          "Mod+F".action.spawn = "librewolf";
+          "Mod+B".action.spawn = ["gtk-launch" "blueberry"];
+          "Alt+L".action.spawn = "nautilus";
 
-        # --- Gestion des fenêtres ---
-        "Mod+R".action.spawn = [ "niri-reset" ];
-        "Mod+M".action.maximize-column = [ ];
-        "Mod+V".action.toggle-window-floating = [ ];
-        "Mod+C".action.close-window = [ ];
-        "Mod+T".action.set-column-width = "50%";
-        "Mod+Y".action.set-column-width = "33%";
-        "Super+Shift+C".action.close-window = [ ];
-        "Super+Shift+Q".action.quit.skip-confirmation = true;
+          # --- Gestion des fenêtres ---
+          "Mod+R".action.spawn = ["niri-reset"];
+          "Mod+M".action.maximize-column = [];
+          "Mod+V".action.toggle-window-floating = [];
+          "Mod+C".action.close-window = [];
+          "Mod+T".action.set-column-width = "50%";
+          "Mod+Y".action.set-column-width = "33%";
+          "Super+Shift+C".action.close-window = [];
+          "Super+Shift+Q".action.quit.skip-confirmation = true;
 
-        # PRINT : Direct -> Dossier + Presse-papier (Automatique)
-        "Print".action.spawn = [ 
-          "sh" "-c" 
-          "grim -g \"$(slurp)\" - | tee ${screenshotDir}/${screenshotFormat} | wl-copy" 
-        ];
+          # PRINT : Direct -> Dossier + Presse-papier (Automatique)
+          "Print".action.spawn = [
+            "sh"
+            "-c"
+            "grim -g \"$(slurp)\" - | tee ${screenshotDir}/${screenshotFormat} | wl-copy"
+          ];
 
-        # MOD + PRINT : Edit -> Satty (Interactif)
-        # Satty permet de choisir ensuite de sauver ou copier via son interface
-        "Mod+Print".action.spawn = [ 
-          "sh" "-c" 
-          "grim -g \"$(slurp)\" - | satty -f - --output-filename ${screenshotDir}/${screenshotFormat}" 
-        ];
+          # MOD + PRINT : Edit -> Satty (Interactif)
+          # Satty permet de choisir ensuite de sauver ou copier via son interface
+          "Mod+Print".action.spawn = [
+            "sh"
+            "-c"
+            "grim -g \"$(slurp)\" - | satty -f - --output-filename ${screenshotDir}/${screenshotFormat}"
+          ];
 
+          # --- Multimedia ---
+          "Prior".action.spawn = "wl-copy";
+          "Next".action.spawn = "wl-paste";
+          "Alt+D".action.spawn = ["playerctl" "-p" "spotify" "next"];
+          "Alt+S".action.spawn = ["playerctl" "-p" "spotify" "previous"];
+          "Alt+K".action.spawn = ["playerctl" "-p" "spotify" "play-pause"];
+          "Alt+W".action.spawn = ["auto-wallpaper"];
 
-        # --- Multimedia ---
-        "Prior".action.spawn = "wl-copy";
-        "Next".action.spawn = "wl-paste";
-        "Alt+D".action.spawn = [ "playerctl" "-p" "spotify" "next" ];
-        "Alt+S".action.spawn = [ "playerctl" "-p" "spotify" "previous" ];
-        "Alt+K".action.spawn = [ "playerctl" "-p" "spotify" "play-pause" ];
-        "Alt+W".action.spawn = [ "auto-wallpaper" ];
-
-        # --- Materiel ---
-        "XF86AudioRaiseVolume".action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%+" ];
-        "XF86AudioLowerVolume".action.spawn = [ "wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%-" ];
-        "XF86AudioMute".action.spawn = [ "wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle" ];
-        "XF86MonBrightnessUp".action.spawn = [ "brightnessctl" "s" "+1%" ];
-        "XF86MonBrightnessDown".action.spawn = [ "brightnessctl" "s" "1%-" ];
-
-      } // lib.attrsets.mergeAttrsList (map (i:
-         let
-          ws = toString i;
-        in {
-          "Alt+${ws}".action.move-window-to-workspace = i;
-          "Mod+${ws}".action.focus-workspace = i;
+          # --- Materiel ---
+          "XF86AudioRaiseVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%+"];
+          "XF86AudioLowerVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%-"];
+          "XF86AudioMute".action.spawn = ["wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"];
+          "XF86MonBrightnessUp".action.spawn = ["brightnessctl" "s" "+1%"];
+          "XF86MonBrightnessDown".action.spawn = ["brightnessctl" "s" "1%-"];
         }
-      ) [ 1 2 3 4 5 6 7 8 9 ]);
+        // lib.attrsets.mergeAttrsList (map (
+          i: let
+            ws = toString i;
+          in {
+            "Alt+${ws}".action.move-window-to-workspace = i;
+            "Mod+${ws}".action.focus-workspace = i;
+          }
+        ) [1 2 3 4 5 6 7 8 9]);
 
       # Lancement automatique
       spawn-at-startup = [
-        { argv = [ "${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal" ]; }
-        { argv = [ "dbus-update-activation-environment" "--systemd" "all" ]; }
-        { argv = [ "systemctl" "--user" "import-environment" "PATH" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP" ]; }
-        { argv = [ "xwayland-satellite" ":" ]; }
+        {argv = ["${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"];}
+        {argv = ["dbus-update-activation-environment" "--systemd" "all"];}
+        {argv = ["systemctl" "--user" "import-environment" "PATH" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"];}
+        {argv = ["xwayland-satellite" ":"];}
 
-        { argv = [ "alacritty" ]; }
-        { argv = [ "zen" ]; }
-        { argv = [ "spotify" ]; }
-        { argv = [ "beeper" ]; }
+        {argv = ["alacritty"];}
+        {argv = ["zen"];}
+        {argv = ["spotify"];}
+        {argv = ["beeper"];}
       ];
 
       overview.zoom = 0.2;
@@ -212,23 +221,23 @@ in
 
       window-rules = [
         {
-          matches = [{ app-id = "Alacritty"; }];
+          matches = [{app-id = "Alacritty";}];
           open-on-workspace = "1";
         }
         {
-          matches = [{ app-id = "^zen"; }];
+          matches = [{app-id = "^zen";}];
           open-on-workspace = "2";
         }
         {
-          matches = [{ app-id = "Spotify"; }];
+          matches = [{app-id = "Spotify";}];
           open-on-workspace = "3";
         }
         {
-          matches = [{ app-id = "beeper"; }];
+          matches = [{app-id = "beeper";}];
           open-on-workspace = "4";
         }
         {
-          matches = [{ is-active = false; }];
+          matches = [{is-active = false;}];
           shadow = {
             enable = true;
             softness = 10;
