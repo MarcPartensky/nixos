@@ -122,6 +122,7 @@
     jq
     # piper-tts
     playwright
+    deepfilternet
   ];
 
   # -------------------------------
@@ -218,10 +219,10 @@
     antares
     pgweb
     libreoffice-fresh
-    zathura
     zettlr
     # psst # better rust spotify needs premium
     # your_spotify
+    pdfarranger
   ];
 in {
   imports = [

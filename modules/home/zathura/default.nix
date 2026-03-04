@@ -1,16 +1,20 @@
-{ ... }: {
+{pkgs, ...}: {
   programs.zathura = {
     enable = true;
+
+    package = pkgs.zathura.override {
+      plugins = with pkgs.zathuraPkgs; [
+        zathura_pdf_poppler
+        zathura_pdf_mupdf
+        # zathura_core
+        zathura_ps
+      ];
+    };
+
     options = {
-      # recolor = true; # dark background default
-      # recolor-keephue = false;
-      
-      # default-bg = "#000000";
-      # default-fg = "#ffffff";
-      
-      # recolor-lightcolor = "#000000";
-      # recolor-darkcolor = "#ffffff";
       selection-clipboard = "clipboard";
+      recolor = true;
+      recolor-keephue = true;
     };
   };
 }
