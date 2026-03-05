@@ -9,7 +9,7 @@
   extensionList = with firefoxAddons; [
     darkreader
     ublock-origin
-    # bitwarden
+    bitwarden
     # tabliss
     sidebery
     # umatrix
