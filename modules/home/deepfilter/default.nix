@@ -1,40 +1,33 @@
 {pkgs, ...}: let
-  deep-filter-cli = pkgs.deepfilternet.overrideAttrs (oldAttrs: {
-    pname = "deep-filter";
+  deep-filter-cli = pkgs.rustPlatform.buildRustPackage {
+    pname = "deep-filter-cli";
+    version = pkgs.deepfilternet.version;
 
-    buildAndTestSubdir = null;
+    src = pkgs.deepfilternet.src;
+
+    # On met le hash exact que Nix vient de nous donner !
+    cargoHash = "sha256-eNyX2ir+JYV15QI+e8tWcso7DVEbPxcS6PKenJIPzEA=";
+
     cargoBuildFlags = ["-p" "deep_filter"];
-    postInstall = "";
 
-    # On désactive la phase de tests unitaires qui fait planter le build
-    doCheck = false;
+    nativeBuildInputs = [
+      pkgs.pkg-config
+      pkgs.python3
+    ];
 
-    nativeBuildInputs =
-      (oldAttrs.nativeBuildInputs or [])
-      ++ [
-        pkgs.pkg-config
-        pkgs.python3
-      ];
-
-    buildInputs =
-      (oldAttrs.buildInputs or [])
-      ++ [
-        pkgs.hdf5
-        pkgs.hdf5.dev
-        pkgs.alsa-lib
-      ];
+    buildInputs = [
+      pkgs.hdf5
+      pkgs.hdf5.dev
+      pkgs.alsa-lib
+    ];
 
     HDF5_DIR = "${pkgs.symlinkJoin {
       name = "hdf5-merged";
       paths = [pkgs.hdf5 pkgs.hdf5.dev];
     }}";
 
-    meta =
-      oldAttrs.meta
-      // {
-        description = "DeepFilterNet CLI tool for audio noise suppression";
-      };
-  });
+    doCheck = false;
+  };
 in {
   home.packages = [
     deep-filter-cli
