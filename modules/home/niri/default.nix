@@ -169,8 +169,8 @@ in {
           "Alt+W".action.spawn = ["auto-wallpaper"];
 
           # --- Materiel ---
-          "XF86AudioRaiseVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%+"];
-          "XF86AudioLowerVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "1%-"];
+          "XF86AudioRaiseVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "2%+"];
+          "XF86AudioLowerVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "2%-"];
           "XF86AudioMute".action.spawn = ["wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"];
           "XF86MonBrightnessUp".action.spawn = ["brightnessctl" "s" "+1%"];
           "XF86MonBrightnessDown".action.spawn = ["brightnessctl" "s" "1%-"];
