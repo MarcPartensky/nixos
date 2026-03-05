@@ -122,7 +122,6 @@
     jq
     # piper-tts
     playwright
-    deepfilternet
   ];
 
   # -------------------------------
@@ -266,6 +265,7 @@ in {
     ../../modules/home/zathura
     ../../modules/home/spicetify
     ../../modules/home/watt-monitor
+    ../../modules/home/deepfilter
     # ../../modules/home/clawdbot
     # ../../modules/home/clipcat
     # ../../modules/home/sopswarden
