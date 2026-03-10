@@ -222,6 +222,10 @@
     # psst # better rust spotify needs premium
     # your_spotify
     pdfarranger
+    # mochi # bugué
+    # logseq
+    rqbit
+    stig
   ];
 in {
   imports = [
@@ -285,6 +289,7 @@ in {
       "claude-code"
       "beeper"
       "harmonoid"
+      # "mochi"
     ];
 
   nixpkgs.config.permittedInsecurePackages = [
