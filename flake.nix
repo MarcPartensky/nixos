@@ -112,7 +112,7 @@
         modules = [
           inputs.disko.nixosModules.disko
           inputs.nixvim.nixosModules.default
-          inputs.catppuccin.nixosModules.catppuccin
+          # inputs.catppuccin.nixosModules.catppuccin
           # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
           inputs.sopswarden.nixosModules.default
           # inputs.microvm.nixosModules.microvm
@@ -194,7 +194,7 @@
           inputs.sopswarden.homeManagerModules.default
           inputs.niri.homeModules.niri
           inputs.nix-flatpak.homeManagerModules.nix-flatpak
-          inputs.clawdbot.homeManagerModules.clawdbot
+          # inputs.clawdbot.homeManagerModules.clawdbot
           inputs.spicetify.homeManagerModules.spicetify
           ./users/marc/home.nix
         ];
