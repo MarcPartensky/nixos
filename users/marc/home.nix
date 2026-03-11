@@ -227,6 +227,7 @@
     rqbit
     # stig
     memorado
+    oboete
   ];
 in {
   imports = [
