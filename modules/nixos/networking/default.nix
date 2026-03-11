@@ -5,7 +5,7 @@
   ...
 }: let
   # ====================================================================
-  # LISTE SIMPLE (Ce que tu voulais)
+  # LISTE SIMPLE
   # ====================================================================
   wifiNetworksList = [
     "Wifi de Marc"
@@ -14,66 +14,38 @@
     "HKT"
   ];
 
-  # 1. Nettoyage : tout en minuscule, remplace espaces/tirets/points par "_"
-  sanitize = str: lib.strings.toLower (builtins.replaceStrings [" " "-"] ["_" "_"] str);
+  # 1. Nettoyage : J'ai ajouté le point "." au remplacement car les variables
+  # d'environnement (.env) n'acceptent pas les points dans leurs noms.
+  sanitize = str: lib.strings.toLower (builtins.replaceStrings [" " "-" "."] ["_" "_" "_"] str);
 
-  # 2. Règle Stricte : Le secret s'appelle TOUJOURS "wifi_" + nom nettoyé
+  # 2. Règle Stricte
   getSecretName = ssid: "wifi_${sanitize ssid}";
-
-  # 3. UUID stable basé sur le hash du nom
-  mkUuid = str: let
-    hash = builtins.hashString "md5" str;
-  in "${builtins.substring 0 8 hash}-${builtins.substring 8 4 hash}-${builtins.substring 12 4 hash}-${builtins.substring 16 4 hash}-${builtins.substring 20 12 hash}";
-
-  createNetworkConfig = ssid: let
-    secretName = getSecretName ssid;
-  in {
-    name = "wifi-${sanitize ssid}.nmconnection";
-    value = {
-      mode = "0600";
-      owner = "root";
-      path = "/etc/NetworkManager/system-connections/${ssid}.nmconnection";
-      content = lib.generators.toINI {} {
-        connection = {
-          id = ssid;
-          uuid = mkUuid ssid;
-          type = "wifi";
-          autoconnect = true;
-          interface-name = "wlan0";
-          permissions = "";
-        };
-        wifi = {
-          mode = "infrastructure";
-          ssid = ssid;
-        };
-        wifi-security = {
-          key-mgmt = "wpa-psk";
-          psk = config.sops.placeholder.${secretName};
-          "psk-flags" = "0";
-        };
-        ipv4 = {method = "auto";};
-        ipv6 = {
-          method = "auto";
-          addr-gen-mode = "default";
-        };
-      };
-    };
-  };
 in {
-  # Génération des secrets attendus (wifi_ap25g, wifi_wifi_de_marc, etc.)
+  # ====================================================================
+  # 1. GÉNÉRATION DES SECRETS SOPS
+  # ====================================================================
   sops.secrets = lib.listToAttrs (map (ssid: {
       name = getSecretName ssid;
       value = {};
     })
     wifiNetworksList);
 
-  # Génération des fichiers NetworkManager
-  sops.templates = lib.mapAttrs (n: v: v.value) (lib.listToAttrs (map (ssid: {
-      name = "wifi-${sanitize ssid}";
-      value = createNetworkConfig ssid;
-    })
-    wifiNetworksList));
+  # ====================================================================
+  # 2. CRÉATION DU FICHIER D'ENVIRONNEMENT (Le template unique)
+  # ====================================================================
+  # Cela va créer un fichier ressemblant à :
+  # wifi_de_marc_psk=motdepasse123
+  # ap25g_psk=motdepasse456
+  sops.templates."wifi-secrets.env".content = lib.concatStringsSep "\n" (
+    map (
+      ssid: "${sanitize ssid}_psk=${config.sops.placeholder.${getSecretName ssid}}"
+    )
+    wifiNetworksList
+  );
 
+  # ====================================================================
+  # 3. CONFIGURATION NETWORKMANAGER
+  # ====================================================================
   networking = {
     useDHCP = lib.mkDefault true;
     hostName = "nixos";
@@ -84,6 +56,41 @@ in {
     networkmanager = {
       enable = true;
       wifi.backend = "iwd";
+
+      ensureProfiles = {
+        # Indique à NetworkManager où lire les variables d'environnement
+        environmentFiles = [config.sops.templates."wifi-secrets.env".path];
+
+        # Génération déclarative des profils
+        profiles = lib.listToAttrs (map (ssid: {
+            name = ssid;
+            value = {
+              connection = {
+                id = ssid;
+                type = "wifi";
+                interface-name = "wlan0";
+                autoconnect = true;
+                # Note: NetworkManager générera l'UUID automatiquement,
+                # plus besoin de ta fonction mkUuid !
+              };
+              wifi = {
+                mode = "infrastructure";
+                ssid = ssid;
+              };
+              wifi-security = {
+                key-mgmt = "wpa-psk";
+                # Le préfixe "$" dit à NetworkManager de lire la variable dans le .env
+                psk = "$${sanitize ssid}_psk";
+              };
+              ipv4 = {method = "auto";};
+              ipv6 = {
+                method = "auto";
+                addr-gen-mode = "default";
+              };
+            };
+          })
+          wifiNetworksList);
+      };
     };
   };
 
