@@ -225,7 +225,8 @@
     # mochi # bugué
     # logseq
     rqbit
-    stig
+    # stig
+    memorado
   ];
 in {
   imports = [
