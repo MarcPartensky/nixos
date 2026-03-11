@@ -14,6 +14,7 @@
     ./prowlarr
     ./flaresolverr
     ./qbittorrent
+    ./rqbit
     # ./dnscrypt
     ./adguard
     ./navidrome
