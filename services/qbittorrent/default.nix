@@ -1,6 +1,5 @@
-{ pkgs, ... }:
-{
-    # configuration.nix
+{pkgs, ...}: {
+  # configuration.nix
   services.qbittorrent = {
     enable = true;
     webuiPort = 8084;
@@ -10,9 +9,11 @@
       Preferences = {
         WebUI = {
           Username = "marc"; # Remplacez par le nom d'utilisateur souhaité
-          Password_PBKDF2 =
-            "@ByteArray(wUQ/AMQATShMtwm8UpQfGQ==:8bUAN8WTM5IEQ3qzDjYkiA4Rj/23RxnVfZLHk0M1REMyfH7vKLY7RwFMmgQf9lyNkr/KOlRvK9MN1s5uKGC7Dg==)";
-          # LocalHostAuth = true; # Optionnel: Peut être utile pour l'accès local
+          AuthSubnetWhitelistEnabled = true;
+          AuthSubnetWhitelist = "127.0.0.1/32, ::1/128";
+          # Password_PBKDF2 =
+          #   "@ByteArray(wUQ/AMQATShMtwm8UpQfGQ==:8bUAN8WTM5IEQ3qzDjYkiA4Rj/23RxnVfZLHk0M1REMyfH7vKLY7RwFMmgQf9lyNkr/KOlRvK9MN1s5uKGC7Dg==)";
+          # # LocalHostAuth = true; # Optionnel: Peut être utile pour l'accès local
         };
       };
     };
