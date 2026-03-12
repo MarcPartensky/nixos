@@ -227,7 +227,7 @@
     rqbit
     # stig
     memorado
-    librechat
+    # librechat # incomplet
   ];
 in {
   imports = [
