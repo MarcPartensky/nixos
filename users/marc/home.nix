@@ -1,7 +1,6 @@
 {
   inputs,
   pkgs,
-  home-manager,
   lib,
   ...
 }: let
@@ -122,6 +121,8 @@
     jq
     # piper-tts
     playwright
+    # haskellPackages.hascard # broken
+    # gnomeExtensions.cronomix
   ];
 
   # -------------------------------
@@ -272,6 +273,7 @@ in {
     ../../modules/home/spicetify
     ../../modules/home/watt-monitor
     ../../modules/home/deepfilter
+    ../../modules/home/tewi
     # ../../modules/home/clawdbot
     # ../../modules/home/clipcat
     # ../../modules/home/sopswarden
