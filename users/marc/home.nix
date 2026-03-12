@@ -230,6 +230,19 @@
     memorado
     # librechat # incomplet
     # gnomeExtensions.cronomix
+    # (makeDesktopItem {
+    #   name = "ib-tws";
+    #   desktopName = "Interactive Brokers TWS";
+    #   # On pointe vers le steam-run du store Nix, puis vers ton installation locale
+    #   exec = "${pkgs.steam-run}/bin/steam-run /home/marc/Jts/tws";
+    #   # Optionnel : si tu as téléchargé le logo d'IBKR, tu peux mettre le chemin absolu ici
+    #   icon = "utilities-terminal";
+    #   comment = "Plateforme de trading TWS";
+    #   categories = ["Network" "Finance"];
+    #   terminal = false;
+    # })
+    # obsidian
+    logseq
   ];
 in {
   imports = [
