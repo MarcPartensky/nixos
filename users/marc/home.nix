@@ -227,7 +227,7 @@
     rqbit
     # stig
     memorado
-    oboete
+    librechat
   ];
 in {
   imports = [
