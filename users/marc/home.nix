@@ -122,7 +122,7 @@
     # piper-tts
     playwright
     # haskellPackages.hascard # broken
-    # gnomeExtensions.cronomix
+    steam-run
   ];
 
   # -------------------------------
@@ -229,6 +229,7 @@
     # stig
     memorado
     # librechat # incomplet
+    # gnomeExtensions.cronomix
   ];
 in {
   imports = [
@@ -294,6 +295,8 @@ in {
       "beeper"
       "harmonoid"
       # "mochi"
+      "steam-run"
+      "steam-unwrapped"
     ];
 
   nixpkgs.config.permittedInsecurePackages = [
