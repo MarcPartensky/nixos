@@ -52,3 +52,12 @@
   entryPoints = ["websecure"]
   service = "stalwart"
   tls = { certResolver = "letsencrypt" }
+
+[http.services.chhoto.loadBalancer]
+  [[http.services.chhoto.loadBalancer.servers]]
+    url = "http://127.0.0.1:4567"
+[http.routers.chhoto]
+  rule        = "Host(`s.vps.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service     = "chhoto"
+  tls         = { certResolver = "letsencrypt" }

@@ -141,6 +141,7 @@
           ./services/vaultwarden
           ./services/nextcloud
           ./services/pangolin
+          ./services/chhoto
           # ./services/stalwart
         ];
       };
