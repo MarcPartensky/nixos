@@ -15,3 +15,6 @@ iso:
 
 droid:
     nix-on-droid switch --flake ~/.config/nixos#default
+
+install:
+    nix-shell -p disko --run -- disko -f .#laptop -m disko
