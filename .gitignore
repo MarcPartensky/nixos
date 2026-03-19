@@ -5,3 +5,4 @@
 secrets/*.dec
 secrets/*.unencrypted
 result
+*.iso

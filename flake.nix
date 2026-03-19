@@ -125,6 +125,24 @@
         ];
       };
 
+      laptop-iso = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {inherit inputs;};
+        modules = [
+          ./modules/nixos/iso
+
+          inputs.disko.nixosModules.disko
+          inputs.nixvim.nixosModules.default
+          inputs.sopswarden.nixosModules.default
+          inputs.home-manager.nixosModules.default
+          ./hosts/laptop/disko.nix
+          ./hosts/laptop/hardware-configuration.nix
+          ./profiles/laptop/configuration.nix
+          ./services
+          ./users.nix
+        ];
+      };
+
       anywhere = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};

@@ -11,7 +11,7 @@ nixos:
     sudo nixos-rebuild switch --upgrade --impure --flake .#{{env('HOST')}}
 
 iso:
-		nix build .#nixosConfigurations.{{env('HOST')}}.config.system.build.isoImage > nixos.iso
+    nix build .#nixosConfigurations.{{env('HOST')}}-iso.config.system.build.isoImage > nixos.iso
 
 droid:
     nix-on-droid switch --flake ~/.config/nixos#default

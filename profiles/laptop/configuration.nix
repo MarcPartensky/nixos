@@ -2,8 +2,6 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 {
-  config,
-  sops,
   lib,
   pkgs,
   inputs,
@@ -14,7 +12,7 @@ in {
   imports = [
     # Include the results of the hardware scan.
     # ../../services
-    # ../../modules/nixos/iso
+    # ../../modules/nixos/iso # not the way to build iso
     ../../modules/nixos/bluetooth
     ../../modules/nixos/networking
     ../../modules/nixos/pipewire
