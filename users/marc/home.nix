@@ -243,6 +243,9 @@
     # })
     # obsidian
     logseq
+    joplin-desktop
+    eternal-terminal
+    zellij
   ];
 in {
   imports = [
