@@ -74,6 +74,12 @@ in {
 
   nix = {
     settings.auto-optimise-store = true;
+
+    optimise = {
+      automatic = true;
+      dates = ["06:45"]; # Attention: prend une liste de strings, contrairement au gc
+    };
+
     gc = {
       automatic = true;
       dates = "6:30"; # "daily", "weekly", "monthly"
