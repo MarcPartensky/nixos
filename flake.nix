@@ -142,6 +142,7 @@
           ./services/nextcloud
           ./services/pangolin
           ./services/chhoto
+          ./services/eternal-terminal
           # ./services/stalwart
         ];
       };
