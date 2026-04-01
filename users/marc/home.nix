@@ -123,6 +123,12 @@
     playwright
     # haskellPackages.hascard # broken
     steam-run
+    disko
+    # ventoy
+    ventoy-full
+    # busybox
+    openai-whisper
+    typer
   ];
 
   # -------------------------------
@@ -246,6 +252,7 @@
     joplin-desktop
     eternal-terminal
     zellij
+    # ventoy-full-gtk
   ];
 in {
   imports = [
@@ -313,11 +320,15 @@ in {
       # "mochi"
       "steam-run"
       "steam-unwrapped"
+      "ventoy-gtk3"
+      "ventoy"
     ];
 
   nixpkgs.config.permittedInsecurePackages = [
     "beekeeper-studio-5.3.4"
     "libsoup-2.74.3"
+    "ventoy-gtk3-1.1.10"
+    "ventoy-1.1.10"
   ];
 
   nixpkgs.config.electron.commandLineArgs =
