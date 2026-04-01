@@ -17,4 +17,11 @@ droid:
     nix-on-droid switch --flake ~/.config/nixos#default
 
 install:
-    nix-shell -p disko --run "disko -f .#laptop -m disko"
+    nix-shell -p disko --run "disko -f .#laptop -m disko --argstr device /dev/diskname"
+    nixos-install --root /mnt --flake .#laptop
+
+ventoy disk size="32000":
+    ventoy -I {{disk}} -r {{size}} -g
+    sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --no-daemon
+    disko -f .#laptop -m disko --argstr "device={{disk}}" ./hosts/disk/default.nix
+
