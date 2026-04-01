@@ -1,9 +1,6 @@
-{ pkgs, ... }:
-
-let
+{pkgs, ...}: let
   shellAliases = import ./aliases.nix;
-in
-{
+in {
   home.packages = with pkgs; [
     zsh-powerlevel10k
     mcfly
@@ -19,7 +16,6 @@ in
     syntaxHighlighting.enable = true;
 
     shellAliases = shellAliases;
-
     sessionVariables = {
       EDITOR = "nvim";
     };
@@ -52,4 +48,3 @@ in
 
   home.file.".p10k.zsh".source = ./p10k.zsh;
 }
-

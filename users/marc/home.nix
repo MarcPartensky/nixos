@@ -129,6 +129,7 @@
     # busybox
     openai-whisper
     typer
+    ytermusic
   ];
 
   # -------------------------------
@@ -253,6 +254,10 @@
     eternal-terminal
     zellij
     # ventoy-full-gtk
+    # spotube
+    ytui-music
+    ncspot
+    spotify-player
   ];
 in {
   imports = [
@@ -298,6 +303,7 @@ in {
     ../../modules/home/watt-monitor
     ../../modules/home/deepfilter
     ../../modules/home/tewi
+    ../../modules/home/ytui-music
     # ../../modules/home/clawdbot
     # ../../modules/home/clipcat
     # ../../modules/home/sopswarden
