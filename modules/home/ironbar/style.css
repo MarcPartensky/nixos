@@ -1,0 +1,35 @@
+/* ~/.config/ironbar/style.css */
+
+.background {
+  background: rgba(30, 30, 46, 0.95);
+  border-bottom: 2px solid #89b4fa;
+  border-radius: 0 0 10px 10px;
+
+  /* ÉTAT DE REPOS (Cachée) */
+  margin-top: -40px; 
+
+  /* ANIMATION DE DÉPART */
+  transition: margin-top 350ms cubic-bezier(0.3, 0.0, 0.8, 0.15);
+}
+
+.background:hover {
+  /* ÉTAT ACTIF (Visible) */
+  margin-top: 0px;
+
+  /* ANIMATION D'ARRIVÉE */
+  transition: margin-top 450ms cubic-bezier(0.05, 0.9, 0.1, 1.0);
+}
+
+/* --- Style des widgets --- */
+.widget {
+  padding: 0 12px;
+  margin: 4px 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  transition: background 200ms ease;
+}
+
+.widget:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #89b4fa;
+}

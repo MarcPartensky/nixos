@@ -1,0 +1,21 @@
+# ~/.config/ironbar/config.yaml
+position: top
+height: 42
+# L'option magique pour le slide au hover (500ms de délai avant de repartir)
+autohide: 500
+start:
+  - type: "workspaces"
+center:
+  - type: "clock"
+    format: "%H:%M"
+end:
+  - type: "network_manager"
+  - type: "bluetooth"
+  - type: "sys_info"
+    format:
+      - "CPU: {cpu_percent}%"
+  - type: "script"
+    mode: "poll"
+    cmd: "curl -s 'https://wttr.in/?format=1'"
+    interval: 1800
+  - type: "tray"

@@ -1,0 +1,7 @@
+[bar]
+position = "top"
+height = 32
+
+[[bar.center]]
+type = "clock"
+format = "%H:%M"
