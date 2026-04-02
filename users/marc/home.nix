@@ -258,6 +258,7 @@
     ytui-music
     ncspot
     spotify-player
+    invidious
   ];
 in {
   imports = [
