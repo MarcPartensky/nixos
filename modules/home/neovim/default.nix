@@ -21,9 +21,33 @@
       };
     };
 
-
     plugins = {
-      avante.enable = true;
+      avante = {
+        enable = true;
+        settings = {
+          provider = "claude";
+          # On déplace tout dans providers.claude
+          providers = {
+            claude = {
+              endpoint = "https://api.anthropic.com";
+              model = "claude-3-5-sonnet-20241022";
+              # Température et tokens vont maintenant dans extra_request_body
+              extra_request_body = {
+                temperature = 0;
+                max_tokens = 4096;
+              };
+            };
+          };
+          behaviour = {
+            auto_suggestions = false;
+            support_paste_from_clipboard = true;
+          };
+          window = {
+            position = "right";
+            width = 30;
+          };
+        };
+      };
 
       lualine = {
         enable = true;
@@ -36,7 +60,7 @@
         # Assure-toi que le parser yuck est bien chargé
         nixGrammars = true; # Utilise les paquets Nix pour les grammaires
         settings = {
-          ensure_installed = [ "yuck" "nix" "lua" "bash" "markdown" ]; # Ajoute "yuck" ici
+          ensure_installed = ["yuck" "nix" "lua" "bash" "markdown"]; # Ajoute "yuck" ici
           highlight.enable = true;
         };
       };
