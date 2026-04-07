@@ -92,7 +92,6 @@
     ffmpeg # Pour créer la vidéo
     poppler-utils # Pour l'outil pdftoppm (conversion PDF -> Images)
     imagemagick # Optionnel, mais utile pour fusionner les images
-    direnv
     gemini-cli-bin
     geminicommit
 
@@ -130,6 +129,7 @@
     openai-whisper
     typer
     ytermusic
+    cmake
   ];
 
   # -------------------------------
@@ -292,7 +292,7 @@ in {
     ../../modules/home/topgrade
     ../../modules/home/rbw
     ../../modules/home/mpv
-    ../../modules/home/eww
+    # ../../modules/home/eww
     ../../modules/home/zen-browser
     ../../modules/home/tor-browser
     ../../modules/home/nxbt
@@ -429,6 +429,12 @@ in {
   services.gnome-keyring = {
     enable = true;
     components = ["secrets" "ssh"];
+  };
+
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true; # for nix develop
+    nix-direnv.enable = true;
   };
 
   # systemd.user.services = {
