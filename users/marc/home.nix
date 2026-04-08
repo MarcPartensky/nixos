@@ -130,6 +130,7 @@
     typer
     ytermusic
     cmake
+    unzip
   ];
 
   # -------------------------------
