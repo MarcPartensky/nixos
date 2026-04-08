@@ -14,7 +14,8 @@
   jn = "just nixos";
   jd = "just droid";
 
-  ll = "ls -l";
+  ll = "ls -la";
+  la = "ls -a";
   wh = "which";
   dc = "docker compose";
   ipi = "http ipinfo.io";
@@ -52,4 +53,5 @@
 
   wm = "watt-monitor";
   nd = "nix develop -c zsh";
+  clc = "claude-commit";
 }
