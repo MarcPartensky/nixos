@@ -13,5 +13,9 @@
     exec ${pkgs.python3}/bin/python3 ${script} "$@"
   '';
 in {
+  sops.secrets.anthropic_api_key = {
+    sopsFile = ../../../secrets/laptop.yml;
+  };
+
   home.packages = [claude-commit];
 }

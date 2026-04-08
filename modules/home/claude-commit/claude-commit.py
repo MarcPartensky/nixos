@@ -8,7 +8,7 @@ import os
 
 MODEL = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 200
-SECRET_PATH = "/run/secrets/anthropic_api_key"
+SECRET_PATH = os.path.expanduser("~/.config/sops-nix/secrets/anthropic_api_key")
 
 def get_api_key() -> str:
     try:

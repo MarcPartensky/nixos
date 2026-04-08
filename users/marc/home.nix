@@ -2,6 +2,7 @@
   inputs,
   pkgs,
   lib,
+  config,
   ...
 }: let
   home = "/home/marc";
@@ -307,6 +308,7 @@ in {
     ../../modules/home/deepfilter
     ../../modules/home/tewi
     ../../modules/home/ytui-music
+    ../../modules/home/claude-commit
     # ../../modules/home/clawdbot
     # ../../modules/home/clipcat
     # ../../modules/home/sopswarden
@@ -347,6 +349,8 @@ in {
     + "--disable-gpu-sandbox "
     + "--no-sandbox "
     + "--enable-features=WaylandWindowDecorations";
+
+  sops.age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
 
   home.sessionVariables = {
     GSETTINGS_SCHEMA_DIR = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
