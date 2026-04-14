@@ -261,6 +261,8 @@
     ncspot
     spotify-player
     invidious
+    discord
+    signal-desktop
   ];
 in {
   imports = [
@@ -333,6 +335,7 @@ in {
       "steam-unwrapped"
       "ventoy-gtk3"
       "ventoy"
+      "discord"
     ];
 
   nixpkgs.config.permittedInsecurePackages = [
