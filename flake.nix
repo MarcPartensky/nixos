@@ -116,7 +116,7 @@
           # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
           inputs.sopswarden.nixosModules.default
           # inputs.microvm.nixosModules.microvm
-          # inputs.home-manager.nixosModules.default
+          inputs.home-manager.nixosModules.default
           ./hosts/laptop/disko.nix
           ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
@@ -170,6 +170,7 @@
         specialArgs = {inherit inputs;};
         modules = [
           inputs.disko.nixosModules.disko
+          inputs.home-manager.nixosModules.default
           ./hosts/tower/disko.nix
           ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
