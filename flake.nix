@@ -169,6 +169,7 @@
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
+          inputs.disko.nixosModules.disko
           ./hosts/tower/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
