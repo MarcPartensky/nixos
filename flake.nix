@@ -171,6 +171,7 @@
         modules = [
           inputs.disko.nixosModules.disko
           inputs.home-manager.nixosModules.default
+          inputs.sops.nixosModules.sops
           ./hosts/tower/disko.nix
           ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
