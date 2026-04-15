@@ -174,7 +174,6 @@
           ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
-          ./users/marc
         ];
       };
     };
