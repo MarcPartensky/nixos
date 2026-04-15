@@ -170,7 +170,8 @@
         specialArgs = {inherit inputs;};
         modules = [
           inputs.disko.nixosModules.disko
-          ./hosts/tower/hardware-configuration.nix
+          ./hosts/tower/disko.nix
+          ./hosts/laptop/hardware-configuration.nix
           ./profiles/laptop/configuration.nix
           ./users.nix
           ./users/marc
