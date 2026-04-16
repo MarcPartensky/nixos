@@ -110,18 +110,9 @@
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
-          inputs.disko.nixosModules.disko
-          inputs.nixvim.nixosModules.default
-          # inputs.catppuccin.nixosModules.catppuccin
-          # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
-          inputs.sopswarden.nixosModules.default
-          # inputs.microvm.nixosModules.microvm
-          inputs.home-manager.nixosModules.default
-          ./hosts/laptop/disko.nix
-          ./hosts/laptop/hardware-configuration.nix
+          ./profiles/common/configuration.nix
           ./profiles/laptop/configuration.nix
           ./services
-          ./users.nix
         ];
       };
 
@@ -129,14 +120,9 @@
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
-          inputs.disko.nixosModules.disko
-          inputs.home-manager.nixosModules.default
-          # inputs.sops.nixosModules.sops
-          inputs.sopswarden.nixosModules.default
-          ./hosts/tower/disko.nix
-          ./hosts/laptop/hardware-configuration.nix
+          ./profiles/common/configuration.nix
           ./profiles/tower/configuration.nix
-          ./users.nix
+          ./services
         ];
       };
 
@@ -203,23 +189,17 @@
 
     homeConfigurations = {
       "marc" = inputs.home-manager.lib.homeManagerConfiguration {
-        # system = "x86_64-linux";
-        # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
         extraSpecialArgs = {inherit inputs;};
         pkgs = import nixpkgs {
           system = "x86_64-linux";
           overlays = [inputs.nur.overlays.default inputs.clawdbot.overlays.default];
         };
-        modules = [
-          ./users/marc/home.nix
-        ];
+        modules = [./users/marc/home.nix];
       };
     };
 
     darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {
-      modules = [
-        ./hosts/macos/configuration.nix
-      ];
+      modules = [./hosts/macos/configuration.nix];
     };
   };
 }
