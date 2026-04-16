@@ -46,7 +46,7 @@ in {
   programs.ydotool.enable = true;
 
   home-manager.extraSpecialArgs = {inherit inputs;};
-  home-manager.users.root = ../../users/root;
+  home-manager.users.root = ../../users/root/home.nix;
 
   environment.pathsToLink = [
     "/share/applications"
