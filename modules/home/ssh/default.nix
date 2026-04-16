@@ -1,5 +1,4 @@
-{ pkgs, ... }:
-{
+{pkgs, ...}: {
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
@@ -17,8 +16,17 @@
         user = "root";
         port = 22;
         identityFile = "~/.ssh/id_ed25519";
-    	serverAliveInterval = 60;
-    	forwardAgent = true;
+        serverAliveInterval = 60;
+        forwardAgent = true;
+      };
+
+      "tower" = {
+        hostname = "192.168.1.2";
+        user = "marc";
+        port = 22;
+        identityFile = "~/.ssh/id_ed25519";
+        serverAliveInterval = 60;
+        forwardAgent = true;
       };
     };
   };
