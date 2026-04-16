@@ -35,6 +35,7 @@
       ]);
   cliPackages = with pkgs; [
     bat
+    eza
     tmate
     # typer
     yt-dlp

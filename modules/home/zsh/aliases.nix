@@ -10,6 +10,7 @@
   d = "docker";
   r = "restart";
   g = "grep";
+  ls = "eza";
 
   jn = "just nixos";
   jd = "just droid";
