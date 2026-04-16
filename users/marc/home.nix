@@ -267,7 +267,6 @@
   ];
 in {
   imports = [
-    # ints.disko.homeModule.disko
     inputs.catppuccin.homeModules.catppuccin
     inputs.nixvim.homeModules.default
     inputs.sops.homeManagerModules.sops
