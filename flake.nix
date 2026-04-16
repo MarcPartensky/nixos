@@ -125,6 +125,21 @@
         ];
       };
 
+      tower = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {inherit inputs;};
+        modules = [
+          inputs.disko.nixosModules.disko
+          inputs.home-manager.nixosModules.default
+          # inputs.sops.nixosModules.sops
+          inputs.sopswarden.nixosModules.default
+          ./hosts/tower/disko.nix
+          ./hosts/laptop/hardware-configuration.nix
+          ./profiles/laptop/configuration.nix
+          ./users.nix
+        ];
+      };
+
       laptop-iso = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
@@ -164,21 +179,6 @@
           # ./services/stalwart
         ];
       };
-
-      tower = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
-        modules = [
-          inputs.disko.nixosModules.disko
-          inputs.home-manager.nixosModules.default
-          # inputs.sops.nixosModules.sops
-          inputs.sopswarden.nixosModules.default
-          ./hosts/tower/disko.nix
-          ./hosts/laptop/hardware-configuration.nix
-          ./profiles/laptop/configuration.nix
-          ./users.nix
-        ];
-      };
     };
 
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
@@ -203,6 +203,28 @@
 
     homeConfigurations = {
       "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
+        # system = "x86_64-linux";
+        # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
+        extraSpecialArgs = {inherit inputs;};
+        pkgs = import nixpkgs {
+          system = "x86_64-linux";
+          overlays = [inputs.nur.overlays.default inputs.clawdbot.overlays.default];
+        };
+        modules = [
+          # inputs.disko.homeModule.disko
+          inputs.catppuccin.homeModules.catppuccin
+          inputs.nixvim.homeModules.default
+          inputs.sops.homeManagerModules.sops
+          inputs.sopswarden.homeManagerModules.default
+          inputs.niri.homeModules.niri
+          inputs.nix-flatpak.homeManagerModules.nix-flatpak
+          # inputs.clawdbot.homeManagerModules.clawdbot
+          inputs.spicetify.homeManagerModules.spicetify
+          ./users/marc/home.nix
+        ];
+      };
+
+      "marc@tower" = inputs.home-manager.lib.homeManagerConfiguration {
         # system = "x86_64-linux";
         # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
         extraSpecialArgs = {inherit inputs;};
