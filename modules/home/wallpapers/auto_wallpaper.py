@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Wallpaper manager basé sur la luminosité ambiante
-Gère automatiquement la sélection de fond d'écran selon l'heure et la météo
+Wallpaper manager based on ambient brightness.
+Automatically selects wallpaper based on time and weather.
 """
+import os
 import subprocess
 import math
 import datetime
@@ -14,38 +15,42 @@ import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# --- CONSTANTES GLOBALES ---
+# --- GLOBAL CONSTANTS ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
 HOME = Path.home()
 BASE_DIR = HOME / "git/wallpapers"
 CONFIG_FILE = BASE_DIR / "config.yml"
 CACHE_FILE = BASE_DIR / ".brightness_cache.yml"
 
-# Extensions d'images supportées
+# Supported image extensions
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'}
 
 
+def has_wayland_display() -> bool:
+    """Check if a Wayland display is available."""
+    return bool(os.environ.get("WAYLAND_DISPLAY"))
+
+
 def load_config() -> dict:
-    """Charge la configuration depuis le fichier YAML."""
+    """Load configuration from YAML file."""
     if not CONFIG_FILE.exists():
-        print(f"Erreur : Fichier de config introuvable : {CONFIG_FILE}", file=sys.stderr)
+        print(f"Error: config file not found: {CONFIG_FILE}", file=sys.stderr)
         sys.exit(1)
-    
+
     try:
         with open(CONFIG_FILE, 'r') as f:
             config = yaml.safe_load(f)
             return config if config else {}
     except yaml.YAMLError as e:
-        print(f"Erreur parsing YAML : {e}", file=sys.stderr)
+        print(f"Error parsing YAML: {e}", file=sys.stderr)
         sys.exit(1)
 
 
 def get_image_brightness(filepath: Path) -> float:
     """
-    Calcule la luminosité moyenne (0.0 à 1.0) via ImageMagick.
-    Utilise une approche plus robuste avec fallback.
+    Compute average brightness (0.0 to 1.0) via ImageMagick.
+    Falls back to 0.5 on failure.
     """
-    # Essai avec ImageMagick 7 (magick)
     for cmd_base in [["magick"], ["convert"]]:
         try:
             cmd = cmd_base + [str(filepath), "-colorspace", "Gray", "-format", "%[fx:mean]", "info:"]
@@ -59,16 +64,16 @@ def get_image_brightness(filepath: Path) -> float:
                 return brightness
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError):
             continue
-    
-    print(f"Erreur lecture {filepath.name}, utilisation valeur par défaut", file=sys.stderr)
+
+    print(f"Error reading {filepath.name}, using default value", file=sys.stderr)
     return 0.5
 
 
 def load_cache() -> Dict[str, float]:
-    """Charge le cache de luminosité depuis le fichier YAML."""
+    """Load brightness cache from YAML file."""
     if not CACHE_FILE.exists():
         return {}
-    
+
     try:
         with open(CACHE_FILE, 'r') as f:
             cache = yaml.safe_load(f)
@@ -78,17 +83,17 @@ def load_cache() -> Dict[str, float]:
 
 
 def save_cache(cache: Dict[str, float]) -> None:
-    """Sauvegarde le cache dans le fichier YAML."""
+    """Save brightness cache to YAML file."""
     try:
         with open(CACHE_FILE, 'w') as f:
             yaml.dump(cache, f, default_flow_style=False, allow_unicode=True)
     except IOError as e:
-        print(f"Erreur sauvegarde cache : {e}", file=sys.stderr)
+        print(f"Error saving cache: {e}", file=sys.stderr)
 
 
 def get_weather_modifier(weather_factors: Dict[str, float]) -> Tuple[float, str]:
     """
-    Récupère la météo et retourne un multiplicateur de luminosité + description.
+    Fetch weather and return a brightness multiplier and description.
     """
     try:
         cmd = ["curl", "-s", "-m", "5", "wttr.in/?format=j1"]
@@ -96,32 +101,30 @@ def get_weather_modifier(weather_factors: Dict[str, float]) -> Tuple[float, str]
         import json
         data = json.loads(result)
         condition = data['current_condition'][0]['weatherDesc'][0]['value']
-        
-        # Recherche partielle (ex: "Light Rain" match "Rain")
+
         for key, factor in weather_factors.items():
             if key.lower() in condition.lower():
                 return factor, condition
-        
+
         return 1.0, condition
     except Exception as e:
-        print(f"Météo indisponible ({e}), ciel clair assumé")
+        print(f"Weather unavailable ({e}), assuming clear sky")
         return 1.0, "Clear (fallback)"
 
 
 def get_time_target() -> float:
     """
-    Retourne une cible de luminosité basée sur l'heure (Cosinusoïdale).
-    1.0 à 13h (midi solaire), 0.0 à 1h du matin.
+    Return a brightness target based on time (cosinusoidal).
+    1.0 at 13:00 (solar noon), 0.0 at 01:00.
     """
     now = datetime.datetime.now()
     hour = now.hour + now.minute / 60.0
-    # Cosinus décalé : max à 13h, min à 1h
     base_brightness = (math.cos((hour - 13) * math.pi / 12) + 1) / 2
     return base_brightness
 
 
 def init_swww() -> None:
-    """Vérifie si le daemon swww tourne, sinon le lance."""
+    """Check if swww daemon is running, start it if not."""
     try:
         subprocess.check_call(
             ["swww", "query"],
@@ -130,7 +133,7 @@ def init_swww() -> None:
             timeout=2
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        print("Démarrage swww-daemon...")
+        print("Starting swww-daemon...")
         subprocess.Popen(
             ["swww-daemon"],
             stdout=subprocess.DEVNULL,
@@ -140,10 +143,9 @@ def init_swww() -> None:
 
 
 def find_wallpapers(wall_dir: Path) -> List[Path]:
-    """Trouve tous les fichiers d'images dans le répertoire."""
+    """Find all image files in directory."""
     files = []
     for ext in IMAGE_EXTENSIONS:
-        # Gère les extensions en minuscules et majuscules
         files.extend(wall_dir.glob(f"*{ext}"))
         files.extend(wall_dir.glob(f"*{ext.upper()}"))
     return sorted(set(files))
@@ -155,26 +157,24 @@ def select_wallpaper(
     pool_size: int
 ) -> Tuple[Path, float]:
     """
-    Sélectionne un wallpaper parmi les plus proches de la cible.
+    Select a wallpaper from the closest matches to the target brightness.
     """
     if not files_with_brightness:
-        raise ValueError("Aucune image disponible")
-    
-    # Tri par distance à la cible
+        raise ValueError("No images available")
+
     sorted_files = sorted(
         files_with_brightness,
         key=lambda x: abs(x[1] - target)
     )
-    
-    # Sélection dans le pool
+
     candidates = sorted_files[:max(1, pool_size)]
     selected = random.choice(candidates)
-    
+
     return selected
 
 
 def apply_wallpaper(image_path: Path, swww_config: dict) -> None:
-    """Applique le wallpaper via swww."""
+    """Apply wallpaper via swww."""
     cmd = [
         "swww", "img", str(image_path),
         "--transition-type", str(swww_config.get("transition_type", "simple")),
@@ -182,128 +182,133 @@ def apply_wallpaper(image_path: Path, swww_config: dict) -> None:
         "--transition-fps", str(swww_config.get("transition_fps", "60")),
         "--transition-duration", str(swww_config.get("transition_duration", "2"))
     ]
-    
+
     try:
         subprocess.run(cmd, check=True, timeout=10)
     except subprocess.CalledProcessError as e:
-        print(f"Erreur application wallpaper : {e}", file=sys.stderr)
-        sys.exit(1)
+        print(f"Error applying wallpaper: {e}", file=sys.stderr)
+        sys.exit(0)  # clean exit, no display = not a fatal error
 
 
 def rebuild_cache(wall_dir: Path, force: bool = False) -> None:
-    """Reconstruit le cache de luminosité."""
-    print("Reconstruction du cache de luminosité...")
+    """Rebuild brightness cache."""
+    print("Rebuilding brightness cache...")
     files = find_wallpapers(wall_dir)
-    
+
     if not files:
-        print(f"Aucune image trouvée dans {wall_dir}")
+        print(f"No images found in {wall_dir}")
         return
-    
+
     cache = {} if force else load_cache()
     updated = 0
-    
+
     for filepath in files:
         name = filepath.name
         if force or name not in cache:
-            print(f"Analyse : {name}")
+            print(f"Analyzing: {name}")
             cache[name] = get_image_brightness(filepath)
             updated += 1
-    
+
     save_cache(cache)
-    print(f"Cache mis à jour : {updated} images analysées, {len(cache)} au total")
+    print(f"Cache updated: {updated} images analyzed, {len(cache)} total")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Gestionnaire de wallpapers adaptatif basé sur la luminosité"
+        description="Adaptive wallpaper manager based on brightness"
     )
     parser.add_argument(
         '--rebuild-cache',
         action='store_true',
-        help="Reconstruit le cache de luminosité pour toutes les images"
+        help="Rebuild brightness cache for all images"
     )
     parser.add_argument(
         '--force-change',
         action='store_true',
-        help="Force le changement de wallpaper immédiatement"
+        help="Force wallpaper change immediately"
     )
     parser.add_argument(
         '--show-target',
         action='store_true',
-        help="Affiche la luminosité cible actuelle sans changer le wallpaper"
+        help="Print current brightness target without changing wallpaper"
     )
-    
+
     args = parser.parse_args()
-    
-    # 1. Chargement Config
+
+    # 1. Check Wayland display
+    if not has_wayland_display():
+        print("No WAYLAND_DISPLAY, nothing to do.", file=sys.stderr)
+        sys.exit(0)
+
+    # 2. Load config
     config = load_config()
     wall_dir = BASE_DIR
     pool_size = config.get('variability_pool', 10)
-    
+
     if not wall_dir.exists():
-        print(f"Erreur : Répertoire {wall_dir} introuvable", file=sys.stderr)
+        print(f"Error: directory {wall_dir} not found", file=sys.stderr)
         sys.exit(1)
-    
-    # 2. Gestion des commandes spéciales
+
+    # 3. Special commands
     if args.rebuild_cache:
         rebuild_cache(wall_dir, force=True)
         return
-    
-    # 3. Calcul de la cible
+
+    # 4. Compute target
     time_target = get_time_target()
     weather_mod, weather_desc = get_weather_modifier(
         config.get('weather_factors', {})
     )
     final_target = max(0.0, min(1.0, time_target * weather_mod))
-    
-    print(f"Heure : {datetime.datetime.now().strftime('%H:%M')}")
-    print(f"Luminosité temporelle : {time_target:.2f}")
-    print(f"Météo : {weather_desc} (×{weather_mod})")
-    print(f"Cible finale : {final_target:.2f}")
-    
+
+    print(f"Time: {datetime.datetime.now().strftime('%H:%M')}")
+    print(f"Time brightness: {time_target:.2f}")
+    print(f"Weather: {weather_desc} (x{weather_mod})")
+    print(f"Final target: {final_target:.2f}")
+
     if args.show_target:
         return
-    
-    # 4. Chargement images et cache
+
+    # 5. Load images and cache
     files = find_wallpapers(wall_dir)
     if not files:
-        print(f"Aucune image trouvée dans {wall_dir}")
+        print(f"No images found in {wall_dir}")
         sys.exit(1)
-    
+
     cache = load_cache()
     updated_cache = False
     valid_files = []
-    
+
     for filepath in files:
         name = filepath.name
         if name not in cache:
-            print(f"Nouvelle image détectée : {name}")
+            print(f"New image detected: {name}")
             cache[name] = get_image_brightness(filepath)
             updated_cache = True
         valid_files.append((filepath, cache[name]))
-    
+
     if updated_cache:
         save_cache(cache)
-    
-    # 5. Initialisation swww
+
+    # 6. Init swww
     init_swww()
-    
-    # 6. Sélection et application
+
+    # 7. Select and apply
     try:
         selected_image, brightness = select_wallpaper(
             valid_files,
             final_target,
             pool_size
         )
-        
-        print(f"Pool de sélection : {min(pool_size, len(valid_files))} images")
-        print(f"Image sélectionnée : {selected_image.name}")
-        print(f"Luminosité : {brightness:.2f} (Δ = {abs(brightness - final_target):.2f})")
-        
+
+        print(f"Selection pool: {min(pool_size, len(valid_files))} images")
+        print(f"Selected image: {selected_image.name}")
+        print(f"Brightness: {brightness:.2f} (delta = {abs(brightness - final_target):.2f})")
+
         apply_wallpaper(selected_image, config.get('swww', {}))
-        
+
     except ValueError as e:
-        print(f"Erreur : {e}", file=sys.stderr)
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
