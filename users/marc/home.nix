@@ -266,6 +266,16 @@
   ];
 in {
   imports = [
+    # ints.disko.homeModule.disko
+    inputs.catppuccin.homeModules.catppuccin
+    inputs.nixvim.homeModules.default
+    inputs.sops.homeManagerModules.sops
+    inputs.sopswarden.homeManagerModules.default
+    inputs.niri.homeModules.niri
+    inputs.nix-flatpak.homeManagerModules.nix-flatpak
+    # inputs.clawdbot.homeManagerModules.clawdbot
+    inputs.spicetify.homeManagerModules.spicetify
+
     ../../modules/home/git
     # ../../modules/home/hyprland
     ../../modules/home/niri

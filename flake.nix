@@ -211,15 +211,6 @@
           overlays = [inputs.nur.overlays.default inputs.clawdbot.overlays.default];
         };
         modules = [
-          # inputs.disko.homeModule.disko
-          inputs.catppuccin.homeModules.catppuccin
-          inputs.nixvim.homeModules.default
-          inputs.sops.homeManagerModules.sops
-          inputs.sopswarden.homeManagerModules.default
-          inputs.niri.homeModules.niri
-          inputs.nix-flatpak.homeManagerModules.nix-flatpak
-          # inputs.clawdbot.homeManagerModules.clawdbot
-          inputs.spicetify.homeManagerModules.spicetify
           ./users/marc/home.nix
         ];
       };
@@ -233,15 +224,6 @@
           overlays = [inputs.nur.overlays.default inputs.clawdbot.overlays.default];
         };
         modules = [
-          # inputs.disko.homeModule.disko
-          inputs.catppuccin.homeModules.catppuccin
-          inputs.nixvim.homeModules.default
-          inputs.sops.homeManagerModules.sops
-          inputs.sopswarden.homeManagerModules.default
-          inputs.niri.homeModules.niri
-          inputs.nix-flatpak.homeManagerModules.nix-flatpak
-          # inputs.clawdbot.homeManagerModules.clawdbot
-          inputs.spicetify.homeManagerModules.spicetify
           ./users/marc/home.nix
         ];
       };
