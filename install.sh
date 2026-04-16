@@ -3,7 +3,7 @@ mount -o remount,size=8G /tmp
 mount -o remount,size=8G /run/nixos
 
 # 2. Lancer un shell avec disko et git
-nix-shell -p disko git
+# nix-shell -p disko git
 
 # --- Dans le nix-shell ---
 
