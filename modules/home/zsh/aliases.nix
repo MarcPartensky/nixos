@@ -10,13 +10,14 @@
   d = "docker";
   r = "restart";
   g = "grep";
+
   ls = "eza";
+  ll = "eza -la";
+  la = "eza -a";
 
   jn = "just nixos";
   jd = "just droid";
 
-  ll = "ls -la";
-  la = "ls -a";
   wh = "which";
   dc = "docker compose";
   ipi = "http ipinfo.io";
