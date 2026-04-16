@@ -1,13 +1,6 @@
-# 0. Passer en root dès le départ
-sudo -i
-
 # (Optionnel mais recommandé) Garder un tmpfs large au cas où
 mount -o remount,size=8G /tmp
 mount -o remount,size=8G /run/nixos
-
-# 1. Cloner ta configuration
-git clone https://github.com/marcpartensky/nixos
-cd nixos
 
 # 2. Lancer un shell avec disko et git
 nix-shell -p disko git
