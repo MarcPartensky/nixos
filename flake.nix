@@ -135,7 +135,7 @@
           inputs.sopswarden.nixosModules.default
           ./hosts/tower/disko.nix
           ./hosts/laptop/hardware-configuration.nix
-          ./profiles/laptop/configuration.nix
+          ./profiles/tower/configuration.nix
           ./users.nix
         ];
       };
@@ -202,20 +202,7 @@
     };
 
     homeConfigurations = {
-      "marc@laptop" = inputs.home-manager.lib.homeManagerConfiguration {
-        # system = "x86_64-linux";
-        # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
-        extraSpecialArgs = {inherit inputs;};
-        pkgs = import nixpkgs {
-          system = "x86_64-linux";
-          overlays = [inputs.nur.overlays.default inputs.clawdbot.overlays.default];
-        };
-        modules = [
-          ./users/marc/home.nix
-        ];
-      };
-
-      "marc@tower" = inputs.home-manager.lib.homeManagerConfiguration {
+      "marc" = inputs.home-manager.lib.homeManagerConfiguration {
         # system = "x86_64-linux";
         # pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
         extraSpecialArgs = {inherit inputs;};

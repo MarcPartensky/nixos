@@ -5,7 +5,7 @@ set dotenv-load
 # export HOST := env_var("HOST")
 
 home:
-	home-manager switch --flake .#marc@{{env('HOST')}}
+	home-manager switch --flake .#marc
 
 nixos:
     sudo nixos-rebuild switch --upgrade --impure --flake .#{{env('HOST')}}
