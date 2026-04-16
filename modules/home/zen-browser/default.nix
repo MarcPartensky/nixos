@@ -92,15 +92,38 @@
     "extensions.autoDisableScopes" = 0;
     "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
     "browser.startup.homepage" = "https://duckduckgo.com";
+    "browser.tabs.unloadOnLowMemory" = true;
+    "browser.ctrlTab.sortByRecentlyUsed" = true;
 
     # No popup
     "browser.translations.enable" = false;
     "signon.rememberSignons" = false;
   };
+
+  # LA FONCTION MAGIQUE
+  mkPWA = {
+    name,
+    url,
+    icon ? "web-browser",
+  }:
+    pkgs.makeDesktopItem {
+      name = "pwa-${name}";
+      desktopName = name;
+      exec = "${pkgs.firefoxpwa}/bin/firefoxpwa profile launch --name ${name} --url ${url}";
+      icon = icon;
+      categories = ["Network" "WebBrowser"];
+      terminal = false;
+      type = "Application";
+    };
 in {
   nixpkgs.overlays = [inputs.nur.overlays.default];
 
   home.packages = [
+    (mkPWA {
+      name = "YouTube PWA";
+      url = "https://youtube.com";
+      icon = "youtube";
+    })
     pkgs.firefoxpwa
     (
       pkgs.wrapFirefox
