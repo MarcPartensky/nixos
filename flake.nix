@@ -110,7 +110,7 @@
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
-          ./profiles/common/configuration.nix
+          ./profiles/common
           ./profiles/laptop/configuration.nix
           ./services
         ];
@@ -120,7 +120,7 @@
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
-          ./profiles/common/configuration.nix
+          ./profiles/common
           ./profiles/tower/configuration.nix
           ./services
         ];

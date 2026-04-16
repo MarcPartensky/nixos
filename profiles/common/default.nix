@@ -18,7 +18,7 @@ in {
     # inputs.microvm.nixosModules.microvm
     inputs.home-manager.nixosModules.default
 
-    ../../users
+    ../../users.nix
 
     # Include the results of the hardware scan.
     # ../../services
@@ -55,7 +55,6 @@ in {
 
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.login.enableGnomeKeyring = true;
-  sops.defaultSopsFile = ../../secrets/laptop.yml;
   # Le fichier est chiffré avec SOPS, donc pas besoin de désactiver la validation
 
   nix.settings = {
