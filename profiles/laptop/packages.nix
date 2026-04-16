@@ -1,12 +1,14 @@
-{ pkgs, inputs }:
-let
+{
+  pkgs,
+  inputs,
+}: let
   # Initialisation correcte de NUR
   nur = import inputs.nur {
     inherit pkgs;
     # Certains modules NUR nécessitent cela
-    nurpkgs = pkgs; 
+    nurpkgs = pkgs;
   };
-  
+
   free = with pkgs; [
     inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.default
     home-manager
@@ -19,38 +21,38 @@ let
 
     # 🔹 Hardware / PCI / USB
     lshw
-    pciutils      # pour lspci
-    usbutils      # pour lsusb
+    pciutils # pour lspci
+    usbutils # pour lsusb
     dmidecode
-    inxi          # résumé complet du hardware
-  
+    inxi # résumé complet du hardware
+
     # 🔹 GPU / drivers / OpenGL / VAAPI / Vulkan
     # mesa-utils    # glxinfo, glxgears
     # vainfo        # VA-API (Intel/AMD video acceleration)
-    vulkan-tools  # vulkaninfo
+    vulkan-tools # vulkaninfo
     intel-media-driver # si Intel GPU pour VA-API (optionnel)
-    
+
     # 🔹 DRM / Wayland / GBM
-    weston        # weston-info et test Wayland (optionnel)
-    libgbm        # pour tester GBM devices
-  
+    weston # weston-info et test Wayland (optionnel)
+    libgbm # pour tester GBM devices
+
     # 🔹 Réseau
-    networkmanager   # nmtui, nmcli
-    wpa_supplicant   # si Wi-Fi managé par NM
-    inetutils        # ping, traceroute, etc.
-  
+    networkmanager # nmtui, nmcli
+    wpa_supplicant # si Wi-Fi managé par NM
+    inetutils # ping, traceroute, etc.
+
     # 🔹 Disques / partitionnement
-    util-linux       # lsblk, blkid, fdisk
-    gptfdisk         # gdisk
-    parted            # parted pour partitions avancées
-    smartmontools    # smartctl
-  
+    util-linux # lsblk, blkid, fdisk
+    gptfdisk # gdisk
+    parted # parted pour partitions avancées
+    smartmontools # smartctl
+
     # 🔹 Debug / monitoring
     strace
     lsof
     htop
     # perf
-    valgrind         # optionnel pour debug mémoire
+    valgrind # optionnel pour debug mémoire
 
     neovim
     wget
@@ -61,6 +63,8 @@ let
     bluetuith
     bluetui
     kitty
+    alacritty
+    fuzzel
     htop
     killall
     fzf
@@ -93,7 +97,7 @@ let
     glib
     exfatprogs
   ];
-  
+
   unfree = with pkgs; [
     steam
     steam-unwrapped
