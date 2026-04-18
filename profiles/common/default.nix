@@ -48,6 +48,8 @@ in {
   home-manager.extraSpecialArgs = {inherit inputs;};
   home-manager.users.root = ../../users/root/home.nix;
 
+  sops.defaultSopsFile = ../../secrets/common.yml;
+
   environment.pathsToLink = [
     "/share/applications"
     "/share/xdg-desktop-portal"

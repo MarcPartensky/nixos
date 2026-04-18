@@ -9,5 +9,5 @@
     ../../hosts/laptop/hardware-configuration.nix
   ];
 
-  # sops.defaultSopsFile = ../../secrets/laptop.yml;
+  # sops.defaultSopsFile = ../../secrets/tower.yml;
 }
