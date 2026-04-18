@@ -1,20 +1,24 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }: {
+  imports = [
+    inputs.home-manager.darwinModules.home-manager
+  ];
 
-{
-  # List packages installed in system profile. To search by name, run:
-  # $ nix-env -qaP | grep wget
   environment.systemPackages = [
+    inputs.nix-darwin.packages.aarch64-darwin.darwin-rebuild
     pkgs.vim
     pkgs.neovim
     pkgs.git
   ];
 
-  services.nix-daemon.enable = true;
+  # services.nix-daemon.enable = true;  <- supprime cette ligne
 
-  # Enable alternative shell support in nix-darwin.
-  # programs.zsh.enable = true;
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+    extraSpecialArgs = { inherit inputs; };
+    backupFileExtension = "bak";
+    users.marc = import ../../users/mac/home.nix;
+  };
 
-  # Used for backwards compatibility, please read the changelog before changing.
-  # $ darwin-rebuild changelog
   system.stateVersion = 6;
 }

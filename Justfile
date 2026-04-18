@@ -13,6 +13,10 @@ nixos:
 iso:
     nix build .#nixosConfigurations.{{env('HOST')}}-iso.config.system.build.isoImage > nixos.iso
 
+mac:
+    # darwin-rebuild switch --flake .#macos
+    sudo nix run nix-darwin -- switch --flake .#macos
+
 droid:
     nix-on-droid switch --flake ~/.config/nixos#default
 

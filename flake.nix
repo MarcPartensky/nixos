@@ -1,10 +1,13 @@
 {
   description = "NixOS configuration of Marc";
   inputs = {
-    # darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-24.05";
-    # darwin.inputs.nixpkgs.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-25.11";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
+
     clawdbot.url = "github:clawdbot/nix-clawdbot";
     clawdbot.inputs.nixpkgs.follows = "nixpkgs";
     # hyprland.url = "github:hyprwm/Hyprland?ref=v0.50.0";
@@ -93,9 +96,6 @@
     microvm.url = "github:astro/microvm.nix";
 
     # nwg-dock-hyprland-pin-nixpkgs.url = "nixpkgs/2098d845d76f8a21ae4fe12ed7c7df49098d3f15";
-
-    nix-darwin.url = "github:nix-darwin/nix-darwin/master";
-    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
     # nixgl.url = "github:guibou/nixGL";
     # nixgl.inputs.nixpkgs.follows = "nixpkgs";
@@ -196,10 +196,20 @@
         };
         modules = [./users/marc/home.nix];
       };
+      "marc@macos" = inputs.home-manager.lib.homeManagerConfiguration {
+          extraSpecialArgs = { inherit inputs; };
+          pkgs = import inputs.nixpkgs-darwin {
+            system = "aarch64-darwin";
+          };
+          modules = [ ./users/mac/home.nix ];
+        };
     };
 
     darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {
-      modules = [./hosts/macos/configuration.nix];
+        system = "aarch64-darwin";
+        specialArgs = { inherit inputs; };
+        pkgs = import inputs.nixpkgs-darwin { system = "aarch64-darwin"; };
+        modules = [ ./hosts/macos/configuration.nix ];
     };
   };
 }

@@ -5,289 +5,38 @@
   config,
   ...
 }: let
-  home = "/home/marc";
-  # -------------------------------
-  # CLI Packages
-  # -------------------------------
-  pythonEnv =
-    (pkgs.python313.override {
-      packageOverrides = self: super: {
-        # Resolves conflict: forces packages wanting 'typer-slim' to use 'typer'
-        # typer-slim = super.typer;
-        weasel = super.weasel.overridePythonAttrs (old: {
-          dontCheckRuntimeDeps = true;
-        });
-      };
-    }).withPackages (ps:
-      with ps; [
-        playwright
-        numpy
-        pandas
-        matplotlib
-        scipy
-        scikit-learn
-        jupyterlab
-        ipython
-        requests
-        pillow
-        edge-tts
-        # kokoro
-      ]);
-  cliPackages = with pkgs; [
-    bat
-    eza
-    tmate
-    # typer
-    yt-dlp
-    ytmdl
-    spotdl
-    uv
-    pw-volume
-    brightnessctl
-    librespeed-cli
-    pwvucontrol
-    # sonusmix
-    btop
-    nmap
-    helm
-    mako
-    ripgrep
-    wstunnel
-    talosctl
-    black
-    isort
-    gcc
-    nodejs
-    tmux
-    compose2nix
-    gurk-rs
-    chatgpt-cli
-    lowfi
-    wev
-    cliphist
-    nerdctl
-    # crictl
-    dconf
-    playerctl
-    nushell
-    glib
-    # gsettings-desktop-schemas
-    udiskie
-    nix-du
-    wireguard-tools
-    moodle-dl
-    power-profiles-daemon
-    upower
-    libgtop
-    bitwarden-cli
-    wl-clipboard-rs
-
-    # log minecraft
-    zenity
-    mesa-demos
-    vulkan-tools
-    jre
-
-    ffmpegthumbnailer
-    # gstreamer1.0-libav
-    tlp
-    ffmpeg # Pour créer la vidéo
-    poppler-utils # Pour l'outil pdftoppm (conversion PDF -> Images)
-    imagemagick # Optionnel, mais utile pour fusionner les images
-    gemini-cli-bin
-    geminicommit
-
-    pandoc
-    pandoc-katex
-    texlive.combined.scheme-small
-    gemini-cli
-    img2pdf
-
-    # geary support
-    libsecret
-    gnome-online-accounts
-    evolution-data-server
-    gcr
-    libgdata
-    gnome-control-center
-
-    alejandra
-    stylua
-    yamlfmt
-    opentofu
-
-    fd
-    tree-sitter
-    ripgrep
-    jq
-    # piper-tts
-    playwright
-    # haskellPackages.hascard # broken
-    steam-run
-    disko
-    # ventoy
-    ventoy-full
-    # busybox
-    openai-whisper
-    typer
-    ytermusic
-    cmake
-    unzip
-  ];
-
-  # -------------------------------
-  # GUI Packages
-  # -------------------------------
-  guiPackages = with pkgs; [
-    firefoxpwa
-    mpv
-    wpaperd
-    wofi
-    rofi
-    wdisplays
-    wayvnc
-    blueberry
-    # caprine
-    # goldwarden
-    grim
-    slurp
-    swappy
-    satty
-    electron-mail
-    grimblast
-    nwg-dock-hyprland
-    nwg-drawer
-    obs-studio
-    # qbittorrent # useless bc of firefoxpwa
-    nuclear
-    novnc
-    geary
-    ytmdesktop
-    ytui-music
-    # whitesur-gtk-theme
-    # webcord # ‘electron-36.9.5’ to `permittedInsecurePackages`
-    pipe-viewer
-    minitube
-    freetube
-    wofi-power-menu
-    jellyfin
-    # libsForQt5.merkuro
-    gcr_4
-    glib-networking
-    # evolution-data-server
-    xdg-desktop-portal-gnome
-    gnome-online-accounts-gtk
-    gnome-online-accounts
-    versatiles
-    gnome-maps
-    protonmail-bridge
-    pywalfox-native
-    # electrum # ‘python3.12-ecdsa-0.19.1’ to `permittedInsecurePackages`
-    # sparrow # ‘python3.12-ecdsa-0.19.1’ to `permittedInsecurePackages`
-    wasabiwallet
-    anki
-    mnemosyne
-    libGL
-    prismlauncher
-    # piper
-    libratbag
-    solaar
-    teams-for-linux
-    wireguard-ui
-    wg-netmanager
-    openvpn
-    openvpn3
-    protonvpn-gui
-    tor-browser
-    ungoogled-chromium
-    netsurf-browser
-    bitwarden-desktop
-    feh
-    libheif
-    yazi
-    virt-manager
-    flatpak
-    gnome-software # for flatpak
-    # spotify
-    # pkgs.nur.repos.nltch.spotify-adblock
-    code-cursor
-    claude-code
-    nautilus
-    beeper
-    firefox
-    helvum
-    # inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
-    gtk3 # necessaire pour gtk-launch
-    gtk4 # a uniquement gtk4-launch
-    onionshare
-    spotdl
-    harmonoid
-    feishin
-
-    beekeeper-studio
-    dbgate
-    antares
-    pgweb
-    libreoffice-fresh
-    zettlr
-    # psst # better rust spotify needs premium
-    # your_spotify
-    pdfarranger
-    # mochi # bugué
-    # logseq
-    rqbit
-    # stig
-    memorado
-    # librechat # incomplet
-    # gnomeExtensions.cronomix
-    # (makeDesktopItem {
-    #   name = "ib-tws";
-    #   desktopName = "Interactive Brokers TWS";
-    #   # On pointe vers le steam-run du store Nix, puis vers ton installation locale
-    #   exec = "${pkgs.steam-run}/bin/steam-run /home/marc/Jts/tws";
-    #   # Optionnel : si tu as téléchargé le logo d'IBKR, tu peux mettre le chemin absolu ici
-    #   icon = "utilities-terminal";
-    #   comment = "Plateforme de trading TWS";
-    #   categories = ["Network" "Finance"];
-    #   terminal = false;
-    # })
-    # obsidian
-    logseq
-    joplin-desktop
-    eternal-terminal
-    zellij
-    # ventoy-full-gtk
-    # spotube
-    ytui-music
-    ncspot
-    spotify-player
-    invidious
-    discord
-    signal-desktop
-  ];
+  isLinux = builtins.match ".*-linux" builtins.currentSystem != null;
+  isDarwin = builtins.match ".*-darwin" builtins.currentSystem != null;
+  homeDir = if isDarwin then "/Users/marc" else "/home/marc";
 in {
   imports = [
+    ./packages.nix
+
     inputs.catppuccin.homeModules.catppuccin
     inputs.nixvim.homeModules.default
     inputs.sops.homeManagerModules.sops
-    inputs.sopswarden.homeManagerModules.default
-    inputs.niri.homeModules.niri
-    inputs.nix-flatpak.homeManagerModules.nix-flatpak
-    # inputs.clawdbot.homeManagerModules.clawdbot
-    inputs.spicetify.homeManagerModules.spicetify
 
     ../../modules/home/git
-    # ../../modules/home/hyprland
-    ../../modules/home/niri
     ../../modules/home/zsh
-    ../../modules/home/alacritty
-    # ../../modules/home/wpaperd
-    ../../modules/home/wallpapers
-    ../../modules/home/syncthing
     ../../modules/home/ssh
     ../../modules/home/tealdeer
     ../../modules/home/neovim
     ../../modules/home/gh
+    ../../modules/home/starship
+    ../../modules/home/topgrade
+    ../../modules/home/rbw
+    ../../modules/home/yt-dlp
+    ../../modules/home/claude-commit
+  ] ++ lib.optionals isLinux [
+    inputs.sopswarden.homeManagerModules.default
+    inputs.niri.homeModules.niri
+    inputs.nix-flatpak.homeManagerModules.nix-flatpak
+    inputs.spicetify.homeManagerModules.spicetify
+
+    ../../modules/home/niri
+    ../../modules/home/alacritty
+    ../../modules/home/wallpapers
+    ../../modules/home/syncthing
     ../../modules/home/gtk
     ../../modules/home/xdg
     ../../modules/home/satty
@@ -296,22 +45,14 @@ in {
     ../../modules/home/wofi
     ../../modules/home/dconf
     ../../modules/home/ironbar
-    # ../../modules/home/waybar # (incompatible hyprpanel)
-    ../../modules/home/mako # (incompatible hyprpanel)
-    # ../../modules/home/hyprpanel
+    ../../modules/home/mako
     ../../modules/home/gammastep
     ../../modules/home/udiskie
-    ../../modules/home/starship
     ../../modules/home/kodi
-    ../../modules/home/topgrade
-    ../../modules/home/rbw
     ../../modules/home/mpv
-    # ../../modules/home/eww
     ../../modules/home/zen-browser
     ../../modules/home/tor-browser
     ../../modules/home/nxbt
-    ../../modules/home/yt-dlp
-    # ../../modules/home/flatpak
     ../../modules/home/batsignal
     ../../modules/home/playsched
     ../../modules/home/zathura
@@ -320,80 +61,40 @@ in {
     ../../modules/home/deepfilter
     ../../modules/home/tewi
     ../../modules/home/ytui-music
-    ../../modules/home/claude-commit
-    # ../../modules/home/clawdbot
-    # ../../modules/home/clipcat
-    # ../../modules/home/sopswarden
-    # ../../modules/home/polkit
-    # ../../modules/home/ipython
-    # ../../modules/home/librewolf
-    # ../../modules/home/steam
-    # ../../modules/home/docker
-    # ../../modules/home/thunderbird
-    # ../../modules/home/tor
   ];
 
-  nixpkgs.config.allowUnfreePredicate = pkg:
-    builtins.elem (lib.getName pkg) [
-      "spotify"
-      "cursor"
-      "claude-code"
-      "beeper"
-      "harmonoid"
-      # "mochi"
-      "steam-run"
-      "steam-unwrapped"
-      "ventoy-gtk3"
-      "ventoy"
-      "discord"
-    ];
-
-  nixpkgs.config.permittedInsecurePackages = [
-    "beekeeper-studio-5.3.4"
-    "libsoup-2.74.3"
-    "ventoy-gtk3-1.1.10"
-    "ventoy-1.1.10"
-  ];
-
-  nixpkgs.config.electron.commandLineArgs =
-    ""
-    + "--ozone-platform-hint=auto "
+  nixpkgs.config.electron.commandLineArgs = lib.mkIf isLinux (
+    "--ozone-platform-hint=auto "
     + "--ozone-platform=wayland "
     + "--disable-gpu-sandbox "
     + "--no-sandbox "
-    + "--enable-features=WaylandWindowDecorations";
+    + "--enable-features=WaylandWindowDecorations"
+  );
 
-  sops.age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
+  sops.age.keyFile = "${homeDir}/.config/sops/age/keys.txt";
 
-  home.sessionVariables = {
-    GSETTINGS_SCHEMA_DIR = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
-    # DBUS_SESSION_BUS_ADDRESS = "${builtins.getEnv "DBUS_SESSION_BUS_ADDRESS"}";
-
-    # Use string interpolation to force the package to its store path string
-    DEFAULT_BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
-    BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
-
-    ELECTRON_OZONE_PLATFORM_HINT = "wayland";
-    NIXOS_OZONE_WL = "1";
-    GTK_USE_PORTAL = "1"; # Force l'usage des portails proprement
-    GDK_BACKEND = "wayland";
-
-    # SAL_USE_VCLPLUGIN = "gtk3"; # gen or qt6
-    XDG_SESSION_TYPE = "wayland";
-    QT_QPA_PLATFORM = "wayland";
-
-    EDITOR = "nvim";
-    VISUAL = "nvim";
-
-    # XDG_DATA_HOME      = "${home}/.local/share";
-    # XDG_CONFIG_HOME    = "${home}/.config";
-    # XDG_CACHE_HOME     = "${home}/.cache";
-    # # XDG_RUNTIME_DIR    = "/run/user/${toString config.home.uid}";
-    # XDG_CONFIG_DIRS    = "/etc/xdg";
-    # PATH = "${home}/.local/bin:$PATH";
+  home = {
+    username = "marc";
+    homeDirectory = homeDir;
   };
 
-  xdg.mimeApps = {
+  home.sessionVariables = {
+    EDITOR = "nvim";
+    VISUAL = "nvim";
+  } // lib.optionalAttrs isLinux {
+    GSETTINGS_SCHEMA_DIR = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
+    DEFAULT_BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
+    BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
+    ELECTRON_OZONE_PLATFORM_HINT = "wayland";
+    NIXOS_OZONE_WL = "1";
+    GTK_USE_PORTAL = "1";
+    GDK_BACKEND = "wayland";
+    XDG_SESSION_TYPE = "wayland";
+    QT_QPA_PLATFORM = "wayland";
+  };
+
+  xdg.enable = true;
+  xdg.mimeApps = lib.mkIf isLinux {
     enable = true;
     defaultApplications = {
       "text/html" = ["zen.desktop"];
@@ -405,8 +106,7 @@ in {
     };
   };
 
-  xdg.enable = true;
-  xdg.systemDirs.data = [
+  xdg.systemDirs.data = lib.mkIf isLinux [
     "/var/lib/flatpak/exports/share"
     "/home/marc/.local/share/flatpak/exports/share"
     "/run/current-system/sw/share"
@@ -417,53 +117,23 @@ in {
     "/home/marc/.nix-profile/share"
   ];
 
-  home = {
-    username = "marc";
-    homeDirectory = "/home/marc";
-    packages = cliPackages ++ guiPackages ++ [pythonEnv];
-  };
-
-  services.darkman = {
+  services.darkman = lib.mkIf isLinux {
     enable = true;
-    settings = {
-      lat = 48.8;
-      lng = 2.3;
-    }; # Paris
+    settings = { lat = 48.8; lng = 2.3; };
   };
 
-  # environment.variables = {
-  #   NIX_DEV_SHELL_HOOK = "zsh";
-  # };
-
-  # nixpkgs.config.permittedInsecurePackages = [
-  #   "electron-36.9.5" # Autorise ce paquet spécifique
-  # ];
-
-  # xdg.userDirs = {
-  #   enable = true;
-  #   download = "${config.home.homeDirectory}/downloads";
-  # };
-
-  services.gnome-keyring = {
+  services.gnome-keyring = lib.mkIf isLinux {
     enable = true;
     components = ["secrets" "ssh"];
   };
 
   programs.direnv = {
     enable = true;
-    enableZshIntegration = true; # for nix develop
+    enableZshIntegration = true;
     nix-direnv.enable = true;
   };
 
-  # systemd.user.services = {
-  #   evolution-data-server = {
-  #     Unit.Description = "Evolution Data Server";
-  #     Unit.After = ["graphical-session.target"];
-  #     Service.ExecStart = "${pkgs.evolution-data-server}/bin/evolution-data-server";
-  #     Service.Restart = "on-failure";
-  #     Install.WantedBy = ["default.target"];
-  #   };
-  # };
+  programs.home-manager.enable = true;
 
   home.stateVersion = "25.11";
 }
