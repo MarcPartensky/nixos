@@ -4,17 +4,17 @@
   lib,
   config,
   ...
-}: let
-  isLinux = builtins.match ".*-linux" builtins.currentSystem != null;
-  isDarwin = builtins.match ".*-darwin" builtins.currentSystem != null;
-  homeDir = if isDarwin then "/Users/marc" else "/home/marc";
-in {
+}: {
   imports = [
     ./packages.nix
 
     inputs.catppuccin.homeModules.catppuccin
     inputs.nixvim.homeModules.default
     inputs.sops.homeManagerModules.sops
+    inputs.sopswarden.homeManagerModules.default
+    inputs.niri.homeModules.niri
+    inputs.nix-flatpak.homeManagerModules.nix-flatpak
+    inputs.spicetify.homeManagerModules.spicetify
 
     ../../modules/home/git
     ../../modules/home/zsh
@@ -27,12 +27,6 @@ in {
     ../../modules/home/rbw
     ../../modules/home/yt-dlp
     ../../modules/home/claude-commit
-  ] ++ lib.optionals isLinux [
-    inputs.sopswarden.homeManagerModules.default
-    inputs.niri.homeModules.niri
-    inputs.nix-flatpak.homeManagerModules.nix-flatpak
-    inputs.spicetify.homeManagerModules.spicetify
-
     ../../modules/home/niri
     ../../modules/home/alacritty
     ../../modules/home/wallpapers
@@ -63,25 +57,23 @@ in {
     ../../modules/home/ytui-music
   ];
 
-  nixpkgs.config.electron.commandLineArgs = lib.mkIf isLinux (
+  nixpkgs.config.electron.commandLineArgs =
     "--ozone-platform-hint=auto "
     + "--ozone-platform=wayland "
     + "--disable-gpu-sandbox "
     + "--no-sandbox "
-    + "--enable-features=WaylandWindowDecorations"
-  );
+    + "--enable-features=WaylandWindowDecorations";
 
-  sops.age.keyFile = "${homeDir}/.config/sops/age/keys.txt";
+  sops.age.keyFile = "/home/marc/.config/sops/age/keys.txt";
 
   home = {
     username = "marc";
-    homeDirectory = homeDir;
+    homeDirectory = "/home/marc";
   };
 
   home.sessionVariables = {
     EDITOR = "nvim";
     VISUAL = "nvim";
-  } // lib.optionalAttrs isLinux {
     GSETTINGS_SCHEMA_DIR = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
     DEFAULT_BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
     BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
@@ -94,7 +86,7 @@ in {
   };
 
   xdg.enable = true;
-  xdg.mimeApps = lib.mkIf isLinux {
+  xdg.mimeApps = {
     enable = true;
     defaultApplications = {
       "text/html" = ["zen.desktop"];
@@ -106,7 +98,7 @@ in {
     };
   };
 
-  xdg.systemDirs.data = lib.mkIf isLinux [
+  xdg.systemDirs.data = [
     "/var/lib/flatpak/exports/share"
     "/home/marc/.local/share/flatpak/exports/share"
     "/run/current-system/sw/share"
@@ -117,12 +109,15 @@ in {
     "/home/marc/.nix-profile/share"
   ];
 
-  services.darkman = lib.mkIf isLinux {
+  services.darkman = {
     enable = true;
-    settings = { lat = 48.8; lng = 2.3; };
+    settings = {
+      lat = 48.8;
+      lng = 2.3;
+    };
   };
 
-  services.gnome-keyring = lib.mkIf isLinux {
+  services.gnome-keyring = {
     enable = true;
     components = ["secrets" "ssh"];
   };

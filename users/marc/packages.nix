@@ -4,9 +4,6 @@
   inputs,
   ...
 }: let
-  isLinux = builtins.match ".*-linux" builtins.currentSystem != null;
-  isDarwin = builtins.match ".*-darwin" builtins.currentSystem != null;
-
   pythonEnv =
     (pkgs.python313.override {
       packageOverrides = self: super: {
@@ -24,13 +21,13 @@
         ipython
         requests
         pillow
-      ] ++ lib.optionals isLinux [
         playwright
         jupyterlab
         edge-tts
       ]);
-
-  commonPackages = with pkgs; [
+in {
+  home.packages = with pkgs; [
+    pythonEnv
     bat
     eza
     btop
@@ -63,9 +60,6 @@
     eternal-terminal
     anki
     libreoffice-fresh
-  ];
-
-  linuxPackages = with pkgs; [
     pw-volume
     brightnessctl
     pwvucontrol
@@ -203,31 +197,21 @@
     playwright
   ];
 
-  darwinPackages = with pkgs; [];
-in {
-  home.packages =
-    commonPackages
-    ++ [pythonEnv]
-    ++ lib.optionals isLinux linuxPackages
-    ++ lib.optionals isDarwin darwinPackages;
-
   nixpkgs.config.allowUnfreePredicate = pkg:
-    builtins.elem (lib.getName pkg) (
-      ["claude-code"]
-      ++ lib.optionals isLinux [
-        "spotify"
-        "cursor"
-        "beeper"
-        "harmonoid"
-        "steam-run"
-        "steam-unwrapped"
-        "ventoy-gtk3"
-        "ventoy"
-        "discord"
-      ]
-    );
+    builtins.elem (lib.getName pkg) [
+      "claude-code"
+      "spotify"
+      "cursor"
+      "beeper"
+      "harmonoid"
+      "steam-run"
+      "steam-unwrapped"
+      "ventoy-gtk3"
+      "ventoy"
+      "discord"
+    ];
 
-  nixpkgs.config.permittedInsecurePackages = lib.optionals isLinux [
+  nixpkgs.config.permittedInsecurePackages = [
     "beekeeper-studio-5.3.4"
     "libsoup-2.74.3"
     "ventoy-gtk3-1.1.10"

@@ -14,7 +14,7 @@
   '';
 in {
   sops.secrets.anthropic_api_key = {
-    sopsFile = ../../../secrets/laptop.yml;
+    sopsFile = ../../../secrets/common.yml;
   };
 
   home.packages = [claude-commit];
