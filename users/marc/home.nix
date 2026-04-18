@@ -55,6 +55,7 @@
     ../../modules/home/deepfilter
     ../../modules/home/tewi
     ../../modules/home/ytui-music
+    ../../modules/home/geminicommit
   ];
 
   nixpkgs.config.electron.commandLineArgs =
