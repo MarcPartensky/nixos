@@ -15,6 +15,7 @@
     ./flaresolverr
     ./qbittorrent
     ./rqbit
+    ./autossh
     # ./dnscrypt
     ./adguard
     ./navidrome
