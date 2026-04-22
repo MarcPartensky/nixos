@@ -1,25 +1,17 @@
-{ pkgs, ... }:
-{
-  # Installation du paquet
-  environment.systemPackages = [ pkgs.fosrl-newt ];
+# services/newt/default.nix
+{config, ...}: {
+  sops.secrets.newt_env = {
+    # format du fichier sops : NEWT_ID=xxx\nNEWT_SECRET=yyy
+    format = "dotenv";
+    # ou si tu stockes dans ton yaml sops habituel, adapte le path:
+    # sopsFile = ../../secrets/tower.yaml;
+  };
 
-  # Configuration du service client
   services.newt = {
     enable = true;
-    # Fichier contenant votre jeton d'authentification
-    environmentFile = "/var/lib/newt/secret";
-    # Configuration des tunnels
+    environmentFile = config.sops.secrets.newt_env.path;
     settings = {
-      endpoint = "https://pangolin.marcpartensky.com";
-      # id = "8yfsghj438a20ol";
-      # tunnels = [
-      #   {
-      #     name = "vaultwarden-local";
-      #     proto = "http";
-      #     port = 8083; # Le port local de votre Vaultwarden
-      #     subdomain = "vault"; # Deviendra vault-portable.marcpartensky.com
-      #   }
-      # ];
+      endpoint = "https://pangolin.vps.marcpartensky.com";
     };
   };
 }
