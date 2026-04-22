@@ -16,6 +16,21 @@ in {
     ../../hosts/anywhere/boot.nix
     ../../hosts/anywhere/lvm.nix
     ./cloud.nix
+
+    inputs.disko.nixosModules.disko
+    inputs.home-manager.nixosModules.default
+    inputs.sops.nixosModules.sops
+
+    ./users.nix
+    ./services/traefik
+    ./services/postgres
+    ./services/vaultwarden
+    ./services/nextcloud
+    ./services/pangolin
+    # ./services/chhoto
+    # ./services/eternal-terminal
+    # ./services/stalwart
+    # inputs.sopswarden.homeManagerModules.default
     # ./caddy.nix
     # ../../hosts/anywhere/zfs.nix
 
