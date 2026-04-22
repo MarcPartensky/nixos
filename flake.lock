@@ -384,24 +384,6 @@
         "type": "github"
       }
     },
-    "newt": {
-      "inputs": {
-        "nixpkgs": "nixpkgs_6"
-      },
-      "locked": {
-        "lastModified": 1773704859,
-        "narHash": "sha256-b/ZcU4N13+91tVhKMDPBaCGmBW11m5yQNgd1FaTxbsE=",
-        "owner": "fosrl",
-        "repo": "newt",
-        "rev": "b398f531f05ab256da21777da386d1c0744453a5",
-        "type": "github"
-      },
-      "original": {
-        "owner": "fosrl",
-        "repo": "newt",
-        "type": "github"
-      }
-    },
     "niri": {
       "inputs": {
         "niri-stable": "niri-stable",
@@ -527,7 +509,7 @@
       "inputs": {
         "home-manager": "home-manager_4",
         "nix-formatter-pack": "nix-formatter-pack",
-        "nixpkgs": "nixpkgs_7",
+        "nixpkgs": "nixpkgs_6",
         "nixpkgs-docs": "nixpkgs-docs",
         "nixpkgs-for-bootstrap": "nixpkgs-for-bootstrap",
         "nmd": "nmd"
@@ -711,22 +693,6 @@
     },
     "nixpkgs_6": {
       "locked": {
-        "lastModified": 1763934636,
-        "narHash": "sha256-9glbI7f1uU+yzQCq5LwLgdZqx6svOhZWkd4JRY265fc=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "ee09932cedcef15aaf476f9343d1dea2cb77e261",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs_7": {
-      "locked": {
         "lastModified": 1708172716,
         "narHash": "sha256-3M94oln0b61m3dUmLyECCA9hYAHXZEszM4saE3CmQO4=",
         "owner": "NixOS",
@@ -740,7 +706,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_8": {
+    "nixpkgs_7": {
       "locked": {
         "lastModified": 1774388614,
         "narHash": "sha256-tFwzTI0DdDzovdE9+Ras6CUss0yn8P9XV4Ja6RjA+nU=",
@@ -872,12 +838,11 @@
         "disko": "disko",
         "home-manager": "home-manager_3",
         "microvm": "microvm",
-        "newt": "newt",
         "niri": "niri",
         "nix-darwin": "nix-darwin",
         "nix-flatpak": "nix-flatpak",
         "nix-on-droid": "nix-on-droid",
-        "nixpkgs": "nixpkgs_8",
+        "nixpkgs": "nixpkgs_7",
         "nixpkgs-darwin": "nixpkgs-darwin",
         "nixvim": "nixvim",
         "nur": "nur",

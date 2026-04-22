@@ -3,47 +3,25 @@
   modulesPath,
   pkgs,
   ...
-}: let
-  pkgs-unstable = inputs.unstable.legacyPackages."x86_64-linux";
-  # pythonEnv = pkgs.python313.withPackages (ps:
-  #   with ps; [
-  #     # edge-tts
-  #   ]);
-in {
+}: {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
     (modulesPath + "/profiles/qemu-guest.nix")
     ../../hosts/anywhere/boot.nix
     ../../hosts/anywhere/lvm.nix
     ./cloud.nix
+    # ./caddy.nix
 
     inputs.disko.nixosModules.disko
     inputs.home-manager.nixosModules.default
     inputs.sops.nixosModules.sops
-
-    ./users.nix
-    ./services/traefik
-    ./services/postgres
-    ./services/vaultwarden
-    ./services/nextcloud
-    ./services/pangolin
-    # ./services/chhoto
-    # ./services/eternal-terminal
-    # ./services/stalwart
     # inputs.sopswarden.homeManagerModules.default
-    # ./caddy.nix
-    # ../../hosts/anywhere/zfs.nix
 
-    # inputs.disko.nixosModules.disko
-    inputs.home-manager.nixosModules.default
-    inputs.sops.nixosModules.sops
-    # inputs.sopswarden.homeManagerModules.default
-    # ./services
-    ./services/traefik
-    ./services/postgres
-    ./services/vaultwarden
-    # ./services/nextcloud
-    ./services/pangolin
+    ../../services/traefik
+    ../../services/postgres
+    # ../../services/vaultwarden
+    # ../../services/nextcloud
+    ../../services/pangolin
     # ./services/chhoto
     # ./services/eternal-terminal
     # ./services/stalwart
@@ -63,6 +41,8 @@ in {
       gh
       just
       fzf
+      # sops
+      ssh-to-age
       # # wayvnc
       # stow
       ncdu
@@ -71,15 +51,16 @@ in {
       # podman
       fastfetch
       bat
+      eza
       # bash
-      busybox
+      # busybox
       # vaultwarden
       pgcli
-      nix-du
+      # nix-du
       ripgrep # for telescope neovim 
       # gcc
-      p7zip
-      pangolin-cli
+      # p7zip
+      # pangolin
     ];
     # ++ [pythonEnv];
 
@@ -93,7 +74,7 @@ in {
       ../../modules/home/zsh
       ../../modules/home/git
       ../../modules/home/ssh
-      ../../modules/home/gh
+      # ../../modules/home/gh
     ];
   };
 
