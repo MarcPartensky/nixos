@@ -11,7 +11,6 @@
     ];
   };
 
-  
   services.nginx = {
     enable = true;
     virtualHosts."vaultwarden.local" = {
@@ -19,7 +18,7 @@
       sslCertificate = "/etc/ssl/vaultwarden/cert.pem";
       sslCertificateKey = "/etc/ssl/vaultwarden/key.pem";
       locations."/" = {
-        proxyPass = "http://127.0.0.1:8222";
+        proxyPass = "http://0.0.0.0:8222";
         proxyWebsockets = true;
         extraConfig = ''
           proxy_set_header Host $host;
@@ -29,7 +28,7 @@
         '';
       };
     };
-  }
+  };
 
   services.vaultwarden = {
     enable = true;

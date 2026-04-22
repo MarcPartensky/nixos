@@ -1,10 +1,10 @@
 # services/newt/default.nix
 {config, ...}: {
   sops.secrets.newt_env = {
-    # format du fichier sops : NEWT_ID=xxx\nNEWT_SECRET=yyy
-    format = "dotenv";
-    # ou si tu stockes dans ton yaml sops habituel, adapte le path:
-    # sopsFile = ../../secrets/tower.yaml;
+    sopsFile = ../../secrets/common.yml;
+    format = "yaml";
+    # sops extrait la valeur de la clef newt_env et l'écrit dans un fichier
+    # ce fichier sera au format dotenv si la valeur l'est
   };
 
   services.newt = {
