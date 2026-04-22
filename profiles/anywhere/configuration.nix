@@ -5,10 +5,10 @@
   ...
 }: let
   pkgs-unstable = inputs.unstable.legacyPackages."x86_64-linux";
-  pythonEnv = pkgs.python313.withPackages (ps:
-    with ps; [
-      edge-tts
-    ]);
+  # pythonEnv = pkgs.python313.withPackages (ps:
+  #   with ps; [
+  #     # edge-tts
+  #   ]);
 in {
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
@@ -18,13 +18,25 @@ in {
     ./cloud.nix
     # ./caddy.nix
     # ../../hosts/anywhere/zfs.nix
-    # ../../modules/zsh
+
+    # inputs.disko.nixosModules.disko
+    inputs.home-manager.nixosModules.default
+    inputs.sops.nixosModules.sops
+    # inputs.sopswarden.homeManagerModules.default
+    # ./services
+    ./services/traefik
+    ./services/postgres
+    ./services/vaultwarden
+    # ./services/nextcloud
+    ./services/pangolin
+    # ./services/chhoto
+    # ./services/eternal-terminal
+    # ./services/stalwart
   ];
 
   # Paquets système
   environment.systemPackages = with pkgs;
     [
-      pkgs-unstable.fosrl-pangolin
       procps
       killall
       openssh
@@ -37,22 +49,24 @@ in {
       just
       fzf
       # # wayvnc
-      stow
+      # stow
       ncdu
-      htop
+      htop 
       which
       # podman
       fastfetch
       bat
-      bash
+      # bash
       busybox
-      vaultwarden
+      # vaultwarden
       pgcli
       nix-du
-      ripgrep # for telescope neovim
-      gcc
-    ]
-    ++ [pythonEnv];
+      ripgrep # for telescope neovim 
+      # gcc
+      p7zip
+      pangolin-cli
+    ];
+    # ++ [pythonEnv];
 
   programs.zsh.enable = true;
 

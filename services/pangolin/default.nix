@@ -12,7 +12,7 @@
     enable = true;
     baseDomain = "marcpartensky.com";
     dashboardDomain = "pangolin.marcpartensky.com";
-    letsEncryptEmail = "marc@marcpartensky.com";
+    letsEncryptEmail = "marc.partensky@proton.me";
     openFirewall = true;
     environmentFile = config.sops.secrets.pangolin_env.path;
   };
