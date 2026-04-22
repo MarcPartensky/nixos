@@ -148,21 +148,7 @@
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
-          inputs.disko.nixosModules.disko
-          inputs.home-manager.nixosModules.default
-          inputs.sops.nixosModules.sops
-          # inputs.sopswarden.homeManagerModules.default
           ./profiles/anywhere/configuration.nix
-          ./users.nix
-          # ./services
-          ./services/traefik
-          ./services/postgres
-          ./services/vaultwarden
-          ./services/nextcloud
-          ./services/pangolin
-          ./services/chhoto
-          ./services/eternal-terminal
-          # ./services/stalwart
         ];
       };
     };
