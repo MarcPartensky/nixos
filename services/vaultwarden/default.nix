@@ -11,6 +11,26 @@
     ];
   };
 
+  
+  services.nginx = {
+    enable = true;
+    virtualHosts."vaultwarden.local" = {
+      forceSSL = true;
+      sslCertificate = "/etc/ssl/vaultwarden/cert.pem";
+      sslCertificateKey = "/etc/ssl/vaultwarden/key.pem";
+      locations."/" = {
+        proxyPass = "http://127.0.0.1:8222";
+        proxyWebsockets = true;
+        extraConfig = ''
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+        '';
+      };
+    };
+  }
+
   services.vaultwarden = {
     enable = true;
     dbBackend = "postgresql";
