@@ -42,7 +42,7 @@
     neovim
     zsh
     git
-    gh
+    # gh
     just
     wayvnc
     stow
