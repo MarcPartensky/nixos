@@ -57,7 +57,7 @@
     bat
     ripgrep
 
-    pinentry-curses
+    # pinentry-curses
   ];
 
   home-manager.config = {
@@ -95,7 +95,7 @@
   environment.etcBackupExtension = ".bak";
 
   # Read the changelog before changing this value
-  system.stateVersion = "24.05";
+  system.stateVersion = "25.05";
 
   # Set up nix for flakes
   nix.extraOptions = ''
