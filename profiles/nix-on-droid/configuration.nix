@@ -35,6 +35,7 @@
     #xz
     #zip
     #unzip
+    eza
     nano
     openssh
     iproute2
@@ -81,8 +82,8 @@
     # ];
     imports = [
       # ../../modules/home/yt-dlp
-      # inputs.nixvim.homeManagerModules.default
-      # ../../modules/home/neovim
+      inputs.nixvim.homeManagerModules.default
+      ../../modules/home/neovim
       # ../../modules/home/zsh
       # ../../modules/home/git
       # ../../modules/home/ssh
