@@ -16,7 +16,7 @@
     # hy3.inputs.hyprland.follows = "hyprland";
     # nix-search-tv.url = "github:3timeslazy/nix-search-tv";
     catppuccin.url = "github:catppuccin/nix";
-    newt.url = "github:fosrl/newt";
+    # newt.url = "github:fosrl/newt";
     claude-code.url = "github:sadjow/claude-code-nix";
 
     nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=latest";
@@ -149,6 +149,7 @@
         specialArgs = {inherit inputs;};
         modules = [
           ./profiles/anywhere/configuration.nix
+          ./users.nix
         ];
       };
     };
