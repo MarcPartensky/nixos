@@ -77,9 +77,9 @@
 
   # --- CONFIGURATION GPG (OBLIGATOIRE SUR 25.11) ---
   # Sans ça, git sign / gpg plantera car il ne trouvera pas pinentry
-  environment.etc."gnupg/gpg-agent.conf".text = ''
-    pinentry-program ${pkgs.pinentry-curses}/bin/pinentry
-  '';
+  # environment.etc."gnupg/gpg-agent.conf".text = ''
+  #   pinentry-program ${pkgs.pinentry-curses}/bin/pinentry
+  # '';
 
   # Ces options activent l'intégration Home Manager
   home-manager.useGlobalPkgs = true;
