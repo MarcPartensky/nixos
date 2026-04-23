@@ -105,7 +105,7 @@
   # '';
 
   # Ces options activent l'intégration Home Manager
-  home-manager.useGlobalPkgs = true;
+  # home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
   home-manager.backupFileExtension = "hm-backup";
 
