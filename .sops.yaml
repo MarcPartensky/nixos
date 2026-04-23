@@ -1,7 +1,7 @@
 keys:
   - &laptop age15n96t74lj62gxyk2wd8ac9aew5lpfkx2l7p8u3k5hc0hcek4hejszyp48h
   - &anywhere age189v3q8quejkaz4r8u0g2aechsfk4sk3465khx35erd320rea5scq98v7er
-  - &tower age1usm3v0ugducrzcwud60dda7xfnj49fdhecj7kcsfm7dzwzrzeyqq2jc2hm
+  - &tower age13kx9eh2xdygut62wg8w7jgjhpy4u0w76e60awj7d5xtwjpdrw5ps9azsgn
 creation_rules:
   - path_regex: secrets/common\.yml$
     key_groups:

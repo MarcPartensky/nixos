@@ -18,5 +18,5 @@
     ];
   };
 
-  # sops.defaultSopsFile = ../../secrets/tower.yml;
+  # sops.defaultSopsFile = lib.mkForce ../../secrets/tower.yml;
 }

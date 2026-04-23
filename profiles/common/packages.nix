@@ -93,6 +93,7 @@
     # pinentry
     less
     yq
+    eza
     gsettings-desktop-schemas
     glib
     exfatprogs

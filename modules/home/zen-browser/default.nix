@@ -37,7 +37,8 @@
     spoof-timezone
     tab-counter-plus
     tab-session-manager
-    youtube-high-definition
+    # youtube-high-definition
+    enhancer-for-youtube
     # proton-pass
   ];
 
