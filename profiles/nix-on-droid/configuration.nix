@@ -57,6 +57,7 @@
     tmate
     bat
     ripgrep
+    qemu
 
     # pinentry-curses
   ];
