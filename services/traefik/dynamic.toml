@@ -1,5 +1,4 @@
 # --- SERVICES ---
-
 [http.services.vaultwarden.loadBalancer]
   [[http.services.vaultwarden.loadBalancer.servers]]
     url = "http://127.0.0.1:8083"
@@ -10,54 +9,51 @@
 
 [http.services.pangolin.loadBalancer]
   [[http.services.pangolin.loadBalancer.servers]]
-    url = "http://127.0.0.1:8082"
+    url = "http://127.0.0.1:3002"
+
+[http.services.pangolin-api.loadBalancer]
+  [[http.services.pangolin-api.loadBalancer.servers]]
+    url = "http://127.0.0.1:3007"
 
 [http.services.stalwart.loadBalancer]
   [[http.services.stalwart.loadBalancer.servers]]
     url = "http://127.0.0.1:8090"
 
 # --- ROUTERS ---
-
-# Dashboard Traefik
 [http.routers.traefik]
   rule = "Host(`traefik.vps.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "api@internal"
   tls = { certResolver = "letsencrypt" }
 
-# Vaultwarden
 [http.routers.vaultwarden]
   rule = "Host(`vault.vps.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "vaultwarden"
   tls = { certResolver = "letsencrypt" }
 
-# Nextcloud
 [http.routers.nextcloud]
   rule = "Host(`cloud.vps.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "nextcloud"
   tls = { certResolver = "letsencrypt" }
 
-# Pangolin
 [http.routers.pangolin]
   rule = "Host(`pangolin.vps.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "pangolin"
+  priority = 1
   tls = { certResolver = "letsencrypt" }
 
-# Stalwart Mail Interface
+[http.routers.pangolin-api]
+  rule = "Host(`pangolin.vps.marcpartensky.com`) && PathPrefix(`/api/`)"
+  entryPoints = ["websecure"]
+  service = "pangolin-api"
+  priority = 100
+  tls = { certResolver = "letsencrypt" }
+
 [http.routers.stalwart]
   rule = "Host(`mail.vps.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "stalwart"
   tls = { certResolver = "letsencrypt" }
-# 
-# [http.services.chhoto.loadBalancer]
-#   [[http.services.chhoto.loadBalancer.servers]]
-#     url = "http://127.0.0.1:4567"
-# [http.routers.chhoto]
-#   rule        = "Host(`s.vps.marcpartensky.com`)"
-#   entryPoints = ["websecure"]
-#   service     = "chhoto"
-#   tls         = { certResolver = "letsencrypt" }

@@ -41,7 +41,7 @@
       gh
       just
       fzf
-      # sops
+      sops
       ssh-to-age
       # # wayvnc
       # stow
@@ -58,6 +58,7 @@
       pgcli
       # nix-du
       ripgrep # for telescope neovim 
+      jq
       # gcc
       # p7zip
       # pangolin
