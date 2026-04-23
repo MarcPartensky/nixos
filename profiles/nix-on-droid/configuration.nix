@@ -74,11 +74,11 @@
 
   home-manager.config = {
     home.stateVersion = "24.05";
-    home.packages = [
-      (inputs.nixvim.legacyPackages.aarch64-linux.makeNixvimWithModule {
-        module = import ../../modules/home/neovim;
-      })
-    ];
+    # home.packages = [
+    #   (inputs.nixvim.legacyPackages.aarch64-linux.makeNixvimWithModule {
+    #     module = import ../../modules/home/neovim;
+    #   })
+    # ];
     imports = [
       # ../../modules/home/yt-dlp
       # inputs.nixvim.homeManagerModules.default
