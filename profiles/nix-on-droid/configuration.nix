@@ -35,6 +35,7 @@
     #xz
     #zip
     #unzip
+    eza
     nano
     openssh
     iproute2
@@ -42,7 +43,7 @@
     neovim
     zsh
     git
-    gh
+    # gh
     just
     wayvnc
     stow
@@ -56,16 +57,34 @@
     tmate
     bat
     ripgrep
+    qemu
 
-    pinentry-curses
+    # pinentry-curses
   ];
+
+  # home-manager.users.nix-on-droid = {
+  #   home.stateVersion = "25.11";
+  #   imports = [
+  #     inputs.nixvim.homeModules.default
+  #     ../../modules/home/neovim
+  #     ../../modules/home/zsh
+  #     ../../modules/home/git
+  #     ../../modules/home/ssh
+  #     # ../../modules/home/gh
+  #   ];
+  # };
 
   home-manager.config = {
     home.stateVersion = "24.05";
+    # home.packages = [
+    #   (inputs.nixvim.legacyPackages.aarch64-linux.makeNixvimWithModule {
+    #     module = import ../../modules/home/neovim;
+    #   })
+    # ];
     imports = [
-      inputs.nixvim.homeManagerModules.default
       # ../../modules/home/yt-dlp
-      ../../modules/home/neovim
+      # inputs.nixvim.homeModules.default
+      # ../../modules/home/neovim
       # ../../modules/home/zsh
       # ../../modules/home/git
       # ../../modules/home/ssh
@@ -77,13 +96,13 @@
 
   # --- CONFIGURATION GPG (OBLIGATOIRE SUR 25.11) ---
   # Sans ça, git sign / gpg plantera car il ne trouvera pas pinentry
-  environment.etc."gnupg/gpg-agent.conf".text = ''
-    pinentry-program ${pkgs.pinentry-curses}/bin/pinentry
-  '';
+  # environment.etc."gnupg/gpg-agent.conf".text = ''
+  #   pinentry-program ${pkgs.pinentry-curses}/bin/pinentry
+  # '';
 
   # Ces options activent l'intégration Home Manager
-  home-manager.useGlobalPkgs = true;
-  home-manager.useUserPackages = true;
+  # home-manager.useGlobalPkgs = true;
+  # home-manager.useUserPackages = true;
   home-manager.backupFileExtension = "hm-backup";
 
   # environment.pathsToLink = [
