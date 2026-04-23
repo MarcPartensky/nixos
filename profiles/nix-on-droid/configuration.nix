@@ -36,26 +36,26 @@
     #zip
     #unzip
     nano
-    openssh
-    iproute2
-    shadow
-    neovim
-    zsh
-    git
-    # gh
-    just
-    wayvnc
-    stow
-    ncdu
-    # pangolin
-    htop
-    which
-    podman
-    neofetch
-    # gemini-cli-bin
-    tmate
-    bat
-    ripgrep
+    # openssh
+    # iproute2
+    # shadow
+    # neovim
+    # zsh
+    # git
+    # # gh
+    # just
+    # wayvnc
+    # stow
+    # ncdu
+    # # pangolin
+    # htop
+    # which
+    # podman
+    # neofetch
+    # # gemini-cli-bin
+    # tmate
+    # bat
+    # ripgrep
 
     # pinentry-curses
   ];
