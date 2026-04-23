@@ -5,6 +5,12 @@
   inputs,
   ...
 }: {
+  nixpkgs.overlays = [
+    (_final: prev: {
+      pinentry = prev.pinentry-curses;
+    })
+  ];
+
   imports = [
     # ./modules/sshd
     # ../../nod-sshd
