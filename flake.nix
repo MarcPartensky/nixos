@@ -158,6 +158,9 @@
       # pkgs = import inputs.nixpkgs-droid {
       pkgs = import inputs.nixpkgs {
         system = "aarch64-linux";
+        overlays = [
+          (_final: prev: {pinentry = prev.pinentry-curses;})
+        ];
       };
       extraSpecialArgs = {inherit inputs;};
       # extraSpecialArgs = {
