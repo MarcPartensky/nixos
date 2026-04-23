@@ -5,12 +5,6 @@
   inputs,
   ...
 }: {
-  nixpkgs.overlays = [
-    (_final: prev: {
-      pinentry = prev.pinentry-curses;
-    })
-  ];
-
   imports = [
     # ./modules/sshd
     # ../../nod-sshd
@@ -118,7 +112,7 @@
   environment.etcBackupExtension = ".bak";
 
   # Read the changelog before changing this value
-  system.stateVersion = "25.05";
+  system.stateVersion = "24.05";
 
   # Set up nix for flakes
   nix.extraOptions = ''
