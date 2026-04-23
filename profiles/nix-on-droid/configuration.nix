@@ -66,33 +66,35 @@
     # pinentry-curses
   ];
 
-  home-manager.users.nix-on-droid = {
-    home.stateVersion = "25.11";
-    imports = [
-      inputs.nixvim.homeModules.default
-      ../../modules/home/neovim
-      ../../modules/home/zsh
-      ../../modules/home/git
-      ../../modules/home/ssh
-      # ../../modules/home/gh
-    ];
-  };
-
-  # home-manager.config = {
-  #   home.stateVersion = "24.05";
+  # home-manager.users.nix-on-droid = {
+  #   home.stateVersion = "25.11";
   #   imports = [
-  #     (inputs.nixvim.legacyPackages.aarch64-linux.makeNixvimWithModule {
-  #       module = import ../../modules/home/neovim;
-  #     })
-  #     # ../../modules/home/yt-dlp
-  #     # inputs.nixvim.homeManagerModules.default
-  #     # ../../modules/home/neovim
-  #     # ../../modules/home/zsh
-  #     # ../../modules/home/git
-  #     # ../../modules/home/ssh
+  #     inputs.nixvim.homeModules.default
+  #     ../../modules/home/neovim
+  #     ../../modules/home/zsh
+  #     ../../modules/home/git
+  #     ../../modules/home/ssh
   #     # ../../modules/home/gh
   #   ];
   # };
+
+  home-manager.config = {
+    home.stateVersion = "24.05";
+    home.packages = [
+      (inputs.nixvim.legacyPackages.aarch64-linux.makeNixvimWithModule {
+        module = import ../../modules/home/neovim;
+      })
+    ];
+    imports = [
+      # ../../modules/home/yt-dlp
+      # inputs.nixvim.homeManagerModules.default
+      # ../../modules/home/neovim
+      # ../../modules/home/zsh
+      # ../../modules/home/git
+      # ../../modules/home/ssh
+      # ../../modules/home/gh
+    ];
+  };
 
   user.shell = "${pkgs.zsh}/bin/zsh";
 
