@@ -193,10 +193,10 @@
     };
 
     darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {
-      system = "aarch64-darwin";
-      specialArgs = {inherit inputs;};
-      pkgs = import inputs.nixpkgs-darwin {system = "aarch64-darwin";};
-      modules = [./hosts/macos/configuration.nix];
+        system = "aarch64-darwin";
+        specialArgs = { inherit inputs; };
+        pkgs = import inputs.nixpkgs-darwin { system = "aarch64-darwin"; };
+        modules = [ ./profiles/macos/configuration.nix ];
     };
   };
 }

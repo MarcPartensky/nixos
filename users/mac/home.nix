@@ -1,7 +1,9 @@
 { pkgs, inputs, config, ... }: {
 
   imports = [
-    ../../modules/home/claude-commit
+    # ../../modules/home/claude-commit
+    ../../modules/home/ssh
+    ../../modules/home/zsh
   ];
 
   home.username = "marc";
@@ -10,9 +12,16 @@
   home.packages = with pkgs; [
     gemini-cli
     geminicommit
+    tree
+    eza
+    bat
   ];
 
-  programs.home-manager.enable = true;
+  programs.home-manager ={
+    enable = true;
+    # backupFileExtension = "backup";
+  # backupCommand',
+   };
 
   programs.git = {
     enable = true;
