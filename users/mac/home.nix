@@ -15,7 +15,13 @@
     tree
     eza
     bat
+    gnupg
   ];
+
+  services.gpg-agent = {
+    enable = true;
+    pinentryPackage = pkgs.pinentry-curses;
+  };
 
   programs.home-manager ={
     enable = true;
