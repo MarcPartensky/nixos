@@ -52,12 +52,12 @@
         datasets = {
           "root" = {
             type = "zfs_fs";
-            options = {
-              encryption = "aes-256-gcm";
-              keyformat = "passphrase";
-              #keylocation = "file:///tmp/secret.key";
-              keylocation = "prompt";
-            };
+            # options = {
+            #   encryption = "aes-256-gcm";
+            #   keyformat = "passphrase";
+            #   #keylocation = "file:///tmp/secret.key";
+            #   keylocation = "prompt";
+            # };
             mountpoint = "/";
           };
           "nix" = {
