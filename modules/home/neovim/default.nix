@@ -4,6 +4,7 @@
     ./plugins/lsp.nix
     ./plugins/conform.nix
     ./plugins/ui.nix
+    ./plugins/avante.nix
   ];
 
   home.packages = with pkgs; [
