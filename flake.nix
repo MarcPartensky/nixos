@@ -196,7 +196,10 @@
         system = "aarch64-darwin";
         specialArgs = { inherit inputs; };
         pkgs = import inputs.nixpkgs-darwin { system = "aarch64-darwin"; };
-        modules = [ ./profiles/macos/configuration.nix ];
+        modules = [
+        ./profiles/macos/configuration.nix
+        { nixpkgs.config.allowUnfree = true; }
+        ];
     };
   };
 }
