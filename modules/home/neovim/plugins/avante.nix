@@ -5,6 +5,14 @@
       # Utilise le CLI claude code au lieu de l'API directe
       provider = "claude_code";
 
+      input = {
+        provider = "dressing";
+      };
+      
+      select = {
+        provider = "native";  # évite le bug dressing select avec tables non-list
+      };
+
       providers = {
         claude_code = {
           model = "claude-sonnet-4-5";

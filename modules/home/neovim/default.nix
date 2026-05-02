@@ -56,6 +56,13 @@
           colorscheme = "wombat";
         };
       };
+      lspsaga = {
+        enable = true;
+        settings = {
+          ui.border = "rounded";
+          lightbulb.enable = false;  # évite le spam si pas de LSP actif
+        };
+      };
       treesitter = {
         enable = true;
         # Assure-toi que le parser yuck est bien chargé
