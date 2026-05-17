@@ -1,4 +1,4 @@
-{ ... }: {
+{...}: {
   services.gammastep = {
     enable = true;
     provider = "manual";
@@ -8,7 +8,7 @@
       general = {
         # Definit la luminosite
         brightness-day = 1.0;
-        brightness-night = 0.4;
+        brightness-night = 0.6;
       };
     };
   };
