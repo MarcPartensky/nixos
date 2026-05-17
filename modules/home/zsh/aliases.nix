@@ -25,6 +25,7 @@
   sy = "systemctl";
   sys = "systemctl status";
   syr = "systemctl restart";
+  syu = "systemctl --user";
   syus = "systemctl --user status";
   syur = "systemctl --user restart";
   syrn = "systemctl restart NetworkManager";
