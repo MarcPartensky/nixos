@@ -8,7 +8,7 @@
     Unit.Description = "option-pricer Streamlit dashboard";
     Unit.After = ["network.target"];
     Service = {
-      ExecStart = "${inputs.option-pricer.packages.${pkgs.system}.default}/bin/option-pricer --server.port 8501";
+      ExecStart = "${inputs.option-pricer.packages.${pkgs.system}.default}/bin/option-pricer --server.port 8503";
       WorkingDirectory = "${inputs.option-pricer.packages.${pkgs.system}.default}/lib/option-pricer";
       Restart = "on-failure";
       RestartSec = "5s";
