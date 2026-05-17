@@ -1,16 +1,17 @@
-{ ... }: {
+{...}: {
   programs.nixvim.plugins.avante = {
     enable = true;
     settings = {
       # Utilise le CLI claude code au lieu de l'API directe
-      provider = "claude_code";
+      # provider = "claude";
+      provider = "claude";
 
       input = {
         provider = "dressing";
       };
-      
+
       select = {
-        provider = "native";  # évite le bug dressing select avec tables non-list
+        provider = "native"; # évite le bug dressing select avec tables non-list
       };
 
       providers = {
