@@ -23,8 +23,15 @@
     users.marc = import ../../users/mac/home.nix;
   };
 
+  # darwin-configuration.nix ou flake.nix -> darwinConfigurations
+  system.keyboard = {
+    enableKeyMapping = true;
+    remapCapsLockToEscape = true;
+  };
+
   system.primaryUser = "marc";
 
+  # deactivated
   homebrew = {
     enable = false;
     onActivation = {

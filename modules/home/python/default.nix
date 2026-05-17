@@ -5,6 +5,8 @@ let
     # neovim providers
     pynvim
     python-lsp-server
+    python-lsp-server
+    ruff
 
     # quant / data science
     numpy
@@ -19,8 +21,8 @@ let
   ]);
 in
 {
-  home.packages = [
+  home.packages = with pkgs; [
     pythonEnv
-    pkgs.basedpyright
+    basedpyright
   ];
 }
