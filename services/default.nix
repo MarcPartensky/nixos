@@ -16,6 +16,7 @@
     ./qbittorrent
     ./rqbit
     ./autossh
+    ./wayvnc
     # ./dnscrypt
     ./adguard
     ./navidrome
