@@ -195,6 +195,7 @@ in {
     vulkan-tools
     jre
     playwright
+    fjo
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg:

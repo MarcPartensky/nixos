@@ -16,6 +16,9 @@
     inputs.nix-flatpak.homeManagerModules.nix-flatpak
     inputs.spicetify.homeManagerModules.spicetify
 
+    # inputs.backtest.packages.${pkgs.system}.default
+    # inputs.option-pricer.packages.${pkgs.system}.default
+
     ../../modules/home/git
     ../../modules/home/zsh
     ../../modules/home/ssh
@@ -56,6 +59,10 @@
     ../../modules/home/tewi
     ../../modules/home/ytui-music
     ../../modules/home/geminicommit
+
+    ../../modules/home/backtest
+    ../../modules/home/portfolio-optimizer
+    ../../modules/home/option-pricer
   ];
 
   nixpkgs.config.electron.commandLineArgs =
@@ -66,6 +73,7 @@
     + "--enable-features=WaylandWindowDecorations";
 
   sops.age.keyFile = "/home/marc/.config/sops/age/keys.txt";
+  sops.defaultSopsFile = lib.mkForce ../../secrets/tower.yml;
 
   home = {
     username = "marc";
