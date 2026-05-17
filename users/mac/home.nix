@@ -11,6 +11,7 @@
     ../../modules/home/yt-dlp
     ../../modules/home/syncthing
     ../../modules/home/pgcli
+    ../../modules/home/python
     # ../../modules/home/librewolf
 
     ../../modules/home-mac/aerospace
@@ -30,7 +31,7 @@
     bat
     gnupg
     # claude-code
-    black
+    # black
     ncdu
     nix-du
     util-linux
@@ -40,7 +41,9 @@
     nmap
     just
     age
-
+    speedtest-go
+    gh
+    uv
 
     # neovim deps manquants
     ripgrep          # telescope live-grep + vim.health
@@ -53,9 +56,15 @@
     findutils        # GNU find (fix fzf-lua "illegal option")
     luarocks         # lazy.nvim rocks
 
-    # neovim providers
-    (python3.withPackages (ps: [ ps.pynvim ]))
     nodePackages.neovim   # node provider
+
+    # (nerdfonts.override { fonts = [ "Meslo" ]; })
+    # ou sur nixpkgs récent :
+    nerd-fonts.meslo-lg
+    meslo-lg
+    meslo-lgs-nf
+    fastfetch
+    htop
   ];
 
   # nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
