@@ -99,6 +99,21 @@
 
     # nixgl.url = "github:guibou/nixGL";
     # nixgl.inputs.nixpkgs.follows = "nixpkgs";
+
+    backtest.url = "github:marcpartensky/backtest-cpp-py";
+    backtest.inputs.nixpkgs.follows = "nixpkgs";
+    portfolio-optimizer.url = "github:marcpartensky/portfolio-optimizer";
+    portfolio-optimizer.inputs.nixpkgs.follows = "nixpkgs";
+    option-pricer.url = "github:marcpartensky/option-pricer";
+    option-pricer.inputs.nixpkgs.follows = "nixpkgs";
+
+    # option-pricer.url = "github:marcpartensky/option-pricer";
+    # option-pricer.inputs.nixpkgs.follows = "nixpkgs";
+
+    uv2nix.url = "github:pyproject-nix/uv2nix";
+    uv2nix.inputs.nixpkgs.follows = "nixpkgs";
+    pyproject-nix.url = "github:pyproject-nix/pyproject.nix";
+    pyproject-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs = {
     self,
@@ -193,13 +208,13 @@
     };
 
     darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {
-        system = "aarch64-darwin";
-        specialArgs = { inherit inputs; };
-        pkgs = import inputs.nixpkgs-darwin { system = "aarch64-darwin"; };
-        modules = [
+      system = "aarch64-darwin";
+      specialArgs = {inherit inputs;};
+      pkgs = import inputs.nixpkgs-darwin {system = "aarch64-darwin";};
+      modules = [
         ./profiles/macos/configuration.nix
-        { nixpkgs.config.allowUnfree = true; }
-        ];
+        {nixpkgs.config.allowUnfree = true;}
+      ];
     };
   };
 }
