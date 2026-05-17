@@ -19,5 +19,8 @@ let
   ]);
 in
 {
-  home.packages = [ pythonEnv ];
+  home.packages = [
+    pythonEnv
+    pkgs.basedpyright
+  ];
 }
