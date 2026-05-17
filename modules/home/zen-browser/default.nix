@@ -38,7 +38,7 @@
     tab-counter-plus
     tab-session-manager
     # youtube-high-definition
-    enhancer-for-youtube
+    # enhancer-for-youtube
     # proton-pass
   ];
 
