@@ -5,7 +5,7 @@ set dotenv-load
 # export HOST := env_var("HOST")
 
 run:
-    just {{env('HOST')}}
+    just {{env('RUN')}}
 
 home:
 	home-manager switch --flake .#marc
