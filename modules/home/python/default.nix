@@ -16,6 +16,7 @@ let
 
     # tooling
     ipython
+    ptpython
     rich
     marimo
   ]);
