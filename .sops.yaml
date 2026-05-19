@@ -1,5 +1,4 @@
 keys:
-  - &laptop age15n96t74lj62gxyk2wd8ac9aew5lpfkx2l7p8u3k5hc0hcek4hejszyp48h
   - &anywhere age189v3q8quejkaz4r8u0g2aechsfk4sk3465khx35erd320rea5scq98v7er
   - &tower age13kx9eh2xdygut62wg8w7jgjhpy4u0w76e60awj7d5xtwjpdrw5ps9azsgn
   - &mac age1fwgg9h68zz8s6xa8qt4yn7gqcqp59s0mma8xdfq9hunksqv8fq4qd9yfaz
@@ -7,7 +6,6 @@ creation_rules:
   - path_regex: secrets/common\.yml$
     key_groups:
       - age:
-          - *laptop
           - *anywhere
           - *tower
           - *mac
@@ -19,10 +17,6 @@ creation_rules:
     key_groups:
       - age:
           - *anywhere
-  - path_regex: secrets/laptop\.yml$
-    key_groups:
-      - age:
-          - *laptop
   - path_regex: secrets/tower\.yml$
     key_groups:
       - age:
