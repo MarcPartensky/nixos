@@ -1,6 +1,6 @@
 keys:
   - &anywhere age189v3q8quejkaz4r8u0g2aechsfk4sk3465khx35erd320rea5scq98v7er
-  - &tower age13kx9eh2xdygut62wg8w7jgjhpy4u0w76e60awj7d5xtwjpdrw5ps9azsgn
+  - &tower age1usm3v0ugducrzcwud60dda7xfnj49fdhecj7kcsfm7dzwzrzeyqq2jc2hm
   - &mac age1fwgg9h68zz8s6xa8qt4yn7gqcqp59s0mma8xdfq9hunksqv8fq4qd9yfaz
 creation_rules:
   - path_regex: secrets/common\.yml$
