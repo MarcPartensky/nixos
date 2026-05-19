@@ -941,11 +941,11 @@
         "uv2nix": "uv2nix_6"
       },
       "locked": {
-        "lastModified": 1778009469,
-        "narHash": "sha256-wSch/bKUJSCnVUgGZnWYF70lOzZKVGhLq7HMlsAD20s=",
+        "lastModified": 1779101951,
+        "narHash": "sha256-byF+NXhrp9r6R6s4f3rO/UsMUXSciGVIebN7XY1paUU=",
         "owner": "marcpartensky",
         "repo": "portfolio-optimizer",
-        "rev": "2bffaaee83fb9241b65c57dc4a66b483a16b60c5",
+        "rev": "2dfed49af32bfb7c4df3ed81d338d632914595b2",
         "type": "github"
       },
       "original": {
