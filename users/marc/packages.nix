@@ -196,6 +196,7 @@ in {
     jre
     playwright
     fjo
+    sops
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg:

@@ -13,8 +13,8 @@ in {
     inputs.disko.nixosModules.disko
     inputs.nixvim.nixosModules.default
     # inputs.catppuccin.nixosModules.catppuccin
-    # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
-    inputs.sopswarden.nixosModules.default
+    inputs.sops.nixosModules.sops # Inclus dans sopswarden
+    # inputs.sopswarden.nixosModules.default
     # inputs.microvm.nixosModules.microvm
     inputs.home-manager.nixosModules.default
 
@@ -33,7 +33,7 @@ in {
     ../../modules/nixos/virt-manager
     ../../modules/nixos/podman
     ../../modules/nixos/flatpak
-    ../../modules/nixos/sopswarden
+    # ../../modules/nixos/sopswarden
     ../../modules/nixos/xdg
     ../../modules/nixos/sddm # greetd or ly
     ../../modules/nixos/polkit
@@ -79,6 +79,8 @@ in {
   hardware.graphics.enable = true;
 
   services.xserver.videoDrivers = ["nvidia"];
+
+  services.openssh.settings.MaxAuthTries = 10; # défaut = 6
 
   hardware.nvidia = {
     modesetting.enable = true;
