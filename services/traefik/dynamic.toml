@@ -19,6 +19,10 @@
   [[http.services.stalwart.loadBalancer.servers]]
     url = "http://127.0.0.1:8090"
 
+[http.services.zitadel.loadBalancer]
+  [[http.services.zitadel.loadBalancer.servers]]
+    url = "http://127.0.0.1:2080"
+
 # --- ROUTERS ---
 [http.routers.traefik]
   rule = "Host(`traefik.vps.marcpartensky.com`)"
@@ -56,4 +60,10 @@
   rule = "Host(`mail.vps.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "stalwart"
+  tls = { certResolver = "letsencrypt" }
+
+[http.routers.zitadel]
+  rule = "Host(`auth.vps.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "zitadel"
   tls = { certResolver = "letsencrypt" }
