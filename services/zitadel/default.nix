@@ -25,19 +25,23 @@
   # ---------------------------------------------------------------------------
   # POSTGRESQL
   # ---------------------------------------------------------------------------
+
   services.postgresql = {
-    enable = true;
-    package = pkgs.postgresql_17;
+
     ensureDatabases = ["zitadel"];
     ensureUsers = [
       {
         name = "zitadel";
         ensureDBOwnership = true;
+        ensureClauses.createrole = true;
+
       }
     ];
+    enableTCPIP = true;
     authentication = lib.mkOverride 10 ''
-      local   zitadel     zitadel     peer
       local   all         all         peer
+      host    all         zitadel     127.0.0.1/32    trust
+      host    all         zitadel     ::1/128         trust
     '';
   };
 
@@ -51,11 +55,24 @@
     settings = {
       Port = 2080;
       ExternalPort = 443;
-      ExternalDomain = "auth.marcpartensky.com";
+      ExternalDomain = "auth.vps.marcpartensky.com";
       ExternalSecure = true;
 
+      Machine = {
+        Identification = {
+          Hostname = {
+            Enabled = true;
+          };
+          Webhook = {
+            Enabled = false;
+          };
+        };
+      };
+
+
       Database.postgres = {
-        Host = "/run/postgresql";
+        Host = "127.0.0.1";
+        Port = 5432;
         Database = "zitadel";
         User = {
           Username = "zitadel";
@@ -66,6 +83,7 @@
           SSL.Mode = "disable";
         };
       };
+      
     };
 
     steps.FirstInstance = {

@@ -21,7 +21,7 @@
     ../../services/postgres
     # ../../services/vaultwarden
     # ../../services/nextcloud
-    # ../../services/zitadel
+    ../../services/zitadel
     ../../services/pangolin
     # ./services/chhoto
     # ./services/eternal-terminal
