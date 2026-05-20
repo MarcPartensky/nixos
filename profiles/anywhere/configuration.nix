@@ -68,10 +68,21 @@
 
   programs.zsh.enable = true;
 
+
+  sops.defaultSopsFile = ../../secrets/anywhere.yml;
+
+  sops.secrets."anthropic_api_key" = {
+    sopsFile = ../../secrets/common.yml;
+    owner = "root";
+  };
+
   home-manager.users.root = {
     home.stateVersion = "25.11";
+    # sops.age.keyFile = "/root/.config/sops/age/keys.txt";
     imports = [
       inputs.nixvim.homeModules.default
+      # inputs.sops.homeModules.sops
+      ../../modules/home/claude-commit
       ../../modules/home/neovim
       ../../modules/home/zsh
       ../../modules/home/git
@@ -79,8 +90,6 @@
       # ../../modules/home/gh
     ];
   };
-
-  sops.defaultSopsFile = ../../secrets/anywhere.yml;
 
   networking.hostName = "anywhere";
 
