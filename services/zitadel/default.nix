@@ -93,9 +93,10 @@
         FirstName = "Admin";
         LastName = "User";
         DisplayName = "Administrator";
-        PasswordChangeRequired = false;
+        Password = "motdepasse";
+        PasswordChangeRequired = true;
         Email = {
-          Address = "admin@marcpartensky.com";
+          Address = "marc@marcpartensky.com";
           Verified = true;
         };
       };
