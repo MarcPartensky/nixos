@@ -19,6 +19,16 @@
       owner = "stalwart-mail";
       group = "stalwart-mail";
     };
+    "stalwart/spam_pw" = {
+      key = "stalwart_spam_pw";
+      owner = "stalwart-mail";
+      group = "stalwart-mail";
+    };
+    "stalwart/noreply_pw" = {
+      key = "stalwart_noreply_pw";
+      owner = "stalwart-mail";
+      group = "stalwart-mail";
+    };
     "stalwart/admin_pw" = {
       key = "stalwart_admin_pw";
       owner = "stalwart-mail";
@@ -43,6 +53,8 @@
     credentials = {
       mail-pw1 = config.sops.secrets."stalwart/mail_pw1".path;
       mail-pw2 = config.sops.secrets."stalwart/mail_pw2".path;
+      spam-pw = config.sops.secrets."stalwart/spam_pw".path;
+      noreply-pw = config.sops.secrets."stalwart/noreply_pw".path;
       admin-pw = config.sops.secrets."stalwart/admin_pw".path;
       acme-secret = config.sops.secrets."stalwart/acme_secret".path;
     };
@@ -131,6 +143,18 @@
             name = "pro";
             secret = "%{file:/run/credentials/stalwart-mail.service/mail-pw1}%";
             email = ["pro@marcpartensky.com"];
+          }
+          {
+            class = "individual";
+            name = "spam";
+            secret = "%{file:/run/credentials/stalwart-mail.service/spam-pw}%";
+            email = ["spam@marcpartensky.com"];
+          }
+          {
+            class = "individual";
+            name = "noreply";
+            secret = "%{file:/run/credentials/stalwart-mail.service/noreply-pw}%";
+            email = ["noreply@marcpartensky.com"];
           }
         ];
       };
