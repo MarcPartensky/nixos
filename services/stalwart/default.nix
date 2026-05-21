@@ -1,49 +1,54 @@
-{ config, pkgs, ... }:
-
+# services/stalwart/default.nix
 {
-  # 1. Gestion des secrets (Minimaliste)
-  # Note: En production, privilégiez sops-nix ou agenix.
-  environment.etc = {
-    "stalwart/mail-pw1".text = "motdepasse_utilisateur";
-    "stalwart/admin-pw".text = "motdepasse_admin";
-    "stalwart/acme-secret".text = "votre_cle_api_dns_cloudflare"; # Si challenge dns-01
-  };
-
-   # Configuration de sops
-  sops = {
-    defaultSopsFile = ./secrets/anywhere.yml;
-    # age.keyFile = "/var/lib/sops-nix/key.txt";
-    
-    # Définition des secrets
-    secrets = {
-      "stalwart/mail-pw1" = {
-        owner = "stalwart-mail";
-        group = "stalwart-mail";
-        mode = "0400";
-      };
-      "stalwart/admin-pw" = {
-        owner = "stalwart-mail";
-        group = "stalwart-mail";
-        mode = "0400";
-      };
-      "stalwart/acme-secret" = {
-        owner = "stalwart-mail";
-        group = "stalwart-mail";
-        mode = "0400";
-      };
+  pkgs,
+  config,
+  lib,
+  ...
+}: {
+  # ---------------------------------------------------------------------------
+  # SECRETS SOPS
+  # ---------------------------------------------------------------------------
+  sops.secrets = {
+    "stalwart/mail_pw1" = {
+      key = "stalwart_mail_pw1";
+      owner = "stalwart-mail";
+      group = "stalwart-mail";
+    };
+    "stalwart/mail_pw2" = {
+      key = "stalwart_mail_pw2";
+      owner = "stalwart-mail";
+      group = "stalwart-mail";
+    };
+    "stalwart/admin_pw" = {
+      key = "stalwart_admin_pw";
+      owner = "stalwart-mail";
+      group = "stalwart-mail";
+    };
+    "stalwart/acme_secret" = {
+      key = "stalwart_acme_secret";
+      owner = "stalwart-mail";
+      group = "stalwart-mail";
     };
   };
 
-  # 2. Service Stalwart Mail
+  # ---------------------------------------------------------------------------
+  # CONFIGURATION STALWART
+  # ---------------------------------------------------------------------------
   services.stalwart-mail = {
     enable = true;
     openFirewall = true;
+
+    # Les credentials sont passés via systemd credentials :
+    # disponibles dans /run/credentials/stalwart-mail.service/<nom>
+    credentials = {
+      mail-pw1 = config.sops.secrets."stalwart/mail_pw1".path;
+      mail-pw2 = config.sops.secrets."stalwart/mail_pw2".path;
+      admin-pw = config.sops.secrets."stalwart/admin_pw".path;
+      acme-secret = config.sops.secrets."stalwart/acme_secret".path;
+    };
+
     settings = {
       server = {
-        tracer.stdout = {
-          level = "debug"; # Changez "info" en "debug"
-          type = "stdout";
-        };
         hostname = "mx1.marcpartensky.com";
         tls = {
           enable = true;
@@ -51,8 +56,8 @@
         };
         listener = {
           smtp = {
-            protocol = "smtp";
             bind = "[::]:25";
+            protocol = "smtp";
           };
           submissions = {
             bind = "[::]:465";
@@ -64,11 +69,15 @@
             protocol = "imap";
             tls.implicit = true;
           };
-          management = {
-            # bind = [ "127.0.0.1:8090" ];
-            bind = [ "0.0.0.0:8090" ];
+          # JMAP + webadmin : écoute uniquement en local, Traefik fait le TLS
+          jmap = {
+            bind = "[::]:8080";
+            url = "https://mail.marcpartensky.com";
             protocol = "http";
-            url = "https://mail.vps.marcpartensky.com";
+          };
+          management = {
+            bind = ["127.0.0.1:8081"];
+            protocol = "http";
           };
         };
       };
@@ -78,48 +87,76 @@
         domain = "marcpartensky.com";
       };
 
-      # Configuration ACME via Stalwart (interne)
       acme."letsencrypt" = {
         directory = "https://acme-v02.api.letsencrypt.org/directory";
         challenge = "dns-01";
-        contact = "admin@marcpartensky.com";
-        domains = [ "marcpartensky.com" "mx1.marcpartensky.com" "mail.vps.marcpartensky.com" ];
-        provider = "cloudflare"; # Assurez-vous d'utiliser le bon provider
-        secret = "%{file:/etc/stalwart/acme-secret}%";
+        contact = "marc@marcpartensky.com";
+        domains = [
+          "marcpartensky.com"
+          "mx1.marcpartensky.com"
+          "mail.marcpartensky.com"
+        ];
+        provider = "cloudflare";
+        # Référence le credential systemd injecté ci-dessus
+        secret = "%{file:/run/credentials/stalwart-mail.service/acme-secret}%";
       };
 
-      # Attention: 'in-memory' efface tout au redémarrage !
-      # Pour un usage réel, utilisez "rocksdb" ou "sqlite"
-      storage.directory = "rocksdb"; 
-      
+      session.auth = {
+        mechanisms = "[plain]";
+        directory = "'in-memory'";
+      };
+
+      storage.directory = "in-memory";
+      session.rcpt.directory = "'in-memory'";
+
+      directory."imap".lookup.domains = ["marcpartensky.com"];
+
       directory."in-memory" = {
         type = "memory";
         principals = [
           {
             class = "individual";
-            name = "Marc";
-            secret = "%{file:/etc/stalwart/mail-pw1}%";
-            email = [ "marc@marcpartensky.com" ];
+            name = "marc";
+            secret = "%{file:/run/credentials/stalwart-mail.service/mail-pw1}%";
+            email = ["marc@marcpartensky.com"];
+          }
+          {
+            class = "individual";
+            name = "postmaster";
+            secret = "%{file:/run/credentials/stalwart-mail.service/mail-pw1}%";
+            email = ["postmaster@marcpartensky.com"];
           }
         ];
       };
 
       authentication.fallback-admin = {
         user = "admin";
-        secret = "%{file:/etc/stalwart/admin-pw}%";
+        secret = "%{file:/run/credentials/stalwart-mail.service/admin-pw}%";
       };
     };
   };
 
-  # 3. Reverse Proxy Caddy pour l'interface Web
-  # services.caddy = {
-  #   enable = true;
-  #   virtualHosts = {
-  #     "mail.marcpartensky.com" = {
-  #       extraConfig = ''
-  #         reverse_proxy 127.0.0.1:8080
-  #       '';
+  # ---------------------------------------------------------------------------
+  # TRAEFIK - reverse proxy pour webadmin + JMAP (remplace Caddy)
+  # ---------------------------------------------------------------------------
+  # services.traefik.dynamicConfigOptions.http = {
+  #   routers = {
+  #     stalwart-web = {
+  #       rule = "Host(`mail.marcpartensky.com`) || Host(`mta-sts.marcpartensky.com`) || Host(`autoconfig.marcpartensky.com`) || Host(`autodiscover.marcpartensky.com`)";
+  #       entryPoints = [ "websecure" ];
+  #       service = "stalwart-web";
+  #       tls.certResolver = "letsencrypt";
   #     };
+  #     stalwart-admin = {
+  #       rule = "Host(`webmail.vps.marcpartensky.com`)";
+  #       entryPoints = [ "websecure" ];
+  #       service = "stalwart-admin";
+  #       tls.certResolver = "letsencrypt";
+  #     };
+  #   };
+  #   services = {
+  #     stalwart-web.loadBalancer.servers   = [{ url = "http://127.0.0.1:8080"; }];
+  #     stalwart-admin.loadBalancer.servers = [{ url = "http://127.0.0.1:8081"; }];
   #   };
   # };
 }
