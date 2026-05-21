@@ -1,6 +1,7 @@
 { config, pkgs, inputs, ... }: {
   imports = [
     inputs.home-manager.darwinModules.home-manager
+    ./services/wg-quick
   ];
 
   environment.systemPackages = [

@@ -66,6 +66,11 @@
     fastfetch
     htop
     nodejs
+
+    upscayl
+    upscayl-ncnn
+    realesrgan-ncnn-vulkan
+    imagemagick
   ];
 
   # nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
