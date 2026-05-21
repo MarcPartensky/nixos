@@ -26,7 +26,7 @@
     ../../services/wireguard
     # ./services/chhoto
     # ./services/eternal-terminal
-    # ./services/stalwart
+    ../../services/stalwart
   ];
 
   # Paquets système

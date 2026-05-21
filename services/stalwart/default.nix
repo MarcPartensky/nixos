@@ -71,12 +71,12 @@
           };
           # JMAP + webadmin : écoute uniquement en local, Traefik fait le TLS
           jmap = {
-            bind = "[::]:8080";
-            url = "https://mail.marcpartensky.com";
+            bind = "[::]:8390";
+            url = "https://mail.vps.marcpartensky.com";
             protocol = "http";
           };
           management = {
-            bind = ["127.0.0.1:8081"];
+            bind = ["127.0.0.1:8391"];
             protocol = "http";
           };
         };
@@ -94,7 +94,7 @@
         domains = [
           "marcpartensky.com"
           "mx1.marcpartensky.com"
-          "mail.marcpartensky.com"
+          "mail.vps.marcpartensky.com"
         ];
         provider = "cloudflare";
         # Référence le credential systemd injecté ci-dessus
@@ -125,6 +125,12 @@
             name = "postmaster";
             secret = "%{file:/run/credentials/stalwart-mail.service/mail-pw1}%";
             email = ["postmaster@marcpartensky.com"];
+          }
+          {
+            class = "individual";
+            name = "pro";
+            secret = "%{file:/run/credentials/stalwart-mail.service/mail-pw1}%";
+            email = ["pro@marcpartensky.com"];
           }
         ];
       };
