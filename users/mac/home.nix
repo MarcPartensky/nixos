@@ -71,6 +71,8 @@
     upscayl-ncnn
     realesrgan-ncnn-vulkan
     imagemagick
+    wireguard-tools
+    iproute2mac
   ];
 
   # nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
