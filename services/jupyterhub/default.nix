@@ -1,20 +1,24 @@
-{ pkgs, config, lib, ... }:
-let
-  pythonEnv = pkgs.python3.withPackages (ps: with ps; [
-    ipykernel
-    numpy
-    pandas
-    scipy
-    matplotlib
-    scikit-learn
-    yfinance
-    statsmodels
-  ]);
-in
 {
+  pkgs,
+  config,
+  lib,
+  ...
+}: let
+  pythonEnv = pkgs.python3.withPackages (ps:
+    with ps; [
+      ipykernel
+      numpy
+      pandas
+      scipy
+      matplotlib
+      scikit-learn
+      yfinance
+      statsmodels
+    ]);
+in {
   sops.secrets."jupyterhub/secret_token" = {
-    owner = "jupyterhub";
-    group = "jupyterhub";
+    # owner = "jupyterhub";
+    # group = "jupyterhub";
     key = "jupyterhub_secret_token";
   };
 
@@ -27,22 +31,26 @@ in
     authentication = "pam";
     spawner = "simple";
 
-    jupyterlabEnv = pkgs.python3.withPackages (ps: with ps; [
-      jupyterlab
-      jupyterhub
-    ]);
+    jupyterlabEnv = pkgs.python3.withPackages (ps:
+      with ps; [
+        jupyterlab
+        jupyterhub
+      ]);
 
-    jupyterhubEnv = pkgs.python3.withPackages (ps: with ps; [
-      jupyterhub
-    ]);
+    jupyterhubEnv = pkgs.python3.withPackages (ps:
+      with ps; [
+        jupyterhub
+      ]);
 
     kernels = {
       python3 = {
         displayName = "Python 3 (Data Science)";
         argv = [
           "${pythonEnv}/bin/python"
-          "-m" "ipykernel_launcher"
-          "-f" "{connection_file}"
+          "-m"
+          "ipykernel_launcher"
+          "-f"
+          "{connection_file}"
         ];
         language = "python";
         logo32 = "${pythonEnv}/${pythonEnv.sitePackages}/ipykernel/resources/logo-32x32.png";
