@@ -5,6 +5,7 @@ import http.server
 import os
 import uuid
 import json
+import time
 from pathlib import Path
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/var/lib/droplify"))
@@ -13,7 +14,6 @@ PORT      = int(os.environ.get("PORT", "8080"))
 
 
 def parse_multipart(fp, boundary: str, content_length: int) -> dict:
-    """Parse multipart/form-data sans le module cgi (supprimé en 3.13)."""
     data = fp.read(content_length)
     delim = ("--" + boundary).encode()
     fields = {}
@@ -34,13 +34,42 @@ def parse_multipart(fp, boundary: str, content_length: int) -> dict:
                 headers[k.strip().lower()] = v.strip()
         disp = headers.get("content-disposition", "")
         name = None
+        filename = None
         for item in disp.split(";"):
             item = item.strip()
             if item.startswith("name="):
                 name = item[5:].strip('"')
+            if item.startswith("filename="):
+                filename = item[9:].strip('"')
         if name:
-            fields[name] = body
+            fields[name] = {"data": body, "filename": filename or "index.html"}
     return fields
+
+
+def list_files():
+    entries = []
+    if not DATA_DIR.exists():
+        return entries
+    for slug_dir in sorted(DATA_DIR.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        if not slug_dir.is_dir():
+            continue
+        index = slug_dir / "index.html"
+        if not index.exists():
+            continue
+        meta_path = slug_dir / "meta.json"
+        meta = {}
+        if meta_path.exists():
+            try:
+                meta = json.loads(meta_path.read_text())
+            except Exception:
+                pass
+        entries.append({
+            "slug": slug_dir.name,
+            "url": f"{BASE_URL}/{slug_dir.name}",
+            "filename": meta.get("filename", "index.html"),
+            "uploaded_at": meta.get("uploaded_at", int(slug_dir.stat().st_mtime)),
+        })
+    return entries
 
 
 UPLOAD_PAGE = """<!DOCTYPE html>
@@ -73,8 +102,7 @@ UPLOAD_PAGE = """<!DOCTYPE html>
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 24px;
+      padding: 88px 24px 48px;
     }
 
     header {
@@ -86,6 +114,7 @@ UPLOAD_PAGE = """<!DOCTYPE html>
       gap: 10px;
       border-bottom: 1px solid var(--border);
       background: var(--bg);
+      z-index: 10;
     }
 
     .logo {
@@ -107,16 +136,24 @@ UPLOAD_PAGE = """<!DOCTYPE html>
       letter-spacing: 0.05em;
     }
 
-    main {
+    .layout {
       width: 100%;
-      max-width: 480px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+      max-width: 900px;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 32px;
+      align-items: start;
     }
 
+    @media (max-width: 700px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    /* --- LEFT PANEL --- */
+    .left { display: flex; flex-direction: column; gap: 16px; }
+
     h1 {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: 500;
       letter-spacing: -0.03em;
       line-height: 1.2;
@@ -127,7 +164,7 @@ UPLOAD_PAGE = """<!DOCTYPE html>
     #dropzone {
       border: 1.5px dashed var(--border);
       border-radius: var(--radius);
-      padding: 48px 32px;
+      padding: 40px 24px;
       text-align: center;
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s;
@@ -142,19 +179,19 @@ UPLOAD_PAGE = """<!DOCTYPE html>
 
     #dropzone.over { border-style: solid; }
 
-    .drop-icon { font-size: 2rem; margin-bottom: 12px; display: block; opacity: 0.5; }
-    .drop-label { font-size: 0.95rem; font-weight: 500; margin-bottom: 4px; }
-    .drop-sub { font-size: 0.8rem; color: var(--muted); }
+    .drop-icon { font-size: 1.8rem; margin-bottom: 10px; display: block; opacity: 0.4; }
+    .drop-label { font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; }
+    .drop-sub { font-size: 0.78rem; color: var(--muted); }
 
     input[type=file] { display: none; }
 
     #status {
-      font-size: 0.85rem;
-      padding: 12px 16px;
+      font-size: 0.82rem;
+      padding: 10px 14px;
       border-radius: var(--radius);
       display: none;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       border: 1px solid var(--border);
       background: var(--surface);
     }
@@ -166,62 +203,125 @@ UPLOAD_PAGE = """<!DOCTYPE html>
 
     #status a {
       font-family: 'Space Mono', monospace;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--accent2);
       text-decoration: none;
       word-break: break-all;
     }
 
-    #status a:hover { text-decoration: underline; }
+    /* --- RIGHT PANEL --- */
+    .right { display: flex; flex-direction: column; gap: 12px; }
 
-    .copy-btn {
-      margin-left: auto;
-      flex-shrink: 0;
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
       font-family: 'Space Mono', monospace;
-      font-size: 0.7rem;
-      padding: 4px 8px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .count-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      background: var(--border);
+      color: var(--muted);
+      padding: 2px 7px;
+      border-radius: 99px;
+    }
+
+    #search {
+      width: 100%;
+      padding: 8px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--accent);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #search:focus { border-color: var(--accent2); }
+    #search::placeholder { color: var(--muted); }
+
+    #file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    #file-list::-webkit-scrollbar { width: 4px; }
+    #file-list::-webkit-scrollbar-track { background: transparent; }
+    #file-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      transition: border-color 0.12s;
+    }
+
+    .file-item:hover { border-color: #c8c5be; }
+
+    .file-info { flex: 1; min-width: 0; }
+
+    .file-name {
+      font-size: 0.85rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+
+    .file-meta {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+
+    .file-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+    .btn-small {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      padding: 3px 7px;
       border: 1px solid var(--border);
       border-radius: 3px;
       background: var(--bg);
       cursor: pointer;
       color: var(--accent);
-      transition: background 0.1s;
-    }
-
-    .copy-btn:hover { background: var(--border); }
-
-    #history { display: flex; flex-direction: column; gap: 6px; }
-
-    .history-label {
-      font-size: 0.75rem;
-      font-family: 'Space Mono', monospace;
-      color: var(--muted);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .history-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.82rem;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-    }
-
-    .history-item a {
-      font-family: 'Space Mono', monospace;
-      font-size: 0.75rem;
-      color: var(--accent2);
       text-decoration: none;
-      word-break: break-all;
-      flex: 1;
+      transition: background 0.1s;
+      display: inline-flex;
+      align-items: center;
     }
 
-    .history-item a:hover { text-decoration: underline; }
-    .history-item .copy-btn { margin-left: 0; }
+    .btn-small:hover { background: var(--border); }
+    .btn-small.copied { color: var(--success); border-color: #bbf7d0; }
+
+    .empty {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .empty-icon { font-size: 1.5rem; margin-bottom: 8px; opacity: 0.3; }
   </style>
 </head>
 <body>
@@ -230,30 +330,41 @@ UPLOAD_PAGE = """<!DOCTYPE html>
     <span class="badge">SELF-HOSTED</span>
   </header>
 
-  <main>
-    <h1>Glisse un fichier HTML<br><em>obtiens une URL.</em></h1>
+  <div class="layout">
+    <div class="left">
+      <h1>Glisse un fichier HTML<br><em>obtiens une URL.</em></h1>
 
-    <div id="dropzone">
-      <span class="drop-icon">⬆</span>
-      <div class="drop-label">Glisse ici ou clique</div>
-      <div class="drop-sub">.html · .htm</div>
+      <div id="dropzone">
+        <span class="drop-icon">⬆</span>
+        <div class="drop-label">Glisse ici ou clique</div>
+        <div class="drop-sub">.html · .htm</div>
+      </div>
+      <input type="file" id="file" accept=".html,.htm">
+
+      <div id="status"></div>
     </div>
-    <input type="file" id="file" accept=".html,.htm">
 
-    <div id="status"></div>
-
-    <div id="history" style="display:none">
-      <div class="history-label">Cette session</div>
-      <div id="history-list"></div>
+    <div class="right">
+      <div class="panel-header">
+        <span class="panel-title">Fichiers hébergés</span>
+        <span class="count-badge" id="count">0</span>
+      </div>
+      <input type="text" id="search" placeholder="Filtrer par nom…">
+      <div id="file-list">
+        <div class="empty"><div class="empty-icon">📭</div>Aucun fichier encore</div>
+      </div>
     </div>
-  </main>
+  </div>
 
   <script>
     const dropzone = document.getElementById('dropzone');
     const input    = document.getElementById('file');
     const status   = document.getElementById('status');
-    const history  = document.getElementById('history');
-    const histList = document.getElementById('history-list');
+    const fileList = document.getElementById('file-list');
+    const countEl  = document.getElementById('count');
+    const search   = document.getElementById('search');
+
+    let allFiles = [];
 
     dropzone.addEventListener('click', () => input.click());
     dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('over'); });
@@ -264,14 +375,58 @@ UPLOAD_PAGE = """<!DOCTYPE html>
       upload(e.dataTransfer.files[0]);
     });
     input.addEventListener('change', () => upload(input.files[0]));
+    search.addEventListener('input', () => renderList(allFiles));
 
     function setStatus(type, html) {
       status.className = 'visible ' + type;
       status.innerHTML = html;
     }
 
-    function copyBtn(url) {
-      return `<button class="copy-btn" onclick="navigator.clipboard.writeText('${url}');this.textContent='✓'">copy</button>`;
+    function fmtDate(ts) {
+      const d = new Date(ts * 1000);
+      return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+           + ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderList(files) {
+      const q = search.value.trim().toLowerCase();
+      const filtered = q ? files.filter(f => f.filename.toLowerCase().includes(q) || f.slug.includes(q)) : files;
+      countEl.textContent = files.length;
+
+      if (!filtered.length) {
+        fileList.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div>Aucun résultat</div>';
+        return;
+      }
+
+      fileList.innerHTML = filtered.map(f => `
+        <div class="file-item">
+          <div class="file-info">
+            <div class="file-name" title="${f.filename}">${f.filename}</div>
+            <div class="file-meta">${f.slug} · ${fmtDate(f.uploaded_at)}</div>
+          </div>
+          <div class="file-actions">
+            <a class="btn-small" href="${f.url}" target="_blank">ouvrir</a>
+            <button class="btn-small" onclick="copyUrl('${f.url}', this)">copy</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function copyUrl(url, btn) {
+      navigator.clipboard.writeText(url);
+      btn.textContent = '✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+    }
+
+    async function loadFiles() {
+      try {
+        const res = await fetch('/files');
+        allFiles = await res.json();
+        renderList(allFiles);
+      } catch (e) {
+        fileList.innerHTML = '<div class="empty">Erreur de chargement</div>';
+      }
     }
 
     async function upload(file) {
@@ -283,8 +438,11 @@ UPLOAD_PAGE = """<!DOCTYPE html>
         const res  = await fetch('/upload', { method: 'POST', body: fd });
         const data = await res.json();
         if (data.url) {
-          setStatus('success', `<span>Hébergé :</span> <a href="${data.url}" target="_blank">${data.url}</a>${copyBtn(data.url)}`);
-          addHistory(data.url);
+          setStatus('success',
+            `<span>Hébergé :</span> <a href="${data.url}" target="_blank">${data.url}</a>
+             <button class="btn-small" style="margin-left:auto" onclick="navigator.clipboard.writeText('${data.url}');this.textContent='✓'">copy</button>`
+          );
+          await loadFiles();
         } else {
           setStatus('error', `<span>Erreur : ${data.error || 'inconnue'}</span>`);
         }
@@ -293,13 +451,7 @@ UPLOAD_PAGE = """<!DOCTYPE html>
       }
     }
 
-    function addHistory(url) {
-      history.style.display = 'flex';
-      const item = document.createElement('div');
-      item.className = 'history-item';
-      item.innerHTML = `<a href="${url}" target="_blank">${url}</a>${copyBtn(url)}`;
-      histList.prepend(item);
-    }
+    loadFiles();
   </script>
 </body>
 </html>"""
@@ -314,6 +466,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path in ("", "index.html"):
             self._respond(200, "text/html", UPLOAD_PAGE.encode())
+            return
+
+        if path == "files":
+            body = json.dumps(list_files()).encode()
+            self._respond(200, "application/json", body)
             return
 
         parts = path.split("/", 1)
@@ -351,15 +508,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         fields = parse_multipart(self.rfile, boundary, length)
 
-        file_data = fields.get("file")
-        if file_data is None:
+        field = fields.get("file")
+        if field is None:
             self._json(400, {"error": "champ 'file' manquant"})
             return
 
         slug = uuid.uuid4().hex[:8]
         dest = DATA_DIR / slug
         dest.mkdir(parents=True, exist_ok=True)
-        (dest / "index.html").write_bytes(file_data)
+        (dest / "index.html").write_bytes(field["data"])
+        (dest / "meta.json").write_text(json.dumps({
+            "filename": field["filename"],
+            "uploaded_at": int(time.time()),
+        }))
 
         self._json(200, {"url": f"{BASE_URL}/{slug}"})
 
