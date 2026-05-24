@@ -1,15 +1,28 @@
-{ pkgs, ... }:
+{ pkgs, config, ... }:
 
 {
+
+  sops.secrets."postgres_crt" = {
+    sopsFile = ../../secrets/common.yml;
+    owner    = "postgres";
+    path     = "/var/lib/postgresql/server.crt";
+  };
+  sops.secrets."postgres_key" = {
+    sopsFile = ../../secrets/common.yml;
+    owner    = "postgres";
+    mode     = "0600";
+    path     = "/var/lib/postgresql/server.key";
+  };
+  
   services.postgresql = {
     enable = true;
+    settings = {
+      ssl_cert_file = config.sops.secrets."postgres_crt".path;
+      ssl_key_file  = config.sops.secrets."postgres_key".path;
+    };
 
-    # Crée les bases automatiquement
-    ensureDatabases = [ "vaultwarden" ];
-    # ensureUsers = [{
-    #   name = "nextcloud";
-    #   ensurePermissions."DATABASE nextcloud" = "ALL PRIVILEGES";
-    # }];
+
+    # ensureDatabases = [ "vaultwarden" ];
 
     ensureUsers = [
       {
@@ -39,11 +52,6 @@
     #   -- Nextcloud
     #   CREATE USER nextcloud WITH LOGIN PASSWORD 'nextcloudpassword';
     #   GRANT ALL PRIVILEGES ON DATABASE nextcloud TO nextcloud;
-    #
-    #   -- Vaultwarden
-    #   CREATE USER vaultwarden WITH LOGIN PASSWORD 'vaultwarden';
-    #   GRANT ALL PRIVILEGES ON DATABASE vaultwarden TO vaultwarden;
-    # '';
   };
 
   # services.postgresqlBackup = {

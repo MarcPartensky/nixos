@@ -34,6 +34,11 @@
       owner = "stalwart-mail";
       group = "stalwart-mail";
     };
+    "stalwart/bob_pw" = {
+      key = "stalwart_bob_pw";
+      owner = "stalwart-mail";
+      group = "stalwart-mail";
+    };
     "stalwart/acme_secret" = {
       key = "stalwart_acme_secret";
       owner = "stalwart-mail";
@@ -56,6 +61,7 @@
       spam-pw = config.sops.secrets."stalwart/spam_pw".path;
       noreply-pw = config.sops.secrets."stalwart/noreply_pw".path;
       admin-pw = config.sops.secrets."stalwart/admin_pw".path;
+      bob-pw = config.sops.secrets."stalwart/bob_pw".path;
       acme-secret = config.sops.secrets."stalwart/acme_secret".path;
     };
 
@@ -155,6 +161,12 @@
             name = "noreply";
             secret = "%{file:/run/credentials/stalwart-mail.service/noreply-pw}%";
             email = ["noreply@marcpartensky.com"];
+          }
+          {
+            class = "individual";
+            name = "bob";
+            secret = "%{file:/run/credentials/stalwart-mail.service/bob-pw}%";
+            email = ["bob@marcpartensky.com"];
           }
         ];
       };
