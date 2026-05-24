@@ -197,6 +197,10 @@ in {
     playwright
     fjo
     sops
+    upscayl
+    upscayl-ncnn
+    realesrgan-ncnn-vulkan
+    imagemagick
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg:
