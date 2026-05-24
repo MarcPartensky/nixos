@@ -1,5 +1,5 @@
 { pkgs, ...}:{
-  imports = [ ./modules/droplify.nix ];
+  imports = [ ./droplify.nix ];
   
   services.droplify = {
     enable = true;

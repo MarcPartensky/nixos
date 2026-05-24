@@ -1,16 +1,47 @@
 #!/usr/bin/env python3
-# droplify.py - stdlib only, aucune dépendance
+# droplify.py - stdlib only, Python 3.13+ compatible
 
 import http.server
 import os
 import uuid
-import cgi
 import json
 from pathlib import Path
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/var/lib/droplify"))
 BASE_URL  = os.environ.get("BASE_URL", "http://localhost:8080")
 PORT      = int(os.environ.get("PORT", "8080"))
+
+
+def parse_multipart(fp, boundary: str, content_length: int) -> dict:
+    """Parse multipart/form-data sans le module cgi (supprimé en 3.13)."""
+    data = fp.read(content_length)
+    delim = ("--" + boundary).encode()
+    fields = {}
+    for part in data.split(delim)[1:]:
+        if part.startswith(b"--"):
+            break
+        if part.startswith(b"\r\n"):
+            part = part[2:]
+        if part.endswith(b"\r\n"):
+            part = part[:-2]
+        if b"\r\n\r\n" not in part:
+            continue
+        headers_raw, body = part.split(b"\r\n\r\n", 1)
+        headers = {}
+        for line in headers_raw.decode("utf-8", errors="replace").split("\r\n"):
+            if ":" in line:
+                k, v = line.split(":", 1)
+                headers[k.strip().lower()] = v.strip()
+        disp = headers.get("content-disposition", "")
+        name = None
+        for item in disp.split(";"):
+            item = item.strip()
+            if item.startswith("name="):
+                name = item[5:].strip('"')
+        if name:
+            fields[name] = body
+    return fields
+
 
 UPLOAD_PAGE = """<!DOCTYPE html>
 <html lang="fr">
@@ -91,10 +122,7 @@ UPLOAD_PAGE = """<!DOCTYPE html>
       line-height: 1.2;
     }
 
-    h1 em {
-      font-style: normal;
-      color: var(--muted);
-    }
+    h1 em { font-style: normal; color: var(--muted); }
 
     #dropzone {
       border: 1.5px dashed var(--border);
@@ -114,23 +142,9 @@ UPLOAD_PAGE = """<!DOCTYPE html>
 
     #dropzone.over { border-style: solid; }
 
-    .drop-icon {
-      font-size: 2rem;
-      margin-bottom: 12px;
-      display: block;
-      opacity: 0.5;
-    }
-
-    .drop-label {
-      font-size: 0.95rem;
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-
-    .drop-sub {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
+    .drop-icon { font-size: 2rem; margin-bottom: 12px; display: block; opacity: 0.5; }
+    .drop-label { font-size: 0.95rem; font-weight: 500; margin-bottom: 4px; }
+    .drop-sub { font-size: 0.8rem; color: var(--muted); }
 
     input[type=file] { display: none; }
 
@@ -146,20 +160,9 @@ UPLOAD_PAGE = """<!DOCTYPE html>
     }
 
     #status.visible { display: flex; }
-
     #status.loading { color: var(--muted); }
-
-    #status.success {
-      border-color: #bbf7d0;
-      background: #f0fdf4;
-      color: var(--success);
-    }
-
-    #status.error {
-      border-color: #fecaca;
-      background: #fef2f2;
-      color: #dc2626;
-    }
+    #status.success { border-color: #bbf7d0; background: #f0fdf4; color: var(--success); }
+    #status.error   { border-color: #fecaca; background: #fef2f2; color: #dc2626; }
 
     #status a {
       font-family: 'Space Mono', monospace;
@@ -187,11 +190,7 @@ UPLOAD_PAGE = """<!DOCTYPE html>
 
     .copy-btn:hover { background: var(--border); }
 
-    #history {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+    #history { display: flex; flex-direction: column; gap: 6px; }
 
     .history-label {
       font-size: 0.75rem;
@@ -222,7 +221,6 @@ UPLOAD_PAGE = """<!DOCTYPE html>
     }
 
     .history-item a:hover { text-decoration: underline; }
-
     .history-item .copy-btn { margin-left: 0; }
   </style>
 </head>
@@ -279,26 +277,23 @@ UPLOAD_PAGE = """<!DOCTYPE html>
     async function upload(file) {
       if (!file) return;
       setStatus('loading', '<span>Upload en cours…</span>');
-
       const fd = new FormData();
       fd.append('file', file);
-
       try {
         const res  = await fetch('/upload', { method: 'POST', body: fd });
         const data = await res.json();
-
         if (data.url) {
           setStatus('success', `<span>Hébergé :</span> <a href="${data.url}" target="_blank">${data.url}</a>${copyBtn(data.url)}`);
-          addHistory(data.url, file.name);
+          addHistory(data.url);
         } else {
           setStatus('error', `<span>Erreur : ${data.error || 'inconnue'}</span>`);
         }
       } catch (e) {
-        setStatus('error', `<span>Erreur réseau</span>`);
+        setStatus('error', '<span>Erreur réseau</span>');
       }
     }
 
-    function addHistory(url, name) {
+    function addHistory(url) {
       history.style.display = 'flex';
       const item = document.createElement('div');
       item.className = 'history-item';
@@ -317,7 +312,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.strip("/")
 
-        if path == "" or path == "index.html":
+        if path in ("", "index.html"):
             self._respond(200, "text/html", UPLOAD_PAGE.encode())
             return
 
@@ -338,25 +333,33 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._respond(404, "text/plain", b"Not found")
             return
 
-        ctype, pdict = cgi.parse_header(self.headers.get("Content-Type", ""))
-        if ctype != "multipart/form-data":
+        ct = self.headers.get("Content-Type", "")
+        if "multipart/form-data" not in ct:
             self._json(400, {"error": "multipart required"})
             return
 
-        pdict["boundary"] = bytes(pdict["boundary"], "utf-8")
-        pdict["CONTENT-LENGTH"] = int(self.headers.get("Content-Length", 0))
-        fields = cgi.parse_multipart(self.rfile, pdict)
+        boundary = ""
+        for part in ct.split(";"):
+            part = part.strip()
+            if part.startswith("boundary="):
+                boundary = part[9:].strip('"')
+
+        if not boundary:
+            self._json(400, {"error": "boundary manquant"})
+            return
+
+        length = int(self.headers.get("Content-Length", 0))
+        fields = parse_multipart(self.rfile, boundary, length)
 
         file_data = fields.get("file")
-        if not file_data:
+        if file_data is None:
             self._json(400, {"error": "champ 'file' manquant"})
             return
 
         slug = uuid.uuid4().hex[:8]
         dest = DATA_DIR / slug
         dest.mkdir(parents=True, exist_ok=True)
-        data = file_data[0]
-        (dest / "index.html").write_bytes(data if isinstance(data, bytes) else data.encode())
+        (dest / "index.html").write_bytes(file_data)
 
         self._json(200, {"url": f"{BASE_URL}/{slug}"})
 

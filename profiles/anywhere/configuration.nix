@@ -27,6 +27,7 @@
     # ./services/chhoto
     # ./services/eternal-terminal
     ../../services/stalwart
+    ../../services/droplify
   ];
 
   # Paquets système
