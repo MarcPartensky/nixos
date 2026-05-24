@@ -18,5 +18,6 @@
     ];
   };
 
+  networking.hostName = "tower";
   sops.defaultSopsFile = lib.mkForce ../../secrets/tower.yml;
 }

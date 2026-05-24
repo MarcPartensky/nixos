@@ -13,6 +13,7 @@
     exec ${pkgs.python3}/bin/python3 ${script} "$@"
   '';
 in {
+  sops.secrets.anthropic_api_key = {};
   # sops.secrets."anthropic_api_key" = {
   #   sopsFile = ../../secrets/common.yml;
   #   owner = "root";

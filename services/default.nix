@@ -23,6 +23,7 @@
     ./navidrome
     ./tor
     ./minio
+    ./jupyterhub
     # ./syncserver
     # ./newt # attendre maj flakes
   ];

@@ -1,4 +1,9 @@
-{ config, pkgs, inputs, ... }: {
+{
+  config,
+  pkgs,
+  inputs,
+  ...
+}: {
   imports = [
     inputs.home-manager.darwinModules.home-manager
     # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
@@ -13,15 +18,15 @@
     pkgs.git
   ];
 
-
   nixpkgs.config.allowUnfree = true;
+  networking.hostName = "macos";
 
   # services.nix-daemon.enable = true;  <- supprime cette ligne
 
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
-    extraSpecialArgs = { inherit inputs; };
+    extraSpecialArgs = {inherit inputs;};
     backupFileExtension = "bak";
     users.marc = import ../../users/mac/home.nix;
   };
@@ -39,12 +44,12 @@
     enable = false;
     onActivation = {
       autoUpdate = true;
-      cleanup = "zap";      # supprime les packages non listés
+      cleanup = "zap"; # supprime les packages non listés
       upgrade = true;
     };
 
     brews = [
-      "mas"                 # packages CLI homebrew
+      "mas" # packages CLI homebrew
     ];
 
     casks = [
@@ -53,12 +58,11 @@
       "beeper"
     ];
 
-    masApps = {             # App Store (nécessite mas)
+    masApps = {
+      # App Store (nécessite mas)
       "Xcode" = 497799835;
     };
   };
-
-
 
   system.stateVersion = 6;
 }

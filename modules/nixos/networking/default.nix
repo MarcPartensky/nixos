@@ -48,7 +48,7 @@ in {
   # ====================================================================
   networking = {
     useDHCP = lib.mkDefault true;
-    hostName = "nixos";
+    # hostName = "nixos";
     hostId = "c1ae84e2";
     nameservers = ["8.8.8.8" "8.8.4.4"];
     enableIPv6 = false;
