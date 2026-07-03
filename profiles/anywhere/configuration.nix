@@ -19,7 +19,7 @@
 
     ../../services/traefik
     ../../services/postgres
-    # ../../services/vaultwarden
+    ../../services/vaultwarden
     # ../../services/nextcloud
     ../../services/zitadel
     ../../services/pangolin

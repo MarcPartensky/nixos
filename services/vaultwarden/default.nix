@@ -7,10 +7,12 @@
 }: {
   sops.secrets."vaultwarden/db_password" = {
     key = "vaultwarden_db_password";
+    sopsFile = ../../secrets/common.yml;
   };
 
   sops.secrets."vaultwarden/admin_token" = {
     key = "vaultwarden_admin_token";
+    sopsFile = ../../secrets/common.yml;
   };
 
   sops.templates."vaultwarden.env" = {
