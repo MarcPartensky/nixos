@@ -9,6 +9,7 @@
       dns = {
         magic_dns = true;
         base_domain = "ts.marcpartensky.com";
+        nameservers.global = [ "1.1.1.1" "9.9.9.9" ];
       };
     };
   };
