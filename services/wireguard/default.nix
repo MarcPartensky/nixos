@@ -9,7 +9,7 @@
   networking.wireguard.interfaces = {
     wg1 = {
       ips = [ "10.100.0.1/24" ];
-      listenPort = 51821;
+      listenPort = 443;
       privateKeyFile = config.sops.secrets."wireguard/vps_private_key".path;
       peers = [
         {
@@ -28,5 +28,5 @@
       '';
     };
   };
-  networking.firewall.allowedUDPPorts = [ 51821 ];
+  networking.firewall.allowedUDPPorts = [ 443 ];
 }
