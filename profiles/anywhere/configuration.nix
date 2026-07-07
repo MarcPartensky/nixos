@@ -23,7 +23,8 @@
     # ../../services/nextcloud
     ../../services/zitadel
     ../../services/pangolin
-    ../../services/wireguard
+    # ../../services/wireguard
+    ../../services/tailscale
     # ./services/chhoto
     # ./services/eternal-terminal
     ../../services/stalwart

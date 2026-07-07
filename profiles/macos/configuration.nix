@@ -6,6 +6,8 @@
 }: {
   imports = [
     inputs.home-manager.darwinModules.home-manager
+
+
     # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
 
     # ../../services/wg-quick
