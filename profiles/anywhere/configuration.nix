@@ -67,6 +67,7 @@
       # gcc
       # p7zip
       # pangolin
+      tmux
     ];
     # ++ [pythonEnv];
 
