@@ -23,9 +23,9 @@
     # ../../services/nextcloud
     ../../services/zitadel
     ../../services/pangolin
-    # ../../services/wireguard
+    ../../services/wireguard
     # ../../services/tailscale
-    ../../services/headscale
+    # ../../services/headscale
     # ./services/chhoto
     # ./services/eternal-terminal
     ../../services/stalwart
