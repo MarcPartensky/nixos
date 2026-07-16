@@ -68,6 +68,8 @@
       # p7zip
       # pangolin
       tmux
+
+      httpie
     ];
     # ++ [pythonEnv];
 
