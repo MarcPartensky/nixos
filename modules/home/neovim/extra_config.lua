@@ -13,6 +13,20 @@ vim.cmd("highlight Lualine_a_normal guibg=NONE")
 vim.cmd("highlight Lualine_b_normal guibg=NONE")
 vim.cmd("highlight Lualine_c_normal guibg=NONE")
 
+
+
+vim.g.clipboard = {
+      name = 'OSC 52',
+      copy = {
+        ['+'] = require('vim.ui.clipboard.osc52').copy('+'),
+        ['*'] = require('vim.ui.clipboard.osc52').copy('*'),
+      },
+      paste = {
+        ['+'] = require('vim.ui.clipboard.osc52').paste('+'),
+        ['*'] = require('vim.ui.clipboard.osc52').paste('*'),
+      },
+    }
+
 -- 2. AUTOCOMMANDS POUR MARKDOWN/TXT (Wrapping)
 -- Crée un groupe pour organiser les autocommands
 local markdown_settings_group = vim.api.nvim_create_augroup("MarkdownSettings", { clear = true })

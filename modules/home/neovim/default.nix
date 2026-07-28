@@ -15,6 +15,8 @@
     # # colorschemes.catppuccin.enable = true;
     opts = import ./options.nix;
     keymaps = import ./keymaps.nix;
+    clipboard.register = "unnamedplus";   # yank => presse-papier direct
+
 
     filetype = {
       extension = {
@@ -23,6 +25,13 @@
     };
 
     plugins = {
+      lsp.servers.nil_ls = {
+        enable = true;
+        settings."nil".nix.flake = {
+          autoArchive = false;   # ou true pour fetch en silence
+          # autoEvalInputs = false;
+        };
+      };
       avante = {
         enable = true;
         settings = {
