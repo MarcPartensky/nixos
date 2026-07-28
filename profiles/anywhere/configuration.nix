@@ -22,7 +22,7 @@
     ../../services/postgres
     ../../services/vaultwarden
     # ../../services/nextcloud
-    ../../services/oxicloud
+    # ../../services/oxicloud
     ../../services/zitadel
     ../../services/pangolin
     ../../services/wireguard
