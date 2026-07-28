@@ -27,7 +27,7 @@
         hostname = "localhost";
         user = "marc";
         port = 2222;
-        proxyJump = "rack";
+        proxyJump =rack";
       };
     };
   };
