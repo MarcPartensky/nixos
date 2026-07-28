@@ -15,13 +15,14 @@
     inputs.disko.nixosModules.disko
     inputs.home-manager.nixosModules.default
     inputs.sops.nixosModules.sops
+    inputs.hermes-agent.nixosModules.default
     # inputs.sopswarden.homeManagerModules.default
 
     ../../services/traefik
     ../../services/postgres
     ../../services/vaultwarden
     # ../../services/nextcloud
-    # ../../services/oxicloud
+    ../../services/oxicloud
     ../../services/zitadel
     ../../services/pangolin
     ../../services/wireguard
@@ -31,6 +32,7 @@
     # ./services/eternal-terminal
     ../../services/stalwart
     ../../services/droplify
+    ../../services/hermes
   ];
 
   # Paquets système
@@ -71,6 +73,8 @@
       tmux
 
       httpie
+      tree
+      parted
     ];
     # ++ [pythonEnv];
 

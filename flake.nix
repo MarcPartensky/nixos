@@ -107,13 +107,12 @@
     option-pricer.url = "github:marcpartensky/option-pricer";
     option-pricer.inputs.nixpkgs.follows = "nixpkgs";
 
-    # option-pricer.url = "github:marcpartensky/option-pricer";
-    # option-pricer.inputs.nixpkgs.follows = "nixpkgs";
-
     uv2nix.url = "github:pyproject-nix/uv2nix";
     uv2nix.inputs.nixpkgs.follows = "nixpkgs";
     pyproject-nix.url = "github:pyproject-nix/pyproject.nix";
     pyproject-nix.inputs.nixpkgs.follows = "nixpkgs";
+
+    hermes-agent.url = "github:NousResearch/hermes-agent";
   };
   outputs = {
     self,
