@@ -3,19 +3,20 @@
   lib,
   ...
 }: {
+  security.rtkit.enable = true;
   hardware.bluetooth.enable = true; # enables support for Bluetooth
   hardware.bluetooth.powerOnBoot = true; # powers up the default Bluetooth controller on boot
   hardware.bluetooth.settings = {
     General = {
-      # ControllerMode = "bredr"; # Fix frequent Bluetooth audio dropouts
+      ControllerMode = "bredr"; # Fix frequent Bluetooth audio dropouts
       Experimental = true;
       FastConnectable = true;
       Disable = "input";
       ClassicBondedOnly = false;
       # Indispensable pour l'appairage avec la Switch
       Class = "0x000540";
-      ControllerMode = "dual";
-      Enable = "Source,Sink,Media,Socket";
+      # ControllerMode = "dual";
+      # Enable = "Source,Sink,Media,Socket";
       AutoConnect = true; # Tente de se connecter aux périphériques connus
       # Tente de se reconnecter même si le périphérique semble "éteint"
       ReconnectAttempts = 7;
@@ -40,10 +41,9 @@
       "bluez5.enable-sbc-xq" = true;
       "bluez5.enable-msbc" = true;
       "bluez5.enable-hw-volume" = true;
-      "bluez5.roles" = ["a2dp_sink" "a2dp_source" "bap_sink" "bap_source" "hsp_hs" "hsp_ag" "hfp_hf" "hfp_ag"];
+      "bluez5.roles" = ["a2dp_sink" "a2dp_source" "hsp_hs" "hsp_ag" "hfp_hf" "hfp_ag"]; # bap_* retirés
     };
   };
-
   systemd.user.services.mpris-proxy = {
     description = "Mpris proxy";
     after = ["network.target" "sound.target"];
