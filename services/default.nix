@@ -4,8 +4,7 @@
   ...
 }: {
   imports = [
-    # ./zitadel
-    ./nextcloud
+    # ./nextcloud
     ./postgres
     ./vaultwarden
     ./newt
@@ -22,8 +21,10 @@
     ./adguard
     ./navidrome
     ./tor
-    ./minio
+    # ./minio
     ./jupyterhub
+    # ./gotify
+    # ./zitadel
     # ./syncserver
     # ./newt # attendre maj flakes
   ];

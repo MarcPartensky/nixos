@@ -201,6 +201,7 @@ in {
     upscayl-ncnn
     realesrgan-ncnn-vulkan
     imagemagick
+    lm_sensors
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg:

@@ -5,36 +5,32 @@
   ...
 }: {
   sops.secrets = {
-    "zitadel/db_password" = {
-      owner = "zitadel";
-      group = "zitadel";
-      key = "zitadel_db_password";
-    };
-    "zitadel/admin_password" = {
-      owner = "zitadel";
-      group = "zitadel";
-      key = "zitadel_admin_password";
-    };
+    # db_password supprimé : auth "trust" via socket, aucun mot de passe utilisé
+
     "zitadel/master_key" = {
-      owner = "zitadel";
-      group = "zitadel";
       key = "zitadel_master_key";
+      mode = "0440";
+      group = "keys";
+    };
+
+    # Pour le mot de passe admin : le module NixOS n'a pas de stepsPasswordFile,
+    # mais steps ne tourne qu'une seule fois (fresh install).
+    # On l'exclut du nix store via un fichier steps séparé injecté par sops.
+    "zitadel/steps" = {
+      key = "zitadel_steps";
     };
   };
 
-  # ---------------------------------------------------------------------------
-  # POSTGRESQL
-  # ---------------------------------------------------------------------------
+  users.users.zitadel.extraGroups = ["keys"];
 
   services.postgresql = {
-
     ensureDatabases = ["zitadel"];
     ensureUsers = [
       {
         name = "zitadel";
         ensureDBOwnership = true;
         ensureClauses.createrole = true;
-
+        ensureClauses.createdb = true;
       }
     ];
     enableTCPIP = true;
@@ -45,31 +41,22 @@
     '';
   };
 
-  # ---------------------------------------------------------------------------
-  # ZITADEL
-  # ---------------------------------------------------------------------------
   services.zitadel = {
     enable = true;
     masterKeyFile = config.sops.secrets."zitadel/master_key".path;
+
+    # steps injecté via fichier sops plutôt qu'inline dans le nix store
+    extraStepsPaths = [config.sops.secrets."zitadel/steps".path];
 
     settings = {
       Port = 2080;
       ExternalPort = 443;
       ExternalDomain = "auth.vps.marcpartensky.com";
       ExternalSecure = true;
-
-      Machine = {
-        Identification = {
-          Hostname = {
-            Enabled = true;
-          };
-          Webhook = {
-            Enabled = false;
-          };
-        };
+      Machine.Identification = {
+        Hostname.Enabled = true;
+        Webhook.Enabled = false;
       };
-
-
       Database.postgres = {
         Host = "127.0.0.1";
         Port = 5432;
@@ -79,25 +66,8 @@
           SSL.Mode = "disable";
         };
         Admin = {
-          Username = "zitadel";
+          Username = "postgres";
           SSL.Mode = "disable";
-        };
-      };
-      
-    };
-
-    steps.FirstInstance = {
-      InstanceName = "Zitadel";
-      Org.Human = {
-        UserName = "admin";
-        FirstName = "Admin";
-        LastName = "User";
-        DisplayName = "Administrator";
-        Password = "motdepasse";
-        PasswordChangeRequired = true;
-        Email = {
-          Address = "marc@marcpartensky.com";
-          Verified = true;
         };
       };
     };
