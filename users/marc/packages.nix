@@ -116,7 +116,8 @@ in {
     rofi
     wdisplays
     wayvnc
-    blueberry
+    # blueberry
+    blueman
     grim
     slurp
     swappy
@@ -202,6 +203,8 @@ in {
     realesrgan-ncnn-vulkan
     imagemagick
     lm_sensors
+    rqbit
+    qbittorrent
   ];
 
   nixpkgs.config.allowUnfreePredicate = pkg:

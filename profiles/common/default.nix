@@ -108,7 +108,8 @@ in {
   users.defaultUserShell = pkgs.zsh;
 
   # Set your time zone.
-  time.timeZone = "Europe/Paris";
+  # time.timeZone = "Europe/Paris";
+  time.timeZone = "America/New_York";
   # time.timeZone = "Asia/Bangkok";
 
   # Select internationalisation properties.
