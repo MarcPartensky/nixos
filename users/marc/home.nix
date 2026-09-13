@@ -32,6 +32,7 @@
     ../../modules/home/claude-commit
     ../../modules/home/niri
     ../../modules/home/alacritty
+    ../../modules/home/kitty
     ../../modules/home/wallpapers
     ../../modules/home/syncthing
     ../../modules/home/gtk
