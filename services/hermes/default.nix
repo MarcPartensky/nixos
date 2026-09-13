@@ -18,6 +18,10 @@
     settings.model = {
       base_url = "https://api.anthropic.com/v1";
     };
+    mcpServers.beeper = {
+      url = "http://localhost:23373/v0/mcp";
+      headers.Authorization = "Bearer \${BEEPER_ACCESS_TOKEN}";
+    };
   };
 
   sops.secrets."hermes_env" = {};

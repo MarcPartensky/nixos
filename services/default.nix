@@ -4,7 +4,7 @@
   ...
 }: {
   imports = [
-    # ./nextcloud
+    ./nextcloud
     ./postgres
     ./vaultwarden
     ./newt
@@ -24,6 +24,7 @@
     # ./minio
     ./jupyterhub
     ./hermes
+    ./discord-bot
     # ./gotify
     # ./zitadel
     # ./syncserver

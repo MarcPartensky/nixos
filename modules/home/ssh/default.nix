@@ -1,33 +1,33 @@
-{pkgs, ...}: {
+{...}: {
   programs.ssh = {
     enable = true;
     enableDefaultConfig = false;
-    matchBlocks = {
+    settings = {
       "*" = {
-        identityFile = "~/.ssh/id_ed25519";
-        serverAliveInterval = 60;
-        forwardAgent = true;
+        IdentityFile = "~/.ssh/id_ed25519";
+        ServerAliveInterval = 60;
+        ForwardAgent = true;
       };
       "rack" = {
-        hostname = "marcpartensky.com";
-        user = "root";
-        port = 22;
+        HostName = "marcpartensky.com";
+        User = "root";
+        Port = 22;
       };
       "towerlocal" = {
-        hostname = "192.168.1.2";
-        user = "marc";
-        port = 22;
+        HostName = "192.168.1.2";
+        User = "marc";
+        Port = 22;
       };
       "tower" = {
-        hostname = "77.207.176.170";
-        user = "marc";
-        port = 42070;
+        HostName = "77.207.176.170";
+        User = "marc";
+        Port = 42070;
       };
       "tunnel" = {
-        hostname = "localhost";
-        user = "marc";
-        port = 2222;
-        proxyJump = "rack";
+        HostName = "localhost";
+        User = "marc";
+        Port = 2222;
+        ProxyJump = "rack";
       };
     };
   };

@@ -112,7 +112,10 @@
     pyproject-nix.url = "github:pyproject-nix/pyproject.nix";
     pyproject-nix.inputs.nixpkgs.follows = "nixpkgs";
 
+    discord-bot.url = "github:MarcPartensky/discord-bot";
+
     hermes-agent.url = "github:NousResearch/hermes-agent";
+    # hermes-agent.inputs.nixpkgs.follows = "github:NousResearch/hermes-agent";
   };
   outputs = {
     self,
