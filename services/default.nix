@@ -24,6 +24,7 @@
     # ./minio
     ./jupyterhub
     ./hermes
+    ./discord-bot
     # ./gotify
     # ./zitadel
     # ./syncserver
