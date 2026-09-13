@@ -23,6 +23,7 @@
     ./tor
     # ./minio
     ./jupyterhub
+    ./hermes
     # ./gotify
     # ./zitadel
     # ./syncserver
