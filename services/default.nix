@@ -4,7 +4,7 @@
   ...
 }: {
   imports = [
-    # ./nextcloud
+    ./nextcloud
     ./postgres
     ./vaultwarden
     ./newt

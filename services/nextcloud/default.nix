@@ -40,7 +40,7 @@
     listen = [
       {
         addr = "0.0.0.0";
-        port = 8081;
+        port = 8083;
       }
     ];
   };
@@ -98,6 +98,9 @@
     };
     extraAppsEnable = true;
   };
+
+  systemd.services.nextcloud-cron.path = [pkgs.procps];
+  systemd.services.nextcloud-setup.path = [pkgs.procps];
 
   # ---------------------------------------------------------------------------
   # CONFIGURATION BASE DE DONNÉES (PostgreSQL)
