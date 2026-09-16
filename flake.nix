@@ -116,6 +116,9 @@
 
     hermes-agent.url = "github:NousResearch/hermes-agent";
     # hermes-agent.inputs.nixpkgs.follows = "github:NousResearch/hermes-agent";
+
+    jovian.url = "github:Jovian-Experiments/Jovian-NixOS";
+    jovian.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs = {
     self,
@@ -139,6 +142,16 @@
         modules = [
           ./profiles/common
           ./profiles/tower/configuration.nix
+          ./services
+        ];
+      };
+
+      steam = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {inherit inputs;};
+        modules = [
+          ./profiles/common
+          ./profiles/steam/configuration.nix
           ./services
         ];
       };

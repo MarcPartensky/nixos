@@ -225,6 +225,7 @@ in {
       window-rules = [
         {
           matches = [{app-id = "Alacritty";}];
+          open-maximized = true;
           open-on-workspace = "1";
         }
         {

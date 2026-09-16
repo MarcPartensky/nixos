@@ -11,12 +11,10 @@
 
   networking.firewall = {
     enable = true;
+  };
 
-    allowedTCPPorts = [
-      8083 # Pangolin / Apps
-      8050
-      5432 # PostgreSQL
-    ];
+  specialisation.gamescope.configuration = {
+    imports = [../../modules/nixos/jovian];
   };
 
   networking.hostName = "tower";
