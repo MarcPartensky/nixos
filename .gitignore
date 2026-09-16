@@ -4,5 +4,5 @@
 # secrets/*.dec fichiers déchiffrés temporaires
 secrets/*.dec
 secrets/*.unencrypted
-result
+result*
 *.iso
