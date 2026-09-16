@@ -15,8 +15,7 @@
     # # colorschemes.catppuccin.enable = true;
     opts = import ./options.nix;
     keymaps = import ./keymaps.nix;
-    clipboard.register = "unnamedplus";   # yank => presse-papier direct
-
+    clipboard.register = "unnamedplus"; # yank => presse-papier direct
 
     filetype = {
       extension = {
@@ -25,10 +24,11 @@
     };
 
     plugins = {
+      web-devicons.enable = true;
       lsp.servers.nil_ls = {
         enable = true;
         settings."nil".nix.flake = {
-          autoArchive = false;   # ou true pour fetch en silence
+          autoArchive = false; # ou true pour fetch en silence
           # autoEvalInputs = false;
         };
       };
@@ -69,7 +69,7 @@
         enable = true;
         settings = {
           ui.border = "rounded";
-          lightbulb.enable = false;  # évite le spam si pas de LSP actif
+          lightbulb.enable = false; # évite le spam si pas de LSP actif
         };
       };
       treesitter = {

@@ -146,12 +146,12 @@
         ];
       };
 
-      steam = nixpkgs.lib.nixosSystem {
+      deck = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
           ./profiles/common
-          ./profiles/steam/configuration.nix
+          ./profiles/deck/configuration.nix
           ./services
         ];
       };
