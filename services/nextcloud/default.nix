@@ -59,11 +59,13 @@
     configureRedis = true;
 
     settings = {
+      auth.bruteforce.protection.enabled = false;
       trusted_domains = [
         "localhost"
         "127.0.0.1"
-        "cloud.vps.marcpartensky.com" # Ajoute ici le domaine que tu utiliseras via Traefik
-        "cloud.marcpartensky.com" # Ajoute ici le domaine que tu utiliseras via Traefik
+        "192.168.1.44"
+        "cloud.vps.marcpartensky.com"
+        "cloud.marcpartensky.com"
       ];
       # Si Traefik est en HTTPS et Nextcloud en HTTP derrière :
       overwriteprotocol = "https";
