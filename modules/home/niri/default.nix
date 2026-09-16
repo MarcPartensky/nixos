@@ -93,6 +93,9 @@ in {
             y = -1440;
           };
         };
+        "Technical Concepts Ltd 32S331 Unknown" = {
+          scale = 1.5;
+        };
       };
 
       prefer-no-csd = true; # no bar
