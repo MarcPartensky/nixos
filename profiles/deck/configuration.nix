@@ -17,6 +17,7 @@
   ];
 
   jovian.devices.steamdeck.enable = true;
+  jovian.devices.steamdeck.enableVendorDrivers = false;
 
   services.desktopManager.plasma6.enable = true;
   jovian.steam.desktopSession = lib.mkForce "plasma";
@@ -29,7 +30,7 @@
   };
   boot.loader.efi.canTouchEfiVariables = true;
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = ["nix-command" "flakes"];
   nix.gc = {
     automatic = true;
     dates = "weekly";
