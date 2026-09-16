@@ -150,7 +150,6 @@
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
-          ./profiles/common
           ./profiles/deck/configuration.nix
           ./services
         ];
@@ -172,6 +171,11 @@
           ./services
           ./users.nix
         ];
+      };
+
+      deck-iso = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [./modules/nixos/iso ./users.nix {programs.zsh.enable = true;}];
       };
 
       anywhere = nixpkgs.lib.nixosSystem {
