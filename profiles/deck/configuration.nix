@@ -24,6 +24,8 @@
   jovian.steam.desktopSession = lib.mkForce "plasma";
 
   environment.systemPackages = with pkgs; [
+    home-manager
+    just
     git
     neovim
     htop

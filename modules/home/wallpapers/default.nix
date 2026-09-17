@@ -18,13 +18,13 @@
       "clear" = 1.0;
       "snow" = 0.9;
     };
-    swww = {
+    awww = {
       transition_type = "fade";
     };
   };
 in {
   home.packages = with pkgs; [
-    swww
+    awww
     imagemagick
     curl
     autoWallpaper
@@ -35,12 +35,12 @@ in {
   systemd.user.services.auto-wallpaper = {
     Unit = {
       Description = "Automated wallpaper changer based on light and weather";
-      After = ["swww-daemon.service"];
-      Wants = ["swww-daemon.service"];
+      After = ["awww-daemon.service"];
+      Wants = ["awww-daemon.service"];
       ConditionEnvironment = "WAYLAND_DISPLAY";
     };
     Service = {
-      Environment = with pkgs; ["PATH=${swww}/bin:${imagemagick}/bin:${curl}/bin:${coreutils}/bin"];
+      Environment = with pkgs; ["PATH=${awww}/bin:${imagemagick}/bin:${curl}/bin:${coreutils}/bin"];
       ExecStart = "${autoWallpaper}/bin/auto-wallpaper";
       Type = "oneshot";
       IOSchedulingClass = "idle";
@@ -66,15 +66,15 @@ in {
     };
   };
 
-  systemd.user.services.swww-daemon = {
+  systemd.user.services.awww-daemon = {
     Unit = {
-      Description = "swww wallpaper daemon";
+      Description = "awww wallpaper daemon";
       After = ["graphical-session.target"];
       PartOf = ["graphical-session.target"];
       ConditionEnvironment = "WAYLAND_DISPLAY";
     };
     Service = {
-      ExecStart = "${pkgs.swww}/bin/swww-daemon";
+      ExecStart = "${pkgs.awww}/bin/awww-daemon";
       Restart = "always";
       RestartSec = 3;
       X-RestartIfChanged = false;

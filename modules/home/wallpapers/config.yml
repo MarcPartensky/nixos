@@ -8,8 +8,8 @@ wall_dir: "/home/marc/git/wallpapers"
 # de la cible, puis on en choisit une au hasard parmi ces 10.
 variability_pool: 10
 
-# Paramètres de transition swww
-swww:
+# Paramètres de transition awww
+awww:
   transition_type: "grow"
   transition_pos: "0.5,0.5"
   transition_fps: "60"

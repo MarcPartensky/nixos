@@ -123,19 +123,19 @@ def get_time_target() -> float:
     return base_brightness
 
 
-def init_swww() -> None:
-    """Check if swww daemon is running, start it if not."""
+def init_awww() -> None:
+    """Check if awww daemon is running, start it if not."""
     try:
         subprocess.check_call(
-            ["swww", "query"],
+            ["awww", "query"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             timeout=2
         )
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        print("Starting swww-daemon...")
+        print("Starting awww-daemon...")
         subprocess.Popen(
-            ["swww-daemon"],
+            ["awww-daemon"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
@@ -173,14 +173,14 @@ def select_wallpaper(
     return selected
 
 
-def apply_wallpaper(image_path: Path, swww_config: dict) -> None:
-    """Apply wallpaper via swww."""
+def apply_wallpaper(image_path: Path, awww_config: dict) -> None:
+    """Apply wallpaper via awww."""
     cmd = [
-        "swww", "img", str(image_path),
-        "--transition-type", str(swww_config.get("transition_type", "simple")),
-        "--transition-pos", str(swww_config.get("transition_pos", "center")),
-        "--transition-fps", str(swww_config.get("transition_fps", "60")),
-        "--transition-duration", str(swww_config.get("transition_duration", "2"))
+        "awww", "img", str(image_path),
+        "--transition-type", str(awww_config.get("transition_type", "simple")),
+        "--transition-pos", str(awww_config.get("transition_pos", "center")),
+        "--transition-fps", str(awww_config.get("transition_fps", "60")),
+        "--transition-duration", str(awww_config.get("transition_duration", "2"))
     ]
 
     try:
@@ -290,8 +290,8 @@ def main():
     if updated_cache:
         save_cache(cache)
 
-    # 6. Init swww
-    init_swww()
+    # 6. Init awww
+    init_awww()
 
     # 7. Select and apply
     try:
@@ -305,7 +305,7 @@ def main():
         print(f"Selected image: {selected_image.name}")
         print(f"Brightness: {brightness:.2f} (delta = {abs(brightness - final_target):.2f})")
 
-        apply_wallpaper(selected_image, config.get('swww', {}))
+        apply_wallpaper(selected_image, config.get('awww', {}))
 
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
