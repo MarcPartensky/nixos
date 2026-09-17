@@ -2,6 +2,7 @@
   lib,
   pkgs,
   inputs,
+  config,
   ...
 }: {
   imports = [
@@ -21,6 +22,20 @@
 
   services.desktopManager.plasma6.enable = true;
   jovian.steam.desktopSession = lib.mkForce "plasma";
+
+  environment.systemPackages = with pkgs; [
+    git
+    neovim
+    htop
+    neovim
+    (makeDesktopItem {
+      name = "return-to-gaming-mode";
+      desktopName = "Return to Gaming Mode";
+      exec = "steamos-session-select gamescope";
+      icon = "steam";
+      categories = ["Game"];
+    })
+  ];
 
   security.rtkit.enable = true; # était fourni par ton module bluetooth
 
@@ -49,7 +64,12 @@
     AllowHibernation = false; # coupe aussi hybrid-sleep et suspend-then-hibernate
   };
 
-  environment.systemPackages = with pkgs; [git neovim htop];
+  # home.file.${config.gtk.gtk2.configLocation}.force = true;
+  # xdg.configFile = {
+  #   "gtk-3.0/settings.ini".force = true;
+  #   "gtk-4.0/settings.ini".force = true;
+  #   "gtk-4.0/gtk.css".force = true;
+  # };
 
   networking.hostName = "deck";
   system.stateVersion = "26.05";

@@ -50,7 +50,7 @@
     ../../modules/home/mpv
     ../../modules/home/zen-browser
     ../../modules/home/tor-browser
-    ../../modules/home/nxbt
+    # ../../modules/home/nxbt
     ../../modules/home/batsignal
     ../../modules/home/playsched
     ../../modules/home/zathura
@@ -136,6 +136,25 @@
     enable = true;
     enableZshIntegration = true;
     nix-direnv.enable = true;
+  };
+
+  home.file."Desktop/return-to-gaming-mode.desktop" = {
+    executable = true;
+    text = ''
+      [Desktop Entry]
+      Name=Return to Gaming Mode
+      Exec=steamos-session-select gamescope
+      Icon=steam
+      Terminal=false
+      Type=Application
+    '';
+  };
+
+  # home.file.${config.gtk.gtk2.configLocation}.force = true;
+  xdg.configFile = {
+    "gtk-3.0/settings.ini".force = true;
+    "gtk-4.0/settings.ini".force = true;
+    "gtk-4.0/gtk.css".force = true;
   };
 
   programs.home-manager.enable = true;

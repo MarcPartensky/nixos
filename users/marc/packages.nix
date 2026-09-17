@@ -132,7 +132,6 @@ in {
     geary
     ytmdesktop
     pipe-viewer
-    minitube
     freetube
     wofi-power-menu
     jellyfin
@@ -155,7 +154,7 @@ in {
     nautilus
     beeper
     firefox
-    helvum
+    crosspipe
     gtk3
     gtk4
     onionshare
@@ -169,7 +168,6 @@ in {
     pdfarranger
     rqbit
     memorado
-    logseq
     joplin-desktop
     ncspot
     spotify-player
@@ -190,7 +188,7 @@ in {
     bitwarden-desktop
     feh
     prismlauncher
-    ventoy-full
+    # ventoy-full
     zenity
     mesa-demos
     vulkan-tools

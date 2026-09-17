@@ -2,7 +2,8 @@ keys:
   - &anywhere age189v3q8quejkaz4r8u0g2aechsfk4sk3465khx35erd320rea5scq98v7er
   - &tower age1usm3v0ugducrzcwud60dda7xfnj49fdhecj7kcsfm7dzwzrzeyqq2jc2hm
   - &mac age1fwgg9h68zz8s6xa8qt4yn7gqcqp59s0mma8xdfq9hunksqv8fq4qd9yfaz
-  - &deck age1rhnaejc5nwcqcuq5qt45wzr2fncurlwqw0adhnavfraqsdzffatqh5yhl4
+  - &deck age154uz4pavaj5qth25ytj0q8chsya4y65pgel04zcrm02je9w6uc9sug7dp2
+
 creation_rules:
   - path_regex: secrets/common\.yml$
     key_groups:

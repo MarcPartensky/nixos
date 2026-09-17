@@ -5,7 +5,7 @@
   ...
 }: let
   # On force explicitement l'utilisation de Python 3.11 (satisfait la condition 3.10+)
-  pythonPackages = pkgs.python311Packages;
+  pythonPackages = pkgs.python3Packages;
 
   # 1. Définition de la dépendance locale "geoip2fast"
   geoip2fast = pythonPackages.buildPythonPackage rec {
