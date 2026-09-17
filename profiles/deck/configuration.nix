@@ -44,6 +44,11 @@
   services.openssh.enable = true;
   services.automatic-timezoned.enable = true;
 
+  systemd.sleep.settings.Sleep = {
+    AllowSuspend = false;
+    AllowHibernation = false; # coupe aussi hybrid-sleep et suspend-then-hibernate
+  };
+
   environment.systemPackages = with pkgs; [git neovim htop];
 
   networking.hostName = "deck";
