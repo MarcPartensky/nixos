@@ -8,7 +8,7 @@ run:
     just {{env('RUN')}}
 
 home:
-	home-manager switch --flake .#marc
+	home-manager switch --flake .#{{env('HM')}}
 
 nixos:
     sudo nixos-rebuild switch --upgrade --impure --flake .#{{env('HOST')}}

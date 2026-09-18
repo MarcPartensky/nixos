@@ -229,6 +229,14 @@
         };
         modules = [./users/mac/home.nix];
       };
+      "marc@deck" = inputs.home-manager.lib.homeManagerConfiguration {
+        extraSpecialArgs = {inherit inputs;};
+        pkgs = import nixpkgs {
+          system = "x86_64-linux";
+          config.allowUnfree = true;
+        };
+        modules = [./users/deck];
+      };
     };
 
     darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {
