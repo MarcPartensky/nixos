@@ -28,4 +28,3 @@
     config.services.eternal-terminal.port
   ];
 }
-}
