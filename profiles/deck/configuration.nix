@@ -47,6 +47,8 @@
     })
   ];
 
+  time.timeZone = "America/New_York";
+
   security.rtkit.enable = true; # était fourni par ton module bluetooth
 
   boot.loader.systemd-boot = {
@@ -67,7 +69,7 @@
 
   programs.zsh.enable = true; # requis par users.nix
   services.openssh.enable = true;
-  services.automatic-timezoned.enable = true;
+  services.automatic-timezoned.enable = false;
 
   systemd.sleep.settings.Sleep = {
     AllowSuspend = false;
