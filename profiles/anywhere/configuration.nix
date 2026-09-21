@@ -99,6 +99,7 @@
       ../../modules/home/zsh
       ../../modules/home/git
       ../../modules/home/ssh
+      ../../modules/home/zellij
       # ../../modules/home/gh
     ];
   };
