@@ -18,7 +18,7 @@ iso:
 
 mac:
     # darwin-rebuild switch --flake .#macos
-    sudo nix run nix-darwin -- switch --flake .#macos
+    sudo nix --extra-experimental-features 'flakes nix-command' run nix-darwin -- switch --flake .#macos
 
 droid:
     nix-on-droid switch --flake ~/.config/nixos#default
