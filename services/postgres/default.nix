@@ -54,12 +54,12 @@
     #   GRANT ALL PRIVILEGES ON DATABASE nextcloud TO nextcloud;
   };
 
-  # services.postgresqlBackup = {
-  #   enable = true;
-  #   location = "/root/backup/nextcloud";
-  #   databases = [ "nextcloud" ];
-  #   # time to start backup in systemd.time format
-  #   startAt = "*-*-* 5:00:00";
-  # };
+  services.postgresqlBackup = {
+    enable = true;
+    location = "/root/backup/nextcloud";
+    databases = [ "nextcloud" ];
+    # time to start backup in systemd.time format
+    startAt = "*-*-* 5:00:00";
+  };
 }
 

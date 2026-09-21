@@ -13,6 +13,7 @@
     enable = true;
 
     allowedTCPPorts = [
+      2022
       8083 # Pangolin / Apps
       8050
       5432 # PostgreSQL

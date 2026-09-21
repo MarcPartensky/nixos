@@ -25,6 +25,7 @@
     ./jupyterhub
     ./hermes
     ./discord-bot
+    ./eternal-terminal
     # ./gotify
     # ./zitadel
     # ./syncserver

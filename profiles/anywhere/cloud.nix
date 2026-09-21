@@ -23,6 +23,7 @@ in
       8080 8081 8082 8083 # Pangolin / Apps
       5432                # PostgreSQL
       3000 3002 3008
+      2022 # Eternal Terminal
     ];
   };
 

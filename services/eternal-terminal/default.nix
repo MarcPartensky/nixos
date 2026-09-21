@@ -18,4 +18,13 @@
 
   # TRÈS IMPORTANT : Ouvrir le port dans le pare-feu pour pouvoir s'y connecter
   networking.firewall.allowedTCPPorts = [config.services.eternal-terminal.port];
+
+  # Désactive la télémétrie (crash reports envoyés à un tiers)
+  environment.variables.ET_NO_TELEMETRY = "1";
+  systemd.services.eternal-terminal.environment.ET_NO_TELEMETRY = "1";
+
+  # Port ouvert uniquement sur le tailnet Headscale
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
+    config.services.eternal-terminal.port
+  ];
 }
