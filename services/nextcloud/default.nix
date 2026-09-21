@@ -54,8 +54,8 @@
 
     hostName = "localhost";
 
-    autoUpdateApps.enable = true;
-    appstoreEnable = true;
+    autoUpdateApps.enable = false;
+    appstoreEnable = false;
     configureRedis = true;
 
     settings = {
@@ -69,6 +69,8 @@
       ];
       # Si Traefik est en HTTPS et Nextcloud en HTTP derrière :
       overwriteprotocol = "https";
+      overwritecondaddr = "^127\\.0\\.0\\.1$"; # l'overwrite ne s'applique qu'aux requêtes venant du reverse proxy
+      trusted_proxies = ["127.0.0.1"];
     };
 
     config = {
