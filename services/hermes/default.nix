@@ -29,7 +29,9 @@ in {
 
     # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
     # NB: withPackages est filtré par hasPythonModule (pas d'attr pythonModule)
-    extraPythonPackages = [hermesPkgs.python312Packages.psycopg2];
+    # numpy : les wheels manylinux cassent sur NixOS (libstdc++.so.6 absent) —
+    # les deps compilées des lazy-installs doivent venir de nix
+    extraPythonPackages = with hermesPkgs.python312Packages; [ psycopg2 numpy ];
     # extraDependencyGroups = ["anthropic"];
     # settings.model = {
     #   base_url = "https://api.anthropic.com/v1";
@@ -83,11 +85,6 @@ in {
         };
       };
     };
-    #   mcpServers.beeper = {
-    #     url = "http://localhost:23373/v0/mcp";
-    #     headers.Authorization = "Bearer \${BEEPER_ACCESS_TOKEN}";
-    #   };
-    # mcpServers.nextcloud.url = "http://127.0.0.1:8710/mcp";
   };
 
   # --- ollama : embeddings locaux pour mem0 (pas de clé OpenAI) ---
@@ -127,14 +124,5 @@ in {
     "a /home/marc/git - - - - u:hermes:--x,m::r-x"
   ];
 
-  # --- MCP Nextcloud : calendrier uniquement, loopback uniquement ---
-  # virtualisation.oci-containers.containers.nextcloud-mcp = {
-  #   image = "ghcr.io/cbcoutinho/nextcloud-mcp-server:latest"; # épingle un tag une fois validé
-  #   cmd = ["--enable-app" "calendar"];
-  #   ports = ["127.0.0.1:8710:8000"];
-  #   environment.NEXTCLOUD_HOST = "https://cloud.vps.marcpartensky.com";
-  #   environmentFiles = [config.sops.secrets."nextcloud_mcp_env".path];
-  # };
-
-  # sops.secrets."nextcloud_mcp_env" = {};
+  # --- MCP Nextcloud : voir services/nextcloud-mcp (single_user_basic, loopback) ---
 }
