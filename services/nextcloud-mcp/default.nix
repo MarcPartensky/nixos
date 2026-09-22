@@ -1,19 +1,39 @@
-{config, ...}: {
-  virtualisation.oci-containers.containers.nextcloud-mcp-claude = {
-    image = "ghcr.io/cbcoutinho/nextcloud-mcp-server:latest";
-    cmd = ["--transport" "streamable-http" "--oauth" "--port" "8004" "--enable-app" "calendar"];
-    ports = ["127.0.0.1:8004:8004"];
+# services/nextcloud-mcp/default.nix
+# Serveur MCP Nextcloud (cbcoutinho/nextcloud-mcp-server) en mode single_user_basic,
+# exposé en streamable-http sur loopback ; Hermes s'y connecte en HTTP.
+#
+# Auth : mot de passe d'application Nextcloud (Paramètres -> Sécurité -> Appareils
+# & sessions), pas le mot de passe de login. Docs : docs/authentication.md du repo.
+#
+# Secret sops (secrets/tower.yml) :
+#   nextcloud_mcp_env: |
+#     NEXTCLOUD_USERNAME=ton_user
+#     NEXTCLOUD_PASSWORD=ton_app_password
+#
+# Debug :
+#   journalctl -u podman-nextcloud-mcp.service -f   (ou docker- selon le backend)
+#   curl http://127.0.0.1:8710/health/ready
+{config, ...}: let
+  port = 8710;
+in {
+  virtualisation.oci-containers.containers.nextcloud-mcp = {
+    image = "ghcr.io/cbcoutinho/nextcloud-mcp-server:latest"; # épingler un tag une fois validé
+    cmd = ["--enable-app" "calendar"];
+    ports = ["127.0.0.1:${toString port}:8000"];
     environment = {
-      MCP_DEPLOYMENT_MODE = "login_flow";
-      NEXTCLOUD_HOST = "https://cloud.vps.marcpartensky.com";
-      NEXTCLOUD_PUBLIC_ISSUER_URL = "https://cloud.vps.marcpartensky.com";
-      NEXTCLOUD_MCP_SERVER_URL = "https://mcp.vps.marcpartensky.com";
-      TOKEN_STORAGE_DB = "/app/data/tokens.db";
+      # Nextcloud tourne sur tower (nginx :8083) ; l'URL publique passe par
+      # Pangolin (SSO) qui redirige status.php -> on tape directement le local.
+      NEXTCLOUD_HOST = "http://127.0.0.1:8083";
+      MCP_DEPLOYMENT_MODE = "single_user_basic";
     };
-    environmentFiles = [config.sops.secrets."nextcloud_mcp_oauth_env".path];
-    volumes = ["nextcloud-mcp-claude:/app/data"];
+    environmentFiles = [config.sops.secrets."nextcloud_mcp_env".path];
   };
-  sops.secrets."nextcloud_mcp_oauth_env".restartUnits = [
-    "${config.virtualisation.oci-containers.backend}-nextcloud-mcp-claude.service"
+
+  sops.secrets."nextcloud_mcp_env".restartUnits = [
+    "${config.virtualisation.oci-containers.backend}-nextcloud-mcp.service"
   ];
+
+  # Hermes : transport HTTP vers le container loopback.
+  # Les tools apparaissent préfixés mcp_nextcloud_* au démarrage d'hermes.
+  services.hermes-agent.mcpServers.nextcloud.url = "http://127.0.0.1:${toString port}/mcp";
 }

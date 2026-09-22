@@ -11,7 +11,7 @@ home:
 	home-manager switch --flake .#{{env('HM')}}
 
 nixos:
-    sudo nixos-rebuild switch --upgrade --impure --flake .#{{env('HOST')}}
+    sudo nixos-rebuild switch --impure --flake .#{{env('HOST')}}
 
 iso:
     nix build .#nixosConfigurations.{{env('HOST')}}-iso.config.system.build.isoImage > nixos.iso

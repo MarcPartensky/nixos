@@ -26,7 +26,7 @@
     ./hermes
     ./discord-bot
     ./eternal-terminal
-    # ./nextcloud-mcp
+    ./nextcloud-mcp
     # ./gotify
     ./zitadel
     # ./syncserver
