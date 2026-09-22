@@ -41,6 +41,9 @@
       {
         addr = "0.0.0.0";
         port = 8083;
+        # locations."= /.well-known/openid-configuration".extraConfig = ''
+        #   rewrite ^ /index.php$request_uri last;
+        # '';
       }
     ];
   };
@@ -99,6 +102,11 @@
         memories
         notes
         ;
+      oidc = pkgs.fetchNextcloudApp {
+        url = "https://github.com/H2CK/oidc/releases/download/2.3.1/oidc-2.3.1.tar.gz";
+        hash = "sha256-zfdZSUwV8VZ5qq7rwN/G4cSfTbuutaK+yJ6g8556yOQ=";
+        license = "agpl3Plus";
+      };
     };
     extraAppsEnable = true;
   };

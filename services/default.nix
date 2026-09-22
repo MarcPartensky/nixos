@@ -26,8 +26,9 @@
     ./hermes
     ./discord-bot
     ./eternal-terminal
+    # ./nextcloud-mcp
     # ./gotify
-    # ./zitadel
+    ./zitadel
     # ./syncserver
     # ./newt # attendre maj flakes
   ];

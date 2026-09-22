@@ -1,4 +1,4 @@
-{...}: {
+{config, ...}: {
   virtualisation.oci-containers.containers.nextcloud-mcp-claude = {
     image = "ghcr.io/cbcoutinho/nextcloud-mcp-server:latest";
     cmd = ["--transport" "streamable-http" "--oauth" "--port" "8004" "--enable-app" "calendar"];
@@ -13,5 +13,7 @@
     environmentFiles = [config.sops.secrets."nextcloud_mcp_oauth_env".path];
     volumes = ["nextcloud-mcp-claude:/app/data"];
   };
-  sops.secrets."nextcloud_mcp_oauth_env" = {};
+  sops.secrets."nextcloud_mcp_oauth_env".restartUnits = [
+    "${config.virtualisation.oci-containers.backend}-nextcloud-mcp-claude.service"
+  ];
 }
