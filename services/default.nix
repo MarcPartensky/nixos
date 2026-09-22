@@ -9,7 +9,7 @@
     ./vaultwarden
     ./newt
     ./readarr
-    ./radarr
+    # ./radarr
     ./sonarr
     ./prowlarr
     ./flaresolverr

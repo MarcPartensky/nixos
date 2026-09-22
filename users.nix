@@ -10,6 +10,9 @@
       marc = {
         isNormalUser = true;
         home = "/home/marc";
+        # le home existe déjà : empêche update-users-groups.pl de refaire
+        # un chown/chmod 700 à chaque activation (cassait le mask ACL de hermes)
+        createHome = false;
         description = "Marc Partensky";
         extraGroups = [
           "wheel"

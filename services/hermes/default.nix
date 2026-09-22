@@ -51,6 +51,11 @@
         reasoning_effort = "max";
       };
 
+      # --- Coût estimé dans la status bar CLI/TUI ---
+      display = {
+        show_cost = true;
+      };
+
       auxiliary = {
         vision = {
           provider = "main";
@@ -69,6 +74,34 @@
   };
 
   sops.secrets."hermes_env" = {};
+
+  security.sudo.extraRules = [
+    {
+      users = ["marc" "hermes"];
+      commands = [
+        {
+          command = "/run/current-system/sw/bin/nixos-rebuild";
+          options = ["NOPASSWD"];
+        }
+        {
+          command = "/nix/store/*-nixos-rebuild/bin/nixos-rebuild";
+          options = ["NOPASSWD"];
+        }
+      ];
+    }
+  ];
+
+  # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
+  # sans ça, libgit2 refuse d'ouvrir un flake appartenant à marc
+  programs.git = {
+    enable = true;
+    config.safe.directory = ["/home/marc/git/nixos"];
+  };
+
+  systemd.tmpfiles.rules = [
+    "a /home/marc - - - - u:hermes:--x,m::--x"
+    "a /home/marc/git - - - - u:hermes:--x,m::r-x"
+  ];
 
   # --- MCP Nextcloud : calendrier uniquement, loopback uniquement ---
   # virtualisation.oci-containers.containers.nextcloud-mcp = {
