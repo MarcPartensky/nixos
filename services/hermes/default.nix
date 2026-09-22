@@ -19,10 +19,46 @@
     #   default = "anthropic/claude-sonnet-4";
     # };
     settings = {
+      # --- Provider custom Kimi/Moonshot ---
+      custom_providers = [
+        {
+          name = "kimi-k3-global";
+          base_url = "https://api.moonshot.ai/v1";
+          key_env = "KIMI_API_KEY"; # <- la var d'env qui porte ta clé
+          api_mode = "chat_completions";
+          model = "kimi-k3";
+          extra_body = {
+            reasoning_effort = "max";
+          };
+          models = {
+            kimi-k3 = {
+              context_length = 1048576;
+              supports_vision = true;
+            };
+          };
+        }
+      ];
+
+      # --- Modèle par défaut : pointe vers le provider custom ---
       model = {
-        # Kimi via API directe Moonshot
-        default = "moonshot/kimi-latest"; # ou simplement "kimi-latest" selon version
-        base_url = "https://api.moonshot.cn/v1";
+        provider = "custom:kimi-k3-global"; # <- plus "openrouter"
+        default = "kimi-k3";
+        context_length = 1048576;
+        supports_vision = true;
+      };
+
+      agent = {
+        reasoning_effort = "max";
+      };
+
+      auxiliary = {
+        vision = {
+          provider = "main";
+          model = "kimi-k3";
+          extra_body = {
+            reasoning_effort = "max";
+          };
+        };
       };
     };
     #   mcpServers.beeper = {
