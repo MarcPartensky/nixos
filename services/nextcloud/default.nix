@@ -62,7 +62,9 @@
     configureRedis = true;
 
     settings = {
+      loglevel = 0;
       auth.bruteforce.protection.enabled = false;
+      auth.sso-enabled = false;
       trusted_domains = [
         "localhost"
         "127.0.0.1"
@@ -73,7 +75,7 @@
       # Si Traefik est en HTTPS et Nextcloud en HTTP derrière :
       overwriteprotocol = "https";
       overwritecondaddr = "^127\\.0\\.0\\.1$"; # l'overwrite ne s'applique qu'aux requêtes venant du reverse proxy
-      trusted_proxies = ["127.0.0.1"];
+      trusted_proxies = ["127.0.0.1" "::1"];
     };
 
     config = {
