@@ -88,6 +88,7 @@
     owner = "root";
   };
 
+  home-manager.extraSpecialArgs = {inherit inputs;};
   home-manager.users.root = {
     home.stateVersion = "25.11";
     # sops.age.keyFile = "/root/.config/sops/age/keys.txt";
