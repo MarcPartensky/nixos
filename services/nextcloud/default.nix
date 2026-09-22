@@ -4,7 +4,7 @@
   lib,
   ...
 }: {
-  environment.systemPackages = [pkgs.nextcloud32];
+  environment.systemPackages = [pkgs.nextcloud33];
 
   sops.secrets = {
     # Le nom à gauche (ex: "nextcloud/adminUser") sera le nom du fichier dans /run/secrets/
@@ -53,7 +53,7 @@
   # ---------------------------------------------------------------------------
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud32;
+    package = pkgs.nextcloud33;
 
     hostName = "localhost";
 
