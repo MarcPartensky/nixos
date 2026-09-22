@@ -112,7 +112,18 @@
   };
 
   systemd.services.nextcloud-cron.path = [pkgs.procps];
-  systemd.services.nextcloud-setup.path = [pkgs.procps];
+  systemd.services.nextcloud-setup = {
+    path = [pkgs.procps];
+    serviceConfig = {
+      # Change cette valeur pour forcer un re-run au prochain switch : ré-active
+      # les apps de extraApps (fix 2026-09-22 : calendar déclaré mais jamais
+      # activé, tables oc_calendars absentes -> erreurs 500 CalDAV).
+      Environment = ["NC_SETUP_FORCE_RUN=20260922"];
+      # app:enable ne lance PAS les migrations : sans upgrade ensuite, les
+      # tables des apps (oc_calendars...) ne sont jamais créées.
+      ExecStartPost = "${config.services.nextcloud.occ}/bin/nextcloud-occ upgrade";
+    };
+  };
 
   # ---------------------------------------------------------------------------
   # CONFIGURATION BASE DE DONNÉES (PostgreSQL)

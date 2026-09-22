@@ -29,7 +29,7 @@
     ./nextcloud-mcp
     # ./gotify
     ./zitadel
-    ./kanidm
+    # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes
   ];
