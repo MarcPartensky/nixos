@@ -32,6 +32,11 @@ in {
     # numpy : les wheels manylinux cassent sur NixOS (libstdc++.so.6 absent) —
     # les deps compilées des lazy-installs doivent venir de nix
     extraPythonPackages = with hermesPkgs.python312Packages; [ psycopg2 numpy ];
+
+    # claude-code CLI sur le PATH du service : requis par le plugin officiel
+    # claude-subscription-directsdk (provider sur abonnement Claude Pro/Max,
+    # login OAuth via `claude`, pas de clé API)
+    extraPackages = [pkgs.claude-code];
     # extraDependencyGroups = ["anthropic"];
     # settings.model = {
     #   base_url = "https://api.anthropic.com/v1";
@@ -58,11 +63,13 @@ in {
         }
       ];
 
-      # --- Modèle par défaut : pointe vers le provider custom ---
+      # --- Modèle par défaut : abonnement Claude Pro de marc via le plugin ---
+      # claude-subscription-directsdk (CLI claude en OAuth, quota Agent SDK).
+      # kimi reste déclaré ci-dessus en provider secondaire (custom:kimi-k3-global).
       model = {
-        provider = "custom:kimi-k3-global"; # <- plus "openrouter"
-        default = "kimi-k3";
-        context_length = 1048576;
+        provider = "claude-subscription-directsdk-experimental";
+        default = "claude-sonnet-5";
+        context_length = 1000000;
         supports_vision = true;
       };
 
@@ -76,8 +83,10 @@ in {
       };
 
       auxiliary = {
+        # vision : reste sur kimi explicitement (ne pas taper dans le quota
+        # Claude Pro pour les descriptions d'images)
         vision = {
-          provider = "main";
+          provider = "custom:kimi-k3-global";
           model = "kimi-k3";
           extra_body = {
             reasoning_effort = "max";
@@ -93,6 +102,9 @@ in {
     enable = true;
     loadModels = ["nomic-embed-text"];
   };
+
+  # claude aussi dispo pour marc et les sessions CLI de hermes
+  environment.systemPackages = [pkgs.claude-code];
 
   sops.secrets."hermes_env" = {};
 
