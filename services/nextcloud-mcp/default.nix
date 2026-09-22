@@ -22,7 +22,12 @@ in {
     # le netns du container, 127.0.0.1 ne pointe pas vers l'hôte et l'IP du
     # bridge podman0 n'est pas dans trusted_domains (400 Nextcloud).
     extraOptions = ["--network=host"];
-    cmd = ["--host" "127.0.0.1" "--port" (toString port) "--enable-app" "calendar"];
+    # Pas de --enable-app : par défaut TOUTES les apps sont exposées (notes,
+    # webdav/fichiers, calendar, contacts, deck, tables, sharing, news,
+    # collectives...) — c'est ce qui donne les tools d'écriture
+    # (nc_notes_create_note, nc_webdav_write_file, etc.). Pour restreindre :
+    # répéter "--enable-app" "<app>" (cf. docs/running.md du repo upstream).
+    cmd = ["--host" "127.0.0.1" "--port" (toString port)];
     environment = {
       # Nextcloud tourne sur tower (nginx :8083) ; l'URL publique passe par
       # Pangolin (SSO) qui redirige status.php -> on tape directement le local.
