@@ -19,6 +19,8 @@
     ./wayvnc
     # ./dnscrypt
     ./adguard
+    ./matrix
+    ./matrix-whatsapp
     ./navidrome
     ./tor
     # ./minio
@@ -27,6 +29,7 @@
     ./discord-bot
     ./eternal-terminal
     ./nextcloud-mcp
+    ./amazon-mcp
     # ./gotify
     ./zitadel
     # ./kanidm
