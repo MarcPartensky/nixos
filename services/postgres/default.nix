@@ -16,6 +16,9 @@
   
   services.postgresql = {
     enable = true;
+    # pgvector : vector store pour la mémoire mem0 de hermes
+    # même majeur (17.11) -> simple restart, pas de dump/restore
+    package = pkgs.postgresql_17.withPackages (ps: [ ps.pgvector ]);
     settings = {
       ssl_cert_file = config.sops.secrets."postgres_crt".path;
       ssl_key_file  = config.sops.secrets."postgres_key".path;

@@ -1,4 +1,4 @@
-{config, ...}: {
+{config, pkgs, ...}: {
   # --- déclaration des besoins postgresql ---
   # nixos fusionne automatiquement ces listes avec celles du module postgres
   services.postgresql.ensureDatabases = ["hermes"];
@@ -13,6 +13,12 @@
     enable = true;
     environmentFiles = [config.sops.secrets."hermes_env".path];
     addToSystemPackages = true;
+
+    # venv nix scellé -> deps mem0 (mem0ai) installées au runtime dans une cible durable
+    environment.HERMES_LAZY_INSTALL_TARGET = "/var/lib/hermes/.hermes/lazy-python";
+
+    # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
+    extraPythonPackages = [ pkgs.python312Packages.psycopg2 ];
     # extraDependencyGroups = ["anthropic"];
     # settings.model = {
     #   base_url = "https://api.anthropic.com/v1";
