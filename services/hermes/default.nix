@@ -1,11 +1,14 @@
-{config, pkgs, inputs, ...}:
-let
+{
+  config,
+  pkgs,
+  inputs,
+  ...
+}: let
   # ATTENTION : les paquets python pour hermes DOIVENT venir de la nixpkgs du
   # flake hermes-agent (même python 3.12.13 que le venv scellé). Avec la nixpkgs
   # système, hasPythonModule les filtre silencieusement -> PYTHONPATH sans le paquet.
   hermesPkgs = inputs.hermes-agent.inputs.nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-in
-{
+in {
   # --- déclaration des besoins postgresql ---
   # nixos fusionne automatiquement ces listes avec celles du module postgres
   services.postgresql.ensureDatabases = ["hermes"];
@@ -26,7 +29,7 @@ in
 
     # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
     # NB: withPackages est filtré par hasPythonModule (pas d'attr pythonModule)
-    extraPythonPackages = [ hermesPkgs.python312Packages.psycopg2 ];
+    extraPythonPackages = [hermesPkgs.python312Packages.psycopg2];
     # extraDependencyGroups = ["anthropic"];
     # settings.model = {
     #   base_url = "https://api.anthropic.com/v1";
@@ -91,7 +94,7 @@ in
   # nomic-embed-text = 768 dims, supporté par le plugin mem0. CPU suffit.
   services.ollama = {
     enable = true;
-    loadModels = [ "nomic-embed-text" ];
+    loadModels = ["nomic-embed-text"];
   };
 
   sops.secrets."hermes_env" = {};
