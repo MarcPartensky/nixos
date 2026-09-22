@@ -18,8 +18,11 @@
 in {
   virtualisation.oci-containers.containers.nextcloud-mcp = {
     image = "ghcr.io/cbcoutinho/nextcloud-mcp-server:latest"; # épingler un tag une fois validé
-    cmd = ["--enable-app" "calendar"];
-    ports = ["127.0.0.1:${toString port}:8000"];
+    # network=host : Nextcloud est sur 127.0.0.1:8083 (trusted_domains) ; depuis
+    # le netns du container, 127.0.0.1 ne pointe pas vers l'hôte et l'IP du
+    # bridge podman0 n'est pas dans trusted_domains (400 Nextcloud).
+    extraOptions = ["--network=host"];
+    cmd = ["--host" "127.0.0.1" "--port" (toString port) "--enable-app" "calendar"];
     environment = {
       # Nextcloud tourne sur tower (nginx :8083) ; l'URL publique passe par
       # Pangolin (SSO) qui redirige status.php -> on tape directement le local.
