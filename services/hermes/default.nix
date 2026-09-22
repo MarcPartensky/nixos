@@ -87,6 +87,13 @@ in
     # mcpServers.nextcloud.url = "http://127.0.0.1:8710/mcp";
   };
 
+  # --- ollama : embeddings locaux pour mem0 (pas de clé OpenAI) ---
+  # nomic-embed-text = 768 dims, supporté par le plugin mem0. CPU suffit.
+  services.ollama = {
+    enable = true;
+    loadModels = [ "nomic-embed-text" ];
+  };
+
   sops.secrets."hermes_env" = {};
 
   security.sudo.extraRules = [
