@@ -32,6 +32,7 @@
     ./amazon-mcp
     # ./gotify
     ./zitadel
+    ./roku
     # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes
