@@ -1145,23 +1145,6 @@
         "type": "github"
       }
     },
-    "protonmail-mcp": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ],
-        "proton-mail-bridge-client": "proton-mail-bridge-client"
-      },
-      "locked": {
-        "path": "./protonmail-mcp",
-        "type": "path"
-      },
-      "original": {
-        "path": "./protonmail-mcp",
-        "type": "path"
-      },
-      "parent": []
-    },
     "pyproject-build-systems": {
       "inputs": {
         "nixpkgs": [
@@ -1511,7 +1494,7 @@
         "nur": "nur",
         "option-pricer": "option-pricer",
         "portfolio-optimizer": "portfolio-optimizer",
-        "protonmail-mcp": "protonmail-mcp",
+        "proton-mail-bridge-client": "proton-mail-bridge-client",
         "pyproject-nix": "pyproject-nix_8",
         "sops": "sops",
         "sopswarden": "sopswarden",

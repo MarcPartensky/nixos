@@ -117,8 +117,16 @@
     hermes-agent.url = "github:NousResearch/hermes-agent";
     # hermes-agent.inputs.nixpkgs.follows = "github:NousResearch/hermes-agent";
 
-    protonmail-mcp.url = "path:./protonmail-mcp";
-    protonmail-mcp.inputs.nixpkgs.follows = "nixpkgs";
+    # Le sous-flake ./protonmail-mcp n'est PAS branché en input "path:" : un input
+    # relatif produit un noeud non verrouillé dans flake.lock, que les nix trop
+    # anciens (<= 2.20) refusent ("lock file contains mutable lock"), ce qui casse
+    # le switch sur le Mac. On appelle directement son outputs plus bas (cf.
+    # `protonmailMcp`), et on ne prend ici que sa dépendance externe, qui elle se
+    # verrouille normalement.
+    proton-mail-bridge-client = {
+      url = "github:googlarz/proton-mail-bridge-client";
+      flake = false;
+    };
 
     firefox-devtools-mcp = {
       # Officiel Mozilla, MCP browser automation via WebDriver BiDi. Pin sur le
@@ -139,7 +147,15 @@
     self,
     nixpkgs,
     ...
-  } @ inputs: {
+  } @ inputs: let
+    # Sous-flake local ./protonmail-mcp appelé directement (pas d'input path:),
+    # avec les inputs passés explicitement depuis le flake racine.
+    protonmailMcp = (import ./protonmail-mcp/flake.nix).outputs {
+      self = { };
+      nixpkgs = inputs.nixpkgs;
+      proton-mail-bridge-client = inputs.proton-mail-bridge-client;
+    };
+  in {
     nixosConfigurations = {
       laptop = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
@@ -158,7 +174,7 @@
           ./profiles/common
           ./profiles/tower/configuration.nix
           ./services
-          inputs.protonmail-mcp.nixosModules.default
+          protonmailMcp.nixosModules.default
         ];
       };
 
