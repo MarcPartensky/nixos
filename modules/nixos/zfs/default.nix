@@ -1,5 +1,7 @@
 { pkgs, ... }:
 {
+  boot.zfs.forceImportRoot = false; # nouveau défaut 26.11, réduit le risque de double-import silencieux
+
   services.zfs.autoSnapshot = {
     enable = true;
     flags = "-k -p";

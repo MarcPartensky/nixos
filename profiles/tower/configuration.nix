@@ -10,7 +10,7 @@
   ];
 
   boot.kernelParams = ["panic=10"]; # reboot 10 s après un kernel panic, le dump reste dans pstore
-  systemd.watchdog.runtimeTime = "30s"; # reboot si la machine gèle (si `sudo wdctl` trouve un watchdog)
+  systemd.settings.Manager.RuntimeWatchdogSec = "30s"; # reboot si la machine gèle (si `sudo wdctl` trouve un watchdog)
   # boot.initrd.clevis.enable = true;
   # boot.initrd.clevis.devices."zroot/root".secretFile = ./zfs.jwe; # ton encryptionroot
   # boot.initrd.availableKernelModules = ["tpm_crb"]; # driver du fTPM AMD
