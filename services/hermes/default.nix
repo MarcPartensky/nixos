@@ -36,7 +36,11 @@ in {
     # claude-code CLI sur le PATH du service : requis par le plugin officiel
     # claude-subscription-directsdk (provider sur abonnement Claude Pro/Max,
     # login OAuth via `claude`, pas de clé API)
-    extraPackages = [pkgs.claude-code];
+    extraPackages = [
+      pkgs.claude-code
+      # node/npm : requis par le MCP GitHub (npx -y @modelcontextprotocol/server-github)
+      pkgs.nodejs_22
+    ];
     # extraDependencyGroups = ["anthropic"];
     # settings.model = {
     #   base_url = "https://api.anthropic.com/v1";
@@ -134,7 +138,7 @@ in {
   };
 
   # --- node/npm requis pour le serveur GitHub (npx) ---
-  services.hermes-agent.extraPackages = [ pkgs.nodejs_22 ];
+  # (ajouté dans extraPackages plus haut : l'option n'accepte qu'une définition)
 
   # --- ollama : embeddings locaux pour mem0 ---
   # nomic-embed-text = 768 dims, supporté par le plugin mem0. CPU suffit.
