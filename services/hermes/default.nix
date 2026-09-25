@@ -121,7 +121,22 @@ in {
     };
   };
 
-  # --- ollama : embeddings locaux pour mem0 (pas de clé OpenAI) ---
+  # --- MCP GitHub : serveur officiel (@modelcontextprotocol/server-github) ---
+  # Note : le package est déprécié (2025.4.8) mais toujours fonctionnel.
+  # Remplacer le placeholder par le vrai token GitHub (fine-grained PAT).
+  services.hermes-agent.mcpServers.github = {
+    command = "npx";
+    args = [ "-y" "@modelcontextprotocol/server-github" ];
+    env = {
+      GITHUB_PERSONAL_ACCESS_TOKEN = "ghp_PLACEHOLDER_REPLACE_WITH_REAL_TOKEN";
+    };
+    timeout = 60;
+  };
+
+  # --- node/npm requis pour le serveur GitHub (npx) ---
+  services.hermes-agent.extraPackages = [ pkgs.nodejs_22 ];
+
+  # --- ollama : embeddings locaux pour mem0 ---
   # nomic-embed-text = 768 dims, supporté par le plugin mem0. CPU suffit.
   services.ollama = {
     enable = true;

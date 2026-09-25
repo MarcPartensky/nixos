@@ -1,8 +1,11 @@
 # modules/home/wayvnc/default.nix
-# Démarre wayvnc automatiquement avec la session niri (via graphical-session.target,
-# le même point d'accroche que ironbar : niri.service upstream fait
-# BindsTo=graphical-session.target + Before=graphical-session.target, donc démarrer
-# niri.service active aussi graphical-session.target, ce qui déclenche ce service).
+# Serveur VNC sur la session niri + client web noVNC.
+#
+# wayvnc est lancé par niri (spawn-at-startup) et NON par une unité systemd :
+# un service utilisateur n'a pas WAYLAND_DISPLAY dans son environnement, wayvnc
+# ne trouvait donc pas le compositeur et sortait aussitôt. Lancé par le
+# compositeur, l'environnement est garanti. Contrepartie : pas de redémarrage
+# automatique, si wayvnc meurt il faut relancer la session ou le processus.
 #
 # Accès :
 #   LAN           : http://192.168.1.44:6080/vnc.html
@@ -18,29 +21,18 @@
 {pkgs, ...}: {
   home.packages = [pkgs.wayvnc];
 
-  systemd.user.services.wayvnc = {
-    Unit = {
-      Description = "wayvnc VNC server (accès distant à la session niri)";
-      After = ["graphical-session.target"];
-      PartOf = ["graphical-session.target"];
-    };
-    Service = {
-      ExecStart = "${pkgs.wayvnc}/bin/wayvnc";
-      Restart = "on-failure";
-      RestartSec = "5s";
-    };
-    Install = {
-      WantedBy = ["graphical-session.target"];
-    };
-  };
+  # Chemin absolu plutôt que "wayvnc" : indépendant du PATH de la session.
+  programs.niri.settings.spawn-at-startup = [
+    {argv = ["${pkgs.wayvnc}/bin/wayvnc"];}
+  ];
 
   # Client web noVNC : sert l'interface HTML et fait le pont WebSocket -> RFB
-  # (wayvnc 0.10.0 parle RFB sur 5900, noVNC parle WebSocket ; websockify traduit).
-  # Bindé sur 127.0.0.1 uniquement, comme wayvnc : accès par tunnel SSH.
+  # (wayvnc parle RFB sur 5900, noVNC parle WebSocket ; websockify traduit).
+  # Pas de dépendance à Wayland, donc une unité systemd convient ici.
   systemd.user.services.novnc = {
     Unit = {
       Description = "noVNC web client (pont WebSocket -> wayvnc:5900)";
-      After = ["graphical-session.target" "wayvnc.service"];
+      After = ["graphical-session.target"];
       PartOf = ["graphical-session.target"];
     };
     Service = {

@@ -36,6 +36,7 @@
     ./zitadel
     ./zitadel-mcp
     ./roku
+    ./codeberg-mcp
     # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes
