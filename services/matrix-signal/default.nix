@@ -28,7 +28,14 @@ in {
         };
       };
       # pickle key e2ee : valeur stable hors du store nix, cf. preStart.
-      encryption.pickle_key = "$ENCRYPTION_PICKLE_KEY";
+      # allow/default à true = portails chiffrés par défaut (require=false pour
+      # ne pas casser une salle non chiffrable).
+      encryption = {
+        allow = true;
+        default = true;
+        require = false;
+        pickle_key = "$ENCRYPTION_PICKLE_KEY";
+      };
     };
 
     # Le bridge génère sa registration dans SON preStart : c'est synapse qui

@@ -66,8 +66,8 @@ in {
     # synapse doit démarrer APRÈS eux sinon app_service_config_files pointe sur
     # un fichier qui n'existe pas encore et synapse refuse de démarrer.
     # (mautrix-discord gère ça tout seul via mautrix-discord-registration.)
-    after = ["mautrix-whatsapp.service" "mautrix-signal.service" "matrix-synapse-db.service"];
-    wants = ["mautrix-whatsapp.service" "mautrix-signal.service"];
+    after = ["mautrix-whatsapp.service" "mautrix-signal.service" "mautrix-linkedin.service" "matrix-synapse-db.service"];
+    wants = ["mautrix-whatsapp.service" "mautrix-signal.service" "mautrix-linkedin.service"];
     requires = ["matrix-synapse-db.service"];
     # mkBefore : tourne avant le --generate-keys du module
     preStart = lib.mkBefore ''

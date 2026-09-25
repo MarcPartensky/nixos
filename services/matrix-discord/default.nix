@@ -1,6 +1,8 @@
 # services/matrix-discord/default.nix
 # Pont Matrix <-> Discord (mautrix-discord), serveur : ../matrix
 {
+  pkgs,
+  lib,
   ...
 }: let
   dataDir = "/var/lib/mautrix-discord";
@@ -51,17 +53,36 @@ in {
           "matrix.marcpartensky.com" = "user";
           "@marc:matrix.marcpartensky.com" = "admin";
         };
-        # défaut du bridge : pas de chiffrement (Discord sert surtout pour des
-        # salons de serveurs). Passer allow/default/require à true pour des
-        # portails chiffrés.
+        # portails chiffrés par défaut (comme whatsapp), require=false pour ne
+        # pas casser les salles qui ne peuvent pas être chiffrées (salons de
+        # serveurs notamment). pickle_key stable hors du store, cf. l'export
+        # ajouté plus bas dans mautrix-discord-registration.
         encryption = {
-          allow = false;
-          default = false;
+          allow = true;
+          default = true;
           require = false;
+          pickle_key = "$ENCRYPTION_PICKLE_KEY";
         };
       };
     };
   };
+
+  # Le module NE génère pas la registration dans le preStart du bridge : c'est
+  # mautrix-discord-registration.service qui fait le envsubst du config.yaml puis
+  # --generate-registration. L'export de la clé doit donc être DANS ce script
+  # (un export dans un ExecStartPre ne survivrait pas au process suivant).
+  systemd.services.mautrix-discord-registration.script = lib.mkBefore ''
+    if [ ! -f ${dataDir}/pickle_key.txt ]; then
+      ${pkgs.openssl}/bin/openssl rand -hex 32 > ${dataDir}/pickle_key.txt
+      chmod 600 ${dataDir}/pickle_key.txt
+    fi
+    export ENCRYPTION_PICKLE_KEY=$(cat ${dataDir}/pickle_key.txt)
+  '';
+
+  # Le config.yaml du bridge est régénéré par l'unité de registration, mais le
+  # bridge ne le relit pas tout seul : on déclare un trigger de restart pour que
+  # le switch redémarre mautrix-discord.service quand ce fichier change.
+  systemd.services.mautrix-discord.restartTriggers = [./default.nix];
 
   # Pas d'inversion de dépendance ici : le module crée
   # mautrix-discord-registration.service et fait démarrer matrix-synapse après
