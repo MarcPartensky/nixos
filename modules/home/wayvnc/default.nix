@@ -18,13 +18,32 @@
 # Sécurité : websockify écoute sur 0.0.0.0:6080, donc sur le LAN sans aucun mot de
 # passe propre (ni noVNC ni wayvnc n'en ont). Ne pas publier 6080 au-delà du LAN.
 # Sur le nom public, l'authentification est celle de Pangolin (SSO).
-{pkgs, ...}: {
+{
+  pkgs,
+  ...
+}: let
+  # Résolution de l'écran virtuel vkms (sortie "Virtual-1", cf. boot.kernelModules
+  # dans profiles/tower/configuration.nix). 1920x1080 = la taille logique du
+  # Beyond TV de marc (3840x2160 en @2x). VKMS expose aussi 2560x1600, 4096x2160 et
+  # du custom via `niri msg output Virtual-1 custom-mode <W> <H> <Hz>`.
+  virtualWidth = 1920;
+  virtualHeight = 1080;
+in {
   home.packages = [pkgs.wayvnc];
 
   # Chemin absolu plutôt que "wayvnc" : indépendant du PATH de la session.
   programs.niri.settings.spawn-at-startup = [
     {argv = ["${pkgs.wayvnc}/bin/wayvnc"];}
   ];
+
+  # Mode de l'écran virtuel. Niri relit sa config à chaud, donc un `just home`
+  # suffit à changer la résolution, pas besoin de relogger (wayvnc suit, il
+  # détecte le changement de sortie).
+  programs.niri.settings.outputs."Virtual-1".mode = {
+    width = virtualWidth;
+    height = virtualHeight;
+    refresh = 60.0;
+  };
 
   # Client web noVNC : sert l'interface HTML et fait le pont WebSocket -> RFB
   # (wayvnc parle RFB sur 5900, noVNC parle WebSocket ; websockify traduit).
