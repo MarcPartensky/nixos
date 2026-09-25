@@ -4,6 +4,9 @@
   inputs,
   ...
 }: let
+  # herdr : pas encore dans nixos-26.05, présent dans unstable (0.9.0)
+  herdrPkg = (import inputs.unstable {system = pkgs.stdenv.hostPlatform.system;}).herdr;
+
   pythonEnv =
     (pkgs.python313.override {
       packageOverrides = self: super: {
@@ -28,6 +31,7 @@
 in {
   home.packages = with pkgs; [
     pythonEnv
+    herdrPkg
     bat
     eza
     btop

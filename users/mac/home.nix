@@ -5,6 +5,7 @@
 
     ../../modules/home/claude-commit
     ../../modules/home/ssh
+    ../../modules/home/eternal-terminal
     ../../modules/home/zsh
     ../../modules/home/alacritty
     ../../modules/home/starship
@@ -107,5 +108,14 @@
   };
   
   programs.zsh.enable = true;
+
+  # Connexions Eternal Terminal vers les hôtes NixOS : `et tower` = zellij enregistré.
+  my.et = {
+    enable = true;
+    hosts = {
+      tower = { };
+      towerlocal = { };
+    };
+  };
 
 }

@@ -22,6 +22,7 @@
     ../../modules/home/git
     ../../modules/home/zsh
     ../../modules/home/ssh
+    ../../modules/home/eternal-terminal
     ../../modules/home/tealdeer
     ../../modules/home/neovim
     ../../modules/home/gh
@@ -31,6 +32,7 @@
     ../../modules/home/yt-dlp
     ../../modules/home/claude-commit
     ../../modules/home/niri
+    ../../modules/home/wayvnc
     ../../modules/home/alacritty
     ../../modules/home/kitty
     ../../modules/home/wallpapers
@@ -130,6 +132,16 @@
   services.gnome-keyring = {
     enable = true;
     components = ["secrets" "ssh"];
+  };
+
+  # Connexions Eternal Terminal : `et <hôte>` = zellij + enregistrement asciinema
+  # (fonctions ettower / ettowerlocal / ets générées, cf. modules/home/eternal-terminal)
+  my.et = {
+    enable = true;
+    hosts = {
+      tower = { };
+      towerlocal = { };
+    };
   };
 
   programs.direnv = {
