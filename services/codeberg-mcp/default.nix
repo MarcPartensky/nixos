@@ -8,8 +8,9 @@ let
     owner = "effecet";
     repo = "codeberg-mcp";
     rev = "f7e2fa06ca097cfa5638cef3768c35072c554fd9";
-    # Hash temporaire — à corriger avec nix-prefetch-github après build.
-    hash = "1glxwx1wvvvck3pmp41yxi56z138wamvp0hf3nbls3zd8w9damqj";
+    # Hash base32 nix-prefetch-url -> SRI : depuis Nix 2.x un hash nu n'a plus
+    # de type et fait échouer TOUTE l'évaluation de la config tower.
+    hash = "sha256-ElfVEkftD02XHQ6Cu6viaIRvSuw+kFvvmGzvzUPnnb4=";
   };
   # Package Python manuel : le repo n'a pas de build-system valide.
   # On crée un binaire qui lance server.py avec le bon python.

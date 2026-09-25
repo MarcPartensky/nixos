@@ -50,14 +50,14 @@
     ripgrep          # telescope live-grep + vim.health
     fd               # telescope extended
     stylua           # conform lua formatter
-    nodePackages.prettier  # conform prettier
+    prettier         # conform prettier
     tree-sitter      # lspsaga + nvim-treesitter CLI
     sox              # gp.nvim audio
     pngpaste         # img-clip (macOS)
     findutils        # GNU find (fix fzf-lua "illegal option")
     luarocks         # lazy.nvim rocks
 
-    nodePackages.neovim   # node provider
+    neovim-node-client    # node provider
 
     # (nerdfonts.override { fonts = [ "Meslo" ]; })
     # ou sur nixpkgs récent :

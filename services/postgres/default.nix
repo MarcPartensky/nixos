@@ -1,6 +1,7 @@
 { pkgs, config, ... }:
 
 {
+  imports = [ ./music.nix ];
 
   sops.secrets."postgres_crt" = {
     sopsFile = ../../secrets/common.yml;
