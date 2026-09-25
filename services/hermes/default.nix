@@ -73,6 +73,23 @@ in {
         supports_vision = true;
       };
 
+      # --- Chaîne de secours si le primaire tombe (rate limit, 5xx, auth) ---
+      # essayés dans l'ordre, Bascule au milieu de session sans perdre la conv.
+      # inkling:free (1M ctx, Thinking Machines, uptime ~99.9%) puis
+      # nemotron 3 ultra:free (1M ctx, Nvidia, uptime ~99%). Clé: OPENROUTER_API_KEY
+      # (déjà dans l'env du service). Vérifié le 24/09/2026 : 1000 req/jour
+      # autorisées sur les variantes :free de cette clé, 0 utilisées.
+      fallback_providers = [
+        {
+          provider = "openrouter";
+          model = "thinkingmachines/inkling:free";
+        }
+        {
+          provider = "openrouter";
+          model = "nvidia/nemotron-3-ultra-550b-a55b:free";
+        }
+      ];
+
       agent = {
         reasoning_effort = "max";
       };
