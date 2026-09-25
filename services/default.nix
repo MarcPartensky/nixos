@@ -17,12 +17,15 @@
     ./rqbit
     ./autossh
     ./wayvnc
+    ./cage-firefox
     # ./dnscrypt
     ./adguard
     ./matrix
     ./matrix-whatsapp
     ./matrix-signal
     ./matrix-discord
+    ./matrix-meta
+    # ./matrix-telegram # attendre api_id/api_hash de my.telegram.org
     ./navidrome
     ./tor
     # ./minio
