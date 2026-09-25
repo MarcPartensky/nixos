@@ -24,3 +24,11 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  - path_regex: secrets/protonmail\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/zitadel\.yml$
+    key_groups:
+      - age:
+          - *tower

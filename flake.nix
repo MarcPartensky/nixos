@@ -117,6 +117,16 @@
     hermes-agent.url = "github:NousResearch/hermes-agent";
     # hermes-agent.inputs.nixpkgs.follows = "github:NousResearch/hermes-agent";
 
+    protonmail-mcp.url = "path:./protonmail-mcp";
+    protonmail-mcp.inputs.nixpkgs.follows = "nixpkgs";
+
+    firefox-devtools-mcp = {
+      # Officiel Mozilla, MCP browser automation via WebDriver BiDi. Pin sur le
+      # commit de la release v0.10.4 (2026-09-22) ; flake=false, source brute.
+      url = "github:mozilla/firefox-devtools-mcp/bdb377af9ce3a3596e8c196786014ecee50fe178";
+      flake = false;
+    };
+
     jovian.url = "github:Jovian-Experiments/Jovian-NixOS";
     # jovian.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -148,6 +158,7 @@
           ./profiles/common
           ./profiles/tower/configuration.nix
           ./services
+          inputs.protonmail-mcp.nixosModules.default
         ];
       };
 

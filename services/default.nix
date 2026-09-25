@@ -30,8 +30,11 @@
     ./eternal-terminal
     ./nextcloud-mcp
     ./amazon-mcp
+    ./protonmail-mcp
+    ./firefox-mcp
     # ./gotify
     ./zitadel
+    ./zitadel-mcp
     ./roku
     # ./kanidm
     # ./syncserver

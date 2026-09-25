@@ -1,0 +1,44 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1790218706,
+        "narHash": "sha256-6e4Na3z008XpdVyOXgfasXIn1aN+z8AXFG+jXdQSyuI=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "c508844df6c28fa6dabc1b6af70f3ccbd65c5201",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-26.05",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "proton-mail-bridge-client": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790247463,
+        "narHash": "sha256-AoIuoIb8us2DfyjgfoU0/AouILBnSIVNB1GGtw+AYH0=",
+        "owner": "googlarz",
+        "repo": "proton-mail-bridge-client",
+        "rev": "811be5de9dda5debf4d41ceae22b69c9fed8a42f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "googlarz",
+        "repo": "proton-mail-bridge-client",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs",
+        "proton-mail-bridge-client": "proton-mail-bridge-client"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

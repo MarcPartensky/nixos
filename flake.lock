@@ -183,6 +183,23 @@
         "type": "github"
       }
     },
+    "firefox-devtools-mcp": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790073791,
+        "narHash": "sha256-Ch9dk7E3Nn1lt8dgrEo43P36oB73KfRwyHlZgDOyA8s=",
+        "owner": "mozilla",
+        "repo": "firefox-devtools-mcp",
+        "rev": "bdb377af9ce3a3596e8c196786014ecee50fe178",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mozilla",
+        "repo": "firefox-devtools-mcp",
+        "rev": "bdb377af9ce3a3596e8c196786014ecee50fe178",
+        "type": "github"
+      }
+    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
@@ -1112,6 +1129,39 @@
         "type": "github"
       }
     },
+    "proton-mail-bridge-client": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790247463,
+        "narHash": "sha256-AoIuoIb8us2DfyjgfoU0/AouILBnSIVNB1GGtw+AYH0=",
+        "owner": "googlarz",
+        "repo": "proton-mail-bridge-client",
+        "rev": "811be5de9dda5debf4d41ceae22b69c9fed8a42f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "googlarz",
+        "repo": "proton-mail-bridge-client",
+        "type": "github"
+      }
+    },
+    "protonmail-mcp": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "proton-mail-bridge-client": "proton-mail-bridge-client"
+      },
+      "locked": {
+        "path": "./protonmail-mcp",
+        "type": "path"
+      },
+      "original": {
+        "path": "./protonmail-mcp",
+        "type": "path"
+      },
+      "parent": []
+    },
     "pyproject-build-systems": {
       "inputs": {
         "nixpkgs": [
@@ -1446,6 +1496,7 @@
         "clawdbot": "clawdbot",
         "discord-bot": "discord-bot",
         "disko": "disko",
+        "firefox-devtools-mcp": "firefox-devtools-mcp",
         "hermes-agent": "hermes-agent",
         "home-manager": "home-manager_4",
         "jovian": "jovian",
@@ -1460,6 +1511,7 @@
         "nur": "nur",
         "option-pricer": "option-pricer",
         "portfolio-optimizer": "portfolio-optimizer",
+        "protonmail-mcp": "protonmail-mcp",
         "pyproject-nix": "pyproject-nix_8",
         "sops": "sops",
         "sopswarden": "sopswarden",
