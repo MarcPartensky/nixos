@@ -29,7 +29,16 @@
   };
 
   services.protonmail-mcp = {
-    enable = true;
+    # DÉSACTIVÉ : Proton Mail Bridge exige un plan payant. Le login Bridge a été
+    # tenté le 24/09/2026 et refusé par l'API Proton :
+    #   422 POST https://mail-api.proton.me/auth/v4: Please upgrade to a paid plan
+    #   to use this client (Code=10004)
+    # L'auto-forwarding est payant lui aussi (même via filtre custom), donc aucune
+    # voie gratuite : la lecture des mails passe par le webmail piloté au
+    # navigateur (services/firefox-mcp + firefox-mcp-login).
+    # Tout est conservé (flake ../../protonmail-mcp, secret, user système) : il
+    # suffit de repasser enable = true si marc prend Mail Plus un jour.
+    enable = false;
     username = "marc.partensky@proton.me";
     passwordFile = config.sops.secrets."protonmail/bridge-password".path;
   };
