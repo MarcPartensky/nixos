@@ -16,6 +16,7 @@
     ../../modules/nixos/pipewire
     ../../modules/nixos/xdg
     ../../modules/nixos/jovian
+    ../../services/eternal-terminal
     ./switch-emu.nix
   ];
 

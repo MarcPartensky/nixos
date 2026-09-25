@@ -29,7 +29,7 @@
     # ../../services/tailscale
     # ../../services/headscale
     # ./services/chhoto
-    # ./services/eternal-terminal
+    ../../services/eternal-terminal
     ../../services/stalwart
     ../../services/droplify
     ../../services/hermes
