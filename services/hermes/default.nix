@@ -66,9 +66,12 @@ in {
       # --- Modèle par défaut : DeepSeek V4.1 Flash via OpenRouter ---
       # 1M ctx, entrée image (text+image->text), reasoning_effort supporté.
       # Clé : OPENROUTER_API_KEY, déjà dans l'env du service (sops hermes_env).
+      # base_url explicite : la clé est écrite à chaque activation, donc une valeur
+      # impérative périmée dans config.yaml (ex. un ancien base_url Kimi) est écrasée.
       model = {
         provider = "openrouter";
         default = "deepseek/deepseek-v4.1-flash";
+        base_url = "https://openrouter.ai/api/v1";
         context_length = 1048576;
         supports_vision = true;
       };
