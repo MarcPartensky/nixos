@@ -21,6 +21,8 @@
     ./adguard
     ./matrix
     ./matrix-whatsapp
+    ./matrix-signal
+    ./matrix-discord
     ./navidrome
     ./tor
     # ./minio

@@ -62,11 +62,12 @@ in {
   };
 
   systemd.services.matrix-synapse = {
-    # Le bridge WhatsApp génère son fichier de registration dans son propre
-    # preStart : synapse doit démarrer APRÈS lui sinon le fichier
-    # app_service_config_files n'existe pas encore et synapse refuse de démarrer.
-    after = ["mautrix-whatsapp.service" "matrix-synapse-db.service"];
-    wants = ["mautrix-whatsapp.service"];
+    # Les bridges génèrent leur registration dans leur propre preStart :
+    # synapse doit démarrer APRÈS eux sinon app_service_config_files pointe sur
+    # un fichier qui n'existe pas encore et synapse refuse de démarrer.
+    # (mautrix-discord gère ça tout seul via mautrix-discord-registration.)
+    after = ["mautrix-whatsapp.service" "mautrix-signal.service" "matrix-synapse-db.service"];
+    wants = ["mautrix-whatsapp.service" "mautrix-signal.service"];
     requires = ["matrix-synapse-db.service"];
     # mkBefore : tourne avant le --generate-keys du module
     preStart = lib.mkBefore ''
