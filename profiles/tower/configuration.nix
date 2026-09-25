@@ -24,6 +24,7 @@
       8083 # Pangolin / Apps
       8050
       5432 # PostgreSQL
+      6080 # noVNC (client VNC web de la session niri) ; wayvnc reste sur loopback
     ];
   };
 

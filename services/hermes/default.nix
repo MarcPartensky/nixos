@@ -63,23 +63,28 @@ in {
         }
       ];
 
-      # --- Modèle par défaut : abonnement Claude Pro de marc via le plugin ---
-      # claude-subscription-directsdk (CLI claude en OAuth, quota Agent SDK).
-      # kimi reste déclaré ci-dessus en provider secondaire (custom:kimi-k3-global).
+      # --- Modèle par défaut : DeepSeek V4.1 Flash via OpenRouter ---
+      # 1M ctx, entrée image (text+image->text), reasoning_effort supporté.
+      # Clé : OPENROUTER_API_KEY, déjà dans l'env du service (sops hermes_env).
       model = {
-        provider = "claude-subscription-directsdk-experimental";
-        default = "claude-sonnet-5";
-        context_length = 1000000;
+        provider = "openrouter";
+        default = "deepseek/deepseek-v4.1-flash";
+        context_length = 1048576;
         supports_vision = true;
       };
 
       # --- Chaîne de secours si le primaire tombe (rate limit, 5xx, auth) ---
       # essayés dans l'ordre, Bascule au milieu de session sans perdre la conv.
-      # inkling:free (1M ctx, Thinking Machines, uptime ~99.9%) puis
-      # nemotron 3 ultra:free (1M ctx, Nvidia, uptime ~99%). Clé: OPENROUTER_API_KEY
-      # (déjà dans l'env du service). Vérifié le 24/09/2026 : 1000 req/jour
-      # autorisées sur les variantes :free de cette clé, 0 utilisées.
+      # 1. abonnement Claude Pro de marc (quota Agent SDK) — secours de qualité ;
+      #    une entrée qui échoue est loguée puis la chaîne continue.
+      # 2. inkling:free (1M ctx, Thinking Machines) puis nemotron 3 ultra:free
+      #    (1M ctx, Nvidia). Vérifié le 24/09/2026 : 1000 req/jour autorisées
+      #    sur les variantes :free de la clé OpenRouter, 0 utilisées.
       fallback_providers = [
+        {
+          provider = "claude-subscription-directsdk-experimental";
+          model = "claude-sonnet-5";
+        }
         {
           provider = "openrouter";
           model = "thinkingmachines/inkling:free";
