@@ -15,6 +15,7 @@
     useRoutingFeatures = "both"; # "client", "server" ou "both" si ce nœud est aussi exit node / subnet router
     authKeyFile = config.sops.secrets."tailscale/auth_key".path;
     extraUpFlags = [
+      "--login-server=https://headscale.marcpartensky.com" # contrôleur auto-hébergé (headscale), pas le tailscale officiel
       "--accept-routes"
       "--advertise-tags=tag:server" # si tu utilises des ACL tags dans ton tailnet
     ];

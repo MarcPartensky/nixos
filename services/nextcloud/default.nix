@@ -74,6 +74,8 @@
       ];
       # Si Traefik est en HTTPS et Nextcloud en HTTP derrière :
       overwriteprotocol = "https";
+      overwritehost = "cloud.marcpartensky.com";
+      "overwrite.cli.url" = "https://cloud.marcpartensky.com";
       overwritecondaddr = "^127\\.0\\.0\\.1$"; # l'overwrite ne s'applique qu'aux requêtes venant du reverse proxy
       trusted_proxies = ["127.0.0.1" "::1"];
     };
@@ -103,7 +105,14 @@
         deck
         memories
         notes
+        user_oidc # CONSOMMATEUR OIDC : permet de se connecter a Nextcloud AVEC
+        # un compte zitadel (auth.marcpartensky.com). La config du provider
+        # ("Zitadel", client_id 317450151415316483) est deja en base dans
+        # oc_user_oidc_providers ; l'app etant desinstallee, elle etait
+        # simplement inutilisable. Les comptes deja lies sont dans oc_user_oidc.
         ;
+      # ATTENTION : "oidc" (H2CK) c'est l'INVERSE, Nextcloud en PROVIDER OIDC.
+      # Garde car des clients externes peuvent y etre enregistres (oc_oidc_clients).
       oidc = pkgs.fetchNextcloudApp {
         url = "https://github.com/H2CK/oidc/releases/download/2.3.1/oidc-2.3.1.tar.gz";
         hash = "sha256-zfdZSUwV8VZ5qq7rwN/G4cSfTbuutaK+yJ6g8556yOQ=";
@@ -120,7 +129,7 @@
       # Change cette valeur pour forcer un re-run au prochain switch : ré-active
       # les apps de extraApps (fix 2026-09-22 : calendar déclaré mais jamais
       # activé, tables oc_calendars absentes -> erreurs 500 CalDAV).
-      Environment = ["NC_SETUP_FORCE_RUN=20260922"];
+      Environment = ["NC_SETUP_FORCE_RUN=20260924"];
       # app:enable ne lance PAS les migrations : sans upgrade ensuite, les
       # tables des apps (oc_calendars...) ne sont jamais créées.
       ExecStartPost = "${config.services.nextcloud.occ}/bin/nextcloud-occ upgrade";
