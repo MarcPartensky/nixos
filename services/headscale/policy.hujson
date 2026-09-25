@@ -1,0 +1,13 @@
+{
+  // Politique ACL du tailnet personnel de marc.
+  // Mesh privé, un seul user, tolérance totale : chaque nœud peut joindre
+  // n'importe quel nœud sur n'importe quel port (nécessaire pour ET :2022).
+  // Restreindre ensuite au besoin (ex. n'autoriser que le port 2022 + ssh).
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["*"],
+      "dst": ["*:*"]
+    }
+  ]
+}

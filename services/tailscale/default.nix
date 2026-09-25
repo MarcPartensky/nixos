@@ -1,4 +1,4 @@
-{ pkgs, config, ... }:
+{ pkgs, config, lib, ... }:
 {
   sops.secrets."tailscale/auth_key" = {
     owner = "root";
@@ -6,8 +6,8 @@
     mode = "0400";
   };
 
-  boot.kernel.sysctl."net.ipv4.ip_forward" = 1;
-  boot.kernel.sysctl."net.ipv6.conf.all.forwarding" = 1;
+  boot.kernel.sysctl."net.ipv4.ip_forward" = lib.mkDefault 1;
+  boot.kernel.sysctl."net.ipv6.conf.all.forwarding" = lib.mkDefault 1;
 
   services.tailscale = {
     enable = true;
@@ -17,7 +17,6 @@
     extraUpFlags = [
       "--login-server=https://headscale.marcpartensky.com" # contrôleur auto-hébergé (headscale), pas le tailscale officiel
       "--accept-routes"
-      "--advertise-tags=tag:server" # si tu utilises des ACL tags dans ton tailnet
     ];
   };
 

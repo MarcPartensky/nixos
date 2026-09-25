@@ -26,8 +26,8 @@
     ../../services/zitadel
     ../../services/pangolin
     ../../services/wireguard
-    # ../../services/tailscale
-    # ../../services/headscale
+    ../../services/tailscale
+    ../../services/headscale
     # ./services/chhoto
     ../../services/eternal-terminal
     ../../services/stalwart
