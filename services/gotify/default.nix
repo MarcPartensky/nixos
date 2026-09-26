@@ -11,6 +11,9 @@
     };
     "gotify/db_password" = {
       key = "gotify_db_password";
+      # lu par gotify-db-password.service, qui tourne en User=postgres
+      # (gotify lui-même lit le mot de passe via le template sops, pas ce fichier)
+      owner = "postgres";
     };
   };
 
@@ -36,6 +39,51 @@
     environmentFiles = [
       config.sops.templates."gotify.env".path
     ];
+  };
+
+  # gotify dépend de postgres : sans ces réglages il crash-loopait quand un
+  # switch redémarre postgresql (RestartSec=100ms par défaut, 5 essais, puis
+  # start-limit-hit avant que postgres n'accepte de nouveau les connexions).
+  systemd.services.gotify-server = {
+    after = ["postgresql.service"];
+    wants = ["postgresql.service"];
+    unitConfig = {
+      StartLimitIntervalSec = 60;
+      StartLimitBurst = 10;
+    };
+    serviceConfig = {
+      RestartSec = "2s";
+    };
+  };
+
+  # MÊME BUG QUE VAULTWARDEN (vérifié 25/09/2026 en rejouant le binaire à la
+  # main) : ensureUsers crée le rôle postgres `gotify` SANS mot de passe, alors
+  # que le pg_hba effectif exige md5/scram pour ce rôle (services.postgresql.
+  # authentication est un types.lines : tous les modules se concatènent et la
+  # règle `host gotify gotify 127.0.0.1/32 md5` passe AVANT le
+  # `host all all 127.0.0.1/32 trust` générique). Symptôme : gotify-server sort
+  # en 64 ms avec status=2 et
+  #   failed SASL auth: FATAL: password authentication failed for user "gotify"
+  # puis start-limit-hit. Fix : aligner le rôle sur le secret sops déjà utilisé
+  # par GOTIFY_DATABASE_CONNECTION. Idempotent, rejoué à chaque activation.
+  systemd.services.gotify-db-password = {
+    description = "Aligne le mot de passe du rôle postgres gotify sur le secret sops";
+    wantedBy = ["multi-user.target"];
+    after = ["postgresql.service"];
+    requires = ["postgresql.service"];
+    before = ["gotify-server.service"];
+    requiredBy = ["gotify-server.service"];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "postgres";
+      RemainAfterExit = true;
+    };
+    script = ''
+      ${config.services.postgresql.package}/bin/psql \
+        -v pw="$(cat ${config.sops.secrets."gotify/db_password".path})" <<'SQL'
+      ALTER ROLE gotify WITH PASSWORD :'pw';
+      SQL
+    '';
   };
 
   services.postgresql = {
