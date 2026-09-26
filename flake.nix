@@ -117,6 +117,27 @@
     hermes-agent.url = "github:NousResearch/hermes-agent";
     # hermes-agent.inputs.nixpkgs.follows = "github:NousResearch/hermes-agent";
 
+    # UI web de chat (parité CLI) pour hermes-agent. Projet communautaire
+    # (MIT), il publie son propre flake + module NixOS. follows nixpkgs pour
+    # ne pas évaluer un second nixpkgs : le paquet ne fait que python3 +
+    # pyyaml + cryptography, la 26.05 suffit.
+    hermes-webui = {
+      url = "github:nesquena/hermes-webui";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Clients YouTube Music TUI (voir modules/home/{ytm-player,yututui,yt-collate,youtube-music-cli})
+    ytm-player = {
+      url = "github:peternaame-boop/ytm-player";
+      # v2.1.0 exige dbus-fast >= 5.0.0, absent de 26.05 (4.0.4) :
+      # on suit unstable, la nixpkgs que le flake upstream teste.
+      inputs.nixpkgs.follows = "unstable";
+    };
+    yututui = {
+      url = "github:Ochichan/Yututui";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Le sous-flake ./protonmail-mcp n'est PAS branché en input "path:" : un input
     # relatif produit un noeud non verrouillé dans flake.lock, que les nix trop
     # anciens (<= 2.20) refusent ("lock file contains mutable lock"), ce qui casse

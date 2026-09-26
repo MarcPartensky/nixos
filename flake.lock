@@ -392,6 +392,24 @@
         "type": "github"
       }
     },
+    "flake-utils_7": {
+      "inputs": {
+        "systems": "systems_12"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
     "hermes-agent": {
       "inputs": {
         "flake-parts": "flake-parts",
@@ -403,16 +421,36 @@
         "uv2nix": "uv2nix_3"
       },
       "locked": {
-        "lastModified": 1790102427,
-        "narHash": "sha256-EhjU1G2NKrlPaX51GUP5xVCo0SkTJ7zE8BE3/gz1RSo=",
+        "lastModified": 1790315661,
+        "narHash": "sha256-RrxtsBLNXim/VlCk/Vmdr1CROP6eexYW2oICdVOdifU=",
         "owner": "NousResearch",
         "repo": "hermes-agent",
-        "rev": "94e8a255df55105b91d90198311c2973bf227a9f",
+        "rev": "0e31fd3b45e123c91f54ecf4860f989748604101",
         "type": "github"
       },
       "original": {
         "owner": "NousResearch",
         "repo": "hermes-agent",
+        "type": "github"
+      }
+    },
+    "hermes-webui": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790277866,
+        "narHash": "sha256-77S/c5oJ05jwj3JOZwQt0YggC75eWoVAK9fTwP1mcTE=",
+        "owner": "nesquena",
+        "repo": "hermes-webui",
+        "rev": "ff26335b87610f70d74ff008608a321fb1281bd1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nesquena",
+        "repo": "hermes-webui",
         "type": "github"
       }
     },
@@ -1481,6 +1519,7 @@
         "disko": "disko",
         "firefox-devtools-mcp": "firefox-devtools-mcp",
         "hermes-agent": "hermes-agent",
+        "hermes-webui": "hermes-webui",
         "home-manager": "home-manager_4",
         "jovian": "jovian",
         "microvm": "microvm",
@@ -1502,6 +1541,8 @@
         "steam-config-nix": "steam-config-nix",
         "unstable": "unstable",
         "uv2nix": "uv2nix_8",
+        "ytm-player": "ytm-player",
+        "yututui": "yututui",
         "zen-browser": "zen-browser"
       }
     },
@@ -1685,6 +1726,21 @@
       "original": {
         "owner": "nix-systems",
         "repo": "x86_64-linux",
+        "type": "github"
+      }
+    },
+    "systems_12": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
         "type": "github"
       }
     },
@@ -2047,6 +2103,47 @@
       "original": {
         "owner": "Supreeeme",
         "repo": "xwayland-satellite",
+        "type": "github"
+      }
+    },
+    "ytm-player": {
+      "inputs": {
+        "flake-utils": "flake-utils_7",
+        "nixpkgs": [
+          "unstable"
+        ]
+      },
+      "locked": {
+        "lastModified": 1788849233,
+        "narHash": "sha256-/oP9JFQkbDtRJ+1GIoYQgcrMO07wokBOYaf9HKqVs5c=",
+        "owner": "peternaame-boop",
+        "repo": "ytm-player",
+        "rev": "45af0220d4b1d2752568f2636191320cd9ea1ed7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "peternaame-boop",
+        "repo": "ytm-player",
+        "type": "github"
+      }
+    },
+    "yututui": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1789899165,
+        "narHash": "sha256-ONveHMmoXGIF7eazBXBb2uMy6B5xwMbsiEgZd9O2rb4=",
+        "owner": "Ochichan",
+        "repo": "Yututui",
+        "rev": "d4fe762bb78edf264568632b0efa173ed138fef9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Ochichan",
+        "repo": "Yututui",
         "type": "github"
       }
     },

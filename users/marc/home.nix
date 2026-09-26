@@ -61,6 +61,10 @@
     ../../modules/home/deepfilter
     ../../modules/home/tewi
     ../../modules/home/ytui-music
+    ../../modules/home/ytm-player
+    ../../modules/home/yututui
+    ../../modules/home/yt-collate
+    ../../modules/home/youtube-music-cli
     ../../modules/home/geminicommit
 
     ../../modules/home/backtest
