@@ -18,6 +18,11 @@
         User = "marc";
         Port = 22;
       };
+      "hermes" = {
+        HostName = "192.168.1.44";
+        User = "hermes";
+        Port = 22;
+      };
       "tower" = {
         HostName = "77.207.176.170";
         User = "marc";
