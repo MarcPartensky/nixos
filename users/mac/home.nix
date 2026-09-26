@@ -1,5 +1,10 @@
-{ pkgs, inputs, config, lib, ... }: {
-
+{
+  pkgs,
+  inputs,
+  config,
+  lib,
+  ...
+}: {
   imports = [
     inputs.sops.homeManagerModules.sops
 
@@ -8,6 +13,7 @@
     ../../modules/home/eternal-terminal
     ../../modules/home/zsh
     ../../modules/home/alacritty
+    ../../modules/home/kitty
     ../../modules/home/starship
     ../../modules/home/yt-dlp
     ../../modules/home/syncthing
@@ -17,11 +23,14 @@
 
     ../../modules/home-mac/aerospace
     # ../../modules/home-mac/autossh
-
   ];
 
   home.username = "marc";
-  home.homeDirectory = pkgs.lib.mkForce (if pkgs.stdenv.isDarwin then "/Users/marc" else "/home/marc");
+  home.homeDirectory = pkgs.lib.mkForce (
+    if pkgs.stdenv.isDarwin
+    then "/Users/marc"
+    else "/home/marc"
+  );
   home.stateVersion = "25.11";
   home.packages = with pkgs; [
     fzf
@@ -38,7 +47,7 @@
     util-linux
     sops
     typer
-    nerd-fonts.meslo-lg   # MesloLGS NF
+    nerd-fonts.meslo-lg # MesloLGS NF
     nmap
     just
     age
@@ -47,17 +56,17 @@
     uv
 
     # neovim deps manquants
-    ripgrep          # telescope live-grep + vim.health
-    fd               # telescope extended
-    stylua           # conform lua formatter
-    prettier         # conform prettier
-    tree-sitter      # lspsaga + nvim-treesitter CLI
-    sox              # gp.nvim audio
-    pngpaste         # img-clip (macOS)
-    findutils        # GNU find (fix fzf-lua "illegal option")
-    luarocks         # lazy.nvim rocks
+    ripgrep # telescope live-grep + vim.health
+    fd # telescope extended
+    stylua # conform lua formatter
+    prettier # conform prettier
+    tree-sitter # lspsaga + nvim-treesitter CLI
+    sox # gp.nvim audio
+    pngpaste # img-clip (macOS)
+    findutils # GNU find (fix fzf-lua "illegal option")
+    luarocks # lazy.nvim rocks
 
-    neovim-node-client    # node provider
+    neovim-node-client # node provider
 
     # (nerdfonts.override { fonts = [ "Meslo" ]; })
     # ou sur nixpkgs récent :
@@ -88,34 +97,31 @@
   sops.age.keyFile = "${config.home.homeDirectory}/.config/sops/age/keys.txt";
   sops.defaultSopsFile = ../../secrets/mac.yml;
 
-
-
   services.gpg-agent = {
     enable = true;
     pinentry.package = pkgs.pinentry-curses;
   };
 
-  programs.home-manager ={
+  programs.home-manager = {
     enable = true;
     # backupFileExtension = "backup";
-  # backupCommand',
-   };
+    # backupCommand',
+  };
 
   programs.git = {
     enable = true;
     settings.user.name = "Marc Partensky";
     settings.user.email = "marc.partensky@gmail.com";
   };
-  
+
   programs.zsh.enable = true;
 
   # Connexions Eternal Terminal vers les hôtes NixOS : `et tower` = zellij enregistré.
   my.et = {
     enable = true;
     hosts = {
-      tower = { };
-      towerlocal = { };
+      tower = {};
+      towerlocal = {};
     };
   };
-
 }
