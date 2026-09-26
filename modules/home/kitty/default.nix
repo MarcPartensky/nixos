@@ -8,16 +8,35 @@
     };
 
     settings = {
-      background = "#262624";
-      foreground = "#d8d6d1";
+      background = "#1e1e2e";
+      foreground = "#cdd6f4";
 
-      cursor = "#d97757";
-      cursor_text_color = "#262624";
+      cursor = "#f5e0e6";
+      cursor_text_color = "#1e1e2e";
 
-      selection_background = "#3a3936";
-      selection_foreground = "#d8d6d1";
+      selection_background = "#585b70";
+      selection_foreground = "#cdd6f4";
 
-      url_color = "#d97757";
+      url_color = "#b4befe";
+
+      # Catppuccin Mocha ANSI colors
+      color0 = "#45475a";
+      color1 = "#f38ba8";
+      color2 = "#a6e3a1";
+      color3 = "#f9e2af";
+      color4 = "#89b4fa";
+      color5 = "#f5c2e7";
+      color6 = "#94e2d5";
+      color7 = "#bac2de";
+
+      color8 = "#585b70";
+      color9 = "#f38ba8";
+      color10 = "#a6e3a1";
+      color11 = "#f9e2af";
+      color12 = "#89b4fa";
+      color13 = "#f5c2e7";
+      color14 = "#94e2d5";
+      color15 = "#cdd6f4";
 
       background_opacity = "1.0";
       window_padding_width = 8;
