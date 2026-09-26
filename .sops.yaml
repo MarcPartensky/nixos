@@ -32,3 +32,7 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  - path_regex: secrets/hermes-matrix\.yml$
+    key_groups:
+      - age:
+          - *tower

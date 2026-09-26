@@ -17,11 +17,26 @@
   # --- service hermes ---
   services.hermes-agent = {
     enable = true;
-    environmentFiles = [config.sops.secrets."hermes_env".path];
+    environmentFiles = [
+      config.sops.secrets."hermes_env".path
+      config.sops.secrets."hermes_matrix_env".path
+    ];
     addToSystemPackages = true;
 
     # venv nix scellé -> deps mem0 (mem0ai) installées au runtime dans une cible durable
     environment.HERMES_LAZY_INSTALL_TARGET = "/var/lib/hermes/.hermes/lazy-python";
+
+    # --- Matrix : bot @hermes (Element + ponts mautrix) ---
+    environment.MATRIX_HOMESERVER = "https://matrix.marcpartensky.com";
+    environment.MATRIX_USER_ID = "@hermes:matrix.marcpartensky.com";
+    # salles du pont = chiffrées E2EE (encryption.default=true côté mautrix-signal)
+    environment.MATRIX_E2EE_MODE = "required";
+    # salle de pont = 3+ membres (bot du pont inclus) -> pas classée DM :
+    # réponse sans mention, et pas d'auto-thread (les ponts aplatissent les threads)
+    environment.MATRIX_REQUIRE_MENTION = "false";
+    environment.MATRIX_AUTO_THREAD = "false";
+    # @marc + son ghost Signal (mautrix-signal)
+    environment.MATRIX_ALLOWED_USERS = "@marc:matrix.marcpartensky.com,@signal_ad927dda-4064-48ff-8652-01a0d71005e4:matrix.marcpartensky.com";
 
     # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
     # numpy : les wheels manylinux cassent sur NixOS (libstdc++.so.6 absent) —
@@ -233,6 +248,12 @@
   environment.systemPackages = [pkgs.claude-code];
 
   sops.secrets."hermes_env" = {};
+
+  # Token Matrix du bot (@hermes) — clé "hermes_matrix_env" du fichier sops,
+  # valeur = contenu dotenv (MATRIX_ACCESS_TOKEN=...) fusionné dans .env
+  sops.secrets."hermes_matrix_env" = {
+    sopsFile = ../../secrets/hermes-matrix.yml;
+  };
 
   security.sudo.extraRules = [
     {
