@@ -27,5 +27,10 @@
     };
   };
 
+  # /home/marc n'est traversable que par son groupe propriétaire (other::---) :
+  # sans `users` en groupe secondaire, l'utilisateur navidrome ne peut pas
+  # atteindre /home/marc/media/music et scanne une bibliothèque vide.
+  users.users.navidrome.extraGroups = [ "users" ];
+
   # networking.firewall.allowedTCPPorts = [ 4533 ];
 }
