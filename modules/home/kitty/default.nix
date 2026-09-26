@@ -3,7 +3,8 @@
     enable = true;
 
     font = {
-      name = "JetBrainsMono Nerd Font";
+      # name = "JetBrainsMono Nerd Font";
+      name = "MesloLGS NF";
       size = 12;
     };
 
