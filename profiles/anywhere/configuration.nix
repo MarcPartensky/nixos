@@ -133,9 +133,15 @@
     '';
   };
 
-  # users.users.root.openssh.authorizedKeys.keys = [
-  #   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop"
-  # ];
+  # Clés root déclaratives. NixOS les écrit dans /etc/ssh/authorized_keys.d/root
+  # et sshd lit AUSSI ~/.ssh/authorized_keys : cette liste s'ajoute aux clés déjà
+  # posées à la main, elle n'en retire aucune.
+  users.users.root.openssh.authorizedKeys.keys = [
+    # Agent hermes sur tower : lui permet de déployer et diagnostiquer ce VPS
+    # (stalwart, pangolin, zitadel) sans passer par un copier-coller de marc.
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+    # "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop"
+  ];
 
   # systemd.services."entrypoint" = {
   #   description = "entrypoint";

@@ -255,6 +255,14 @@
     sopsFile = ../../secrets/hermes-matrix.yml;
   };
 
+  # --- Accès SSH direct de hermes (tower) vers les autres hôtes qui importent
+  # ce module (laptop, anywhere) : ouvre un shell (et-session + zellij) pour
+  # agir/builder directement sur la machine, sans copier-coller par marc.
+  # Même clé que celle déjà posée pour root sur anywhere (25/09/2026).
+  users.users.hermes.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+  ];
+
   security.sudo.extraRules = [
     {
       users = ["marc" "hermes"];

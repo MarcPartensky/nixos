@@ -72,6 +72,39 @@
   services.openssh.enable = true;
   services.automatic-timezoned.enable = false;
 
+  # --- Compte dédié pour l'agent hermes (tower) ---
+  # Deck n'importe PAS services/hermes (pas de bot chat ici) : le compte
+  # système est donc déclaré à la main. Accès shell direct (et-session +
+  # zellij, cf services/eternal-terminal déjà importé plus haut) + sudo
+  # NOPASSWD nixos-rebuild pour pouvoir builder sur place.
+  users.groups.hermes = {};
+  users.users.hermes = {
+    isSystemUser = true;
+    group = "hermes";
+    home = "/var/lib/hermes";
+    createHome = true;
+    shell = pkgs.zsh;
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+    ];
+  };
+
+  security.sudo.extraRules = [
+    {
+      users = ["hermes"];
+      commands = [
+        {
+          command = "/run/current-system/sw/bin/nixos-rebuild";
+          options = ["NOPASSWD"];
+        }
+        {
+          command = "/nix/store/*-nixos-rebuild/bin/nixos-rebuild";
+          options = ["NOPASSWD"];
+        }
+      ];
+    }
+  ];
+
   systemd.sleep.settings.Sleep = {
     AllowSuspend = false;
     AllowHibernation = false; # coupe aussi hybrid-sleep et suspend-then-hibernate
