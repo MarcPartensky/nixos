@@ -75,31 +75,26 @@
         }
       ];
 
-      # --- Modèle par défaut : DeepSeek V4.1 Flash via OpenRouter ---
-      # 1M ctx, entrée image (text+image->text), reasoning_effort supporté.
-      # Clé : OPENROUTER_API_KEY, déjà dans l'env du service (sops hermes_env).
-      # base_url explicite : la clé est écrite à chaque activation, donc une valeur
-      # impérative périmée dans config.yaml (ex. un ancien base_url Kimi) est écrasée.
+      # --- Modèle par défaut : Claude Sonnet 5 (abonnement Claude Pro/Max) ---
+      # Politique marc du 26/09/2026 : sonnet high par défaut, puis les gratuits
+      # OpenRouter, DeepSeek Flash en dernier recours. ATTENTION : consomme le
+      # quota de l'abonnement à CHAQUE message (plus un simple secours occasionnel) ;
+      # quota reset ~6h (cf mémoire hermes). Surveiller l'usure du quota.
       model = {
-        provider = "openrouter";
-        default = "deepseek/deepseek-v4.1-flash";
-        base_url = "https://openrouter.ai/api/v1";
-        context_length = 1048576;
-        supports_vision = true;
+        provider = "claude-subscription-directsdk-experimental";
+        default = "claude-sonnet-5";
       };
 
       # --- Chaîne de secours si le primaire tombe (rate limit, 5xx, auth) ---
       # essayés dans l'ordre, Bascule au milieu de session sans perdre la conv.
-      # 1. abonnement Claude Pro de marc (quota Agent SDK) — secours de qualité ;
-      #    une entrée qui échoue est loguée puis la chaîne continue.
-      # 2. inkling:free (1M ctx, Thinking Machines) puis nemotron 3 ultra:free
-      #    (1M ctx, Nvidia). Vérifié le 24/09/2026 : 1000 req/jour autorisées
-      #    sur les variantes :free de la clé OpenRouter, 0 utilisées.
+      # 1-2. gratuits OpenRouter : inkling:free (1M ctx, Thinking Machines) puis
+      #    nemotron 3 ultra:free (1M ctx, Nvidia). Vérifié le 24/09/2026 : 1000
+      #    req/jour autorisées sur les variantes :free de la clé OpenRouter.
+      # 3. DeepSeek V4.1 Flash (payant mais bon marché, ~$0.04/$0.49 par M tokens)
+      #    en dernier recours si les gratuits sont aussi indisponibles/rate-limited.
+      #    base_url explicite : la clé est écrite à chaque activation, donc une
+      #    valeur impérative périmée dans config.yaml est écrasée.
       fallback_providers = [
-        {
-          provider = "claude-subscription-directsdk-experimental";
-          model = "claude-sonnet-5";
-        }
         {
           provider = "openrouter";
           model = "thinkingmachines/inkling:free";
@@ -108,10 +103,30 @@
           provider = "openrouter";
           model = "nvidia/nemotron-3-ultra-550b-a55b:free";
         }
+        {
+          provider = "openrouter";
+          model = "deepseek/deepseek-v4.1-flash";
+          base_url = "https://openrouter.ai/api/v1";
+          context_length = 1048576;
+          supports_vision = true;
+        }
       ];
 
       agent = {
         reasoning_effort = "max";
+        # Politique marc du 25/09/2026 : le niveau suit le modèle.
+        # DeepSeek Flash -> high ; Opus 5 -> max ; Sonnet 5 -> high.
+        # Deux clés par famille : forme complète (deepseek/... , modèle par défaut)
+        # et forme nue ([1m] des salons, route de secours) ; la résolution est
+        # tolérante aux variantes de nommage.
+        reasoning_overrides = {
+          "deepseek/deepseek-v4.1-flash" = "high";
+          "deepseek-v4.1-flash" = "high";
+          "claude-opus-5[1m]" = "max";
+          "claude-opus-5" = "max";
+          "claude-sonnet-5[1m]" = "high";
+          "claude-sonnet-5" = "high";
+        };
       };
 
       # --- Coût estimé dans la status bar CLI/TUI ---
@@ -147,6 +162,30 @@
           model = "kimi-k3";
           extra_body = {
             reasoning_effort = "max";
+          };
+        };
+      };
+
+      # --- Modèle par salon Matrix : politique channel_overrides ---
+      # La plupart des salons restent sur le défaut (DeepSeek v4.1 via OpenRouter).
+      # Les salons ci-dessous tournent sur l'abonnement Claude (DirectSDK) :
+      # Opus 5 (O5), ou Sonnet 5 à effort high pour Zoé (S5 high, 1M).
+      # Lu par le gateway à son démarrage (un restart est requis après le switch).
+      platforms = {
+        matrix = {
+          channel_overrides = {
+            "!zQZcqfoWStODYAuIUE:matrix.marcpartensky.com" = {
+              provider = "claude-subscription-directsdk-experimental";
+              model = "claude-opus-5[1m]";
+            };
+            "!zOyDctBWcuFCJKJINI:matrix.marcpartensky.com" = {
+              provider = "claude-subscription-directsdk-experimental";
+              model = "claude-opus-5[1m]";
+            };
+            "!sylSYxsYVJRknngRnF:matrix.marcpartensky.com" = {
+              provider = "claude-subscription-directsdk-experimental";
+              model = "claude-sonnet-5[1m]";
+            };
           };
         };
       };
