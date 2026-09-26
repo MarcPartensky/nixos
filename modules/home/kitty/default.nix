@@ -39,8 +39,9 @@
       color14 = "#94e2d5";
       color15 = "#cdd6f4";
 
-      background_opacity = "1.0";
-      window_padding_width = 8;
+      background_opacity = "0.92";
+      window_padding_width = 12;
+      hide_window_decorations = true;
       confirm_os_window_close = 0;
     };
   };
