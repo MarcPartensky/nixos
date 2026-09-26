@@ -250,6 +250,20 @@
     }
   ];
 
+  # --- La règle sudo ci-dessus était INOPÉRANTE depuis les unités hermes ---
+  # Le module hermes-agent pose NoNewPrivileges=true dans le serviceConfig
+  # commun au gateway (hermes-agent.service) et au backend (hermes-backend.
+  # service). Sous ce flag le noyau IGNORE le bit setuid : sudo refuse net
+  # (« the "no new privileges" flag is set »), su échoue au setuid(), et le
+  # flag s'hérite par tous les enfants. Conséquence : une session ouverte
+  # depuis Matrix ou depuis le terminal web ne pouvait PAS lancer le
+  # nixos-rebuild que la règle NOPASSWD lui accorde pourtant.
+  #
+  # On le désactive donc sur les deux unités. Ça ne donne pas de shell root :
+  # sudo reste borné à la liste de commandes ci-dessus.
+  systemd.services.hermes-agent.serviceConfig.NoNewPrivileges = lib.mkForce false;
+  systemd.services.hermes-backend.serviceConfig.NoNewPrivileges = lib.mkForce false;
+
   # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
   # sans ça, libgit2 refuse d'ouvrir un flake appartenant à marc
   programs.git = {
