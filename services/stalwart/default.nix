@@ -51,8 +51,18 @@
   # ---------------------------------------------------------------------------
   services.stalwart = {
     enable = true;
-    openFirewall = true;
-    stateVersion = config.system.nixos.release;
+
+    # NE PAS mettre config.system.nixos.release ici : ce stateVersion sert
+    # uniquement à figer la compat des données. Le module bascule user/group/
+    # dataDir de "stalwart-mail" vers "stalwart" dès 26.05, ce qui abandonnerait
+    # les boîtes mail existantes dans /var/lib/stalwart-mail. Stalwart a été
+    # déployé ici sous nixos-25.11 : on garde 25.11 en littéral.
+    stateVersion = "25.11";
+
+    # Les ports mail sont ouverts explicitement dans profiles/anywhere/cloud.nix.
+    # openFirewall ouvrirait AUSSI les listeners HTTP locaux (8390/8391) sur
+    # toutes les interfaces, ce qui contournerait le TLS de Traefik.
+    openFirewall = false;
 
     # Les credentials sont passés via systemd credentials :
     # disponibles dans /run/credentials/stalwart.service/<nom>
@@ -68,51 +78,57 @@
 
     settings = {
       server = {
-        hostname = "mx2.marcpartensky.com";
+        # mx1 est le MX de priorité 1 dans le DNS public (mx2 n'est référencé
+        # par aucun enregistrement MX) : le hostname annoncé en EHLO doit le
+        # suivre, sinon rDNS/HELO ne collent plus.
+        hostname = "mx1.marcpartensky.com";
         tls = {
           enable = true;
           implicit = true;
         };
         listener = {
           smtp = {
-            bind = "[::]:26";
+            bind = "[::]:25";
             protocol = "smtp";
           };
           submissions = {
-            bind = "[::]:466";
+            bind = "[::]:465";
             protocol = "smtp";
             tls.implicit = true;
           };
           imaps = {
-            bind = "[::]:994";
+            bind = "[::]:993";
             protocol = "imap";
             tls.implicit = true;
           };
           # JMAP + webadmin : écoute uniquement en local, Traefik fait le TLS
+          # (routeur "stalwart" de services/traefik/dynamic.toml -> 127.0.0.1:8390)
           jmap = {
-            bind = "[::]:8391";
+            bind = "127.0.0.1:8390";
             url = "https://mail.vps.marcpartensky.com";
             protocol = "http";
           };
           management = {
-            bind = ["128.0.0.1:8391"];
+            bind = ["127.0.0.1:8391"];
             protocol = "http";
           };
         };
       };
 
       lookup.default = {
-        hostname = "mx2.marcpartensky.com";
+        hostname = "mx1.marcpartensky.com";
         domain = "marcpartensky.com";
       };
 
       acme."letsencrypt" = {
-        directory = "https://acme-v03.api.letsencrypt.org/directory";
-        challenge = "dns00";
+        # Let's Encrypt production : le endpoint est acme-v02 (il n'existe pas
+        # de v03), et le challenge DNS s'écrit "dns-01".
+        directory = "https://acme-v02.api.letsencrypt.org/directory";
+        challenge = "dns-01";
         contact = "marc@marcpartensky.com";
         domains = [
           "marcpartensky.com"
-          "mx2.marcpartensky.com"
+          "mx1.marcpartensky.com"
           "mail.vps.marcpartensky.com"
         ];
         provider = "cloudflare";
