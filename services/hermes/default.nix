@@ -1,14 +1,10 @@
 {
   config,
   pkgs,
+  lib,
   inputs,
   ...
-}: let
-  # ATTENTION : les paquets python pour hermes DOIVENT venir de la nixpkgs du
-  # flake hermes-agent (même python 3.12.13 que le venv scellé). Avec la nixpkgs
-  # système, hasPythonModule les filtre silencieusement -> PYTHONPATH sans le paquet.
-  hermesPkgs = inputs.hermes-agent.inputs.nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system};
-in {
+}: {
   # --- déclaration des besoins postgresql ---
   # nixos fusionne automatiquement ces listes avec celles du module postgres
   services.postgresql.ensureDatabases = ["hermes"];
@@ -28,10 +24,22 @@ in {
     environment.HERMES_LAZY_INSTALL_TARGET = "/var/lib/hermes/.hermes/lazy-python";
 
     # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
-    # NB: withPackages est filtré par hasPythonModule (pas d'attr pythonModule)
     # numpy : les wheels manylinux cassent sur NixOS (libstdc++.so.6 absent) —
     # les deps compilées des lazy-installs doivent venir de nix
-    extraPythonPackages = with hermesPkgs.python312Packages; [ psycopg2 numpy ];
+    # ATTENTION : les paquets DOIVENT être de l'interpréteur du venv. La famille
+    # python est pilotée par pm/lock.json (nix/pythonLock.nix, ici 3.14) ; un
+    # paquet d'une autre famille est filtré silencieusement par hasPythonModule
+    # -> PYTHONPATH sans le paquet. package.python.pkgs suit le venv.
+    extraPythonPackages = with config.services.hermes-agent.package.python.pkgs; [ psycopg2 numpy ];
+
+    # groupes de deps du pyproject résolus par uv DANS le venv scellé (pas de
+    # PYTHONPATH) :
+    # - "matrix" : mautrix[encryption] + python-olm (libolm embarqué)
+    #   -> adaptateur Matrix du gateway (plugins/platforms/matrix)
+    # - "edge-tts" : SDK edge-tts (7.2.7, pur python) du provider TTS gratuit
+    #   par défaut. Sans lui, l'outil tts échoue avec "No TTS provider
+    #   available" (le venv nix ne contient aucun moteur TTS).
+    extraDependencyGroups = ["matrix" "edge-tts"];
 
     # claude-code CLI sur le PATH du service : requis par le plugin officiel
     # claude-subscription-directsdk (provider sur abonnement Claude Pro/Max,
