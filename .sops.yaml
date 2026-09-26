@@ -36,3 +36,7 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  - path_regex: secrets/hermes-dashboard\.yml$
+    key_groups:
+      - age:
+          - *tower
