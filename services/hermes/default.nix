@@ -115,8 +115,28 @@
       };
 
       # --- Coût estimé dans la status bar CLI/TUI ---
+      # interface = "tui" : le REPL classique n'écrit AUCUN titre de terminal
+      # (aucun module terminal_title dans la version installée), alors que le TUI
+      # publie son titre en OSC 0/1/2 : "<etat> <session> · <modele> · <cwd>".
+      # C'est ce titre que herdr lit pour l'etat (blocked/working/done) ET pour
+      # afficher le modele de chaque pane dans sa sidebar (modules/nixos/herdr).
+      # Sans ce reglage, les panes hermes n'exposent pas leur modele a herdr.
       display = {
         show_cost = true;
+        interface = "tui";
+      };
+
+      # --- Plugin herdr : volontairement desactive ---
+      # `herdr integration install hermes` ecrit plugins.enabled =
+      # ["herdr-agent-state"] dans config.yaml, et le merge de l'activation
+      # conserve les cles non declarees ici : sans cette liste vide, l'entree
+      # reste et pointe un plugin absent (fichiers retires).
+      # Le plugin herdr sort immediatement si HERDR_ENV != 1, or le lancement
+      # habituel (`sudo su -l hermes hermes chat`) efface l'environnement herdr :
+      # il ne peut pas fonctionner en l'etat. A installer pour de bon (fichiers
+      # declaratifs + lancement qui conserve HERDR_*) si ce besoin revient.
+      plugins = {
+        enabled = [];
       };
 
       auxiliary = {

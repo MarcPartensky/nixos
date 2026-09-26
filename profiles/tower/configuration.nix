@@ -7,6 +7,9 @@
   imports = [
     ../../hosts/tower/disko.nix
     ../../hosts/laptop/hardware-configuration.nix
+    # config herdr de marc (~/.config/herdr/config.toml) : affiche le modele
+    # hermes de chaque pane dans la sidebar. Voir modules/nixos/herdr/.
+    ../../modules/nixos/herdr
   ];
 
   boot.kernelParams = ["panic=10"]; # reboot 10 s après un kernel panic, le dump reste dans pstore
