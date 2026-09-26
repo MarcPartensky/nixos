@@ -14,7 +14,7 @@
         Port = 22;
       };
       "towerlocal" = {
-        HostName = "192.168.1.2";
+        HostName = "192.168.1.44";
         User = "marc";
         Port = 22;
       };
