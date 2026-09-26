@@ -69,6 +69,17 @@ in {
   systemd.services = {
     mautrix-meta-instagram-registration.script = lib.mkBefore (mkPickleKey "instagram");
     mautrix-meta-messenger-registration.script = lib.mkBefore (mkPickleKey "messenger");
+
+    # BUG nixpkgs (vérifié 25/09/2026, toujours présent sur master) : l'unité de
+    # registration chgrp les meta-registration.yaml au groupe
+    # mautrix-meta-registration (dont matrix-synapse est MEMBRE), mais le module
+    # n'ajoute jamais ce groupe aux SupplementaryGroups de synapse. Le process
+    # ne l'a donc pas et ne peut pas lire les fichiers (0640) : synapse refuse
+    # de démarrer (tout le homeserver tombe). On l'ajoute ici, comme le fait le
+    # module mautrix-discord pour son propre groupe.
+    matrix-synapse.serviceConfig.SupplementaryGroups = [
+      "mautrix-meta-registration"
+    ];
   };
 
   # Après déploiement, connexion (à faire par marc), une fois par réseau :

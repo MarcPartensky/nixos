@@ -84,6 +84,27 @@ in {
   # le switch redémarre mautrix-discord.service quand ce fichier change.
   systemd.services.mautrix-discord.restartTriggers = [./default.nix];
 
+  # BUG nixpkgs (vérifié 25/09/2026, toujours présent sur master) : le module
+  # crée /var/lib/mautrix-discord en 0770 mautrix-discord:mautrix-discord
+  # (règle tmpfiles) alors que le fichier de registration est chgrp au groupe
+  # mautrix-discord-registration, seul groupe dont synapse est membre. Synapse
+  # ne peut donc même pas TRAVERSER le dossier et meurt au démarrage
+  # ("PermissionError: /var/lib/mautrix-discord/discord-registration.yaml"),
+  # ce qui met tout le homeserver en crash-loop.
+  #
+  # On remet le dossier dans le groupe de registration, en 0750. ATTENTION au
+  # TYPE de la règle : systemd-tmpfiles n'accepte qu'UNE SEULE ligne de type
+  # "prise de possession" (d/f/L/c/b/C...) par chemin ; une deuxième ligne `d`
+  # est rejetée avec « Duplicate line for path "...", ignoring. » et mkAfter n'y
+  # change rien (le premier gagne, donc celui du module). Il faut une ligne `z`
+  # (ajustement de mode/propriétaire d'un chemin existant), qui elle cohabite
+  # avec le `d` du module. Vérifié en reproduisant les deux cas à la main :
+  #   d + d -> "Duplicate line", dossier laissé en 0770 mautrix-discord
+  #   d + z -> appliqué, dossier en 0750 ...:mautrix-discord-registration
+  systemd.tmpfiles.rules = lib.mkAfter [
+    "z ${dataDir} 0750 mautrix-discord mautrix-discord-registration -"
+  ];
+
   # Pas d'inversion de dépendance ici : le module crée
   # mautrix-discord-registration.service et fait démarrer matrix-synapse après
   # lui (contrairement à whatsapp/signal qui génèrent la registration dans le
