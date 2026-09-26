@@ -154,6 +154,21 @@
         enabled = [];
       };
 
+      # --- TTS : Edge TTS (gratuit, sans clé API) ---
+      # Voix française par défaut (Hermes répond en français). Le SDK est fourni
+      # par extraDependencyGroups = "edge-tts" ci-dessus ; sans ce groupe l'outil
+      # tts échoue. Autres voix fr : fr-FR-HenriNeural (masculin),
+      # fr-FR-VivienneMultilingualNeural, fr-FR-RemyMultilingualNeural,
+      # fr-CA-SylvieNeural. Liste complète : `edge-tts --list-voices`.
+      # Lecture automatique des réponses : voice.auto_tts (défaut false ;
+      # à la demande via /voice tts en CLI).
+      tts = {
+        provider = "edge";
+        edge = {
+          voice = "fr-FR-DeniseNeural";
+        };
+      };
+
       auxiliary = {
         # vision : reste sur kimi explicitement (ne pas taper dans le quota
         # Claude Pro pour les descriptions d'images)
