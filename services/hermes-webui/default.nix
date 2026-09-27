@@ -2,7 +2,7 @@
 # UI web de chat Hermes (projet communautaire github:nesquena/hermes-webui,
 # input flake) tournant sur le profil « pocket », isolé du gateway Matrix.
 #
-# Chaîne : Pangolin (webui.marcpartensky.com, SSO)
+# Chaîne : Pangolin (hermes.marcpartensky.com, SSO)
 #          -> newt (site tower)
 #          -> 127.0.0.1:9131 (nginx, réécrit Host: 127.0.0.1:9130)
 #          -> 127.0.0.1:9130 (services.hermes-webui).
@@ -82,12 +82,12 @@ in {
       HERMES_WEBUI_SERVER_CWD = "/var/lib/hermes";
       # nginx réécrit Host: 127.0.0.1:9130 (cf. plus haut), donc le garde CSRF
       # du backend (api/routes.py: _check_same_origin_browser_request) voit un
-      # Origin (https://hermes-mobile.marcpartensky.com) qui ne matche jamais
+      # Origin (https://hermes.marcpartensky.com) qui ne matche jamais
       # le Host réécrit -> "Cross-origin mismatch". On déclare explicitement
       # l'origine publique comme fiable plutôt que de faire confiance à
       # X-Forwarded-Host (HERMES_WEBUI_TRUST_FORWARDED_HOST), Pangolin/newt
       # n'étant pas garanti de le poser.
-      HERMES_WEBUI_ALLOWED_ORIGINS = "https://hermes-mobile.marcpartensky.com";
+      HERMES_WEBUI_ALLOWED_ORIGINS = "https://hermes.marcpartensky.com";
     };
   };
 
@@ -116,10 +116,17 @@ in {
   # (donc tower) : `site` est omis volontairement, cf. services/newt.
   # NB : cle `proxy-resources` + `protocol` (schema attendu par le Pangolin du
   # VPS), cf. le commentaire detaille dans services/newt.
+  #
+  # Domaine : le WebUI est l'interface principale, il vit donc sur
+  # hermes.marcpartensky.com. hermes-mobile.marcpartensky.com est reserve a
+  # l'appli mobile (backend du profil pocket), ne pas le reprendre ici.
+  # ATTENTION : une ressource Pangolin manuelle (id 22, nom "hermes") occupe
+  # deja hermes.marcpartensky.com cote VPS (cible tower:10274, port mort).
+  # Tant qu'elle existe, deux routers Traefik viseront le meme host.
   services.newt.blueprint.proxy-resources.hermes-webui = {
     name = "Chat web Hermes";
     protocol = "http";
-    full-domain = "hermes-mobile.marcpartensky.com";
+    full-domain = "hermes.marcpartensky.com";
     auth.sso-enabled = true;
     targets = [
       {
