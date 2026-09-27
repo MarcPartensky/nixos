@@ -26,7 +26,7 @@
     ../../services/zitadel
     ../../services/pangolin
     ../../services/wireguard
-    ../../services/tailscale
+    # ../../services/tailscale # desactive 26/09: exige le secret sops tailscale/auth_key (absent de secrets/anywhere.yml). Reactiver avec le mesh.
     ../../services/headscale
     # ./services/chhoto
     ../../services/eternal-terminal
