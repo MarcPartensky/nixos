@@ -46,6 +46,7 @@
     ./zitadel-mcp
     ./roku
     ./codeberg-mcp
+    ./meetup-mcp
     ./gitea
     # ./kanidm
     # ./syncserver
