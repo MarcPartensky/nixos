@@ -3,7 +3,8 @@
   pkgs,
   config,
   lib,
-  ...
+  inputs,
+  ...,
 }: {
   sops.secrets = {
     "gotify/admin_password" = {
@@ -26,7 +27,7 @@
 
   services.gotify = {
     enable = true;
-    package = pkgs.gotify-server;
+    package = inputs.unstable.gotify-server;
     stateDirectoryName = "gotify";
 
     environment = {
@@ -34,6 +35,17 @@
       GOTIFY_DATABASE_DIALECT = "postgres";
       GOTIFY_DEFAULTUSER_NAME = "admin";
       GOTIFY_PASSSTRENGTH = "10";
+
+      # OIDC / Zitadel SSO
+      GOTIFY_OIDC_ENABLED = "true";
+      GOTIFY_OIDC_CLIENT_ID = "392663692992381228";
+      GOTIFY_OIDC_CLIENT_SECRET = "";
+      GOTIFY_OIDC_ISSUER = "https://auth.marcpartensky.com";
+      GOTIFY_OIDC_REDIRECT_URL = "https://gotify.marcpartensky.com/auth/oidc/callback";
+      GOTIFY_OIDC_SCOPES = "openid profile email";
+      GOTIFY_OIDC_USERNAME_CLAIM = "preferred_username";
+      GOTIFY_OIDC_DISPLAY_NAME_CLAIM = "name";
+      GOTIFY_OIDC_EMAIL_CLAIM = "email";
     };
 
     environmentFiles = [
@@ -100,5 +112,20 @@
       host    gotify    gotify   127.0.0.1/32  md5
       local   all       all                 peer
     '';
+  };
+
+  # Exposition via Pangolin (newt blueprint) -> gotify.marcpartensky.com
+  services.newt.blueprint.proxy-resources.gotify = {
+    name = "Gotify notifications";
+    protocol = "http";
+    full-domain = "gotify.marcpartensky.com";
+    auth.sso-enabled = true;
+    targets = [
+      {
+        hostname = "127.0.0.1";
+        port = 8070;
+        method = "http";
+      }
+    ];
   };
 }
