@@ -61,5 +61,17 @@
   # (user@host = hermes@tower, auth par clé, pas de mot de passe).
   # Déclaratif exprès : /var/lib/hermes est en 2770 (écriture groupe, requis par
   # le partage hermes/marc) et sshd (StrictModes, cf services/hermes) ignore
-  # alors %h/.ssh/authorized_keys. Cette option écrit /etc/ssxToken = true;
+  # alors %h/.ssh/authorized_keys. Cette option écrit /etc/ssh/authorized_keys.d/
+  # hermes en root 444, qui passe le contrôle, et survit aux rebuilds.
+  users.users.hermes.openssh.authorizedKeys.keys = lib.mkAfter [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
+  ];
+
+  networking.hostName = "tower";
+  sops.defaultSopsFile = lib.mkForce ../../secrets/tower.yml;
+
+  # Token Matrix du bot @hermes : seul tower est destinataire du fichier sops
+  # (secrets/hermes-matrix.yml). Les autres hôtes qui importent services/hermes
+  # (laptop, anywhere) ne doivent PAS le déclarer. Voir services/hermes.
+  services.hermes.enableMatrixToken = true;
 }
