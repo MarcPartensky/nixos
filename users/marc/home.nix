@@ -66,6 +66,7 @@
     ../../modules/home/yt-collate
     ../../modules/home/youtube-music-cli
     ../../modules/home/geminicommit
+    ../../modules/home/herdr
 
     ../../modules/home/backtest
     ../../modules/home/portfolio-optimizer
@@ -90,7 +91,7 @@
   home.sessionVariables = {
     EDITOR = "nvim";
     VISUAL = "nvim";
-    GSETTINGS_SCHEMA_DIR = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
+        GSETTINGS_SCHEMA_DIR = "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}";
     DEFAULT_BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
     BROWSER = "${inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default}/bin/zen";
     ELECTRON_OZONE_PLATFORM_HINT = "wayland";

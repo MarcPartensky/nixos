@@ -1,6 +1,8 @@
 # Config herdr (multiplexeur d'agents, github:ogulcancelik/herdr).
-# But : voir le modele Hermes de chaque pane dans la sidebar, sans rien taper.
+# Declaree dans modules/home/herdr/default.nix (xdg.configFile), donc posee par
+# home-manager : ne pas editer ~/.config/herdr/config.toml a la main.
 #
+# But : voir le modele Hermes de chaque pane dans la sidebar, sans rien taper.
 # Principe : le TUI hermes ecrit son titre OSC sous la forme
 #   <etat> <session> . <modele> . <cwd>      (⚠ bloqué, ⏳ travaille, ✓ idle)
 # herdr lit ce titre (il s'en sert deja pour l'etat blocked/working/done, cf
