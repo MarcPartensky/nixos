@@ -36,6 +36,7 @@
     ./hermes-webui
     ./hermes-dashboard
     ./discord-bot
+    ./discord-hermes-bridge
     ./eternal-terminal
     ./nextcloud-mcp
     ./amazon-mcp
