@@ -52,12 +52,13 @@
   services.stalwart = {
     enable = true;
 
-    # NE PAS mettre config.system.nixos.release ici : ce stateVersion sert
-    # uniquement à figer la compat des données. Le module bascule user/group/
-    # dataDir de "stalwart-mail" vers "stalwart" dès 26.05, ce qui abandonnerait
-    # les boîtes mail existantes dans /var/lib/stalwart-mail. Stalwart a été
-    # déployé ici sous nixos-25.11 : on garde 25.11 en littéral.
-    stateVersion = "25.11";
+    # Ce stateVersion n'est PAS celui du système : il sélectionne user/group/
+    # dataDir du module (« stalwart » >= 26.05, sinon « stalwart-mail »).
+    # Les données LIVE sont dans /var/lib/stalwart/db (vérifié le 27/09/2026
+    # sur le VPS : fds ouverts du process + toml du système actif). Repasser à
+    # « 25.11 » pointerait sur /var/lib/stalwart-mail, dont le contenu date de
+    # juillet 2026 (données mortes). NE PAS redescendre sous 26.05.
+    stateVersion = "26.05";
 
     # Les ports mail sont ouverts explicitement dans profiles/anywhere/cloud.nix.
     # openFirewall ouvrirait AUSSI les listeners HTTP locaux (8390/8391) sur
