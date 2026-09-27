@@ -34,6 +34,7 @@
     ./jupyterhub
     ./hermes
     ./hermes-webui
+    ./hermes-dashboard
     ./discord-bot
     ./eternal-terminal
     ./nextcloud-mcp
