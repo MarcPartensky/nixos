@@ -239,7 +239,21 @@
           ./users.nix
         ];
       };
+
+      # VM de dev microvm.nix (input `microvm`, voir vms/) : `just vm` ou
+      # `nix run .#dev`. Dupliquer vms/dev.nix pour une 2e VM.
+      dev = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {inherit inputs;};
+        modules = [
+          inputs.microvm.nixosModules.microvm
+          ./vms/dev.nix
+        ];
+      };
     };
+
+    # Runners des VM de dev, lançables directement : `nix run .#dev`.
+    packages.x86_64-linux.dev = self.nixosConfigurations.dev.config.microvm.declaredRunner;
 
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
       # pkgs = import inputs.nixpkgs-droid {
