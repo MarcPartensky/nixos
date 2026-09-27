@@ -162,6 +162,10 @@
       display = {
         show_cost = true;
         interface = "tui";
+        # Thème Catppuccin Mocha (dark) + accent Lavender, demandé par marc
+        # le 26/09/2026. Fichier de palette : skins/catppuccin-dark-lavender.yaml
+        # sous /var/lib/hermes/.hermes/skins (pas géré par nix, écrit au runtime).
+        skin = "catppuccin-dark-lavender";
       };
 
       # --- Plugin herdr : integre hermes a herdr, declarativement ---
