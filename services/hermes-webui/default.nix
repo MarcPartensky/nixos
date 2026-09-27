@@ -36,7 +36,21 @@ in {
 
   services.hermes-webui = {
     enable = true;
-    package = inputs.hermes-webui.packages.${pkgs.stdenv.hostPlatform.system}.default;
+    # Paquet amont + patch local : le WebUI n'écrit son titre de session qu'à
+    # la fin d'un run (et jamais si le run est interrompu), donc la sidebar
+    # affiche le premier message brut pendant tout le run. Le moteur Hermes
+    # (hermes_state) a déjà le bon titre dans state.db quelques secondes après
+    # le premier message. core_title_adoption.py démarre un watchdog qui
+    # recopie ce titre dans le sidecar du WebUI (state.db ouvert en lecture
+    # seule, désactivable par HERMES_WEBUI_CORE_TITLE_ADOPTION=0).
+    # À retirer quand le comportement existe en amont dans l'input.
+    package = inputs.hermes-webui.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs (old: {
+      postInstall = (old.postInstall or "") + ''
+        chmod u+w $out/hermes-webui/api
+        install -m 0644 ${./core_title_adoption.py} $out/hermes-webui/api/core_title_adoption.py
+        install -m 0644 ${./api_init.py} $out/hermes-webui/api/__init__.py
+      '';
+    });
 
     # même compte que le service hermes : il doit lire/écrire l'état du profil
     user = "hermes";
