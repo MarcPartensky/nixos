@@ -21,6 +21,12 @@
   # deplaces en .hm-backup au lieu de faire echouer l'activation
   # (check-link-targets sort sinon en exit 1).
   home-manager.backupFileExtension = "hm-backup";
+  # Test perf : partager le pkgs systeme avec HM au lieu d'en reinstancier un
+  # (evalue/importe nixpkgs 2x sinon). L'overlay nur (utilise par zen-browser,
+  # ex modules/home/firefox|librewolf non actifs) doit alors vivre ici.
+  home-manager.useGlobalPkgs = true;
+  home-manager.useUserPackages = true;
+  nixpkgs.overlays = [inputs.nur.overlays.default];
 
   # Sessions hermes lancees par marc (panes herdr, HERMES_HOME partage, cf
   # users/marc/home.nix) : elles ecrivent dans /var/lib/hermes/.hermes. Le
@@ -69,9 +75,4 @@
 
   networking.hostName = "tower";
   sops.defaultSopsFile = lib.mkForce ../../secrets/tower.yml;
-
-  # Token Matrix du bot @hermes : seul tower est destinataire du fichier sops
-  # (secrets/hermes-matrix.yml). Les autres hôtes qui importent services/hermes
-  # (laptop, anywhere) ne doivent PAS le déclarer. Voir services/hermes.
-  services.hermes.enableMatrixToken = true;
 }

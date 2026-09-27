@@ -59,6 +59,7 @@ in {
 
   catppuccin = {
     enable = true;
+    autoEnable = false; # test perf eval : desactive le scan/activation auto de tous les programmes HM
     flavor = "mocha";
     accent = "lavender";
     cursors.enable = true;
