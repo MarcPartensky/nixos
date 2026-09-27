@@ -35,6 +35,7 @@
     ./hermes
     ./hermes-webui
     ./hermes-dashboard
+    ./hermes-pocket
     ./discord-bot
     ./discord-hermes-bridge
     ./eternal-terminal
