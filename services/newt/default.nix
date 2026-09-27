@@ -22,9 +22,13 @@
     # donc le service reste bindé sur loopback et rien n'est exposé sur le LAN.
     # `site` est omis volontairement : quand le blueprint est appliqué par un
     # site, Pangolin affecte automatiquement le site qui l'applique.
-    blueprint.public-resources.novnc-tower = {
+    # NB : le Pangolin de ce VPS (schema ancien) attend la cle `proxy-resources`
+    # + le champ `protocol`. `public-resources`/`mode` (doc actuelle) sont
+    # ignores SILENCIEUSEMENT par le serveur -> ressource jamais creee, et
+    # Traefik repond 404 sur le domaine. Verifie le 26/09/2026.
+    blueprint.proxy-resources.novnc-tower = {
       name = "noVNC tower";
-      mode = "http";
+      protocol = "http";
       full-domain = "vnc.marcpartensky.com";
       auth.sso-enabled = true;
       targets = [
