@@ -315,7 +315,12 @@
     };
 
     # claude aussi dispo pour marc et les sessions CLI de hermes
-    environment.systemPackages = [pkgs.claude-code];
+    # python3 SYSTEME (pas celui du venv scelle) : le probe de demarrage SSH de
+    # Hermes Desktop execute `python3 -c ...` sur la machine distante pour lire
+    # ~/.hermes-update-in-progress. Sans python3 dans le PATH ssh, TOUTE connexion
+    # Desktop en SSH echoue avec "Could not prove that the remote Hermes install
+    # is clear for SSH startup." (verifie le 27/09/2026)
+    environment.systemPackages = [pkgs.claude-code pkgs.python3];
 
     sops.secrets."hermes_env" = {};
 
