@@ -164,17 +164,23 @@
         interface = "tui";
       };
 
-      # --- Plugin herdr : volontairement desactive ---
-      # `herdr integration install hermes` ecrit plugins.enabled =
-      # ["herdr-agent-state"] dans config.yaml, et le merge de l'activation
-      # conserve les cles non declarees ici : sans cette liste vide, l'entree
-      # reste et pointe un plugin absent (fichiers retires).
-      # Le plugin herdr sort immediatement si HERDR_ENV != 1, or le lancement
-      # habituel (`sudo su -l hermes hermes chat`) efface l'environnement herdr :
-      # il ne peut pas fonctionner en l'etat. A installer pour de bon (fichiers
-      # declaratifs + lancement qui conserve HERDR_*) si ce besoin revient.
+      # --- Plugin herdr : integre hermes a herdr, declarativement ---
+      # `extraPlugins` symlinke le paquet dans /var/lib/hermes/.hermes/plugins/
+      # (sous le nom nix-managed-<nom>) ; le code du plugin est vendorise dans
+      # services/hermes/plugins/herdr-agent-state (recopie de ce que produit
+      # `herdr integration install hermes`), donc plus d'install imperative.
+      # Ce plugin rapporte l'ID DE SESSION a herdr (herdr pane
+      # report-agent-session), ce qui permet a herdr de relancer le pane dans sa
+      # conversation (`hermes --resume <id>`, option [session]
+      # resume_agents_on_restore).
+      # LIMITE : le plugin sort immediatement si HERDR_ENV != 1 ou sans
+      # HERDR_PANE_ID, et il parle au socket herdr de MARC
+      # (~/.config/herdr/herdr.sock) : il ne peut donc fonctionner que si hermes
+      # tourne dans le pane avec l'env herdr et sous le meme utilisateur que le
+      # serveur herdr. Le lancement habituel (`sudo su -l hermes hermes chat`)
+      # efface cet env -> plugin inerte mais sans effet de bord.
       plugins = {
-        enabled = [];
+        enabled = [ "herdr-agent-state" ];
       };
 
       # --- TTS : Edge TTS (gratuit, sans clé API) ---
@@ -246,6 +252,31 @@
         };
       };
     };
+
+    # --- Plugin herdr : integre hermes a herdr, declarativement ---
+    # Option de SERVICE (pas dans settings : un extraPlugins mis dans settings
+    # finit juste comme cle inerte de config.yaml, et aucun symlink n'est cree).
+    # `extraPlugins` symlinke le paquet dans /var/lib/hermes/.hermes/plugins/
+    # sous le nom nix-managed-<nom> ; le code du plugin est vendorise dans
+    # services/hermes/plugins/herdr-agent-state (recopie de ce que produit
+    # `herdr integration install hermes`), donc plus d'install imperative.
+    # Ce plugin rapporte l'ID DE SESSION a herdr (herdr pane
+    # report-agent-session), ce qui permet a herdr de relancer le pane dans sa
+    # conversation (`hermes --resume <id>`, option [session]
+    # resume_agents_on_restore).
+    # LIMITE : le plugin sort immediatement si HERDR_ENV != 1 ou sans
+    # HERDR_PANE_ID, et il parle au socket herdr de MARC
+    # (~/.config/herdr/herdr.sock, 0600, dossier 0700) : il ne peut donc
+    # fonctionner que si hermes tourne dans le pane avec l'env herdr ET sous
+    # l'utilisateur marc. Le lancement habituel (`sudo su -l hermes hermes
+    # chat`) efface cet env -> plugin inerte mais sans effet de bord.
+    extraPlugins = [
+      (pkgs.runCommandLocal "herdr-agent-state" {} ''
+        mkdir -p $out
+        cp ${./plugins/herdr-agent-state/plugin.yaml} $out/plugin.yaml
+        cp ${./plugins/herdr-agent-state/__init__.py} $out/__init__.py
+      '')
+    ];
   };
 
   # --- MCP GitHub : serveur officiel (@modelcontextprotocol/server-github) ---
