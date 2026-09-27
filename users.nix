@@ -26,6 +26,10 @@
           "network"
           "manager"
           "ydotool"
+          # sessions hermes lancees par marc dans les panes herdr : elles
+          # partagent le state dir /var/lib/hermes/.hermes du service (cf
+          # HERMES_HOME dans users/marc/home.nix), donc acces groupe hermes.
+          "hermes"
         ];
         # openssh.authorizedKeys.keys =
         shell = pkgs.zsh;
