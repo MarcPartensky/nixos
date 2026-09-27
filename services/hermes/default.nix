@@ -39,13 +39,17 @@
     environment.MATRIX_ALLOWED_USERS = "@marc:matrix.marcpartensky.com,@signal_ad927dda-4064-48ff-8652-01a0d71005e4:matrix.marcpartensky.com";
 
     # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
-    # numpy : les wheels manylinux cassent sur NixOS (libstdc++.so.6 absent) —
-    # les deps compilées des lazy-installs doivent venir de nix
+    # numpy N'EST PLUS LISTÉ ICI : depuis l'ajout de "stt-whisper" (onnxruntime ->
+    # numpy 2.4.3) le venv scellé le fournit lui-même, et le build du paquet hermes
+    # ÉCHOUE si un paquet de extraPythonPackages doublonne le venv ("plugin package
+    # \"numpy\" collides with a package in hermes sealed venv"). Le numpy du venv
+    # (buildé par nix) sert aussi aux lazy-installs runtime : wheel manylinux cassée
+    # sur NixOS (libstdc++.so.6 absent), d'où l'ancienne présence ici.
     # ATTENTION : les paquets DOIVENT être de l'interpréteur du venv. La famille
     # python est pilotée par pm/lock.json (nix/pythonLock.nix, ici 3.14) ; un
     # paquet d'une autre famille est filtré silencieusement par hasPythonModule
     # -> PYTHONPATH sans le paquet. package.python.pkgs suit le venv.
-    extraPythonPackages = with config.services.hermes-agent.package.python.pkgs; [ psycopg2 numpy ];
+    extraPythonPackages = with config.services.hermes-agent.package.python.pkgs; [ psycopg2 ];
 
     # groupes de deps du pyproject résolus par uv DANS le venv scellé (pas de
     # PYTHONPATH) :
@@ -54,7 +58,11 @@
     # - "edge-tts" : SDK edge-tts (7.2.7, pur python) du provider TTS gratuit
     #   par défaut. Sans lui, l'outil tts échoue avec "No TTS provider
     #   available" (le venv nix ne contient aucun moteur TTS).
-    extraDependencyGroups = ["matrix" "edge-tts"];
+    # - "stt-whisper" : faster-whisper (transcription locale, gratuite, CPU) pour
+    #   les vocaux entrants. Sans lui le gateway répond "voice message could not
+    #   be transcribed automatically" et le cas d'usage "je parle dans mes
+    #   écouteurs depuis Element" ne marche pas.
+    extraDependencyGroups = ["matrix" "edge-tts" "stt-whisper"];
 
     # claude-code CLI sur le PATH du service : requis par le plugin officiel
     # claude-subscription-directsdk (provider sur abonnement Claude Pro/Max,
@@ -181,6 +189,24 @@
         provider = "edge";
         edge = {
           voice = "fr-FR-DeniseNeural";
+        };
+      };
+
+      # --- STT : faster-whisper local (gratuit, CPU, sans clé API) ---
+      # Transcrit automatiquement les vocaux entrants (Matrix/Element, etc.) :
+      # le gateway transcrit tout message vocal quand stt.enabled est vrai.
+      # Le moteur vient du groupe "stt-whisper" ci-dessus.
+      # language = "" est IMPORTANT : la valeur par défaut est "en", qui force
+      # Whisper à décoder du français comme de l'anglais. Vide = détection
+      # automatique (mesuré : fr détecté à p=0.99 sur un vocal court).
+      # Modèle "base" (140 Mo, ~5 s pour 3 s d'audio, CPU) ; "small" ou "medium"
+      # si la précision ne suffit pas avec un micro d'écouteurs en environnement
+      # bruyant. provider non déclaré = échelle auto (local d'abord).
+      stt = {
+        enabled = true;
+        language = "";
+        local = {
+          model = "base";
         };
       };
 
