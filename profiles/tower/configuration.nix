@@ -75,4 +75,9 @@
 
   networking.hostName = "tower";
   sops.defaultSopsFile = lib.mkForce ../../secrets/tower.yml;
+
+  # Token Matrix du bot @hermes : seul tower est destinataire du fichier sops
+  # (secrets/hermes-matrix.yml). Les autres hôtes qui importent services/hermes
+  # (laptop, anywhere) ne doivent PAS le déclarer. Voir services/hermes.
+  services.hermes.enableMatrixToken = true;
 }
