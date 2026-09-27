@@ -195,6 +195,10 @@
           ./profiles/common
           ./profiles/tower/configuration.nix
           ./services
+          # protonmail-mcp = tower uniquement (le module du input déclare
+          # l'option ; les autres hôtes ne l'importent donc pas). Cf.
+          # services/default.nix où l'import est commenté.
+          ./services/protonmail-mcp
           protonmailMcp.nixosModules.default
         ];
       };

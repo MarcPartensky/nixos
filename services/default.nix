@@ -40,7 +40,10 @@
     ./eternal-terminal
     ./nextcloud-mcp
     ./amazon-mcp
-    ./protonmail-mcp
+    # ./protonmail-mcp : tower uniquement (ses options viennent du input
+    # protonmail-mcp, importé par flake.nix pour tower seul). L'import ici
+    # cassait l'éval de laptop/laptop-iso (option `services.protonmail-mcp`
+    # inexistante chez eux). Le fichier reste importé pour tower via flake.nix.
     ./firefox-mcp
     # ./gotify
     ./zitadel
