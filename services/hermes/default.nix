@@ -107,22 +107,18 @@
           }
         ];
 
-        # --- Modèle par défaut : Claude Sonnet 5 (abonnement Claude Pro/Max) ---
-        # Politique marc du 26/09/2026 : sonnet high par défaut, puis les gratuits
-        # OpenRouter, DeepSeek Flash en dernier recours. ATTENTION : consomme le
-        # quota de l'abonnement à CHAQUE message (plus un simple secours occasionnel) ;
-        # quota reset ~6h (cf mémoire hermes). Surveiller l'usure du quota.
+        # --- Modèle par défaut : Nemotron 3 Ultra gratuit (OpenRouter) ---
+        # Politique marc du 27/09/2026 : nemotron-3-ultra:free high par défaut,
+        # puis inkling:free, DeepSeek Flash en dernier recours.
         model = {
-          provider = "claude-subscription-directsdk-experimental";
-          default = "claude-sonnet-5";
+          provider = "openrouter";
+          default = "nvidia/nemotron-3-ultra-550b-a55b:free";
         };
 
         # --- Chaîne de secours si le primaire tombe (rate limit, 5xx, auth) ---
         # essayés dans l'ordre, Bascule au milieu de session sans perdre la conv.
-        # 1-2. gratuits OpenRouter : inkling:free (1M ctx, Thinking Machines) puis
-        #    nemotron 3 ultra:free (1M ctx, Nvidia). Vérifié le 24/09/2026 : 1000
-        #    req/jour autorisées sur les variantes :free de la clé OpenRouter.
-        # 3. DeepSeek V4.1 Flash (payant mais bon marché, ~$0.04/$0.49 par M tokens)
+        # 1. inkling:free (1M ctx, Thinking Machines) gratuit OpenRouter.
+        # 2. DeepSeek V4.1 Flash (payant mais bon marché, ~$0.04/$0.49 par M tokens)
         #    en dernier recours si les gratuits sont aussi indisponibles/rate-limited.
         #    base_url explicite : la clé est écrite à chaque activation, donc une
         #    valeur impérative périmée dans config.yaml est écrasée.
@@ -130,10 +126,6 @@
           {
             provider = "openrouter";
             model = "thinkingmachines/inkling:free";
-          }
-          {
-            provider = "openrouter";
-            model = "nvidia/nemotron-3-ultra-550b-a55b:free";
           }
           {
             provider = "openrouter";
@@ -154,6 +146,8 @@
           reasoning_overrides = {
             "deepseek/deepseek-v4.1-flash" = "high";
             "deepseek-v4.1-flash" = "high";
+            "nvidia/nemotron-3-ultra-550b-a55b:free" = "high";
+            "nemotron-3-ultra" = "high";
             "claude-opus-5[1m]" = "max";
             "claude-opus-5" = "max";
             "claude-sonnet-5[1m]" = "high";
