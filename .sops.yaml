@@ -40,3 +40,7 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  - path_regex: secrets/gitea\.yml$
+    key_groups:
+      - age:
+          - *tower
