@@ -33,6 +33,7 @@
     # ./minio
     ./jupyterhub
     ./hermes
+    ./hermes-webui
     ./discord-bot
     ./eternal-terminal
     ./nextcloud-mcp
