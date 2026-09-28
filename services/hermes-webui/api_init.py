@@ -7,6 +7,13 @@ instead of the raw first message.  Remove this patch once the behaviour exists
 upstream in the hermes-webui input.
 """
 
-from . import core_title_adoption as _core_title_adoption
+import logging as _logging
 
-_core_title_adoption.start()
+try:
+    from . import core_title_adoption as _core_title_adoption
+
+    _core_title_adoption.start()
+except Exception:  # a title helper must never break server startup
+    _logging.getLogger(__name__).warning(
+        "core title adoption watchdog failed to start", exc_info=True
+    )
