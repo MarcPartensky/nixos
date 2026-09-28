@@ -9,7 +9,7 @@
     ./vaultwarden
     ./newt
     ./readarr
-    # ./radarr
+    ./radarr
     ./sonarr
     ./prowlarr
     ./flaresolverr
@@ -29,6 +29,9 @@
     # ./matrix-telegram # attendre api_id/api_hash de my.telegram.org
     ./navidrome
     ./jellyfin
+    ./audiobookshelf
+    ./media
+    ./arr-mcp
     ./tor
     # ./minio
     ./jupyterhub
