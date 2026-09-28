@@ -156,6 +156,14 @@
       flake = false;
     };
 
+    stalwart-mcp = {
+      # Rust MCP server for Stalwart Mail Server (webpatser/stalwart-mcp).
+      # JMAP access: read, search, real-time notifications via EventSource.
+      # Pin sur commit main (pas de release taggée).
+      url = "github:webpatser/stalwart-mcp/be2c16d5921f45395996a130a5a643c542ef2105";
+      flake = false;
+    };
+
     jovian.url = "github:Jovian-Experiments/Jovian-NixOS";
     # jovian.inputs.nixpkgs.follows = "nixpkgs";
 
