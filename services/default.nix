@@ -63,5 +63,15 @@
     # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes
+
+    # Remote desktop gateway & access (WIP, non activé sur aucun profil : les
+    # modules définissent juste les options, `enable` reste à false partout.
+    # Domaines/secrets encore en placeholder dans les modules, cf TODO internes.)
+    ../modules/nixos/vault-rustguac
+    ../modules/nixos/rustguac
+    ../modules/nixos/kasmvnc
+    ../modules/nixos/rustdesk
+    ../modules/nixos/nginx/rustguac
+    ../modules/nixos/nginx/kasmvnc
   ];
 }
