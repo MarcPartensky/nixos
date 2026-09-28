@@ -397,6 +397,10 @@
     # le pont Discord et l'API server partagent donc LA MÊME clé, chiffrée une
     # seule fois dans secrets/discord-hermes-bridge.yml.
     sops.secrets."hermes_api_server_env" = {
+      # TODO(marc) : renommer la clé hermes_discord_bridge_env -> hermes_api_server_env
+      # dans secrets/discord-hermes-bridge.yml (sops) quand tu as la clé age sous la
+      # main ; hermes n'a pas accès en déchiffrement pour le faire lui-même.
+      key = "hermes_discord_bridge_env";
       sopsFile = ../../secrets/discord-hermes-bridge.yml;
     };
 
