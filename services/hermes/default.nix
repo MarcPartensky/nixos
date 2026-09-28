@@ -39,7 +39,8 @@
       environmentFiles =
         [ config.sops.secrets."hermes_env".path ]
         ++ lib.optional config.services.hermes.enableMatrixToken config.sops.secrets."hermes_matrix_env".path
-        ++ lib.optional config.services.hermes.enableDiscordToken config.sops.secrets."hermes_discord_env".path;
+        ++ lib.optional config.services.hermes.enableDiscordToken config.sops.secrets."hermes_discord_env".path
+        ++ [ config.sops.secrets."hermes_api_server_env".path ];
       addToSystemPackages = true;
 
       # venv nix scellé -> deps mem0 (mem0ai) installées au runtime dans une cible durable
@@ -66,6 +67,19 @@
       # --- Opus (voix Discord) : voir le bloc "Opus" plus bas, au niveau `config`
       # (l'env du process se pose sur l'unité systemd, pas via `environment`, qui
       # n'écrit que $HERMES_HOME/.env) ---
+
+      # --- API Server (OpenAI-compatible) : UN SEUL listener pour l'hôte ---
+      # La topologie de Hermes est "un gateway par hôte qui sert tous les profils"
+      # (multiplex). Un profil secondaire qui demande son API server n'obtient PAS
+      # son propre port : le listener du profil default le sert sous
+      # /p/<profil>/... (log gateway : "api_server is served by the default
+      # profile's listener at /p/<profil>/ — not starting a second listener").
+      # C'est ce que consomme le pont Discord : services/discord-bot appelle
+      # http://127.0.0.1:8642/p/discord-bridge/v1/chat/completions.
+      # Bind loopback uniquement, clé obligatoire (sops), jamais ouvert au
+      # firewall, jamais routé par Pangolin.
+      environment.API_SERVER_ENABLED = "true";
+      environment.API_SERVER_PORT = "8642";
 
       # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
       # numpy N'EST PLUS LISTÉ ICI : depuis l'ajout de "stt-whisper" (onnxruntime ->
@@ -359,6 +373,15 @@
     environment.systemPackages = [pkgs.claude-code pkgs.python3];
 
     sops.secrets."hermes_env" = {};
+
+    # Clé du listener API Server du profil default (clé "hermes_api_server_env"
+    # du fichier sops, valeur = contenu dotenv "API_SERVER_KEY=..."). Même valeur
+    # que HERMES_BRIDGE_API_KEY côté services/discord-bot, qui l'envoie en Bearer :
+    # le pont Discord et l'API server partagent donc LA MÊME clé, chiffrée une
+    # seule fois dans secrets/discord-hermes-bridge.yml.
+    sops.secrets."hermes_api_server_env" = {
+      sopsFile = ../../secrets/discord-hermes-bridge.yml;
+    };
 
     # Token Matrix du bot (@hermes) — clé "hermes_matrix_env" du fichier sops,
     # valeur = contenu dotenv (MATRIX_ACCESS_TOKEN=...) fusionné dans .env.
