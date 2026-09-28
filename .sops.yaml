@@ -12,6 +12,10 @@ creation_rules:
           - *tower
           - *mac
           - *deck
+  - path_regex: secrets/hermes_api_server_env\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/mac\.yml$
     key_groups:
       - age:
@@ -36,6 +40,10 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  - path_regex: secrets/hermes-discord\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/discord-hermes-bridge\.yml$
     key_groups:
       - age:
@@ -45,6 +53,26 @@ creation_rules:
       - age:
           - *tower
   - path_regex: secrets/gitea\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/gitea-oidc\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/gitea-mcp\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/codeberg\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/audiobookshelf\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/ibkr\.yml$
     key_groups:
       - age:
           - *tower
