@@ -6,6 +6,13 @@
   ...
 }: {
   # ---------------------------------------------------------------------------
+  # SECRETS ACME (certificat) — injectés dans /etc/stalwart/ pour le module stalwart
+  # ---------------------------------------------------------------------------
+  environment.etc = {
+    "stalwart/acme-secret".text = config.sops.secrets."stalwart/acme_secret".path;
+  };
+
+  # ---------------------------------------------------------------------------
   # SECRETS SOPS
   # ---------------------------------------------------------------------------
   sops.secrets = {
@@ -134,7 +141,7 @@
         ];
         provider = "cloudflare";
         # Référence le credential systemd injecté ci-dessus
-        secret = "%{file:/run/credentials/stalwart.service/acme-secret}%";
+        secret = "%{file:/etc/stalwart/acme-secret}%";
       };
 
       session.auth = {
