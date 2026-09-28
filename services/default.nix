@@ -49,13 +49,17 @@
     # cassait l'éval de laptop/laptop-iso (option `services.protonmail-mcp`
     # inexistante chez eux). Le fichier reste importé pour tower via flake.nix.
     ./firefox-mcp
+    # ./stalwart-mcp  # FIXME: cargoHash mismatch, needs fix
     # ./gotify
     ./zitadel
     ./zitadel-mcp
     ./roku
     ./codeberg-mcp
+    ./ibkr-mcp
+    # ./vaultwarden-mcp  # FIXME: missing input
     ./meetup-mcp
     ./gitea
+    ./gitea-mcp
     # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes
