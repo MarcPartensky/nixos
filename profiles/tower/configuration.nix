@@ -7,26 +7,13 @@
   imports = [
     ../../hosts/tower/disko.nix
     ../../hosts/laptop/hardware-configuration.nix
+    # config herdr de marc (~/.config/herdr/config.toml) : affiche le modele
+    # hermes de chaque pane dans la sidebar. Voir modules/nixos/herdr/.
+    # Posee cote systeme (symlink vers le store) : le build systeme (root) ne
+    # construit PAS la conf home-manager de marc, qui reste standalone
+    # (`HM=marc just home` / homeConfigurations.marc).
+    ../../modules/nixos/herdr
   ];
-
-  # Profil home-manager de marc pilote par le SYSTEME sur tower : `just nixos`
-  # active ses dotfiles, dont ~/.config/herdr/config.toml (modules/home/herdr)
-  # qui fait afficher le modele hermes de chaque pane dans la sidebar herdr.
-  # Meme fichier que `HM=marc just home` : ne plus melanger les deux ici, le
-  # dernier switch ecrit les liens. Scope tower volontairement (le laptop n'est
-  # pas activable depuis ici) ; deplacer dans profiles/common pour l'etendre.
-  home-manager.users.marc = ../../users/marc/home.nix;
-  # 1re bascule standalone -> HM systeme : les fichiers presents qui ne sont pas
-  # des liens home-manager-files (ex. ancien symlink systemd.tmpfiles) sont
-  # deplaces en .hm-backup au lieu de faire echouer l'activation
-  # (check-link-targets sort sinon en exit 1).
-  home-manager.backupFileExtension = "hm-backup";
-  # Test perf : partager le pkgs systeme avec HM au lieu d'en reinstancier un
-  # (evalue/importe nixpkgs 2x sinon). L'overlay nur (utilise par zen-browser,
-  # ex modules/home/firefox|librewolf non actifs) doit alors vivre ici.
-  home-manager.useGlobalPkgs = true;
-  home-manager.useUserPackages = true;
-  nixpkgs.overlays = [inputs.nur.overlays.default];
 
   # Sessions hermes lancees par marc (panes herdr, HERMES_HOME partage, cf
   # users/marc/home.nix) : elles ecrivent dans /var/lib/hermes/.hermes. Le

@@ -66,7 +66,6 @@
     ../../modules/home/yt-collate
     ../../modules/home/youtube-music-cli
     ../../modules/home/geminicommit
-    ../../modules/home/herdr
 
     ../../modules/home/backtest
     ../../modules/home/portfolio-optimizer

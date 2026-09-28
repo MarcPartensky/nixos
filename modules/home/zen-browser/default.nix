@@ -117,8 +117,7 @@
       type = "Application";
     };
 in {
-  # overlay nur deplace au niveau systeme (profiles/tower/configuration.nix) :
-  # incompatible avec home-manager.useGlobalPkgs = true de le redefinir ici.
+  nixpkgs.overlays = [inputs.nur.overlays.default];
 
   home.packages = [
     (mkPWA {

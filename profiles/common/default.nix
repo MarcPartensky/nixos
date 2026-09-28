@@ -78,11 +78,10 @@ in {
   nixpkgs.config.allowUnfree = true;
   # nixpkgs.config.permittedInsecurePackages est un attrs "dernier gagne" :
   # plusieurs modules (matrix-whatsapp, pangolin, packages.nix) le redefinissent
-  # chacun de leur cote et s'ecrasent silencieusement. useGlobalPkgs=true (tower)
-  # change l'ordre de merge et fait ressortir ce piege. Union explicite ici en
+  # chacun de leur cote et s'ecrasent silencieusement. Union explicite ici en
   # attendant de centraliser pour de bon.
   nixpkgs.config.permittedInsecurePackages = [
-    "libsoup-2.74.3" # scan fontconfig HM sous useGlobalPkgs
+    "libsoup-2.74.3"
     "olm-3.2.16" # deps crypto mautrix (whatsapp/discord/...)
     "pangolin-1.10.3"
     "beekeeper-studio-5.3.4"
