@@ -80,4 +80,8 @@
   # (secrets/hermes-matrix.yml). Les autres hôtes qui importent services/hermes
   # (laptop, anywhere) ne doivent PAS le déclarer. Voir services/hermes.
   services.hermes.enableMatrixToken = true;
+
+  # Token du bot Discord dédié (voix + texte natifs, profil `discord-bridge`) :
+  # même règle, secrets/hermes-discord.yml n'a que tower comme destinataire.
+  services.hermes.enableDiscordToken = true;
 }
