@@ -354,6 +354,23 @@
       timeout = 60;
     };
 
+    # --- MCP Gitea : serveur officiel (gitea.com/gitea/gitea-mcp) ---
+    # Nécessite un PAT Gitea (Settings -> Applications -> Generate Token)
+    # scopes: repo, admin:org, admin:user, notification, user, write:package, read:package
+    services.hermes-agent.mcpServers.gitea = {
+      command = "gitea-mcp";
+      args = [ "-t" "stdio" ];
+      env = {
+        GITEA_HOST = "https://git.marcpartensky.com";
+        GITEA_ACCESS_TOKEN_FILE = config.sops.secrets."gitea-mcp/pat".path;
+      };
+      timeout = 60;
+    };
+
+    # --- MCP Vaultwarden : temporairement désactivé (blocage sops manifest) ---
+    # services.hermes-agent.mcpServers.vaultwarden = {
+    #   command = "vaultwarden-mcp";
+
     # --- node/npm requis pour le serveur GitHub (npx) ---
     # (ajouté dans extraPackages plus haut : l'option n'accepte qu'une définition)
 
