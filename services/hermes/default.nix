@@ -469,17 +469,25 @@
     # Decoder/Encoder opus instanciables.
     systemd.services.hermes-agent.environment.LD_LIBRARY_PATH = "${pkgs.libopus}/lib";
 
-    # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
+    # --- Desktop plugin: vim-keybindings (déclaratif, géré par nix) ---
+    # Crée le plugin dans /var/lib/hermes/.hermes/desktop-plugins/vim-bindings/
+    # via tmpfiles + service oneshot au démarrage du service hermes.
+    systemd.tmpfiles.rules = [
+      "d /var/lib/hermes/.hermes/desktop-plugins 0755 hermes hermes -"
+      "d /var/lib/hermes/.hermes/desktop-plugins/vim-bindings 0755 hermes hermes -"
+      "a /home/marc - - - - u:hermes:--x,m::--x"
+      "a /home/marc/git - - - - u:hermes:--x,m::r-x"
+    ];
+
+        # --- vim-bindings plugin : DISABLED (JS heredoc parsing issues in Nix)
+        # systemd.services.hermes-vim-bindings-plugin = { ... };
+
+        # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
     # sans ça, libgit2 refuse d'ouvrir un flake appartenant à marc
     programs.git = {
       enable = true;
       config.safe.directory = ["/home/marc/git/nixos"];
     };
-
-    systemd.tmpfiles.rules = [
-      "a /home/marc - - - - u:hermes:--x,m::--x"
-      "a /home/marc/git - - - - u:hermes:--x,m::r-x"
-    ];
 
     # --- MCP Nextcloud : voir services/nextcloud-mcp (single_user_basic, loopback) ---
   };
