@@ -33,6 +33,7 @@
     ../../services/stalwart
     ../../services/droplify
     ../../services/hermes
+    ../../services/vaultwarden-mcp
   ];
 
   # Paquets système
