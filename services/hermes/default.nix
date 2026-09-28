@@ -14,6 +14,15 @@
     le token Matrix du bot @hermes (secrets/hermes-matrix.yml, destinataires = tower uniquement)
   '';
 
+  # Option : le token du bot Discord dédié de Hermes (voix + texte natifs, profil
+  # `discord-bridge`). Même contrainte que enableMatrixToken : les destinataires
+  # de secrets/hermes-discord.yml n'incluent pas anywhere/laptop, donc ne
+  # l'activer que sur tower, sinon l'activation (setupSecrets) échoue et
+  # hermes-agent démarre sans son fichier d'env.
+  options.services.hermes.enableDiscordToken = lib.mkEnableOption ''
+    le token Discord du bot Hermes (secrets/hermes-discord.yml, destinataires = tower uniquement)
+  '';
+
   config = {
     # --- déclaration des besoins postgresql ---
     # nixos fusionne automatiquement ces listes avec celles du module postgres
@@ -29,7 +38,8 @@
       enable = true;
       environmentFiles =
         [ config.sops.secrets."hermes_env".path ]
-        ++ lib.optional config.services.hermes.enableMatrixToken config.sops.secrets."hermes_matrix_env".path;
+        ++ lib.optional config.services.hermes.enableMatrixToken config.sops.secrets."hermes_matrix_env".path
+        ++ lib.optional config.services.hermes.enableDiscordToken config.sops.secrets."hermes_discord_env".path;
       addToSystemPackages = true;
 
       # venv nix scellé -> deps mem0 (mem0ai) installées au runtime dans une cible durable
@@ -46,6 +56,16 @@
       environment.MATRIX_AUTO_THREAD = "false";
       # @marc + son ghost Signal (mautrix-signal)
       environment.MATRIX_ALLOWED_USERS = "@marc:matrix.marcpartensky.com,@signal_ad927dda-4064-48ff-8652-01a0d71005e4:matrix.marcpartensky.com";
+
+      # --- Discord : bot dédié (voix + texte), profil `discord-bridge` ---
+      # Le token vient de secrets/hermes-discord.yml (environmentFiles) ; le
+      # profil active `platforms.discord` dans sa propre config.yaml. Allowlist =
+      # @marc uniquement (id Discord, déjà master côté services/discord-bot).
+      environment.DISCORD_ALLOWED_USERS = "478552571510915072";
+
+      # --- Opus (voix Discord) : voir le bloc "Opus" plus bas, au niveau `config`
+      # (l'env du process se pose sur l'unité systemd, pas via `environment`, qui
+      # n'écrit que $HERMES_HOME/.env) ---
 
       # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
       # numpy N'EST PLUS LISTÉ ICI : depuis l'ajout de "stt-whisper" (onnxruntime ->
@@ -80,6 +100,15 @@
         pkgs.claude-code
         # node/npm : requis par le MCP GitHub (npx -y @modelcontextprotocol/server-github)
         pkgs.nodejs_22
+        # binutils : donne `ld` et `objdump` sur le PATH, dont dépend le repli de
+        # ctypes.util.find_library("opus") pour libopus (voix Discord). Voir le
+        # bloc "Opus" plus bas.
+        pkgs.binutils
+        # ffmpeg : requis par la voix Discord des DEUX côtés (conversion du TTS en
+        # PCM 48 kHz pour la sortie, et décodage côté réception). Sans lui dans le
+        # PATH du service, `hermes doctor` signale "install out of sync" et la
+        # lecture en vocal échoue.
+        pkgs.ffmpeg
       ];
       # extraDependencyGroups = ["anthropic"];
       # settings.model = {
@@ -283,6 +312,19 @@
           cp ${./plugins/herdr-agent-state/plugin.yaml} $out/plugin.yaml
           cp ${./plugins/herdr-agent-state/__init__.py} $out/__init__.py
         '')
+
+        # --- Entree automatique dans le vocal Discord ---
+        # Hermes n'entre en vocal que sur `/voice join` ; ce plugin ajoute un
+        # handler natif discord.py sur l'adaptateur Discord (ctx.
+        # register_platform_handler) : un membre autorise rejoint un salon vocal
+        # -> le bot s'y connecte, et il sort quand plus personne n'y est. Il
+        # branche `adapter.join_voice_channel(text_channel_id=...)`, indispensable
+        # car sans salon texte lie la transcription est jetee.
+        (pkgs.runCommandLocal "discord-auto-join" {} ''
+          mkdir -p $out
+          cp ${./plugins/discord-auto-join/plugin.yaml} $out/plugin.yaml
+          cp ${./plugins/discord-auto-join/__init__.py} $out/__init__.py
+        '')
       ];
     };
 
@@ -327,6 +369,14 @@
       sopsFile = ../../secrets/hermes-matrix.yml;
     };
 
+    # Token du bot Discord dédié (voix + texte) — clé "hermes_discord_env" du
+    # fichier sops, valeur = contenu dotenv (DISCORD_BOT_TOKEN=...) fusionné
+    # dans .env. Déclaré uniquement là où l'option est active, même raison que
+    # pour le token Matrix.
+    sops.secrets."hermes_discord_env" = lib.mkIf config.services.hermes.enableDiscordToken {
+      sopsFile = ../../secrets/hermes-discord.yml;
+    };
+
     # --- Accès SSH direct de hermes (tower) vers les autres hôtes qui importent
     # ce module (laptop, anywhere) : ouvre un shell (et-session + zellij) pour
     # agir/builder directement sur la machine, sans copier-coller par marc.
@@ -364,6 +414,20 @@
     # sudo reste borné à la liste de commandes ci-dessus.
     systemd.services.hermes-agent.serviceConfig.NoNewPrivileges = lib.mkForce false;
     systemd.services.hermes-backend.serviceConfig.NoNewPrivileges = lib.mkForce false;
+
+    # --- Opus pour la voix Discord ---
+    # L'adaptateur Discord de Hermes (plugins/platforms/discord/adapter.py) charge
+    # libopus via ctypes.util.find_library("opus"), qui sur NixOS ne trouve rien :
+    # pas de /etc/ld.so.cache, et le repli gcc/ld échoue faute de binaires. Le
+    # repli `ld -L <LD_LIBRARY_PATH> -lopus` + `objdump` fonctionne avec binutils
+    # sur le PATH (extraPackages), et il faut LD_LIBRARY_PATH DANS l'environnement
+    # du process dès le démarrage : dlopen("libopus.so.0") utilise la valeur lue
+    # par ld.so au lancement, une variable ajoutée plus tard via .env ne suffit
+    # pas. C'est l'env de l'UNITÉ systemd (l'option `environment` du module, elle,
+    # n'écrit que $HERMES_HOME/.env).
+    # Vérifié : find_library -> libopus.so.0, discord.opus.is_loaded() -> True,
+    # Decoder/Encoder opus instanciables.
+    systemd.services.hermes-agent.environment.LD_LIBRARY_PATH = "${pkgs.libopus}/lib";
 
     # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
     # sans ça, libgit2 refuse d'ouvrir un flake appartenant à marc
