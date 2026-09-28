@@ -65,6 +65,13 @@
             options.mountpoint = "/nix";
             mountpoint = "/nix";
           };
+          # Média partagé (Jellyfin, Navidrome, Radarr, Sonarr, Nextcloud) :
+          # groupe `media` + dossiers setgid, hors des homes pour que
+          # systemd-tmpfiles puisse y créer les dossiers (voir services/media).
+          "media" = {
+            type = "zfs_fs";
+            options.mountpoint = "/srv/media";
+          };
           "marc" = {
             type = "zfs_fs";
             options.mountpoint = "none";

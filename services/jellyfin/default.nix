@@ -38,37 +38,17 @@
     };
   };
 
-  # /home/marc n'est traversable (bit x) que par son groupe propriétaire : sans
-  # `users` en groupe secondaire, l'utilisateur jellyfin ne peut pas atteindre
-  # /home/marc/media (le dossier lui-même est en 0755 root:root, donc lisible).
-  users.users.jellyfin.extraGroups = [ "users" ];
-
-  # Bibliothèques : mêmes dossiers que les sources vidéo de Kodi, plus la
-  # musique déjà servie par Navidrome. Jellyfin ne sait pas ajouter de
-  # bibliothèque de façon déclarative, ces dossiers ne sont que les racines à
-  # sélectionner dans l'assistant web (Bibliothèques > Ajouter).
+  # Les bibliothèques vivent dans /srv/media (groupe `media`, dossiers setgid,
+  # créés par systemd-tmpfiles : cf. services/media). Ne PAS les mettre sous
+  # /home/marc : systemd-tmpfiles refuse de créer un dossier là-bas
+  # (« unsafe path transition », exit 73) et tout service devrait recevoir un
+  # droit de traversée sur un home en 0700. Les racines à sélectionner dans
+  # l'assistant web sont : /srv/media/movies, /srv/media/tvshows, /srv/media/music.
   #
-  # Pourquoi un oneshot et pas systemd.tmpfiles.rules : systemd-tmpfiles refuse
-  # de descendre dans /home/marc (0700, appartient à marc) pour y créer un
-  # dossier, et sort en "Detected unsafe path transition /home/marc (owned by
-  # marc) -> /home/marc/media (owned by root)" puis CANTCREAT (exit 73) à
-  # chaque activation : les règles ne s'appliquent jamais et le journal se
-  # remplit d'avertissements. Vérifié le 26/09/2026 en instrumentant
-  # l'activation : la même création faite par root en direct (mkdir) réussit.
-  # D'où ce oneshot, qui tourne en root sans cette vérification de sécurité.
-  systemd.services.jellyfin-media-dirs = {
-    description = "Création des dossiers de bibliothèque média (Jellyfin, Navidrome)";
-    wantedBy = [ "multi-user.target" ];
-    before = [ "jellyfin.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-    };
-    script = ''
-      ${pkgs.coreutils}/bin/install -d -o marc -g users -m 0755 \
-        /home/marc/media/movies /home/marc/media/tvshows /home/marc/media/music
-    '';
-  };
+  # UMask : le module impose 0077. Le média est partagé, donc les fichiers que
+  # Jellyfin écrit dans la bibliothèque (pochettes, NFO s'ils sont activés)
+  # doivent rester lisibles et modifiables par les autres membres du groupe.
+  systemd.services.jellyfin.serviceConfig.UMask = lib.mkForce "0002";
 
   # Exposition publique via Pangolin (newt, site "tower") : jellyfin.marcpartensky.com
   # -> 127.0.0.1:8096. `site` omis : Pangolin affecte le site qui applique le

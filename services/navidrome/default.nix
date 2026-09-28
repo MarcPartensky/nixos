@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   services.navidrome = {
@@ -6,7 +11,11 @@
     settings = {
       Address = "0.0.0.0";
       Port = 4533;
-      MusicFolder = "/home/marc/media/music";
+      # Média partagé : /srv/media/music (groupe `media`, cf. services/media),
+      # et non plus /home/marc/media/music qui obligeait à donner à navidrome un
+      # droit de traversée sur le home de marc (0700) et le faisait scanner une
+      # bibliothèque vide.
+      MusicFolder = "/srv/media/music";
       # DataFolder = "/var/lib/navidrome/data";
       LogLevel = "info";
       ScanSchedule = "@every 1h";
@@ -22,15 +31,11 @@
       LockPersonality = true;
       PrivateDevices = true;
       RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
-      ProtectHome = lib.mkForce "read-only";
-      BindPaths = [ "/home/marc/media/music" ];
+      # La musique n'est plus dans /home : plus besoin de BindPaths ni de
+      # traverser le home, le durcissement du module peut rester actif.
+      ProtectHome = lib.mkForce true;
     };
   };
-
-  # /home/marc n'est traversable que par son groupe propriétaire (other::---) :
-  # sans `users` en groupe secondaire, l'utilisateur navidrome ne peut pas
-  # atteindre /home/marc/media/music et scanne une bibliothèque vide.
-  users.users.navidrome.extraGroups = [ "users" ];
 
   # networking.firewall.allowedTCPPorts = [ 4533 ];
 }
