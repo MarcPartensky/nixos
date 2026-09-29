@@ -1167,22 +1167,6 @@
         "type": "github"
       }
     },
-    "proton-mail-bridge-client": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1790365286,
-        "narHash": "sha256-IXTyW7tYbBoDMDidCJoCZwalENCXNHGMnHhsGJ/ETNI=",
-        "owner": "googlarz",
-        "repo": "proton-mail-bridge-client",
-        "rev": "e5ac1999e89573a1b61e1dc59a7d440c1714177f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "googlarz",
-        "repo": "proton-mail-bridge-client",
-        "type": "github"
-      }
-    },
     "pyproject-build-systems": {
       "inputs": {
         "nixpkgs": [
@@ -1533,7 +1517,6 @@
         "nur": "nur",
         "option-pricer": "option-pricer",
         "portfolio-optimizer": "portfolio-optimizer",
-        "proton-mail-bridge-client": "proton-mail-bridge-client",
         "pyproject-nix": "pyproject-nix_8",
         "sops": "sops",
         "sopswarden": "sopswarden",

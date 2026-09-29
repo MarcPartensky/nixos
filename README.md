@@ -6,7 +6,7 @@ Marc Partensky's NixOS + Home Manager + nix-darwin configuration, one flake for 
 
 | Flake output | Type | Description |
 |---|---|---|
-| `nixosConfigurations.tower` | NixOS | Main machine (AMD, ZFS). `profiles/common` + `profiles/tower` + `services/` (all self-hosted services) + `protonmail-mcp`. |
+| `nixosConfigurations.tower` | NixOS | Main machine (AMD, ZFS). `profiles/common` + `profiles/tower` + `services/` (all self-hosted services). |
 | `nixosConfigurations.laptop` | NixOS | Laptop. `profiles/common` + `profiles/laptop` + `services/`. |
 | `nixosConfigurations.deck` | NixOS | Steam Deck (via Jovian-NixOS). `profiles/deck` only, no `services/`. |
 | `nixosConfigurations.anywhere` | NixOS | VPS (RackNerd): Pangolin, Traefik/Caddy, Stalwart mail, headscale. `profiles/anywhere`. |
@@ -81,7 +81,7 @@ Registry in `services/default.nix`. Active on tower:
 - **Media**: `jellyfin`, `navidrome`, `audiobookshelf`, `radarr`/`sonarr`/`readarr`/`prowlarr`/`flaresolverr`, `qbittorrent`/`rqbit`, `media` (shared `/srv/media` dataset).
 - **Matrix bridges**: `matrix` (Synapse), `matrix-whatsapp`, `matrix-signal`, `matrix-discord`, `matrix-meta`, `matrix-linkedin`.
 - **Hermes agent**: `hermes` (gateway + plugins), `hermes-webui`, `hermes-dashboard`, `hermes-pocket` (mobile app backend), `discord-bot`.
-- **MCP servers** (tools for Hermes): `nextcloud-mcp`, `amazon-mcp`, `firefox-mcp`, `zitadel-mcp`, `roku`, `codeberg-mcp`, `ibkr-mcp`, `meetup-mcp`, `gitea-mcp`, `arr-mcp`, `mcp-nixos`. `protonmail-mcp` is tower-only (imported directly from `flake.nix`, not in the registry).
+- **MCP servers** (tools for Hermes): `nextcloud-mcp`, `amazon-mcp`, `firefox-mcp`, `zitadel-mcp`, `roku`, `codeberg-mcp`, `ibkr-mcp`, `meetup-mcp`, `gitea-mcp`, `arr-mcp`, `mcp-nixos`.
 - **Other apps**: `jupyterhub`.
 - **Disabled in the registry** (commented out, pending a fix or waiting on something): `dnscrypt`, `minio`, `stalwart-mcp` (cargoHash mismatch), `gotify`, `kanidm`, `syncserver`, `matrix-telegram` (waiting on api_id/api_hash), `vaultwarden-mcp` (missing input).
 

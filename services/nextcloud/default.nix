@@ -132,7 +132,21 @@
       Environment = ["NC_SETUP_FORCE_RUN=20260924"];
       # app:enable ne lance PAS les migrations : sans upgrade ensuite, les
       # tables des apps (oc_calendars...) ne sont jamais créées.
-      ExecStartPost = "${config.services.nextcloud.occ}/bin/nextcloud-occ upgrade";
+      ExecStartPost = [
+        "${config.services.nextcloud.occ}/bin/nextcloud-occ upgrade"
+        # adminpassFile ne fixe le mot de passe QUE lors de l'install initiale
+        # (occ maintenance:install) : sur une instance déjà installée il est
+        # ignoré silencieusement. Ce ExecStartPost force le mot de passe du
+        # compte "root" à la valeur sops à CHAQUE activation (self-healing,
+        # tourne à chaque switch). Ajouté le 28/09/2026 suite à un fichier
+        # services/nextcloud/password.txt committé en clair (repo public) :
+        # rotation forcée pour invalider toute ancienne valeur exposée.
+        "${pkgs.writeShellScript "nextcloud-rotate-admin-password" ''
+          set -euo pipefail
+          export OC_PASS="$(cat ${config.sops.secrets."nextcloud/admin_password".path})"
+          ${config.services.nextcloud.occ}/bin/nextcloud-occ user:resetpassword --password-from-env root
+        ''}"
+      ];
     };
   };
 
