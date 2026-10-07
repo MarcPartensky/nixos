@@ -23,10 +23,20 @@
         User = "hermes";
         Port = 22;
       };
+      "deck" = {
+        HostName = "192.168.1.67";
+        User = "hermes";
+        Port = 22;
+      };
       "tower" = {
         HostName = "77.207.176.170";
         User = "marc";
         Port = 42070;
+      };
+      "tower-rack" = {
+        HostName = "10.100.0.3";
+        User = "marc";
+        Port = 22;
       };
       "tunnel" = {
         HostName = "localhost";

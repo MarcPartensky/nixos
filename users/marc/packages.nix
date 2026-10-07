@@ -62,7 +62,7 @@ in {
     typer
     yazi
     eternal-terminal
-    anki
+    pkgs.anki.withAddons [ pkgs.ankiAddons.anki-mcp-server ]
     libreoffice-fresh
     pw-volume
     brightnessctl
