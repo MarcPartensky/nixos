@@ -4,7 +4,20 @@
   lib,
   inputs,
   ...
-}: {
+}: let
+  # claude-code épinglé plus récent que nixpkgs 26.05 (2.1.223).
+  # L'API refuse les modèles Opus 5.5 en dessous de 2.1.280 :
+  #   "API Error: 400 Claude Code 2.1.223 does not support this model;
+  #    version 2.1.280 or newer is required."
+  # Le paquet nixpkgs prend son manifeste (version + checksums par plateforme)
+  # en argument : on lui passe celui publié par Anthropic pour le canal stable
+  # (https://downloads.claude.ai/claude-code-releases/2.1.280/manifest.json),
+  # copié tel quel dans ./claude-code-manifest.json. Mise à jour = recopier le
+  # manifeste d'une version plus récente, rien d'autre.
+  claudeCode = pkgs.claude-code.override {
+    manifest = lib.importJSON ./claude-code-manifest.json;
+  };
+in {
   # Option : le token Matrix du bot @hermes (clé hermes_matrix_env de
   # secrets/hermes-matrix.yml). Les destinataires de ce fichier sops ne
   # contiennent PAS les clés age de anywhere/laptop : ne l'activer que sur les
@@ -111,7 +124,7 @@
       # claude-subscription-directsdk (provider sur abonnement Claude Pro/Max,
       # login OAuth via `claude`, pas de clé API)
       extraPackages = [
-        pkgs.claude-code
+        claudeCode
         # node/npm : requis par le MCP GitHub (npx -y @modelcontextprotocol/server-github)
         pkgs.nodejs_22
         # binutils : donne `ld` et `objdump` sur le PATH, dont dépend le repli de
@@ -189,8 +202,10 @@
           reasoning_overrides = {
             "deepseek/deepseek-v4.1-flash" = "high";
             "deepseek-v4.1-flash" = "high";
-            "nvidia/nemotron-3-ultra-550b-a55b:free" = "high";
-            "nemotron-3-ultra" = "high";
+            "nvidia/nemotron-3-ultra-550b-a55b:free" = "max";
+            "nemotron-3-ultra" = "max";
+            "claude-opus-5-5[1m]" = "max";
+            "claude-opus-5-5" = "max";
             "claude-opus-5[1m]" = "max";
             "claude-opus-5" = "max";
             "claude-sonnet-5[1m]" = "high";
@@ -290,11 +305,31 @@
                 provider = "claude-subscription-directsdk-experimental";
                 model = "claude-opus-5[1m]";
               };
+              # Nino : Opus 5.5 (route native `claude-opus-5-5`, tirets ; la forme
+              # `claude-opus-5.5` est rejetée par le CLI). Variante [1m] = 1M de
+              # contexte ; effort max via reasoning_overrides.
+              # Nino : DeepSeek v4.1 Flash (OpenRouter), 1er secours par defaut.
               "!zOyDctBWcuFCJKJINI:matrix.marcpartensky.com" = {
-                provider = "claude-subscription-directsdk-experimental";
-                model = "claude-opus-5[1m]";
+                provider = "openrouter";
+                model = "deepseek/deepseek-v4.1-flash";
               };
               "!sylSYxsYVJRknngRnF:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+              "!JgWSzbTBCRPEOQTAZi:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+              "!ANuTSqPZhKzHOpvXhB:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+              "!myvmCEICVnXNIOxHSQ:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+              "!ABhBVVGeBoBEvuiFSY:matrix.marcpartensky.com" = {
                 provider = "claude-subscription-directsdk-experimental";
                 model = "claude-sonnet-5[1m]";
               };
@@ -367,6 +402,24 @@
       timeout = 60;
     };
 
+    # --- MCP Pangolin : serveur auto-hébergé (pangolin.vps.marcpartensky.com) ---
+    # DÉSACTIVÉ TEMPORAIREMENT (29/09/2026) : sops.secrets."pangolin/api_key"
+    # ci-dessous n'a jamais eu de clé correspondante dans secrets/common.yml
+    # (nested pangolin.api_key absent), ce qui fait échouer TOUT
+    # nixos-rebuild switch sur tower ("the key 'pangolin' cannot be found").
+    # Déjà noté comme inerte (clé/URL placeholder) avant ce blocage. Réactiver
+    # une fois la vraie clé posée par marc (il a la clé age privée pour éditer
+    # secrets/common.yml en place).
+    # services.hermes-agent.mcpServers.pangolin = {
+    #   command = "/nix/store/pw5hn1g2icm9ll7li8qiy1wkpdzvkcs1-pangolin-mcp/bin/pangolin-mcp";
+    #   args = [ ];
+    #   env = {
+    #     PANGOLIN_BASE_URL = "https://pangolin.vps.marcpartensky.com/v1";
+    #     PANGOLIN_API_KEY_FILE = config.sops.secrets."pangolin/api_key".path;
+    #   };
+    #   timeout = 60;
+    # };
+
     # --- MCP Vaultwarden : temporairement désactivé (blocage sops manifest) ---
     # services.hermes-agent.mcpServers.vaultwarden = {
     #   command = "vaultwarden-mcp";
@@ -387,7 +440,7 @@
     # ~/.hermes-update-in-progress. Sans python3 dans le PATH ssh, TOUTE connexion
     # Desktop en SSH echoue avec "Could not prove that the remote Hermes install
     # is clear for SSH startup." (verifie le 27/09/2026)
-    environment.systemPackages = [pkgs.claude-code pkgs.python3];
+    environment.systemPackages = [claudeCode pkgs.python3];
 
     sops.secrets."hermes_env" = {};
 
@@ -403,6 +456,12 @@
       key = "hermes_discord_bridge_env";
       sopsFile = ../../secrets/discord-hermes-bridge.yml;
     };
+
+    # Clé API Pangolin pour le MCP server (clé "pangolin/api_key" du fichier sops)
+    # À ajouter (chiffrée) dans secrets/common.yml, clé imbriquée pangolin.api_key.
+    # Commenté avec le bloc mcpServers.pangolin ci-dessus (29/09/2026) : la clé
+    # n'existe pas dans secrets/common.yml, ça faisait échouer tout switch.
+    # sops.secrets."pangolin/api_key" = {};
 
     # Token Matrix du bot (@hermes) — clé "hermes_matrix_env" du fichier sops,
     # valeur = contenu dotenv (MATRIX_ACCESS_TOKEN=...) fusionné dans .env.
