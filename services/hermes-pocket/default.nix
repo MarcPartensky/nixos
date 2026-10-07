@@ -89,7 +89,7 @@ in {
   # connecter (SSO navigateur impossible), exactement comme la ressource
   # jellyfin. La cible reste loopback, seul nginx est publié.
   services.newt.blueprint.proxy-resources.hermes-pocket = {
-    name = "Hermes Pocket (appli mobile)";
+    name = "hermes-pocket";
     protocol = "http";
     full-domain = "hermes-mobile.marcpartensky.com";
     targets = [
@@ -97,6 +97,20 @@ in {
         hostname = "127.0.0.1";
         port = proxyPort;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = proxyPort;
+          path = "/";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };

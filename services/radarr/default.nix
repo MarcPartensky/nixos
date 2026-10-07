@@ -50,7 +50,7 @@
   # "DisabledForLocalAddresses" ne filtrerait RIEN. Sans SSO, l'UI complete et
   # l'API v3 (qui suffit a piloter Radarr) seraient ouvertes a Internet.
   services.newt.blueprint.proxy-resources.radarr = {
-    name = "Radarr";
+    name = "radarr";
     protocol = "http";
     full-domain = "radarr.marcpartensky.com";
     auth.sso-enabled = true;
@@ -59,6 +59,20 @@
         hostname = "127.0.0.1";
         port = 8086;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = 8086;
+          path = "/ping";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };

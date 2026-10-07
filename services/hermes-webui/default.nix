@@ -124,7 +124,7 @@ in {
   # deja hermes.marcpartensky.com cote VPS (cible tower:10274, port mort).
   # Tant qu'elle existe, deux routers Traefik viseront le meme host.
   services.newt.blueprint.proxy-resources.hermes-webui = {
-    name = "Chat web Hermes";
+    name = "hermes-webui";
     protocol = "http";
     full-domain = "hermes.marcpartensky.com";
     auth.sso-enabled = true;
@@ -133,6 +133,20 @@ in {
         hostname = "127.0.0.1";
         port = proxyPort;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = proxyPort;
+          path = "/";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };

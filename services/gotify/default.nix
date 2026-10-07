@@ -116,7 +116,7 @@
 
   # Exposition via Pangolin (newt blueprint) -> gotify.marcpartensky.com
   services.newt.blueprint.proxy-resources.gotify = {
-    name = "Gotify notifications";
+    name = "gotify";
     protocol = "http";
     full-domain = "gotify.marcpartensky.com";
     auth.sso-enabled = true;
@@ -125,6 +125,20 @@
         hostname = "127.0.0.1";
         port = 8070;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = 8070;
+          path = "/health";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };

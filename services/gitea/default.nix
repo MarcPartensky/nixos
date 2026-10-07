@@ -144,7 +144,7 @@ in {
   # / hermes-dashboard sur ce contrôleur Pangolin, cf. selfhosted-remote-access
   # / references/pangolin-blueprint.md).
   services.newt.blueprint.proxy-resources.gitea = {
-    name = "Gitea";
+    name = "gitea";
     protocol = "http";
     full-domain = "git.marcpartensky.com";
     auth.sso-enabled = true;
@@ -153,6 +153,20 @@ in {
         hostname = "127.0.0.1";
         port = config.services.gitea.settings.server.HTTP_PORT;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = config.services.gitea.settings.server.HTTP_PORT;
+          path = "/api/healthz";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };

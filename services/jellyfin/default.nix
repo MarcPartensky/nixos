@@ -57,7 +57,7 @@
   # Pas d'auth Pangolin : Jellyfin a sa propre authentification et les apps
   # natives (Roku, mobile) ne savent pas passer un SSO par navigateur.
   services.newt.blueprint.proxy-resources.jellyfin = {
-    name = "Jellyfin";
+    name = "jellyfin";
     protocol = "http";
     full-domain = "jellyfin.marcpartensky.com";
     targets = [
@@ -65,6 +65,20 @@
         hostname = "127.0.0.1";
         port = 8096;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = 8096;
+          path = "/health";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };

@@ -40,7 +40,7 @@
   # (le Pangolin de ce VPS ignore silencieusement `public-resources`/`mode`,
   # cf. services/newt). Pas d'auth Pangolin : audiobookshelf a sa propre auth.
   services.newt.blueprint.proxy-resources.audiobookshelf = {
-    name = "Audiobookshelf";
+    name = "audiobookshelf";
     protocol = "http";
     full-domain = "audiobookshelf.marcpartensky.com";
     targets = [
@@ -48,6 +48,20 @@
         hostname = "127.0.0.1";
         port = 8000;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = 8000;
+          path = "/healthcheck";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };

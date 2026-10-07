@@ -77,7 +77,7 @@ in {
   # NB : cle `proxy-resources` + `protocol` (schema attendu par le Pangolin du
   # VPS), cf. le commentaire detaille dans services/newt.
   services.newt.blueprint.proxy-resources.hermes-terminal = {
-    name = "Terminal web Hermes";
+    name = "hermes-terminal";
     protocol = "http";
     full-domain = "terminal.marcpartensky.com";
     auth.sso-enabled = true;
@@ -86,6 +86,20 @@ in {
         hostname = "127.0.0.1";
         port = proxyPort;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = proxyPort;
+          path = "/";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };
