@@ -17,6 +17,8 @@
     ../../modules/nixos/xdg
     ../../modules/nixos/jovian
     ../../services/eternal-terminal
+    ../../services/matrix-conduit
+    ../../services/nginx-matrix
     ./switch-emu.nix
   ];
 
@@ -108,6 +110,40 @@
   systemd.sleep.settings.Sleep = {
     AllowSuspend = false;
     AllowHibernation = false; # coupe aussi hybrid-sleep et suspend-then-hibernate
+  };
+
+  # ========================================================================
+  # MATRIX CONDUIT (replaces Synapse on tower)
+  # ========================================================================
+  services.matrix-conduit = {
+    enable = true;
+    settings = {
+      global = {
+        server_name = "matrix.marcpartensky.com";
+        database_backend = "rocksdb";
+        port = 6167;
+        allow_registration = false;
+        allow_federation = true;
+        trusted_servers = [ "matrix.org" ];
+        max_request_size = 20000000;
+      };
+      federation = {
+        port = 8448;
+      };
+    };
+  };
+
+  # ========================================================================
+  # NGINX REVERSE PROXY FOR MATRIX
+  # ========================================================================
+  services.nginx-matrix = {
+    enable = true;
+    domain = "matrix.marcpartensky.com";
+    upstream_host = "127.0.0.1";
+    upstream_port = 6167;
+    federation_port = 8448;
+    listen_port = 8008;
+    acme = false; # TLS terminated by Pangolin on VPS
   };
 
   programs.steam.config = {
