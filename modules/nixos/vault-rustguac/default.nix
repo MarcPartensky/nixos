@@ -4,6 +4,20 @@ with lib;
 
 let
   cfg = config.services.vault-rustguac;
+
+  # Le mode dev de Vault est pilote par les DRAPEAUX CLI (`vault server -dev`),
+  # pas par le fichier de config : `dev_root_token_id` / `dev_listen_address`
+  # poses dans un HCL ne declenchent PAS le mode dev. Consequence vecue : vault
+  # demarrait avec storage inmem mais restait SEALED et non initialise
+  # (`/v1/sys/health` -> initialized:false, sealed:true), donc rustguac ne
+  # pouvait rien lire ni ecrire.
+  devScript = pkgs.writeShellScript "vault-dev" ''
+    set -euo pipefail
+    token=$(cat ${cfg.devRootToken})
+    exec ${pkgs.vault}/bin/vault server -dev \
+      -dev-root-token-id="$token" \
+      -dev-listen-address=${cfg.address}:${toString cfg.port}
+  '';
 in {
 
   options.services.vault-rustguac = {
@@ -85,43 +99,30 @@ in {
       "d /etc/vault 0750 ${cfg.user} ${cfg.group} - -"
     ];
 
-    # Config
-    environment.etc."vault/config.hcl".text = ''
-      ${if cfg.mode == "dev" then ''
-      storage "inmem" {}
+    # Config : uniquement utile en mode "ha" (le mode dev ignore un HCL).
+    environment.etc = lib.mkIf (cfg.mode == "ha") {
+      "vault/config.hcl".text = ''
+        storage "raft" {
+          path = "${cfg.ha.dataPath}"
+          node_id = "${cfg.ha.nodeId}"
+          ${concatStringsSep "\n        " (map (addr: "retry_join { leader_api_addr = \"${addr}\" }") cfg.ha.retryJoin)}
+        }
 
-      listener "tcp" {
-        address = "${cfg.address}:${toString cfg.port}"
-        ${if cfg.tls != null then ''
-        tls_cert_file = "${cfg.tls.certFile}"
-        tls_key_file = "${cfg.tls.keyFile}"
-        '' else "tls_disable = true"}
-      }
+        listener "tcp" {
+          address = "${cfg.address}:${toString cfg.port}"
+          ${if cfg.tls != null then ''
+          tls_cert_file = "${cfg.tls.certFile}"
+          tls_key_file = "${cfg.tls.keyFile}"
+          '' else "tls_disable = true"}
+        }
 
-      dev_root_token_id = "${cfg.devRootToken}"
-      dev_listen_address = "${cfg.address}:${toString cfg.port}"
-      '' else ''
-      storage "raft" {
-        path = "${cfg.ha.dataPath}"
-        node_id = "${cfg.ha.nodeId}"
-        ${concatStringsSep "\n        " (map (addr: "retry_join { leader_api_addr = \"${addr}\" }") cfg.ha.retryJoin)}
-      }
+        cluster_addr = "${cfg.ha.clusterAddr}"
+        api_addr = "${cfg.ha.apiAddr}"
 
-      listener "tcp" {
-        address = "${cfg.address}:${toString cfg.port}"
-        ${if cfg.tls != null then ''
-        tls_cert_file = "${cfg.tls.certFile}"
-        tls_key_file = "${cfg.tls.keyFile}"
-        '' else "tls_disable = true"}
-      }
-
-      cluster_addr = "${cfg.ha.clusterAddr}"
-      api_addr = "${cfg.ha.apiAddr}"
-      ''}
-
-      ui = ${toString cfg.ui}
-      disable_mlock = true
-    '';
+        ui = ${boolToString cfg.ui}
+        disable_mlock = true
+      '';
+    };
 
     # Systemd service
     systemd.services.vault = {
@@ -130,7 +131,10 @@ in {
       serviceConfig = {
         User = cfg.user;
         Group = cfg.group;
-        ExecStart = "${pkgs.vault}/bin/vault server -config /etc/vault/config.hcl";
+        ExecStart = if cfg.mode == "dev" then
+          "${devScript}"
+        else
+          "${pkgs.vault}/bin/vault server -config /etc/vault/config.hcl";
         Restart = "on-failure";
         RestartSec = 5;
         LimitNOFILE = 65536;
@@ -140,8 +144,9 @@ in {
       };
     };
 
-    # Firewall
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    # Le listener est en loopback (cfg.address par defaut) : rien a ouvrir au
+    # firewall, et surtout pas pour un Vault en mode dev qui detient un root
+    # token.
 
     # Auto-unseal for dev mode (already unsealed)
     # For HA, you'd need to run: vault operator init && vault operator unseal

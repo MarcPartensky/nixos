@@ -20,11 +20,26 @@ in {
       description = "rustguac upstream (protocol://host:port)";
     };
 
-    # ACME/Let's Enccrypt (uses global security.acme.email)
+    # ACME/Let's Enccrypt (uses security.acme.defaults.email)
     acme = mkOption {
       type = types.bool;
       default = true;
       description = "Enable ACME/Let's Encrypt";
+    };
+
+    # Ecoute locale, pour une exposition sans ACME (typiquement derriere un
+    # reverse proxy qui porte deja le TLS, ex. newt/Pangolin).
+    # listenPort = null garde les defauts du module nginx (0.0.0.0:80 + 443 ssl).
+    listenAddress = mkOption {
+      type = types.str;
+      default = "127.0.0.1";
+      description = "Adresse d'ecoute quand listenPort est defini";
+    };
+
+    listenPort = mkOption {
+      type = types.nullOr types.port;
+      default = null;
+      description = "Port d'ecoute local (HTTP) ; null = defauts nginx (80/443)";
     };
 
     # WebSocket support
@@ -49,19 +64,21 @@ in {
         "${cfg.domain}" = {
           forceSSL = cfg.acme;
           enableACME = cfg.acme;
+          listen = optional (cfg.listenPort != null) {
+            addr = cfg.listenAddress;
+            port = cfg.listenPort;
+          };
 
           locations."/" = {
             proxyPass = cfg.upstream;
             proxyWebsockets = cfg.websocket;
+            # recommendedProxySettings pose deja proxy_http_version, Upgrade,
+            # Connection, Host, X-Real-IP, X-Forwarded-* (includes) : les
+            # redeclarer fait echouer « nginx -t » (directive is duplicate) et
+            # tombe TOUT nginx, donc tout ce qui est derriere. Ne garder ici que
+            # ce que le module nginx ne pose pas.
             extraConfig = ''
               proxy_buffering off;
-              proxy_http_version 1.1;
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "upgrade";
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
               proxy_read_timeout 86400;
               proxy_send_timeout 86400;
               ${cfg.extraConfig}

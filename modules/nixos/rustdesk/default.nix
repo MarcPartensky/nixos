@@ -9,12 +9,26 @@ in {
   options.services.rustdesk = {
     enable = mkEnableOption "RustDesk server (hbbs + hbbr)";
 
+    # La CLI de rustdesk-server 1.1.16 n'a que : hbbs -p <port id/rendezvous>,
+    # -r <relais>, -k <cle>, -R, -M, -s, -u ; hbbr -p <port relais>, -k <cle>.
+    # Il n'y a NI -i (bind) NI -a (autre port) : passer ces drapeaux fait sortir
+    # le binaire en « Found argument '-i' which wasn't expected ».
+    # hbbs se lie tout seul sur 21115 (test NAT) / 21116 (ID, TCP+UDP) /
+    # 21118 (websocket), hbbr sur 21117 (relais) et 21119 (websocket).
     hbbs = mkOption {
       type = types.submodule {
         options = {
           enable = mkOption { type = types.bool; default = true; };
-          host = mkOption { type = types.str; default = "0.0.0.0"; };
-          port = mkOption { type = types.port; default = 21115; };
+          idPort = mkOption {
+            type = types.port;
+            default = 21116;
+            description = "Port ID/rendezvous (TCP+UDP)";
+          };
+          relayServers = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = "Relais annonces aux clients (-r), virgule-separes";
+          };
           keyPath = mkOption { type = types.nullOr types.path; default = null; };
         };
       };
@@ -25,9 +39,12 @@ in {
       type = types.submodule {
         options = {
           enable = mkOption { type = types.bool; default = true; };
-          host = mkOption { type = types.str; default = "0.0.0.0"; };
-          port = mkOption { type = types.port; default = 21116; };
-          apiPort = mkOption { type = types.port; default = 21118; };
+          port = mkOption {
+            type = types.port;
+            default = 21117;
+            description = "Port relais (TCP)";
+          };
+          keyPath = mkOption { type = types.nullOr types.path; default = null; };
         };
       };
       default = { enable = true; };
@@ -70,7 +87,13 @@ in {
       serviceConfig = {
         User = cfg.user;
         Group = cfg.group;
-        ExecStart = "${pkgs.rustdesk-server}/bin/hbbs -i ${cfg.hbbs.host} -p ${toString cfg.hbbs.port}" + (if cfg.hbbs.keyPath != null then " -k ${cfg.hbbs.keyPath}" else "");
+        # hbbs ecrit sa paire de cles dans le repertoire courant quand -k n'est
+        # pas fourni : sans WorkingDirectory il tente d'ecrire dans / et sort en
+        # erreur (le service sortait en status=1 avant meme de se lier).
+        WorkingDirectory = "/var/lib/rustdesk";
+        ExecStart = "${pkgs.rustdesk-server}/bin/hbbs -p ${toString cfg.hbbs.idPort}"
+          + optionalString (cfg.hbbs.relayServers != null) " -r ${cfg.hbbs.relayServers}"
+          + optionalString (cfg.hbbs.keyPath != null) " -k ${cfg.hbbs.keyPath}";
         Restart = "on-failure";
         RestartSec = 5;
       };
@@ -84,7 +107,9 @@ in {
       serviceConfig = {
         User = cfg.user;
         Group = cfg.group;
-        ExecStart = "${pkgs.rustdesk-server}/bin/hbbr -i ${cfg.hbbr.host} -p ${toString cfg.hbbr.port} -a ${cfg.hbbr.host}:${toString cfg.hbbr.apiPort}";
+        WorkingDirectory = "/var/lib/rustdesk";
+        ExecStart = "${pkgs.rustdesk-server}/bin/hbbr -p ${toString cfg.hbbr.port}"
+          + optionalString (cfg.hbbr.keyPath != null) " -k ${cfg.hbbr.keyPath}";
         Restart = "on-failure";
         RestartSec = 5;
       };
@@ -104,8 +129,9 @@ in {
       };
     };
 
-    networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall
-      ([ cfg.hbbs.port ] ++ [ cfg.hbbr.port cfg.hbbr.apiPort ] ++ lib.optionals cfg.dashboard.enable [ cfg.dashboard.port ]);
-    networking.firewall.allowedUDPPorts = lib.mkIf cfg.openFirewall [ cfg.hbbs.port cfg.hbbr.port ];
+    # Ports reels des deux binaires (pas de drapeau pour les deplacer) :
+    # 21115 test NAT, 21116 ID TCP+UDP, 21117 relais, 21118/21119 websocket.
+    networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall ([ 21115 21116 21117 21118 21119 ]);
+    networking.firewall.allowedUDPPorts = lib.mkIf cfg.openFirewall [ 21116 ];
   };
 }

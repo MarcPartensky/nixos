@@ -2,6 +2,7 @@
   lib,
   pkgs,
   inputs,
+  config,
   ...
 }: {
   imports = [
@@ -53,35 +54,54 @@
   services.hermes.enableDiscordToken = true;
 
   # ========================================================================
+  # ACME/Let's Encrypt : PLUS UTILISE sur tower. Le DNS public
+  # (*.marcpartensky.com) est un wildcard vers le VPS 104.129.12.158 (Pangolin),
+  # donc un challenge http-01 ne peut jamais atteindre tower (derriere NAT) :
+  # chaque vhost ACME finissait en « order-renew ... failed », et un contact
+  # admin@example.com est de toute facon refuse par Let's Encrypt
+  # (« contact email has forbidden domain example.com »).
+  # Les vhosts nginx locaux ci-dessous sont donc en HTTP loopback, destines a etre
+  # exposes par une ressource Pangolin/newt qui porte, elle, le TLS.
+  # Si un jour l'ACME revient ici : security.acme.defaults.email = "<vrai email>";
+  # (l'ancienne option security.acme.email est depreciee) + acceptTerms = true.
+
   # RUSTGUAC - Gateway Rust (remplace Guacamole Java)
   # ========================================================================
   services.rustguac = {
     enable = true;
     host = "127.0.0.1";
     port = 8089;
-    guacd = { host = "127.0.0.1"; port = 4822; tls = true; };
+    # guacd n'a pas de TLS ici : il ecoute en loopback, et rustguac doit parler
+    # le meme protocole que lui (tls = true des deux cotes, ou false des deux
+    # cotes, sinon la connexion guacamole ne s'etablit pas).
+    guacd = { host = "127.0.0.1"; port = 4822; tls = false; };
     vault = {
       address = "http://127.0.0.1:8200";
-      token = "/run/secrets/vault-rustguac-root-token";
+      rootTokenFile = "/run/secrets/vault-rustguac-root-token";
       mountPath = "secret";
-      connectionsPath = "rustguac/connections";
-    };
-    oidc = {
-      issuerUrl = "https://auth.example.com"; # TODO: remplacer par ton OIDC
-      clientId = "rustguac";
-      clientSecret = "/run/secrets/rustguac-oidc-client-secret";
-      redirectUrl = "https://guac.example.com/api/oidc/callback";
-      scopes = [ "openid" "profile" "email" "groups" ];
-      usernameClaim = "email";
-      groupsClaim = "groups";
+      basePath = "rustguac";
     };
     recording = {
       enable = true;
-      storagePath = "/var/lib/rustguac/recordings";
-      maxSize = "10G";
-      maxAge = "30d";
+      path = "/var/lib/rustguac/recordings";
+      maxDiskPercent = 80;
     };
-    rateLimit = { enabled = true; requestsPerMinute = 120; };
+    # OIDC DESACTIVE (29/09/2026) : rustguac 1.10.0 attend redirect_uri (pas
+    # redirect_url), default_role, extra_scopes, et un client_secret LITTERAL ou
+    # la variable OIDC_CLIENT_SECRET (pas un chemin de fichier). Surtout, il faut
+    # d'abord creer l'app OIDC dans Zitadel : client "rustguac", redirect
+    # https://guac.marcpartensky.com/auth/callback, puis exposer le vhost via une
+    # ressource Pangolin. Pour l'activer :
+    #   oidc = { issuerUrl = "https://auth.marcpartensky.com"; clientId = "rustguac";
+    #            clientSecretFile = "/run/secrets/rustguac-oidc-client-secret";
+    #            redirectUri = "https://guac.marcpartensky.com/auth/callback";
+    #            defaultRole = "operator"; extraScopes = [ "groups" ]; };
+    # En attendant, l'auth est par cle API (`rustguac add-admin`).
+    oidc = null;
+    # Pas de rate limiting ici : nginx est devant, et rustguac le recommande
+    # desactive derriere un reverse proxy.
+    rateLimit = false;
+    trustedProxies = [ "127.0.0.1/32" ];
   };
 
   # ========================================================================
@@ -90,7 +110,10 @@
   services.kasmvnc = {
     enable = true;
     user = "marc";
-    display = ":1";
+    # :1 est DEJA pris par la session graphique de marc (Xwayland :1) :
+    # kasmvncserver refuse alors de demarrer (« tower:1 is taken because of
+    # /tmp/.X1-lock ») et l'unite boucle jusqu'au start-limit-hit.
+    display = ":20";
     geometry = "1920x1080";
     port = 8443;
     tls = {
@@ -98,7 +121,7 @@
       keyFile = "/run/secrets/kasmvnc-key-pem";
     };
     passwordFile = "/home/marc/.kasmpasswd";
-    desktop = "lxqt-wayland";
+    desktop = "lxqt";
   };
 
   # ========================================================================
@@ -107,6 +130,48 @@
   services.vault-rustguac = {
     enable = true;
     mode = "dev";
+  # /home/marc/.kasmpasswd : fichier au format kasmvncpasswd. Attention,
+  # kasmvncpasswd n'a PAS d'option -f et refuse de tourner sans terminal
+  # (« getpassword error: Inappropriate ioctl for device ») ; il lit le mot de
+  # passe sur stdin quand on le lui donne deux fois. L'activation tourne donc en
+  # root, cree le fichier une fois, puis le passe a marc. Le mot de passe vit
+  # dans secrets/kasmvnc.yml (`sops -d secrets/kasmvnc.yml` pour le lire).
+  # -w -o (write + owner) donnent a marc une session utilisable : sans champ de
+  # permission kasmvncserver annonce « Users configured: marc (can only view) »,
+  # soit une session en lecture seule. (Mesure : l'authentification HTTP passe
+  # quand meme sans ces flags, 200 avec le bon mot de passe et 401 avec un
+  # mauvais ; un 401 sur un mot de passe correct signifie que l'utilisateur
+  # n'existe pas dans le fichier, pas que les flags manquent.)
+  # La regeneration est pilotee par une empreinte du secret : le fichier n'est
+  # reecrit que si le mot de passe a change, sinon chaque switch relancerait la
+  # session en cours pour rien (kasmvncserver ne lit ce fichier qu'au demarrage,
+  # donc un changement de secret impose un restart). Le test de fumee final ne
+  # journalise QUE le code HTTP, jamais le mot de passe.
+  system.activationScripts.kasmvncPasswd = ''
+    if [ -r /run/secrets/kasmvnc-password ]; then
+      pw="$(cat /run/secrets/kasmvnc-password)"
+      want="$(printf %s "$pw" | ${pkgs.coreutils}/bin/sha256sum | ${pkgs.coreutils}/bin/cut -d' ' -f1)"
+      have="$(cat /var/lib/kasmvnc/password.sha256 2>/dev/null || true)"
+      if [ "$want" != "$have" ]; then
+        printf '%s\n%s\n' "$pw" "$pw" | ${config.services.kasmvnc.package}/bin/kasmvncpasswd -u marc -w -o /home/marc/.kasmpasswd || true
+        chmod 600 /home/marc/.kasmpasswd 2>/dev/null || true
+        chown marc:users /home/marc/.kasmpasswd 2>/dev/null || true
+        install -d -m 0755 /var/lib/kasmvnc
+        printf '%s' "$want" > /var/lib/kasmvnc/password.sha256
+        ${pkgs.systemd}/bin/systemctl --user -M marc@.host reset-failed kasmvnc.service 2>/dev/null || true
+        ${pkgs.systemd}/bin/systemctl --user -M marc@.host restart kasmvnc.service 2>/dev/null || true
+        code="000"
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          code="$(${pkgs.curl}/bin/curl -sk -o /dev/null -w '%{http_code}' -u "marc:$pw" https://127.0.0.1:8443/ 2>/dev/null || true)"
+          if [ "$code" = "200" ]; then break; fi
+          sleep 2
+        done
+        echo "kasmvnc: mot de passe (re)genere, authentification locale -> HTTP $code" >&2
+      fi
+      unset pw want have
+    fi
+  '';
+
     address = "127.0.0.1";
     port = 8200;
     devRootToken = "/run/secrets/vault-rustguac-root-token";
@@ -118,26 +183,58 @@
   # ========================================================================
   services.rustdesk = {
     enable = true;
-    hbbs = { enable = true; port = 21115; };
-    hbbr = { enable = true; port = 21116; apiPort = 21118; };
+    hbbs = { enable = true; idPort = 21116; };
+    hbbr = { enable = true; port = 21117; };
     openFirewall = true;
   };
+  # Ports reels de la 1.1.16 : hbbs 21115 (test NAT) / 21116 (ID, TCP+UDP) /
+  # 21118 (websocket), hbbr 21117 (relais) / 21119 (websocket). Sans -k, hbbs
+  # genere sa paire de cles dans /var/lib/rustdesk (id_ed25519*).
+  # NOTE : tower est derriere NAT residentiel ; ces ports ne sont utiles qu'en
+  # LAN tant que rien n'est redirige cote box (ou via le VPS).
 
   # ========================================================================
-  # NGINX - Reverse proxy avec ACME pour les deux services
+  # NGINX - vhosts locaux (TLS porte par Pangolin/newt, pas par nginx ici)
   # ========================================================================
   services.nginx.rustguac = {
     enable = true;
-    domain = "guac.example.com"; # TODO: ton domaine
+    domain = "guac.marcpartensky.com";
     upstream = "http://127.0.0.1:8089";
-    acme = true;
+    acme = false;
+    listenAddress = "127.0.0.1";
+    listenPort = 8288;
+  };
+
+  # Exposition publique via Pangolin (newt, site "tower") : kasm.marcpartensky.com
+  # -> 127.0.0.1:8288, le vhost nginx local qui repart en https vers KasmVNC.
+  # HTTP + SSO, comme noVNC (vnc.marcpartensky.com) : newt 1.12.4 suffit, le mode
+  # VNC natif de Pangolin exigerait un connecteur > 1.13. Meme contrainte de
+  # schema que services/newt : ce Pangolin attend `proxy-resources` + `protocol`
+  # (`public-resources`/`mode` sont ignores en silence -> domaine en 404).
+  # Pas de healthcheck : KasmVNC repond 401 sur / sans authentification, donc un
+  # healthcheck HTTP marquerait la cible unhealthy et Pangolin la sortirait du
+  # load-balancer (lecon du healthcheck noVNC dans services/newt).
+  services.newt.blueprint.proxy-resources.kasm = {
+    name = "kasm";
+    protocol = "http";
+    full-domain = "kasm.marcpartensky.com";
+    auth.sso-enabled = true;
+    targets = [
+      {
+        hostname = "127.0.0.1";
+        port = 8288;
+        method = "http";
+      }
+    ];
   };
 
   services.nginx.kasmvnc = {
     enable = true;
-    domain = "kasm.example.com"; # TODO: ton domaine
+    domain = "kasm.marcpartensky.com";
     upstream = "https://127.0.0.1:8443";
-    acme = true;
+    acme = false;
+    listenAddress = "127.0.0.1";
+    listenPort = 8289;
   };
 
   # ========================================================================
@@ -146,29 +243,42 @@
   sops.secrets = {
     vault-rustguac-root-token = {
       sopsFile = ../../secrets/tower.yml;
-      owner = "root";
+      owner = "marc";
       mode = "0400";
     };
     rustguac-oidc-client-secret = {
+    # Lu par le service vault (User=vault) : owner root + 0400 rendait le
+    # fichier illisible pour lui, donc `vault server -dev` sortait en EACCES.
       sopsFile = ../../secrets/tower.yml;
-      owner = "root";
+      owner = "vault";
       mode = "0400";
     };
     kasmvnc-cert-pem = {
+    # Lu par le service rustguac lui-meme (User=rustguac).
       sopsFile = ../../secrets/tower.yml;
-      owner = "root";
+      owner = "rustguac";
       mode = "0400";
     };
     kasmvnc-key-pem = {
       sopsFile = ../../secrets/tower.yml;
-      owner = "root";
+      owner = "marc";
       mode = "0400";
     };
-    "pangolin/api_key" = {
-      sopsFile = ../../secrets/common.yml;
+    # Mot de passe KasmVNC (web login), lu par le script d'activation cote root.
+    kasmvnc-password = {
+      sopsFile = ../../secrets/kasmvnc.yml;
+      owner = "root";
+      mode = "0400";
     };
   };
 
   # User lingering pour KasmVNC systemd user service
   users.users.marc.linger = true;
-}
+}    # "pangolin/api_key" : volontairement absent, la cle n'existe pas dans
+    # secrets/common.yml (la declarer fait echouer tout le switch en
+    # « the key 'pangolin' cannot be found »). Voir services/hermes/default.nix.
+
+  # hermes doit pouvoir lire les journaux (y compris les unites utilisateur de
+  # marc, ex. kasmvnc) : sans ca, aucun diagnostic possible sans root, et sudo
+  # n'est autorise que pour nixos-rebuild.
+  users.users.hermes.extraGroups = [ "systemd-journal" ];

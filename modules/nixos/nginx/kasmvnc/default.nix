@@ -26,6 +26,21 @@ in {
       default = true;
     };
 
+    # Ecoute locale, pour une exposition sans ACME (reverse proxy qui porte le
+    # TLS, ex. newt/Pangolin). listenPort = null garde les defauts du module
+    # nginx (0.0.0.0:80 + 443 ssl).
+    listenAddress = mkOption {
+      type = types.str;
+      default = "127.0.0.1";
+      description = "Adresse d'ecoute quand listenPort est defini";
+    };
+
+    listenPort = mkOption {
+      type = types.nullOr types.port;
+      default = null;
+      description = "Port d'ecoute local (HTTP) ; null = defauts nginx (80/443)";
+    };
+
     # WebSocket support for KasmVNC signaling
     websocket = mkOption {
       type = types.bool;
@@ -48,20 +63,19 @@ in {
         "${cfg.domain}" = {
           forceSSL = cfg.acme;
           enableACME = cfg.acme;
+          listen = optional (cfg.listenPort != null) {
+            addr = cfg.listenAddress;
+            port = cfg.listenPort;
+          };
 
           # Proxy HTTPS + WSS to KasmVNC
           locations."/" = {
             proxyPass = cfg.upstream;
             proxyWebsockets = cfg.websocket;
+            # Idem rustguac : recommendedProxySettings pose deja les en-tetes et
+            # proxy_http_version, un doublon fait echouer `nginx -t`.
             extraConfig = ''
               proxy_buffering off;
-              proxy_http_version 1.1;
-              proxy_set_header Upgrade $http_upgrade;
-              proxy_set_header Connection "upgrade";
-              proxy_set_header Host $host;
-              proxy_set_header X-Real-IP $remote_addr;
-              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-              proxy_set_header X-Forwarded-Proto $scheme;
               proxy_read_timeout 86400;
               proxy_send_timeout 86400;
               # KasmVNC specific headers
