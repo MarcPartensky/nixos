@@ -41,7 +41,11 @@
     ./hermes-dashboard
     ./hermes-pocket
     ./discord-bot
-    ./discord-hermes-bridge
+    # ./discord-hermes-bridge  # inutile : un seul gateway par hote, celui du
+    # profil default sert deja le profil discord-bridge (l'unite faisait
+    # crash-looper un second gateway, exit 75 « The host gateway already serves
+    # profile 'discord-bridge' »). Le cog Discord tape la route multiplexee
+    # http://127.0.0.1:8642/p/discord-bridge/v1/chat/completions.
     ./eternal-terminal
     ./nextcloud-mcp
     ./amazon-mcp
@@ -49,7 +53,7 @@
     # ./stalwart-mcp  # FIXME: cargoHash mismatch, needs fix
     # ./gotify
     ./zitadel
-    ./zitadel-mcp
+    # ./zitadel-mcp  # FIXME: secret zitadel_mcp_env manquant dans zitadel.yml
     ./roku
     ./codeberg-mcp
     ./ibkr-mcp
@@ -57,6 +61,9 @@
     ./meetup-mcp
     ./gitea
     ./gitea-mcp
+    ./openrouter-mcp
+    ./reactive-resume
+    ./winnie
     # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes
