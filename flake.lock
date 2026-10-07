@@ -20,6 +20,26 @@
         "type": "github"
       }
     },
+    "ankimcp": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1790357911,
+        "narHash": "sha256-cQUSMvhtkvPBx+FB27l65B/wtTwAYUV8hQOG2roDq7s=",
+        "owner": "ankimcp",
+        "repo": "anki-mcp-server-addon",
+        "rev": "a9bfedc05533f4c5c6fb7b619e3863a72fad8358",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ankimcp",
+        "repo": "anki-mcp-server-addon",
+        "type": "github"
+      }
+    },
     "backtest": {
       "inputs": {
         "flake-utils": "flake-utils",
@@ -1494,6 +1514,7 @@
     "root": {
       "inputs": {
         "agenix": "agenix",
+        "ankimcp": "ankimcp",
         "backtest": "backtest",
         "catppuccin": "catppuccin",
         "catppuccin-thunderbird": "catppuccin-thunderbird",

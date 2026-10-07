@@ -153,6 +153,11 @@
       flake = false;
     };
 
+    ankimcp = {
+      url = "github:ankimcp/anki-mcp-server-addon";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     jovian.url = "github:Jovian-Experiments/Jovian-NixOS";
     # jovian.inputs.nixpkgs.follows = "nixpkgs";
 

@@ -52,6 +52,10 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  - path_regex: secrets/reactive-resume\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/gitea\.yml$
     key_groups:
       - age:
@@ -61,6 +65,10 @@ creation_rules:
       - age:
           - *tower
   - path_regex: secrets/gitea-mcp\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/openrouter-mcp\.yml$
     key_groups:
       - age:
           - *tower
