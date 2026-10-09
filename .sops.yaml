@@ -88,3 +88,7 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  - path_regex: secrets/anki\.yml$
+    key_groups:
+      - age:
+          - *tower

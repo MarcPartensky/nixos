@@ -63,6 +63,7 @@
     ./gitea-mcp
     ./openrouter-mcp
     ./reactive-resume
+    ./anki-sync-server
     ./winnie
     # ./kanidm
     # ./syncserver
