@@ -122,8 +122,11 @@ in {
   # Ressource publique Pangolin (newt, site "tower") : anki.marcpartensky.com
   # -> 127.0.0.1:27702 (façade nginx). Cle `proxy-resources` + champ
   # `protocol` = schema réellement compris par le Pangolin du VPS (cf.
-  # services/newt). Pas d'auth Pangolin (clients natifs). Pas de healthcheck
-  # déclaré : la façade répond 200 sur /, donc le check par défaut passe.
+  # services/newt). Pas d'auth Pangolin (clients natifs).
+  # Healthcheck OBLIGATOIRE sur /health : sans bloc healthcheck, newt check
+  # /healthz par défaut, que nginx proxifie (préfixe /health) vers le serveur
+  # Anki qui répond 404 -> cible marquée unhealthy -> "no available server"
+  # sur le domaine (vécu le 11/10/2026).
   services.newt.blueprint.proxy-resources."anki-sync-server" = {
     name = "anki-sync-server";
     protocol = "http";
@@ -134,6 +137,20 @@ in {
         hostname = "127.0.0.1";
         port = proxyPort;
         method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = proxyPort;
+          path = "/health";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };
