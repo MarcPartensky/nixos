@@ -59,6 +59,8 @@ in {
 
   catppuccin = {
     enable = true;
+    # explicite : catppuccin/nix va basculer l'auto-enrôlement sur autoEnable
+    autoEnable = true;
     flavor = "mocha";
     accent = "lavender";
     cursors.enable = true;
@@ -75,6 +77,8 @@ in {
     iconTheme.package = lib.mkDefault pkgs.papirus-icon-theme;
     gtk3.extraConfig.gtk-application-prefer-dark-theme = 1;
     gtk4.extraConfig.gtk-application-prefer-dark-theme = 1;
+    # comportement historique (stateVersion < 26.05) : GTK4 suit le thème GTK
+    gtk4.theme = config.gtk.theme;
   };
 
   qt = {

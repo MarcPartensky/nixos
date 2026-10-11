@@ -1,4 +1,8 @@
-{pkgs, ...}: let
+{
+  config,
+  pkgs,
+  ...
+}: let
   shellAliases = import ./aliases.nix;
 in {
   home.packages = with pkgs; [
@@ -9,6 +13,8 @@ in {
 
   programs.zsh = {
     enable = true;
+    # garde .zshrc dans ~ (défaut historique, stateVersion < 26.05)
+    dotDir = config.home.homeDirectory;
     enableCompletion = true;
     initContent = builtins.readFile ./profile.sh;
 

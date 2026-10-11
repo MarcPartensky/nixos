@@ -186,7 +186,7 @@ in {
     wg-netmanager
     openvpn
     openvpn3
-    protonvpn-gui
+    proton-vpn
     tor-browser
     ungoogled-chromium
     netsurf-browser
