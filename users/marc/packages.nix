@@ -62,7 +62,8 @@ in {
     typer
     yazi
     eternal-terminal
-    pkgs.anki.withAddons [ pkgs.ankiAddons.anki-mcp-server ]
+    # Anki + addon MCP, tous deux depuis le nixpkgs de l'upstream (cf flake.nix)
+    inputs.anki-mcp.packages.${pkgs.stdenv.hostPlatform.system}.default
     libreoffice-fresh
     pw-volume
     brightnessctl

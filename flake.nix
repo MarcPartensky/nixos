@@ -107,6 +107,10 @@
     option-pricer.url = "github:marcpartensky/option-pricer";
     option-pricer.inputs.nixpkgs.follows = "nixpkgs";
 
+    # addon Anki MCP (ankimcp.ai) : pas de follows, ses deps python (mcp >= 1.27)
+    # doivent venir du même nixpkgs que l'Anki qui le charge
+    anki-mcp.url = "github:ankimcp/anki-mcp-server-addon";
+
     uv2nix.url = "github:pyproject-nix/uv2nix";
     uv2nix.inputs.nixpkgs.follows = "nixpkgs";
     pyproject-nix.url = "github:pyproject-nix/pyproject.nix";
