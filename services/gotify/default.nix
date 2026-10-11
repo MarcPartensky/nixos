@@ -4,8 +4,13 @@
   config,
   lib,
   inputs,
-  ...,
-}: {
+  ...
+}: let
+  # Gotify v3 (support OIDC natif) n'est pas dans la nixpkgs 26.05 épinglée
+  # (2.9.1) : même convention que herdr/kanidm dans ce repo, on instancie
+  # l'input unstable pour un paquet isolé.
+  gotifyPkg = (import inputs.unstable { system = pkgs.stdenv.hostPlatform.system; }).gotify-server;
+in {
   sops.secrets = {
     "gotify/admin_password" = {
       key = "gotify_admin_password";
@@ -27,25 +32,45 @@
 
   services.gotify = {
     enable = true;
-    package = inputs.unstable.gotify-server;
+    package = gotifyPkg;
     stateDirectoryName = "gotify";
 
     environment = {
       GOTIFY_SERVER_PORT = "8070";
+      # loopback uniquement : l'exposition passe par le tunnel newt/Pangolin.
+      # Sans ce reglage le serveur bind [::]:8070 sur toutes les interfaces
+      # (inoffensif tant que le port n'est pas dans networking.firewall.
+      # allowedTCPPorts, mais une seule ligne oubliee suffirait a l'exposer).
+      GOTIFY_SERVER_LISTENADDR = "127.0.0.1";
       GOTIFY_DATABASE_DIALECT = "postgres";
-      GOTIFY_DEFAULTUSER_NAME = "admin";
+      GOTIFY_DEFAULTUSER_NAME = "admin";  # ne sert qu'à la création d'une base neuve (celle-ci existe déjà)
       GOTIFY_PASSSTRENGTH = "10";
 
-      # OIDC / Zitadel SSO
+      # OIDC / Zitadel SSO. PIEGE : Gotify 3.x nomme ses variables SANS
+      # underscore entre les mots (gotify.net/docs/config) :
+      #   GOTIFY_OIDC_CLIENTID, CLIENTSECRET, REDIRECTURL, USERNAMECLAIM.
+      # Les formes snake_case (GOTIFY_OIDC_CLIENT_ID, ...) sont ignorées EN
+      # SILENCE : l'UI afficherait le bouton SSO mais le flow échouerait.
       GOTIFY_OIDC_ENABLED = "true";
-      GOTIFY_OIDC_CLIENT_ID = "392663692992381228";
-      GOTIFY_OIDC_CLIENT_SECRET = "";
+      # App OIDC PKCE (type User Agent, auth method None) créée dans Zitadel :
+      # client_id 392663692992381228, redirect_uri enregistré en base Zitadel
+      # (projections.apps7_oidc_configs) = https://gotify.marcpartensky.com/auth/oidc/callback
+      GOTIFY_OIDC_CLIENTID = "392663692992381228";
+      GOTIFY_OIDC_CLIENTSECRET = "";  # client public PKCE : aucun secret
       GOTIFY_OIDC_ISSUER = "https://auth.marcpartensky.com";
-      GOTIFY_OIDC_REDIRECT_URL = "https://gotify.marcpartensky.com/auth/oidc/callback";
-      GOTIFY_OIDC_SCOPES = "openid profile email";
-      GOTIFY_OIDC_USERNAME_CLAIM = "preferred_username";
-      GOTIFY_OIDC_DISPLAY_NAME_CLAIM = "name";
-      GOTIFY_OIDC_EMAIL_CLAIM = "email";
+      GOTIFY_OIDC_REDIRECTURL = "https://gotify.marcpartensky.com/auth/oidc/callback";
+      GOTIFY_OIDC_SCOPES = "openid,profile,email";  # "text-list" = séparateur VIRGULE, pas espace
+      GOTIFY_OIDC_USERNAMECLAIM = "preferred_username";
+      GOTIFY_OIDC_IDP_NAME = "Zitadel";
+      GOTIFY_OIDC_AUTOREGISTER = "true";
+      # Le user Zitadel de marc a pour username "marc@marcpartensky.com" (donc
+      # preferred_username aussi) : il ne tombe PAS sur le compte local "marc".
+      # Ce flag rattache l'identité OIDC au compte local de même nom au lieu
+      # d'ouvrir un second compte. Le compte local a été renommé
+      # "marc@marcpartensky.com" (UPDATE users : il porte les 4 applications et
+      # les tokens clients déjà en place) tout en restant admin, car GroupsAdmin
+      # est vide -> le flag admin existant est conservé.
+      GOTIFY_OIDC_LINK_BY_USERNAME = "true";
     };
 
     environmentFiles = [
@@ -56,15 +81,24 @@
   # gotify dépend de postgres : sans ces réglages il crash-loopait quand un
   # switch redémarre postgresql (RestartSec=100ms par défaut, 5 essais, puis
   # start-limit-hit avant que postgres n'accepte de nouveau les connexions).
+  #
+  # Il dépend AUSSI du tunnel newt : au démarrage, Gotify 3.x fait un discovery
+  # OIDC sur https://auth.marcpartensky.com (Zitadel est derrière Pangolin, donc
+  # via newt) et sort en FTL « failed to initialize OIDC provider ... 503 » si le
+  # tunnel n'est pas encore monté, ce qui tue le service. Vérifié le 09/10/2026 :
+  # les 2 premières tentatives de démarrage ont échoué pour cette raison.
+  # D'où after/wants newt + StartLimitIntervalSec = 0 (désactive le rate-limit
+  # systemd) : le service retente indéfiniment au lieu de rester mort jusqu'au
+  # prochain switch après 10 échecs en 60 s.
   systemd.services.gotify-server = {
-    after = ["postgresql.service"];
-    wants = ["postgresql.service"];
+    after = ["postgresql.service" "newt.service"];
+    wants = ["postgresql.service" "newt.service"];
     unitConfig = {
-      StartLimitIntervalSec = 60;
+      StartLimitIntervalSec = 0;
       StartLimitBurst = 10;
     };
     serviceConfig = {
-      RestartSec = "2s";
+      RestartSec = "5s";
     };
   };
 
@@ -115,11 +149,17 @@
   };
 
   # Exposition via Pangolin (newt blueprint) -> gotify.marcpartensky.com
+  # PAS de SSO Pangolin : les clients natifs (appli Android, gotify-cli, les
+  # scripts qui poussent une notification sur /message avec un token d'app) ne
+  # savent pas suivre une redirection navigateur, et ce chemin-la EST l'usage
+  # principal de Gotify. Le login humain est assure par l'OIDC Zitadel
+  # ci-dessus (Gotify 3.x le fait lui-meme) ; le healthcheck sur /health reste
+  # joignable sans auth, donc la cible ne sortira pas du load-balancer.
   services.newt.blueprint.proxy-resources.gotify = {
     name = "gotify";
     protocol = "http";
     full-domain = "gotify.marcpartensky.com";
-    auth.sso-enabled = true;
+    auth.sso-enabled = false;
     targets = [
       {
         hostname = "127.0.0.1";

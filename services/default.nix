@@ -51,7 +51,7 @@
     ./amazon-mcp
     ./firefox-mcp
     # ./stalwart-mcp  # FIXME: cargoHash mismatch, needs fix
-    # ./gotify
+    ./gotify
     ./zitadel
     # ./zitadel-mcp  # FIXME: secret zitadel_mcp_env manquant dans zitadel.yml
     ./roku
