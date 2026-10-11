@@ -13,8 +13,10 @@
     enable = true;
     environmentFile = config.sops.secrets.newt_env.path;
 
-    # Ressource publique Winnie : front (Dioxus UI, developpement local :8080).
-    # Le domaine public sert le front ; le backend est deplace sur api.*.
+    # Ressource publique Winnie : front Svelte 5 (build statique servi par
+    # winnie-frontend.service sur 127.0.0.1:8888). Le domaine public sert le
+    # front ; le backend est sur api.*. Le port doit etre celui du service
+    # local (8888) : a 8080 le proxy repond 502 (mesure du 09/10/2026).
     blueprint.proxy-resources.winnie-frontend = {
       name = "winnie-frontend";
       protocol = "http";
@@ -23,7 +25,7 @@
       targets = [
         {
           hostname = "127.0.0.1";
-          port = 8080;
+          port = 8888;
           method = "http";
         }
       ];
@@ -67,6 +69,20 @@
             healthy-threshold = 1;
             unhealthy-threshold = 3;
           };
+        }
+      ];
+    };
+
+    blueprint.proxy-resources.dioxus-frontend = {
+      name = "dioxus-frontend";
+      protocol = "http";
+      full-domain = "dioxus.marcpartensky.com";
+      auth.sso-enabled = false;
+      targets = [
+        {
+          hostname = "127.0.0.1";
+          port = 8888;
+          method = "http";
         }
       ];
     };

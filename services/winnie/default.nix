@@ -29,11 +29,16 @@ in {
   # projet : sans Garage il echoue, on empeche son demarrage au boot.
   systemd.services.winnie-bucket.wantedBy = lib.mkForce [ ];
 
-  # Front Dioxus (web statique) : build `app/ui/build.sh` -> app/ui/dist, copie
-  # dans le store a l'evaluation, servi en loopback ; Pangolin l'expose sur
-  # winnie.marcpartensky.com. Rebuild du front = relancer build.sh puis switch.
+  # Front Svelte 5 (web statique, Vite) : `npm run build` dans
+  # /home/marc/git/winnie/app -> app/dist, copie dans le store a l'evaluation,
+  # servi en loopback ; Pangolin l'expose sur winnie.marcpartensky.com.
+  # Rebuild du front = relancer `npm run build` puis un `nixos-rebuild switch`
+  # (builtins.path est impur : la copie dans le store date de l'evaluation).
+  # Le port ci-dessous DOIT etre celui de la ressource Pangolin
+  # `winnie-frontend` dans services/newt : un desaccord donne un 502 sur le
+  # domaine (le client newt met le port cible en cache, il faut le redemarrer).
   systemd.services.winnie-frontend = {
-    description = "Winnie front (Dioxus web, statique)";
+    description = "Winnie front (Svelte 5 statique)";
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     serviceConfig = {
@@ -41,9 +46,9 @@ in {
       ExecStart = lib.concatStringsSep " " [
         "${pkgs.static-web-server}/bin/static-web-server"
         "--host 127.0.0.1"
-        "--port 8080"
-        "--root ${builtins.path { path = /home/marc/git/winnie/app/ui/dist; name = "winnie-ui-dist"; }}"
-        "--page-fallback ${builtins.path { path = /home/marc/git/winnie/app/ui/dist/index.html; name = "winnie-ui-index.html"; }}"
+        "--port 8888"
+        "--root ${builtins.path { path = /home/marc/git/winnie/app/dist; name = "winnie-ui-dist"; }}"
+        "--page-fallback ${builtins.path { path = /home/marc/git/winnie/app/dist/index.html; name = "winnie-ui-index"; }}"
         "--health"
       ];
       Restart = "on-failure";
