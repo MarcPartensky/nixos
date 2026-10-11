@@ -295,6 +295,15 @@ in {
   # User lingering pour KasmVNC systemd user service
   users.users.marc.linger = true;
 
+  # ========================================================================
+  # WAYDROID - Android LineageOS en conteneur (test).
+  # Noyau 6.18.54 deja avec ANDROID_BINDER_IPC/BINDERFS/MEMFD_CREATE -> pas de
+  # module out-of-tree, pas de reboot. Le service waydroid-container echoue
+  # proprement tant que `waydroid init` (root, telecharge ~1,2 Go d'images) n'a
+  # pas ete lance une fois, puis demarre au switch suivant ou sur restart.
+  # ========================================================================
+  virtualisation.waydroid.enable = true;
+
   # hermes doit pouvoir lire les journaux (y compris les unites utilisateur de
   # marc, ex. kasmvnc) : sans ca, aucun diagnostic possible sans root, et sudo
   # n'est autorise que pour nixos-rebuild.
