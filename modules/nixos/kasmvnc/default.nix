@@ -137,6 +137,34 @@ let
   xstartup = pkgs.writeShellScript "kasmvnc-xstartup" (
     if cfg.desktop == "custom" then cfg.customCommand
     else if cfg.desktop == "xfce" then "exec ${pkgs.xfce.xfce4-session}/bin/xfce4-session"
+    else if cfg.desktop == "plasma" then ''
+      # startplasma-x11 est le point d'entree d'une session KDE : il pose le bus
+      # de session, ksmserver, kwin_x11, kded, plasmashell. Ne PAS lancer
+      # plasmashell a la main : la session serait sans gestionnaire de fenetres.
+      #
+      # Le PATH de l'unite est court (xauth, xkbcomp, ...). startplasma-x11
+      # appelle kwin_x11 et plasmashell par leur nom : sans le profil systeme il
+      # sort en « kwin_x11: not found » et la session meurt immediatement.
+      export PATH="/run/current-system/sw/bin:${pkgs.kdePackages.plasma-workspace}/bin:$PATH"
+      export XDG_SESSION_TYPE=x11
+      export XDG_CURRENT_DESKTOP=KDE
+      export XDG_SESSION_DESKTOP=KDE
+      export DESKTOP_SESSION=plasma
+      export KDE_FULL_SESSION=true
+      export KDE_SESSION_VERSION=6
+      export QT_QPA_PLATFORM=xcb
+      export GDK_BACKEND=x11
+      # startplasma-x11 ne cree un bus de session QUE si
+      # DBUS_SESSION_BUS_ADDRESS est vide (plasma-dbus-run-session-if-needed).
+      # L'unite pointe sur %t/bus : si ce socket n'existe pas (pas de dbus.socket
+      # utilisateur actif), KDE se contente du pointeur mort et meurt sur
+      # « Failed to connect to socket ». On le vide dans ce cas seulement.
+      bus="''${DBUS_SESSION_BUS_ADDRESS#unix:path=}"
+      if [ -n "$DBUS_SESSION_BUS_ADDRESS" ] && [ ! -S "$bus" ]; then
+        unset DBUS_SESSION_BUS_ADDRESS
+      fi
+      exec ${pkgs.kdePackages.plasma-workspace}/bin/startplasma-x11
+    ''
     else ''
       export PATH="/run/current-system/sw/bin:${pkgs.lxqt.lxqt-session}/bin:$PATH"
       export XDG_SESSION_TYPE=x11
@@ -169,6 +197,185 @@ let
     kdePackages.konsole
     pcmanfm-qt
   ];
+
+  # ---------------------------------------------------------------------------
+  # PLASMA 6 (desktop = "plasma") : bureau distant complet, en X11.
+  #
+  # KasmVNC ne sait pas heberger de session Wayland (Xkasmvnc EST un serveur X ;
+  # kasmtech/KasmVNC#193 : faire tourner un DE Wayland dedans exigerait de
+  # patcher KWin). Le mode Wayland de l'option `desktop` n'existe donc pas :
+  # Plasma tourne en session X11 (startplasma-x11), ce qui est pleinement
+  # supporte par Plasma 6 et suffisant pour le but (bureau cliquable, terminal,
+  # navigateur, barre des taches).
+  #
+  # La liste des paquets est celle de nixos/modules/services/desktop-managers/
+  # plasma6.nix (nixpkgs 26.05), source autorisee de « ce qu'une session Plasma
+  # attend ». Ce module n'est PAS active (services.desktopManager.plasma6) : il
+  # est global (fonts.fontconfig.defaultFonts, xdg.portal.configPackages,
+  # qt.enable, programs.kde-pim, orca...) et modifierait la session niri locale
+  # de marc. Tout est donc confine ici + au XDG_* de l'unite kasmvnc.
+  #
+  # ECARTES VOLONTAIREMENT du lot plasma6 (chaque paquet ajoute ici pose ses
+  # unites systemd dans /run/current-system/sw/share/systemd/user, que le
+  # gestionnaire utilisateur de marc partage avec sa session niri) :
+  #   baloo, baloo-widgets, kunifiedpush : leurs unites sont
+  #     WantedBy=graphical-session.target, donc elles demarreraient AUSSI dans
+  #     niri (indexeur de fichiers + distributeur de notifications push). Verifie
+  #     dans les .service livres. L'indexation baloo est de toute facon coupee
+  #     par le baloofilerc de plasmaConfigDir.
+  #   drkonqi : pose un gestionnaire de crashs SYSTEME
+  #     (drkonqi-coredump-processor@) qui remonte les core dumps de marc dans sa
+  #     session locale. Sans rapport avec un bureau distant.
+  #   kwallet-pam : exige une integration PAM (security.pam.services.*.kwallet)
+  #     qu'une session KasmVNC n'a pas (aucun login PAM) : son unite
+  #     plasma-kwallet-pam.service (Wants de plasma-workspace.target) echouerait.
+  # ---------------------------------------------------------------------------
+  plasmaLookAndFeel = pkgs.runCommand "plasma-look-and-feel-hermes-kasm" { } ''
+    dir=$out/share/plasma/look-and-feel/org.hermes.kasm.desktop
+    install -d $dir/contents/layouts
+    install -m 444 ${./plasma/metadata.json} $dir/metadata.json
+    install -m 444 ${./plasma/desktop-layout.js} $dir/contents/layouts/org.kde.plasma.desktop-layout.js
+    install -m 444 ${./plasma/defaults} $dir/contents/defaults
+  '';
+
+  plasmaPkgs =
+    with pkgs.kdePackages;
+    [
+      # Frameworks dont le profil systeme a besoin pour ses greffons Qt
+      qtwayland qtsvg frameworkintegration kauth kcoreaddons kded kfilemetadata
+      kguiaddons kiconthemes kimageformats qtimageformats kio kio-admin
+      kio-extras kio-fuse knighttime kpackage kservice kwallet kwalletmanager
+      plasma-activities solid phonon-vlc
+      # Coeur Plasma
+      kwin
+      kwin-x11 # LE gestionnaire de fenetres d'une session X11 (kwin seul = Wayland)
+      kscreen
+      libkscreen
+      kscreenlocker
+      kactivitymanagerd
+      kde-cli-tools
+      kglobalacceld
+      kwrited
+      milou
+      kdegraphics-thumbnailers
+      polkit-kde-agent-1
+      plasma-desktop
+      plasma-workspace
+      kde-inotify-survey
+      # Integration applicative
+      libplasma
+      plasma-integration
+      kde-gtk-config
+      # Habillage
+      breeze
+      breeze-icons
+      breeze-gtk
+      ocean-sound-theme
+      qqc2-breeze-style
+      qqc2-desktop-style
+      # Extras + reglages
+      kdeplasma-addons
+      plasma-workspace-wallpapers
+      kmenuedit
+      kinfocenter
+      plasma-systemmonitor
+      ksystemstats
+      libksysguard
+      systemsettings
+      kcmutils
+      ksshaskpass
+      # Applications : le terminal et le navigateur demandes, plus le minimum
+      konsole
+      dolphin
+      dolphin-plugins
+      ark
+      spectacle
+      kate
+      ktexteditor
+      gwenview
+      kcalc
+      plasma-browser-integration
+      # Sessions et portails
+      xdg-desktop-portal-kde
+      kwayland-integration
+      plasma5support
+      kdecoration
+      kirigami
+      (lib.getBin qttools) # qdbus, attendu par plusieurs scripts KDE
+      plasmaLookAndFeel
+    ]
+    # powerdevil n'est PAS installe : tower a powerManagement.enable = false,
+    # donc pas d'upower, et surtout AUCUNE extinction ni mise en veille de
+    # l'ecran pendant une session distante (c'est la raison de fond).
+    ++ lib.optional config.networking.networkmanager.enable plasma-nm
+    ++ lib.optional
+      (config.services.pipewire.pulse.enable || config.services.pulseaudio.enable)
+      plasma-pa
+    ++ [
+      # Le navigateur demande, et les deux paquets que le module plasma6 de
+      # nixpkgs met dans systemPackages pour l'integration bureau.
+      pkgs.librewolf
+      pkgs.hicolor-icon-theme
+      pkgs.xdg-user-dirs
+      pkgs.xdg-utils
+    ];
+
+  # Arborescence de DONNEES Plasma, isolee du profil systeme. Sans elle,
+  # plasmashell ne trouve rien : le profil de tower ne lie pas share/plasma,
+  # share/kservices6, share/kglobalaccel, share/kpackage, share/solid... (le
+  # module plasma6 de nixpkgs regle ca avec un environment.pathsToLink =
+  # [ "/share" ] GLOBAL, hors de question sur une machine dont le bureau local
+  # est niri). On exporte donc ce dossier dans le XDG_DATA_DIRS de la seule
+  # unite kasmvnc : la session niri n'y voit rien.
+  plasmaDataEnv = pkgs.buildEnv {
+    name = "kasmvnc-plasma-data";
+    paths = plasmaPkgs;
+    pathsToLink = [ "/share" "/lib/qt-6" "/libexec" "/etc/xdg" ];
+    ignoreCollisions = true;
+  };
+
+  # Reglages KDE par DEFAUT, exportes dans le XDG_CONFIG_DIRS de la meme unite
+  # (la session niri ne les voit donc pas non plus). Sans kscreenlockerrc,
+  # l'ecran distant se verrouille au bout de 5 min d'inactivite, ce qui rend le
+  # bureau inutilisable a distance.
+  plasmaConfigDir = pkgs.linkFarm "kasmvnc-plasma-xdg" [
+    {
+      name = "kdeglobals";
+      path = pkgs.writeText "kasmvnc-kdeglobals" ''
+        [KDE]
+        LookAndFeelPackage=org.hermes.kasm.desktop
+      '';
+    }
+    {
+      name = "kscreenlockerrc";
+      path = pkgs.writeText "kasmvnc-kscreenlockerrc" ''
+        [Daemon]
+        Autolock=false
+        LockOnResume=false
+      '';
+    }
+    {
+      name = "baloofilerc";
+      path = pkgs.writeText "kasmvnc-baloofilerc" ''
+        [Basic Settings]
+        Indexing-Enabled=false
+      '';
+    }
+    {
+      name = "powermanagementprofilesrc";
+      path = pkgs.writeText "kasmvnc-powermanagementprofilesrc" ''
+        [AC][DimDisplay]
+        idleTime=0
+
+        [AC][SuspendSession]
+        idleTime=0
+        suspendType=0
+        lockScreen=false
+      '';
+    }
+  ];
+
+  desktopPkgs = if cfg.desktop == "plasma" then plasmaPkgs else lxqtPkgs;
 
   # Generate kasmvnc.yaml, au schema REEL de KasmVNC 1.5.0. L'ancien fichier
   # imbriquait network/desktop/encoding/gpu/advanced sous un bloc `server:` qui
@@ -320,7 +527,7 @@ in {
 
     # Desktop environment
     desktop = mkOption {
-      type = types.enum [ "lxqt" "lxqt-wayland" "xfce" "custom" ];
+      type = types.enum [ "lxqt" "lxqt-wayland" "xfce" "plasma" "custom" ];
       default = "lxqt";
       description = "Desktop environment to launch (le .deb 1.5.0 ne sait pas lancer de session Wayland : -xstartup -> X11)";
     };
@@ -345,6 +552,16 @@ in {
       default = "";
       description = "Extra YAML config merged into kasmvnc.yaml";
     };
+
+    # Pas expose dans kasmvnc.yaml (confirme par kasmtech/KasmVNC#284) : seul un
+    # flag CLI relaye a Xkasmvnc le desactive. A utiliser quand une autre couche
+    # (SSO Pangolin) gate deja l'acces, sinon n'importe qui qui atteint le port
+    # entre sans mot de passe.
+    disableBasicAuth = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Desactive le Basic Auth HTTP propre a KasmVNC (-DisableBasicAuth). A reserver aux deploiements deja gates par un SSO en amont (ex. Pangolin).";
+    };
   };
 
   config = mkIf cfg.enable {
@@ -352,7 +569,7 @@ in {
     users.users.${cfg.user}.extraGroups = [ "video" "render" "seat" "ssl-cert" ];
 
     # Packages
-    environment.systemPackages = lxqtPkgs ++ cfg.extraPackages ++ [ cfg.package ];
+    environment.systemPackages = desktopPkgs ++ cfg.extraPackages ++ [ cfg.package ];
 
     # Config directory and file
     systemd.tmpfiles.rules = [
@@ -396,17 +613,50 @@ in {
       # le wrapper perl exige xauth, xkbcomp et hostname sur le PATH, sinon il
       # refuse de demarrer avant meme de lire sa config (inetutils fournit
       # hostname : « couldn't find "hostname" on your PATH »).
-      path = [ pkgs.xauth pkgs.xkbcomp pkgs.xrandr pkgs.procps pkgs.inetutils pkgs.which pkgs.util-linux ];
+      # setxkbmap : kded6 configure les dispositions clavier via ce binaire et
+      # journalise « Can't find setxkbmap - keyboard layouts won't be
+      # configured » sans lui.
+      path = [ pkgs.xauth pkgs.xkbcomp pkgs.xrandr pkgs.setxkbmap pkgs.procps pkgs.inetutils pkgs.which pkgs.util-linux ];
       serviceConfig = {
         Type = "simple";
-        Environment = [
-          "XDG_SESSION_TYPE=x11"
-          "XDG_CURRENT_DESKTOP=LXQt"
-          "QT_QPA_PLATFORM=xcb"
-          "GDK_BACKEND=x11"
-          "XDG_RUNTIME_DIR=%t"
-          "DBUS_SESSION_BUS_ADDRESS=unix:path=%t/bus"
-        ];
+        Environment =
+          [
+            "XDG_SESSION_TYPE=x11"
+            "QT_QPA_PLATFORM=xcb"
+            "GDK_BACKEND=x11"
+            "XDG_RUNTIME_DIR=%t"
+            "DBUS_SESSION_BUS_ADDRESS=unix:path=%t/bus"
+          ]
+          ++ (
+            if cfg.desktop == "plasma" then
+              [
+                # La session KDE distante vit dans SON arborescence de donnees
+                # (plasmaDataEnv) et SES reglages par defaut (plasmaConfigDir).
+                # Le profil systeme de tower ne lie ni share/plasma, ni
+                # share/kservices6, ni share/kglobalaccel : sans ces XDG_*,
+                # plasmashell demarre sans applets, sans look-and-feel et sans
+                # raccourcis clavier. Rien de tout ca ne sort de cette unite.
+                "XDG_CURRENT_DESKTOP=KDE"
+                "XDG_SESSION_DESKTOP=KDE"
+                "DESKTOP_SESSION=plasma"
+                "KDE_FULL_SESSION=true"
+                "KDE_SESSION_VERSION=6"
+                # Le theme de plateforme Qt ne se charge que si le greffon est
+                # joignable : QT_PLUGIN_PATH est donc restreint a plasmaDataEnv,
+                # pas au profil systeme (pas de qt.enable global : une variable
+                # QT_PLUGIN_PATH pointant des greffons Qt6 casserait les
+                # applications Qt5 de la session niri de marc).
+                "QT_QPA_PLATFORMTHEME=kde"
+                "QT_PLUGIN_PATH=${plasmaDataEnv}/lib/qt-6/plugins"
+                "QML2_IMPORT_PATH=${plasmaDataEnv}/lib/qt-6/qml"
+                "XDG_DATA_DIRS=${plasmaDataEnv}/share:/run/current-system/sw/share:/nix/var/nix/profiles/default/share"
+                "XDG_CONFIG_DIRS=${plasmaConfigDir}:/etc/xdg:%h/.config/kdedefaults"
+              ]
+            else
+              [
+                "XDG_CURRENT_DESKTOP=LXQt"
+              ]
+          );
         # -xkbdir : Xkasmvnc compile son keymap depuis /usr/share/X11/xkb
         # (absent sur NixOS) et meurt sinon sur « XKB: Failed to compile keymap
         # / Could not start Xvnc ». Le wrapper perl relaie les options inconnues
@@ -415,6 +665,7 @@ in {
           ${cfg.package}/bin/kasmvncserver ${cfg.display} \
             -xkbdir ${pkgs.xkeyboard_config}/share/X11/xkb \
             -xstartup /etc/kasmvnc/xstartup \
+            ${lib.optionalString cfg.disableBasicAuth "-DisableBasicAuth \\"}
             -fg
         '';
         # une session qui se termine (logout, plantage de LXQt) ne doit pas

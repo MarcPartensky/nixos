@@ -111,7 +111,7 @@ in {
   };
 
   # ========================================================================
-  # KASMVNC - Bureau personnel Wayland haute perf (LXQt + kwin_wayland)
+  # KASMVNC - Bureau distant Plasma 6 (X11)
   # ========================================================================
   services.kasmvnc = {
     enable = true;
@@ -127,7 +127,17 @@ in {
       keyFile = "/run/secrets/kasmvnc-key-pem";
     };
     passwordFile = "/home/marc/.kasmpasswd";
-    desktop = "lxqt";
+    # Plasma 6, PAS en Wayland : KasmVNC est un serveur X (Xkasmvnc) et ne peut
+    # heberger aucun DE Wayland (kasmtech/KasmVNC#193 — il faudrait patcher KWin).
+    # startplasma-x11 fournit la session X11 complete : barre des taches en bas
+    # (look-and-feel org.hermes.kasm.desktop, konsole + LibreWolf epingles),
+    # KRunner, Dolphin, System Settings.
+    desktop = "plasma";
+    # Pangolin (auth.sso-enabled = true sur la ressource kasm plus bas) gate deja
+    # kasm.marcpartensky.com : sans ca, apres le SSO Pangolin, KasmVNC redemandait
+    # SON propre Basic Auth (mot de passe genere par kasmvncpasswd), un double
+    # login que meme vnc.marcpartensky.com (noVNC) n'impose pas.
+    disableBasicAuth = true;
   };
 
   # /home/marc/.kasmpasswd : fichier au format kasmvncpasswd. Attention,
@@ -226,9 +236,10 @@ in {
   # VNC natif de Pangolin exigerait un connecteur > 1.13. Meme contrainte de
   # schema que services/newt : ce Pangolin attend `proxy-resources` + `protocol`
   # (`public-resources`/`mode` sont ignores en silence -> domaine en 404).
-  # Pas de healthcheck : KasmVNC repond 401 sur / sans authentification, donc un
-  # healthcheck HTTP marquerait la cible unhealthy et Pangolin la sortirait du
-  # load-balancer (lecon du healthcheck noVNC dans services/newt).
+  # Pas de healthcheck : meme avec disableBasicAuth, pas verifie assez pour
+  # changer cette regle sans retester (lecon du healthcheck noVNC dans
+  # services/newt : une cible qui semble repondre peut quand meme faire
+  # echouer le probe Pangolin pour une autre raison).
   services.newt.blueprint.proxy-resources.kasm = {
     name = "kasm";
     protocol = "http";
