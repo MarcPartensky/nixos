@@ -6,3 +6,7 @@ secrets/*.dec
 secrets/*.unencrypted
 result*
 *.iso
+
+# Python bytecode (ex. services/hinge-auto/__pycache__/)
+__pycache__/
+*.pyc

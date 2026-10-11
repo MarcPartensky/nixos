@@ -49,6 +49,7 @@
     ./eternal-terminal
     ./nextcloud-mcp
     ./amazon-mcp
+    ./hinge-auto
     ./firefox-mcp
     # ./stalwart-mcp  # FIXME: cargoHash mismatch, needs fix
     ./gotify
