@@ -171,17 +171,12 @@ in {
           default = "nvidia/nemotron-3-ultra-550b-a55b:free";
         };
 
-        # --- Chaîne de secours si le primaire tombe (rate limit, 5xx, auth) ---
-        # essayés dans l'ordre, Bascule au milieu de session sans perdre la conv.
-        # 1. inkling:free (1M ctx, Thinking Machines) gratuit OpenRouter.
-        # 2. DeepSeek V4.1 Flash (payant mais bon marché, ~$0.04/$0.49 par M tokens)
-        #    en dernier recours si les gratuits sont aussi indisponibles/rate-limited.
-        #    base_url explicite : la clé est écrite à chaque activation, donc une
-        #    valeur impérative périmée dans config.yaml est écrasée.
+        # --- Chaîne de secours : TOUS sur nemotron (même modèle, jamais inkling) ---
+        # Politique : même famille, pas de basculement vers un modèle différent.
         fallback_providers = [
           {
             provider = "openrouter";
-            model = "thinkingmachines/inkling:free";
+            model = "nvidia/nemotron-3-ultra-550b-a55b:free";
           }
           {
             provider = "openrouter";

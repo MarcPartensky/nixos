@@ -58,6 +58,7 @@
     mkdir -p ${configDir}/mcp-server-open-router
     key_json=$(printf '%s' "$(cat ${apiKeyFile})" | ${lib.getExe pkgs.jq} -Rs .)
     printf 'api_key = %s\n' "$key_json" > ${configDir}/mcp-server-open-router/config.toml
+    printf 'default_model = "%s"\n' "nvidia/nemotron-3-ultra-550b-a55b:free" >> ${configDir}/mcp-server-open-router/config.toml
     export XDG_CONFIG_HOME=${configDir}
     exec ${lib.getExe openrouter-mcp}
   '';
