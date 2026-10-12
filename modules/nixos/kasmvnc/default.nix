@@ -605,6 +605,13 @@ in {
     # Systemd USER service (not system service!)
     systemd.user.services.kasmvnc = {
       description = "KasmVNC Server on display ${cfg.display}";
+      # L'unite est installee dans /etc/systemd/user (visible par tous les
+      # utilisateurs linger : hermes aussi demarre un user manager avec
+      # default.target actif). ConditionUser la restreint au compte de
+      # l'utilisateur configure : sans ca, hermes lançait une deuxieme
+      # instance sur :20 (conflit, crash-loop, et echec de son activation
+      # utilisateur au switch -> rc=4).
+      unitConfig.ConditionUser = cfg.user;
       # KasmVNC est un serveur X autonome pour l'acces distant : il ne doit pas
       # dependre de la session graphique locale (Xwayland sur :1). En le voulant
       # par default.target il demarre aussi pour un utilisateur linger, sans
@@ -619,6 +626,22 @@ in {
       path = [ pkgs.xauth pkgs.xkbcomp pkgs.xrandr pkgs.setxkbmap pkgs.procps pkgs.inetutils pkgs.which pkgs.util-linux ];
       serviceConfig = {
         Type = "simple";
+        # Apres un switch, une ancienne instance (session precedente, processus
+        # orphelin hors de la gestion courante de l'unite) peut tenir le display :
+        # Xvnc repond alors « A VNC server is already running as :20 » et sort en
+        # 29 -> crash-loop. Ce pre-hook purge toute instance sur ce display (elle
+        # est par definition obsolete : on demarre la nouvelle) puis les restes
+        # (lock, socket). Lance en tant que l'utilisateur de l'unite.
+        ExecStartPre = [
+          # display passe en ARGUMENT (concatené dans la meme commande) : en
+          # liste, systemd traiterait chaque element comme une commande separee
+          # (« Unable to locate executable '20' »).
+          (pkgs.writeShellScript "kasmvnc-cleanup" ''
+            d="''${1#:}"
+            pkill -f "Xvnc :''${d}" 2>/dev/null || true
+            rm -f "/tmp/.X''${d}-lock" "/tmp/.X11-unix/X''${d}"
+          '' + " ${cfg.display}")
+        ];
         Environment =
           [
             "XDG_SESSION_TYPE=x11"
