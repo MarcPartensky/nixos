@@ -13,10 +13,12 @@ in
       443  # HTTPS (Webmail & Management)
 
       # --- Stalwart Mail Server ---
+      # services.stalwart.openFirewall est à false : ces ports sont la liste
+      # qui fait autorité. JMAP/webadmin (8390) et management (8391) écoutent
+      # en 127.0.0.1 et sortent par Traefik, donc rien à ouvrir pour eux.
       25   # SMTP (Réception de mails)
       465  # SMTP Submissions (Envoi client)
       993  # IMAP sécurisé (Lecture client)
-      8090 # stalwart admin
 
 
       # --- Vos autres services ---

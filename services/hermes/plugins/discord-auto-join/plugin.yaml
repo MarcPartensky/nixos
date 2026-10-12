@@ -1,0 +1,3 @@
+name: discord-auto-join
+version: "1.0"
+description: Fait entrer le bot Hermes dans un salon vocal des qu'un membre autorise le rejoint, et le fait sortir quand tout le monde est parti.

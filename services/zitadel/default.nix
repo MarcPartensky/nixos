@@ -51,7 +51,7 @@
     settings = {
       Port = 2080;
       ExternalPort = 443;
-      ExternalDomain = "auth.vps.marcpartensky.com";
+      ExternalDomain = "auth.marcpartensky.com";
       ExternalSecure = true;
       Machine.Identification = {
         Hostname.Enabled = true;

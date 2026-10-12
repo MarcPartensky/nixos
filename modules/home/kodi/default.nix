@@ -16,12 +16,12 @@ in {
     sources.video = [
       {
         name = "movies";
-        path = "${homeDir}/media/movies/";
+        path = "/srv/media/movies/";
         # 'allowsharing = true;' partage upnp
       }
       {
         name = "tvshows";
-        path = "${homeDir}/media/tvshows/";
+        path = "/srv/media/tvshows/";
       }
     ];
   };

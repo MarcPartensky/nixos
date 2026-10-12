@@ -12,8 +12,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-25.11-darwin";
-    nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-25.11";
+    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
+    nix-darwin.url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs-darwin";
 
     clawdbot.url = "github:clawdbot/nix-clawdbot";
@@ -107,6 +107,10 @@
     option-pricer.url = "github:marcpartensky/option-pricer";
     option-pricer.inputs.nixpkgs.follows = "nixpkgs";
 
+    # addon Anki MCP (ankimcp.ai) : pas de follows, ses deps python (mcp >= 1.27)
+    # doivent venir du même nixpkgs que l'Anki qui le charge
+    anki-mcp.url = "github:ankimcp/anki-mcp-server-addon";
+
     uv2nix.url = "github:pyproject-nix/uv2nix";
     uv2nix.inputs.nixpkgs.follows = "nixpkgs";
     pyproject-nix.url = "github:pyproject-nix/pyproject.nix";
@@ -116,6 +120,47 @@
 
     hermes-agent.url = "github:NousResearch/hermes-agent";
     # hermes-agent.inputs.nixpkgs.follows = "github:NousResearch/hermes-agent";
+
+    # UI web de chat (parité CLI) pour hermes-agent. Projet communautaire
+    # (MIT), il publie son propre flake + module NixOS. follows nixpkgs pour
+    # ne pas évaluer un second nixpkgs : le paquet ne fait que python3 +
+    # pyyaml + cryptography, la 26.05 suffit.
+    hermes-webui = {
+      url = "github:nesquena/hermes-webui";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Clients YouTube Music TUI (voir modules/home/{ytm-player,yututui,yt-collate,youtube-music-cli})
+    ytm-player = {
+      url = "github:peternaame-boop/ytm-player";
+      # v2.1.0 exige dbus-fast >= 5.0.0, absent de 26.05 (4.0.4) :
+      # on suit unstable, la nixpkgs que le flake upstream teste.
+      inputs.nixpkgs.follows = "unstable";
+    };
+    yututui = {
+      url = "github:Ochichan/Yututui";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    firefox-devtools-mcp = {
+      # Officiel Mozilla, MCP browser automation via WebDriver BiDi. Pin sur le
+      # commit de la release v0.10.4 (2026-09-22) ; flake=false, source brute.
+      url = "github:mozilla/firefox-devtools-mcp/bdb377af9ce3a3596e8c196786014ecee50fe178";
+      flake = false;
+    };
+
+    stalwart-mcp = {
+      # Rust MCP server for Stalwart Mail Server (webpatser/stalwart-mcp).
+      # JMAP access: read, search, real-time notifications via EventSource.
+      # Pin sur commit main (pas de release taggée).
+      url = "github:webpatser/stalwart-mcp/be2c16d5921f45395996a130a5a643c542ef2105";
+      flake = false;
+    };
+
+    ankimcp = {
+      url = "github:ankimcp/anki-mcp-server-addon";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     jovian.url = "github:Jovian-Experiments/Jovian-NixOS";
     # jovian.inputs.nixpkgs.follows = "nixpkgs";
@@ -191,7 +236,21 @@
           ./users.nix
         ];
       };
+
+      # VM de dev microvm.nix (input `microvm`, voir vms/) : `just vm` ou
+      # `nix run .#dev`. Dupliquer vms/dev.nix pour une 2e VM.
+      dev = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = {inherit inputs;};
+        modules = [
+          inputs.microvm.nixosModules.microvm
+          ./vms/dev.nix
+        ];
+      };
     };
+
+    # Runners des VM de dev, lançables directement : `nix run .#dev`.
+    packages.x86_64-linux.dev = self.nixosConfigurations.dev.config.microvm.declaredRunner;
 
     nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
       # pkgs = import inputs.nixpkgs-droid {

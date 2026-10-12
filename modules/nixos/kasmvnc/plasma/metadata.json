@@ -1,0 +1,20 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Hermes Agent"
+            }
+        ],
+        "Category": "",
+        "Description": "Bureau distant KasmVNC : barre en bas, konsole et LibreWolf epingles",
+        "Description[fr]": "Bureau distant KasmVNC : barre en bas, konsole et LibreWolf epingles",
+        "Id": "org.hermes.kasm.desktop",
+        "License": "MIT",
+        "Name": "Kasm (Hermes)",
+        "Name[fr]": "Kasm (Hermes)",
+        "Version": "1.0",
+        "Website": "https://marcpartensky.com"
+    },
+    "X-Plasma-APIVersion": "2"
+}

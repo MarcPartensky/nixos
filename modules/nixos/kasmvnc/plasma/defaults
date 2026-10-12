@@ -1,0 +1,34 @@
+# Defauts du look-and-feel du bureau distant KasmVNC.
+#
+# Meme role que contents/defaults de org.kde.breeze.desktop (plasma-workspace) :
+# ce fichier est applique a la PREMIERE session Plasma et remplit les kdeglobals
+# / plasmarc / kwinrc de l'utilisateur. Volontairement minimal : theme Breeze en
+# sombre, icones breeze-dark, decorations Breeze, fond d'ecran "Next".
+#
+# Image=Next : "Next" est l'Id KPlugin du dossier share/wallpapers/Nexus livre
+# par kdePackages.plasma-workspace-wallpapers (verifie), pas un nom invente.
+
+[kdeglobals][KDE]
+widgetStyle=Breeze
+
+[kdeglobals][General]
+ColorScheme=BreezeDark
+
+[kdeglobals][Icons]
+Theme=breeze-dark
+
+[plasmarc][Theme]
+name=default
+
+[Wallpaper]
+Image=Next
+
+[kcminputrc][Mouse]
+cursorTheme=breeze_cursors
+
+[kwinrc][org.kde.kdecoration2]
+library=org.kde.breeze
+theme=Breeze
+
+[KSplash]
+Theme=org.kde.Breeze

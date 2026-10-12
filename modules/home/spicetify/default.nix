@@ -21,7 +21,7 @@ in {
       wikify
       # showQueueDuration
       queueTime
-      betterGenres
+      # betterGenres : n'existe plus dans spicePkgs.extensions (retirée en amont de spicetify-nix), cassait tout `just home HM=marc`
     ];
     enabledCustomApps = with spicePkgs.apps; [
       localFiles

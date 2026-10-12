@@ -26,13 +26,14 @@
     ../../services/zitadel
     ../../services/pangolin
     ../../services/wireguard
-    # ../../services/tailscale
-    # ../../services/headscale
+    # ../../services/tailscale # desactive 26/09: exige le secret sops tailscale/auth_key (absent de secrets/anywhere.yml). Reactiver avec le mesh.
+    ../../services/headscale
     # ./services/chhoto
-    # ./services/eternal-terminal
+    ../../services/eternal-terminal
     ../../services/stalwart
     ../../services/droplify
     ../../services/hermes
+    ../../services/vaultwarden-mcp
   ];
 
   # Paquets système
@@ -88,6 +89,7 @@
     owner = "root";
   };
 
+  home-manager.extraSpecialArgs = {inherit inputs;};
   home-manager.users.root = {
     home.stateVersion = "25.11";
     # sops.age.keyFile = "/root/.config/sops/age/keys.txt";
@@ -132,9 +134,15 @@
     '';
   };
 
-  # users.users.root.openssh.authorizedKeys.keys = [
-  #   "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop"
-  # ];
+  # Clés root déclaratives. NixOS les écrit dans /etc/ssh/authorized_keys.d/root
+  # et sshd lit AUSSI ~/.ssh/authorized_keys : cette liste s'ajoute aux clés déjà
+  # posées à la main, elle n'en retire aucune.
+  users.users.root.openssh.authorizedKeys.keys = [
+    # Agent hermes sur tower : lui permet de déployer et diagnostiquer ce VPS
+    # (stalwart, pangolin, zitadel) sans passer par un copier-coller de marc.
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+    # "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINc6adJwUI+Un2hCAfGfJ7uD5oM1WWz/ct3w93rvSuG5 xiaomi-laptop"
+  ];
 
   # systemd.services."entrypoint" = {
   #   description = "entrypoint";

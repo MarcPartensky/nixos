@@ -1,4 +1,8 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  inputs,
+  ...
+}: {
   imports = [
     ./plugins/cmp.nix
     ./plugins/lsp.nix
@@ -12,6 +16,11 @@
 
   programs.nixvim = {
     enable = true;
+    # Construire nixvim sur le nixpkgs du système (au lieu de l'input nixpkgs
+    # interne de nixvim) : une seule éval de nixpkgs et ça supprime
+    # définitivement le warning "nixpkgs.source affected by your flake follows"
+    # (qui compare la rev à celle testée par la CI de nixvim).
+    nixpkgs.source = inputs.nixpkgs;
     # # colorschemes.catppuccin.enable = true;
     opts = import ./options.nix;
     keymaps = import ./keymaps.nix;

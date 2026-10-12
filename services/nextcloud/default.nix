@@ -4,7 +4,7 @@
   lib,
   ...
 }: {
-  environment.systemPackages = [pkgs.nextcloud32];
+  environment.systemPackages = [pkgs.nextcloud33];
 
   sops.secrets = {
     # Le nom à gauche (ex: "nextcloud/adminUser") sera le nom du fichier dans /run/secrets/
@@ -41,6 +41,9 @@
       {
         addr = "0.0.0.0";
         port = 8083;
+        # locations."= /.well-known/openid-configuration".extraConfig = ''
+        #   rewrite ^ /index.php$request_uri last;
+        # '';
       }
     ];
   };
@@ -50,7 +53,7 @@
   # ---------------------------------------------------------------------------
   services.nextcloud = {
     enable = true;
-    package = pkgs.nextcloud32;
+    package = pkgs.nextcloud33;
 
     hostName = "localhost";
 
@@ -59,7 +62,9 @@
     configureRedis = true;
 
     settings = {
+      loglevel = 0;
       auth.bruteforce.protection.enabled = false;
+      auth.sso-enabled = false;
       trusted_domains = [
         "localhost"
         "127.0.0.1"
@@ -69,8 +74,10 @@
       ];
       # Si Traefik est en HTTPS et Nextcloud en HTTP derrière :
       overwriteprotocol = "https";
+      overwritehost = "cloud.marcpartensky.com";
+      "overwrite.cli.url" = "https://cloud.marcpartensky.com";
       overwritecondaddr = "^127\\.0\\.0\\.1$"; # l'overwrite ne s'applique qu'aux requêtes venant du reverse proxy
-      trusted_proxies = ["127.0.0.1"];
+      trusted_proxies = ["127.0.0.1" "::1"];
     };
 
     config = {
@@ -98,13 +105,50 @@
         deck
         memories
         notes
+        user_oidc # CONSOMMATEUR OIDC : permet de se connecter a Nextcloud AVEC
+        # un compte zitadel (auth.marcpartensky.com). La config du provider
+        # ("Zitadel", client_id 317450151415316483) est deja en base dans
+        # oc_user_oidc_providers ; l'app etant desinstallee, elle etait
+        # simplement inutilisable. Les comptes deja lies sont dans oc_user_oidc.
         ;
+      # ATTENTION : "oidc" (H2CK) c'est l'INVERSE, Nextcloud en PROVIDER OIDC.
+      # Garde car des clients externes peuvent y etre enregistres (oc_oidc_clients).
+      oidc = pkgs.fetchNextcloudApp {
+        url = "https://github.com/H2CK/oidc/releases/download/2.3.1/oidc-2.3.1.tar.gz";
+        hash = "sha256-zfdZSUwV8VZ5qq7rwN/G4cSfTbuutaK+yJ6g8556yOQ=";
+        license = "agpl3Plus";
+      };
     };
     extraAppsEnable = true;
   };
 
   systemd.services.nextcloud-cron.path = [pkgs.procps];
-  systemd.services.nextcloud-setup.path = [pkgs.procps];
+  systemd.services.nextcloud-setup = {
+    path = [pkgs.procps];
+    serviceConfig = {
+      # Change cette valeur pour forcer un re-run au prochain switch : ré-active
+      # les apps de extraApps (fix 2026-09-22 : calendar déclaré mais jamais
+      # activé, tables oc_calendars absentes -> erreurs 500 CalDAV).
+      Environment = ["NC_SETUP_FORCE_RUN=20260924"];
+      # app:enable ne lance PAS les migrations : sans upgrade ensuite, les
+      # tables des apps (oc_calendars...) ne sont jamais créées.
+      ExecStartPost = [
+        "${config.services.nextcloud.occ}/bin/nextcloud-occ upgrade"
+        # adminpassFile ne fixe le mot de passe QUE lors de l'install initiale
+        # (occ maintenance:install) : sur une instance déjà installée il est
+        # ignoré silencieusement. Ce ExecStartPost force le mot de passe du
+        # compte "root" à la valeur sops à CHAQUE activation (self-healing,
+        # tourne à chaque switch). Ajouté le 28/09/2026 suite à un fichier
+        # services/nextcloud/password.txt committé en clair (repo public) :
+        # rotation forcée pour invalider toute ancienne valeur exposée.
+        "${pkgs.writeShellScript "nextcloud-rotate-admin-password" ''
+          set -euo pipefail
+          export OC_PASS="$(cat ${config.sops.secrets."nextcloud/admin_password".path})"
+          ${config.services.nextcloud.occ}/bin/nextcloud-occ user:resetpassword --password-from-env root
+        ''}"
+      ];
+    };
+  };
 
   # ---------------------------------------------------------------------------
   # CONFIGURATION BASE DE DONNÉES (PostgreSQL)

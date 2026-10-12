@@ -1,28 +1,552 @@
-{config, ...}: {
-  # --- déclaration des besoins postgresql ---
-  # nixos fusionne automatiquement ces listes avec celles du module postgres
-  services.postgresql.ensureDatabases = ["hermes"];
-  services.postgresql.ensureUsers = [
-    {
-      name = "hermes";
-    }
-  ];
-
-  # --- service hermes ---
-  services.hermes-agent = {
-    enable = true;
-    settings.model.default = "anthropic/claude-sonnet-4";
-    environmentFiles = [config.sops.secrets."hermes_env".path];
-    addToSystemPackages = true;
-    extraDependencyGroups = ["anthropic"];
-    settings.model = {
-      base_url = "https://api.anthropic.com/v1";
-    };
-    mcpServers.beeper = {
-      url = "http://localhost:23373/v0/mcp";
-      headers.Authorization = "Bearer \${BEEPER_ACCESS_TOKEN}";
-    };
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  ...
+}: let
+  # claude-code épinglé plus récent que nixpkgs 26.05 (2.1.223).
+  # L'API refuse les modèles Opus 5.5 en dessous de 2.1.280 :
+  #   "API Error: 400 Claude Code 2.1.223 does not support this model;
+  #    version 2.1.280 or newer is required."
+  # Le paquet nixpkgs prend son manifeste (version + checksums par plateforme)
+  # en argument : on lui passe celui publié par Anthropic pour le canal stable
+  # (https://downloads.claude.ai/claude-code-releases/2.1.280/manifest.json),
+  # copié tel quel dans ./claude-code-manifest.json. Mise à jour = recopier le
+  # manifeste d'une version plus récente, rien d'autre.
+  claudeCode = pkgs.claude-code.override {
+    manifest = lib.importJSON ./claude-code-manifest.json;
   };
+in {
+  # Option : le token Matrix du bot @hermes (clé hermes_matrix_env de
+  # secrets/hermes-matrix.yml). Les destinataires de ce fichier sops ne
+  # contiennent PAS les clés age de anywhere/laptop : ne l'activer que sur les
+  # hôtes capables de le déchiffrer (tower), sinon l'activation (setupSecrets)
+  # échoue et hermes-agent démarre sans son fichier d'env.
+  options.services.hermes.enableMatrixToken = lib.mkEnableOption ''
+    le token Matrix du bot @hermes (secrets/hermes-matrix.yml, destinataires = tower uniquement)
+  '';
 
-  sops.secrets."hermes_env" = {};
+  # Option : le token du bot Discord dédié de Hermes (voix + texte natifs, profil
+  # `discord-bridge`). Même contrainte que enableMatrixToken : les destinataires
+  # de secrets/hermes-discord.yml n'incluent pas anywhere/laptop, donc ne
+  # l'activer que sur tower, sinon l'activation (setupSecrets) échoue et
+  # hermes-agent démarre sans son fichier d'env.
+  options.services.hermes.enableDiscordToken = lib.mkEnableOption ''
+    le token Discord du bot Hermes (secrets/hermes-discord.yml, destinataires = tower uniquement)
+  '';
+
+  config = {
+    # --- déclaration des besoins postgresql ---
+    # nixos fusionne automatiquement ces listes avec celles du module postgres
+    services.postgresql.ensureDatabases = ["hermes"];
+    services.postgresql.ensureUsers = [
+      {
+        name = "hermes";
+      }
+    ];
+
+    # --- service hermes ---
+    services.hermes-agent = {
+      enable = true;
+      environmentFiles =
+        [ config.sops.secrets."hermes_env".path ]
+        ++ lib.optional config.services.hermes.enableMatrixToken config.sops.secrets."hermes_matrix_env".path
+        ++ lib.optional config.services.hermes.enableDiscordToken config.sops.secrets."hermes_discord_env".path
+        ++ [ config.sops.secrets."hermes_api_server_env".path ];
+      addToSystemPackages = true;
+
+      # venv nix scellé -> deps mem0 (mem0ai) installées au runtime dans une cible durable
+      environment.HERMES_LAZY_INSTALL_TARGET = "/var/lib/hermes/.hermes/lazy-python";
+
+      # --- Matrix : bot @hermes (Element + ponts mautrix) ---
+      environment.MATRIX_HOMESERVER = "https://matrix.marcpartensky.com";
+      environment.MATRIX_USER_ID = "@hermes:matrix.marcpartensky.com";
+      # salles du pont = chiffrées E2EE (encryption.default=true côté mautrix-signal)
+      environment.MATRIX_E2EE_MODE = "required";
+      # salle de pont = 3+ membres (bot du pont inclus) -> pas classée DM :
+      # réponse sans mention, et pas d'auto-thread (les ponts aplatissent les threads)
+      environment.MATRIX_REQUIRE_MENTION = "false";
+      environment.MATRIX_AUTO_THREAD = "false";
+      # @marc + son ghost Signal (mautrix-signal)
+      environment.MATRIX_ALLOWED_USERS = "@marc:matrix.marcpartensky.com,@signal_ad927dda-4064-48ff-8652-01a0d71005e4:matrix.marcpartensky.com";
+
+      # --- Discord : bot dédié (voix + texte), profil `discord-bridge` ---
+      # Le token vient de secrets/hermes-discord.yml (environmentFiles) ; le
+      # profil active `platforms.discord` dans sa propre config.yaml. Allowlist =
+      # @marc uniquement (id Discord, déjà master côté services/discord-bot).
+      environment.DISCORD_ALLOWED_USERS = "478552571510915072";
+
+      # --- Opus (voix Discord) : voir le bloc "Opus" plus bas, au niveau `config`
+      # (l'env du process se pose sur l'unité systemd, pas via `environment`, qui
+      # n'écrit que $HERMES_HOME/.env) ---
+
+      # --- API Server (OpenAI-compatible) : UN SEUL listener pour l'hôte ---
+      # La topologie de Hermes est "un gateway par hôte qui sert tous les profils"
+      # (multiplex). Un profil secondaire qui demande son API server n'obtient PAS
+      # son propre port : le listener du profil default le sert sous
+      # /p/<profil>/... (log gateway : "api_server is served by the default
+      # profile's listener at /p/<profil>/ — not starting a second listener").
+      # C'est ce que consomme le pont Discord : services/discord-bot appelle
+      # http://127.0.0.1:8642/p/discord-bridge/v1/chat/completions.
+      # Bind loopback uniquement, clé obligatoire (sops), jamais ouvert au
+      # firewall, jamais routé par Pangolin.
+      environment.API_SERVER_ENABLED = "true";
+      environment.API_SERVER_PORT = "8642";
+
+      # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
+      # numpy N'EST PLUS LISTÉ ICI : depuis l'ajout de "stt-whisper" (onnxruntime ->
+      # numpy 2.4.3) le venv scellé le fournit lui-même, et le build du paquet hermes
+      # ÉCHOUE si un paquet de extraPythonPackages doublonne le venv ("plugin package
+      # \"numpy\" collides with a package in hermes sealed venv"). Le numpy du venv
+      # (buildé par nix) sert aussi aux lazy-installs runtime : wheel manylinux cassée
+      # sur NixOS (libstdc++.so.6 absent), d'où l'ancienne présence ici.
+      # ATTENTION : les paquets DOIVENT être de l'interpréteur du venv. La famille
+      # python est pilotée par pm/lock.json (nix/pythonLock.nix, ici 3.14) ; un
+      # paquet d'une autre famille est filtré silencieusement par hasPythonModule
+      # -> PYTHONPATH sans le paquet. package.python.pkgs suit le venv.
+      extraPythonPackages = with config.services.hermes-agent.package.python.pkgs; [ psycopg2 ];
+
+      # groupes de deps du pyproject résolus par uv DANS le venv scellé (pas de
+      # PYTHONPATH) :
+      # - "matrix" : mautrix[encryption] + python-olm (libolm embarqué)
+      #   -> adaptateur Matrix du gateway (plugins/platforms/matrix)
+      # - "edge-tts" : SDK edge-tts (7.2.7, pur python) du provider TTS gratuit
+      #   par défaut. Sans lui, l'outil tts échoue avec "No TTS provider
+      #   available" (le venv nix ne contient aucun moteur TTS).
+      # - "stt-whisper" : faster-whisper (transcription locale, gratuite, CPU) pour
+      #   les vocaux entrants. Sans lui le gateway répond "voice message could not
+      #   be transcribed automatically" et le cas d'usage "je parle dans mes
+      #   écouteurs depuis Element" ne marche pas.
+      extraDependencyGroups = ["matrix" "edge-tts" "stt-whisper"];
+
+      # claude-code CLI sur le PATH du service : requis par le plugin officiel
+      # claude-subscription-directsdk (provider sur abonnement Claude Pro/Max,
+      # login OAuth via `claude`, pas de clé API)
+      extraPackages = [
+        claudeCode
+        # node/npm : requis par le MCP GitHub (npx -y @modelcontextprotocol/server-github)
+        pkgs.nodejs_22
+        # binutils : donne `ld` et `objdump` sur le PATH, dont dépend le repli de
+        # ctypes.util.find_library("opus") pour libopus (voix Discord). Voir le
+        # bloc "Opus" plus bas.
+        pkgs.binutils
+        # ffmpeg : requis par la voix Discord des DEUX côtés (conversion du TTS en
+        # PCM 48 kHz pour la sortie, et décodage côté réception). Sans lui dans le
+        # PATH du service, `hermes doctor` signale "install out of sync" et la
+        # lecture en vocal échoue.
+        pkgs.ffmpeg
+      ];
+      # extraDependencyGroups = ["anthropic"];
+      # settings.model = {
+      #   base_url = "https://api.anthropic.com/v1";
+      #   default = "anthropic/claude-sonnet-4";
+      # };
+      settings = {
+        # --- Provider custom Kimi/Moonshot ---
+        custom_providers = [
+          {
+            name = "kimi-k3-global";
+            base_url = "https://api.moonshot.ai/v1";
+            key_env = "KIMI_API_KEY"; # <- la var d'env qui porte ta clé
+            api_mode = "chat_completions";
+            model = "kimi-k3";
+            extra_body = {
+              reasoning_effort = "max";
+            };
+            models = {
+              kimi-k3 = {
+                context_length = 1048576;
+                supports_vision = true;
+              };
+            };
+          }
+        ];
+
+        # --- Modèle par défaut : Nemotron 3 Ultra gratuit (OpenRouter) ---
+        # Politique marc du 27/09/2026 : nemotron-3-ultra:free high par défaut,
+        # puis inkling:free, DeepSeek Flash en dernier recours.
+        model = {
+          provider = "openrouter";
+          default = "nvidia/nemotron-3-ultra-550b-a55b:free";
+        };
+
+        # --- Chaîne de secours : TOUS sur nemotron (même modèle, jamais inkling) ---
+        # Politique : même famille, pas de basculement vers un modèle différent.
+        fallback_providers = [
+          {
+            provider = "openrouter";
+            model = "nvidia/nemotron-3-ultra-550b-a55b:free";
+          }
+          {
+            provider = "openrouter";
+            model = "deepseek/deepseek-v4.1-flash";
+            base_url = "https://openrouter.ai/api/v1";
+            context_length = 1048576;
+            supports_vision = true;
+          }
+        ];
+
+        agent = {
+          reasoning_effort = "max";
+          # Politique marc du 25/09/2026 : le niveau suit le modèle.
+          # DeepSeek Flash -> high ; Opus 5 -> max ; Sonnet 5 -> high.
+          # Deux clés par famille : forme complète (deepseek/... , modèle par défaut)
+          # et forme nue ([1m] des salons, route de secours) ; la résolution est
+          # tolérante aux variantes de nommage.
+          reasoning_overrides = {
+            "deepseek/deepseek-v4.1-flash" = "high";
+            "deepseek-v4.1-flash" = "high";
+            "nvidia/nemotron-3-ultra-550b-a55b:free" = "max";
+            "nemotron-3-ultra" = "max";
+            "claude-opus-5-5[1m]" = "max";
+            "claude-opus-5-5" = "max";
+            "claude-opus-5[1m]" = "max";
+            "claude-opus-5" = "max";
+            "claude-sonnet-5[1m]" = "high";
+            "claude-sonnet-5" = "high";
+          };
+        };
+
+        # --- Coût estimé dans la status bar CLI/TUI ---
+        # interface = "tui" : le REPL classique n'écrit AUCUN titre de terminal
+        # (aucun module terminal_title dans la version installée), alors que le TUI
+        # publie son titre en OSC 0/1/2 : "<etat> <session> · <modele> · <cwd>".
+        # C'est ce titre que herdr lit pour l'etat (blocked/working/done) ET pour
+        # afficher le modele de chaque pane dans sa sidebar (modules/nixos/herdr).
+        # Sans ce reglage, les panes hermes n'exposent pas leur modele a herdr.
+        display = {
+          show_cost = true;
+          interface = "tui";
+          # Thème Catppuccin Mocha (dark) + accent Lavender, demandé par marc
+          # le 26/09/2026. Fichier de palette : skins/catppuccin-dark-lavender.yaml
+          # sous /var/lib/hermes/.hermes/skins/ (pas géré par nix, écrit au runtime).
+          skin = "catppuccin-dark-lavender";
+        };
+
+        # --- Plugin herdr : integre hermes a herdr, declarativement ---
+        # `extraPlugins` symlinke le paquet dans /var/lib/hermes/.hermes/plugins/
+        # (sous le nom nix-managed-<nom>) ; le code du plugin est vendorise dans
+        # services/hermes/plugins/herdr-agent-state (recopie de ce que produit
+        # `herdr integration install hermes`), donc plus d'install imperative.
+        # Ce plugin rapporte l'ID DE SESSION a herdr (herdr pane
+        # report-agent-session), ce qui permet a herdr de relancer le pane dans sa
+        # conversation (`hermes --resume <id>`, option [session]
+        # resume_agents_on_restore).
+        # LIMITE : le plugin sort immediatement si HERDR_ENV != 1 ou sans
+        # HERDR_PANE_ID, et il parle au socket herdr de MARC
+        # (~/.config/herdr/herdr.sock) : il ne peut donc fonctionner que si hermes
+        # tourne dans le pane avec l'env herdr et sous le meme utilisateur que le
+        # serveur herdr. Le lancement habituel (`sudo su -l hermes hermes chat`)
+        # efface cet env -> plugin inerte mais sans effet de bord.
+        plugins = {
+          enabled = [ "herdr-agent-state" ];
+        };
+
+        # --- TTS : Edge TTS (gratuit, sans clé API) ---
+        # Voix française par défaut (Hermes répond en français). Le SDK est fourni
+        # par extraDependencyGroups = "edge-tts" ci-dessus ; sans ce groupe l'outil
+        # tts échoue. Autres voix fr : fr-FR-HenriNeural (masculin),
+        # fr-FR-VivienneMultilingualNeural, fr-FR-RemyMultilingualNeural,
+        # fr-CA-SylvieNeural. Liste complète : `edge-tts --list-voices`.
+        # Lecture automatique des réponses : voice.auto_tts (défaut false ;
+        # à la demande via /voice tts en CLI).
+        tts = {
+          provider = "edge";
+          edge = {
+            voice = "fr-FR-DeniseNeural";
+          };
+        };
+
+        # --- STT : faster-whisper local (gratuit, CPU, sans clé API) ---
+        # Transcrit automatiquement les vocaux entrants (Matrix/Element, etc.) :
+        # le gateway transcrit tout message vocal quand stt.enabled est vrai.
+        # Le moteur vient du groupe "stt-whisper" ci-dessus.
+        # language = "" est IMPORTANT : la valeur par défaut est "en", qui force
+        # Whisper à décoder du français comme de l'anglais. Vide = détection
+        # automatique (mesuré : fr détecté à p=0.99 sur un vocal court).
+        # Modèle "base" (140 Mo, ~5 s pour 3 s d'audio, CPU) ; "small" ou "medium"
+        # si la précision ne suffit pas avec un micro d'écouteurs en environnement
+        # bruyant. provider non déclaré = échelle auto (local d'abord).
+        stt = {
+          enabled = true;
+          language = "";
+          local = {
+            model = "base";
+          };
+        };
+
+        auxiliary = {
+          # vision : reste sur kimi explicitement (ne pas taper dans le quota
+          # Claude Pro pour les descriptions d'images)
+          vision = {
+            provider = "custom:kimi-k3-global";
+            model = "kimi-k3";
+            extra_body = {
+              reasoning_effort = "max";
+            };
+          };
+        };
+
+        # --- Modèle par salon Matrix : politique channel_overrides ---
+        # La plupart des salons restent sur le défaut (DeepSeek v4.1 via OpenRouter).
+        # Les salons ci-dessous tournent sur l'abonnement Claude (DirectSDK) :
+        # Opus 5 (O5), ou Sonnet 5 à effort high pour Zoé (S5 high, 1M).
+        # Lu par le gateway à son démarrage (un restart est requis après le switch).
+        platforms = {
+          matrix = {
+            channel_overrides = {
+              "!zQZcqfoWStODYAuIUE:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-opus-5[1m]";
+              };
+              # Nino : Opus 5.5 (route native `claude-opus-5-5`, tirets ; la forme
+              # `claude-opus-5.5` est rejetée par le CLI). Variante [1m] = 1M de
+              # contexte ; effort max via reasoning_overrides.
+              # Nino : DeepSeek v4.1 Flash (OpenRouter), 1er secours par defaut.
+              "!zOyDctBWcuFCJKJINI:matrix.marcpartensky.com" = {
+                provider = "openrouter";
+                model = "deepseek/deepseek-v4.1-flash";
+              };
+              "!sylSYxsYVJRknngRnF:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+              "!JgWSzbTBCRPEOQTAZi:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+              "!ANuTSqPZhKzHOpvXhB:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+              "!myvmCEICVnXNIOxHSQ:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+              "!ABhBVVGeBoBEvuiFSY:matrix.marcpartensky.com" = {
+                provider = "claude-subscription-directsdk-experimental";
+                model = "claude-sonnet-5[1m]";
+              };
+            };
+          };
+        };
+      };
+
+      # --- Plugin herdr : integre hermes a herdr, declarativement ---
+      # Option de SERVICE (pas dans settings : un extraPlugins mis dans settings
+      # finit juste comme cle inerte de config.yaml, et aucun symlink n'est cree).
+      # `extraPlugins` symlinke le paquet dans /var/lib/hermes/.hermes/plugins/
+      # sous le nom nix-managed-<nom> ; le code du plugin est vendorise dans
+      # services/hermes/plugins/herdr-agent-state (recopie de ce que produit
+      # `herdr integration install hermes`), donc plus d'install imperative.
+      # Ce plugin rapporte l'ID DE SESSION a herdr (herdr pane
+      # report-agent-session), ce qui permet a herdr de relancer le pane dans sa
+      # conversation (`hermes --resume <id>`, option [session]
+      # resume_agents_on_restore).
+      # LIMITE : le plugin sort immediatement si HERDR_ENV != 1 ou sans
+      # HERDR_PANE_ID, et il parle au socket herdr de MARC
+      # (~/.config/herdr/herdr.sock, 0600, dossier 0700) : il ne peut donc
+      # fonctionner que si hermes tourne dans le pane avec l'env herdr ET sous
+      # l'utilisateur marc. Le lancement habituel (`sudo su -l hermes hermes
+      # chat`) efface cet env -> plugin inerte mais sans effet de bord.
+      extraPlugins = [
+        (pkgs.runCommandLocal "herdr-agent-state" {} ''
+          mkdir -p $out
+          cp ${./plugins/herdr-agent-state/plugin.yaml} $out/plugin.yaml
+          cp ${./plugins/herdr-agent-state/__init__.py} $out/__init__.py
+        '')
+
+        # --- Entree automatique dans le vocal Discord ---
+        # Hermes n'entre en vocal que sur `/voice join` ; ce plugin ajoute un
+        # handler natif discord.py sur l'adaptateur Discord (ctx.
+        # register_platform_handler) : un membre autorise rejoint un salon vocal
+        # -> le bot s'y connecte, et il sort quand plus personne n'y est. Il
+        # branche `adapter.join_voice_channel(text_channel_id=...)`, indispensable
+        # car sans salon texte lie la transcription est jetee.
+        (pkgs.runCommandLocal "discord-auto-join" {} ''
+          mkdir -p $out
+          cp ${./plugins/discord-auto-join/plugin.yaml} $out/plugin.yaml
+          cp ${./plugins/discord-auto-join/__init__.py} $out/__init__.py
+        '')
+      ];
+    };
+
+    # --- MCP GitHub : serveur officiel (@modelcontextprotocol/server-github) ---
+    # Note : le package est déprécié (2025.4.8) mais toujours fonctionnel.
+    # Remplacer le placeholder par le vrai token GitHub (fine-grained PAT).
+    services.hermes-agent.mcpServers.github = {
+      command = "npx";
+      args = [ "-y" "@modelcontextprotocol/server-github" ];
+      env = {
+        GITHUB_PERSONAL_ACCESS_TOKEN = "ghp_PLACEHOLDER_REPLACE_WITH_REAL_TOKEN";
+      };
+      timeout = 60;
+    };
+
+    # --- MCP Gitea : serveur officiel (gitea.com/gitea/gitea-mcp) ---
+    # Nécessite un PAT Gitea (Settings -> Applications -> Generate Token)
+    # scopes: repo, admin:org, admin:user, notification, user, write:package, read:package
+    services.hermes-agent.mcpServers.gitea = {
+      command = "gitea-mcp";
+      args = [ "-t" "stdio" ];
+      env = {
+        GITEA_HOST = "https://git.marcpartensky.com";
+        GITEA_ACCESS_TOKEN_FILE = config.sops.secrets."gitea-mcp/pat".path;
+      };
+      timeout = 60;
+    };
+
+    # --- MCP Pangolin : serveur auto-hébergé (pangolin.vps.marcpartensky.com) ---
+    # DÉSACTIVÉ TEMPORAIREMENT (29/09/2026) : sops.secrets."pangolin/api_key"
+    # ci-dessous n'a jamais eu de clé correspondante dans secrets/common.yml
+    # (nested pangolin.api_key absent), ce qui fait échouer TOUT
+    # nixos-rebuild switch sur tower ("the key 'pangolin' cannot be found").
+    # Déjà noté comme inerte (clé/URL placeholder) avant ce blocage. Réactiver
+    # une fois la vraie clé posée par marc (il a la clé age privée pour éditer
+    # secrets/common.yml en place).
+    # services.hermes-agent.mcpServers.pangolin = {
+    #   command = "/nix/store/pw5hn1g2icm9ll7li8qiy1wkpdzvkcs1-pangolin-mcp/bin/pangolin-mcp";
+    #   args = [ ];
+    #   env = {
+    #     PANGOLIN_BASE_URL = "https://pangolin.vps.marcpartensky.com/v1";
+    #     PANGOLIN_API_KEY_FILE = config.sops.secrets."pangolin/api_key".path;
+    #   };
+    #   timeout = 60;
+    # };
+
+    # --- MCP Vaultwarden : temporairement désactivé (blocage sops manifest) ---
+    # services.hermes-agent.mcpServers.vaultwarden = {
+    #   command = "vaultwarden-mcp";
+
+    # --- node/npm requis pour le serveur GitHub (npx) ---
+    # (ajouté dans extraPackages plus haut : l'option n'accepte qu'une définition)
+
+    # --- ollama : embeddings locaux pour mem0 ---
+    # nomic-embed-text = 768 dims, supporté par le plugin mem0. CPU suffit.
+    services.ollama = {
+      enable = true;
+      loadModels = ["nomic-embed-text"];
+    };
+
+    # claude aussi dispo pour marc et les sessions CLI de hermes
+    # python3 SYSTEME (pas celui du venv scelle) : le probe de demarrage SSH de
+    # Hermes Desktop execute `python3 -c ...` sur la machine distante pour lire
+    # ~/.hermes-update-in-progress. Sans python3 dans le PATH ssh, TOUTE connexion
+    # Desktop en SSH echoue avec "Could not prove that the remote Hermes install
+    # is clear for SSH startup." (verifie le 27/09/2026)
+    environment.systemPackages = [claudeCode pkgs.python3];
+
+    sops.secrets."hermes_env" = {};
+
+    # Clé du listener API Server du profil default (clé "hermes_api_server_env"
+    # du fichier sops, valeur = contenu dotenv "API_SERVER_KEY=..."). Même valeur
+    # que HERMES_BRIDGE_API_KEY côté services/discord-bot, qui l'envoie en Bearer :
+    # le pont Discord et l'API server partagent donc LA MÊME clé, chiffrée une
+    # seule fois dans secrets/discord-hermes-bridge.yml.
+    sops.secrets."hermes_api_server_env" = {
+      # TODO(marc) : renommer la clé hermes_discord_bridge_env -> hermes_api_server_env
+      # dans secrets/discord-hermes-bridge.yml (sops) quand tu as la clé age sous la
+      # main ; hermes n'a pas accès en déchiffrement pour le faire lui-même.
+      key = "hermes_discord_bridge_env";
+      sopsFile = ../../secrets/discord-hermes-bridge.yml;
+    };
+
+    # Clé API Pangolin pour le MCP server (clé "pangolin/api_key" du fichier sops)
+    # À ajouter (chiffrée) dans secrets/common.yml, clé imbriquée pangolin.api_key.
+    # Commenté avec le bloc mcpServers.pangolin ci-dessus (29/09/2026) : la clé
+    # n'existe pas dans secrets/common.yml, ça faisait échouer tout switch.
+    # sops.secrets."pangolin/api_key" = {};
+
+    # Token Matrix du bot (@hermes) — clé "hermes_matrix_env" du fichier sops,
+    # valeur = contenu dotenv (MATRIX_ACCESS_TOKEN=...) fusionné dans .env.
+    # Déclaré uniquement là où l'option est active : les destinataires du fichier
+    # n'incluent pas anywhere/laptop, y déclarer le secret ferait échouer
+    # l'activation (setupSecrets « 0 successful groups required »).
+    sops.secrets."hermes_matrix_env" = lib.mkIf config.services.hermes.enableMatrixToken {
+      sopsFile = ../../secrets/hermes-matrix.yml;
+    };
+
+    # Token du bot Discord dédié (voix + texte) — clé "hermes_discord_env" du
+    # fichier sops, valeur = contenu dotenv (DISCORD_BOT_TOKEN=...) fusionné
+    # dans .env. Déclaré uniquement là où l'option est active, même raison que
+    # pour le token Matrix.
+    sops.secrets."hermes_discord_env" = lib.mkIf config.services.hermes.enableDiscordToken {
+      sopsFile = ../../secrets/hermes-discord.yml;
+    };
+
+    # --- Accès SSH direct de hermes (tower) vers les autres hôtes qui importent
+    # ce module (laptop, anywhere) : ouvre un shell (et-session + zellij) pour
+    # agir/builder directement sur la machine, sans copier-coller par marc.
+    # Même clé que celle déjà posée pour root sur anywhere (25/09/2026).
+    users.users.hermes.openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+    ];
+
+    security.sudo.extraRules = [
+      {
+        users = ["marc" "hermes"];
+        commands = [
+          {
+            command = "/run/current-system/sw/bin/nixos-rebuild";
+            options = ["NOPASSWD"];
+          }
+          {
+            command = "/nix/store/*-nixos-rebuild/bin/nixos-rebuild";
+            options = ["NOPASSWD"];
+          }
+        ];
+      }
+    ];
+
+    # --- La règle sudo ci-dessus était INOPÉRANTE depuis les unités hermes ---
+    # Le module hermes-agent pose NoNewPrivileges=true dans le serviceConfig
+    # commun au gateway (hermes-agent.service) et au backend (hermes-backend.
+    # service). Sous ce flag le noyau IGNORE le bit setuid : sudo refuse net
+    # (« the "no new privileges" flag is set »), su échoue au setuid(), et le
+    # flag s'hérite par tous les enfants. Conséquence : une session ouverte
+    # depuis Matrix ou depuis le terminal web ne pouvait PAS lancer le
+    # nixos-rebuild que la règle NOPASSWD lui accorde pourtant.
+    #
+    # On le désactive donc sur les deux unités. Ça ne donne pas de shell root :
+    # sudo reste borné à la liste de commandes ci-dessus.
+    systemd.services.hermes-agent.serviceConfig.NoNewPrivileges = lib.mkForce false;
+    systemd.services.hermes-backend.serviceConfig.NoNewPrivileges = lib.mkForce false;
+
+    # --- Opus pour la voix Discord ---
+    # L'adaptateur Discord de Hermes (plugins/platforms/discord/adapter.py) charge
+    # libopus via ctypes.util.find_library("opus"), qui sur NixOS ne trouve rien :
+    # pas de /etc/ld.so.cache, et le repli gcc/ld échoue faute de binaires. Le
+    # repli `ld -L <LD_LIBRARY_PATH> -lopus` + `objdump` fonctionne avec binutils
+    # sur le PATH (extraPackages), et il faut LD_LIBRARY_PATH DANS l'environnement
+    # du process dès le démarrage : dlopen("libopus.so.0") utilise la valeur lue
+    # par ld.so au lancement, une variable ajoutée plus tard via .env ne suffit
+    # pas. C'est l'env de l'UNITÉ systemd (l'option `environment` du module, elle,
+    # n'écrit que $HERMES_HOME/.env).
+    # Vérifié : find_library -> libopus.so.0, discord.opus.is_loaded() -> True,
+    # Decoder/Encoder opus instanciables.
+    systemd.services.hermes-agent.environment.LD_LIBRARY_PATH = "${pkgs.libopus}/lib";
+
+    # --- Desktop plugin: vim-keybindings (déclaratif, géré par nix) ---
+    # Crée le plugin dans /var/lib/hermes/.hermes/desktop-plugins/vim-bindings/
+    # via tmpfiles + service oneshot au démarrage du service hermes.
+    systemd.tmpfiles.rules = [
+      "d /var/lib/hermes/.hermes/desktop-plugins 0755 hermes hermes -"
+      "d /var/lib/hermes/.hermes/desktop-plugins/vim-bindings 0755 hermes hermes -"
+      "a /home/marc - - - - u:hermes:--x,m::--x"
+      "a /home/marc/git - - - - u:hermes:--x,m::r-x"
+    ];
+
+        # --- vim-bindings plugin : DISABLED (JS heredoc parsing issues in Nix)
+        # systemd.services.hermes-vim-bindings-plugin = { ... };
+
+        # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
+    # sans ça, libgit2 refuse d'ouvrir un flake appartenant à marc
+    programs.git = {
+      enable = true;
+      config.safe.directory = ["/home/marc/git/nixos"];
+    };
+
+    # --- MCP Nextcloud : voir services/nextcloud-mcp (single_user_basic, loopback) ---
+  };
 }

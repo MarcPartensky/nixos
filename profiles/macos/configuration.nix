@@ -18,6 +18,7 @@
     pkgs.vim
     pkgs.neovim
     pkgs.git
+    pkgs.eternal-terminal
   ];
 
   nixpkgs.config.allowUnfree = true;

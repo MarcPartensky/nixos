@@ -1,7 +1,7 @@
 # --- SERVICES ---
 [http.services.vaultwarden.loadBalancer]
   [[http.services.vaultwarden.loadBalancer.servers]]
-    url = "http://127.0.0.1:8083"
+    url = "http://127.0.0.1:8222"
 
 [http.services.nextcloud.loadBalancer]
   [[http.services.nextcloud.loadBalancer.servers]]
