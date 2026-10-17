@@ -18,6 +18,7 @@
     ./autossh
     ./wayvnc
     ./cage-firefox
+    ./cage-waydroid
     # ./dnscrypt
     ./adguard
     ./matrix

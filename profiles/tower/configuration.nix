@@ -349,8 +349,17 @@ in {
   # module out-of-tree, pas de reboot. Le service waydroid-container echoue
   # proprement tant que `waydroid init` (root, telecharge ~1,2 Go d'images) n'a
   # pas ete lance une fois, puis demarre au switch suivant ou sur restart.
+  #
+  # package = waydroid-nftables OBLIGATOIRE : le noyau de tower n'a pas les
+  # modules iptables (legacy) (netfilter en nf_tables seulement), donc le
+  # waydroid-net.sh du paquet standard sort en
+  #   « iptables (legacy): can't initialize iptables table `nat' »
+  # et la session ne demarre jamais. La variante nftables utilise nft.
   # ========================================================================
-  virtualisation.waydroid.enable = true;
+  virtualisation.waydroid = {
+    enable = true;
+    package = pkgs.waydroid-nftables;
+  };
 
   # hermes doit pouvoir lire les journaux (y compris les unites utilisateur de
   # marc, ex. kasmvnc) : sans ca, aucun diagnostic possible sans root, et sudo

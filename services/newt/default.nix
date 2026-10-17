@@ -117,6 +117,38 @@
         }
       ];
     };
+
+    # Client noVNC de l'emulateur Android (cage-waydroid) : meme schema que
+    # novnc-tower (proxy-resources + protocol, ancien schema du VPS). HTTP + SSO,
+    # aucune contrainte de version newt. Cible 127.0.0.1:6082 (loopback : seul
+    # newt, qui tourne sur tower, la joint ; rien d'ouvert au LAN sur ce port).
+    blueprint.proxy-resources.novnc-waydroid = {
+      name = "android";
+      protocol = "http";
+      full-domain = "android.marcpartensky.com";
+      auth.sso-enabled = true;
+      targets = [
+        {
+          hostname = "127.0.0.1";
+          port = 6082;
+          method = "http";
+          healthcheck = {
+            enabled = true;
+            hostname = "127.0.0.1";
+            port = 6082;
+            path = "/vnc.html";
+            scheme = "http";
+            mode = "http";
+            method = "GET";
+            interval = 30;
+            unhealthy-interval = 30;
+            timeout = 5;
+            healthy-threshold = 1;
+            unhealthy-threshold = 3;
+          };
+        }
+      ];
+    };
   };
 
   # systemd.services.newt.serviceConfig = {
