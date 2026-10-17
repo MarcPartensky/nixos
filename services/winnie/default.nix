@@ -15,12 +15,19 @@
 #    routes media sont indisponibles.
 # L'infrastructure (user/groupe winnie, base PostgreSQL + schema, secret JWT)
 # vient bien du projet via l'import ci-dessous.
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, ... }:
 let
   backendBin = pkgs.runCommand "winnie-backend-pinned" { } ''
     install -Dm755 ${/home/marc/git/winnie/backend/target/release/winnie-backend} $out/bin/winnie-backend
   '';
 in {
+  sops.secrets."oidc_env" = {
+    sopsFile = ../../secrets/winnie.yml;
+    key = "oidc_env";
+    mode = "0640";
+    group = "winnie";
+  };
+
   imports = [ /home/marc/git/winnie/services/winnie/default.nix ];
 
   services.winnie.manageGarage = false;
@@ -28,6 +35,18 @@ in {
   # winnie-bucket n'est pas conditionne par manageGarage dans le module du
   # projet : sans Garage il echoue, on empeche son demarrage au boot.
   systemd.services.winnie-bucket.wantedBy = lib.mkForce [ ];
+
+  # OIDC env file from sops (PKCE - no client_secret)
+  systemd.services.winnie-oidc-secret = {
+    description = "Generate winnie OIDC env file from sops";
+    wantedBy = [ "multi-user.target" ];
+    before = [ "winnie-backend.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.coreutils}/bin/cp ${config.sops.secrets."oidc_env".path} /var/lib/winnie/oidc.env";
+    };
+  };
 
   # Front Svelte 5 (web statique, Vite) : `npm run build` dans
   # /home/marc/git/winnie/app -> app/dist, copie dans le store a l'evaluation,
@@ -63,16 +82,16 @@ in {
       "postgresql.service"
       "winnie-schema.service"
       "winnie-jwt-secret.service"
+      "winnie-oidc-secret.service"
       "network.target"
     ];
-    requires = [ "postgresql.service" "winnie-jwt-secret.service" ];
+    requires = [ "postgresql.service" "winnie-jwt-secret.service" "winnie-oidc-secret.service" ];
     serviceConfig = {
       User = "winnie";
       Group = "winnie";
       WorkingDirectory = "/var/lib/winnie";
-      # jwt.env est obligatoire, s3.env optionnel : sans S3 les routes media
-      # renvoient une erreur, le reste de l'API fonctionne.
-      EnvironmentFile = [ "/var/lib/winnie/jwt.env" "-/var/lib/winnie/s3.env" ];
+      # jwt.env est obligatoire, s3.env optionnel, oidc.env pour PKCE/Zitadel
+      EnvironmentFile = [ "/var/lib/winnie/jwt.env" "-/var/lib/winnie/s3.env" "/var/lib/winnie/oidc.env" ];
       Environment = [
         "DATABASE_URL=postgresql://winnie@127.0.0.1/winnie"
         "SERVER_HOST=127.0.0.1"
