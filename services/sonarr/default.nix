@@ -20,10 +20,22 @@
     dataDir = "/home/marc/sonarr";
     settings = {
       server = {
-        urlbase = "localhost";
+        # Pas de urlbase (voir services/radarr) : avec une base non vide,
+        # UrlBaseMiddleware redirige en 307 tout chemin hors base, y compris
+        # /api/v3/..., ce qui casse les clients API locaux.
         port = 8006;
         bindaddress = "*";
       };
+
+      # Auth de l'appli DESACTIVEE, comme radarr : la porte est le SSO Pangolin
+      # (sonarr.marcpartensky.com ci-dessous). Sonarr 4.0.19 gere bien
+      # `External` (cf. AddExternal -> NoAuthenticationHandler) même si son
+      # config.xml portait encore `None` : le declaratif evite qu'un passage
+      # dans l'UI reactive un formulaire de login en plus du SSO.
+      # OIDC natif dans l'appli : absent de Sonarr 4.x (et de Radarr 6.x). Il
+      # arrive dans Sonarr 5 (branche develop : AddOidc + AuthOptions.Oidc*),
+      # a rebrancher sur Zitadel quand nixpkgs passera a cette version.
+      auth.method = "External";
     };
   };
 
@@ -41,7 +53,7 @@
   # Migration en une fois : Sonarr était configuré dans /home/marc/radarr (qui
   # contient AUSSI radarr.db, reste d'un ancien Radarr, laissé en place). On ne
   # copie que les données de Sonarr, pas config.xml : il est régénéré depuis les
-  # réglages Nix ci-dessus (port 8006, urlbase localhost), alors que celui du
+  # réglages Nix ci-dessus (port 8006, aucune urlbase), alors que celui du
   # dossier partagé portait la config du dernier service qui l'avait écrit.
   systemd.services.sonarr-data-migrate = {
     description = "Migration du dossier de données de Sonarr (~/radarr -> ~/sonarr)";

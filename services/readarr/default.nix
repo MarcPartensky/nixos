@@ -16,7 +16,8 @@
     settings = {
       # update.mechanism = "internal";
       server = {
-        urlbase = "localhost";
+        # Pas de urlbase (voir services/radarr) : une base non vide fait
+        # rediriger en 307 tout chemin hors base, /api/v3/... compris.
         port = 8088;
         bindaddress = "*";
       };

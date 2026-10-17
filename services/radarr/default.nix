@@ -27,10 +27,27 @@
 
     settings = {
       server = {
-        urlbase = "localhost";
+        # PAS de urlbase : Radarr est servi à la racine du domaine. L'exemple du
+        # module nixpkgs (urlbase = "localhost") a été recopié ici un temps, et
+        # avec une valeur non vide, UrlBaseMiddleware renvoie un 307 vers
+        # /<base><chemin> sur TOUTE requête hors base : le local /login
+        # redirigeait vers /localhost/login, et un client API tapant
+        # /api/v3/... recevait un 307 vers /localhost/api/v3/... (un navigateur
+        # suit, curl/arr-mcp non).
         port = 8086;
         bindaddress = "*";
       };
+
+      # Authentification de l'appli DESACTIVEE (méthode prévue pour un reverse
+      # proxy qui authentifie en amont). Radarr 6.x n'a AUCUN support OIDC
+      # (AuthenticationType = None/Basic/Forms/External seulement, cf. wiki
+      # Servarr « OIDC NOT currently supported »), donc derrière le SSO Pangolin
+      # la seule alternative était un second login dans Radarr.
+      # Contrepartie assumée : tout ce qui joint 127.0.0.1:8086 depuis tower
+      # (n'importe quel process local) ouvre l'UI sans mot de passe ; la clé
+      # API reste exigée sur /api/v3 et la porte internet reste le SSO Pangolin
+      # (le port n'est pas ouvert au firewall).
+      auth.method = "External";
     };
   };
 
