@@ -131,9 +131,19 @@
     gc = {
       automatic = true;
       dates = "6:30"; # "daily", "weekly", "monthly"
-      options = "--delete-older-than 30d";
+      # "30d" laissait s'accumuler ~18 G de vieilles generations sur un disque de
+      # 46 G : le 12/10/2026 le disque est monte a 100 %, pangolin-pre-start a
+      # echoue (No space left on device) et traefik/gerbil sont tombes en cascade
+      # (plus rien sur 80/443). 14 j suffisent (marc deploie au plus quelques fois
+      # par mois) et laissent de la marge.
+      options = "--delete-older-than 14d";
     };
   };
+
+  # Sans cap, journald monte a 10 % du disque (defaut) : 4,1 G sur 46 G, ce qui a
+  # contribue a la saturation du 12/10/2026. 500 M suffisent pour debugger une
+  # panne recente.
+  services.journald.extraConfig = "SystemMaxUse=500M";
 
   # SSH root avec clé publique (remplace par ta vraie clé)
   services.openssh = {
