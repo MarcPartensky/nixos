@@ -36,6 +36,12 @@
     ../../services/vaultwarden-mcp
   ];
 
+  # Gateway hermes coupé sur le VPS : inerte (pas de token Matrix/Discord,
+  # modèle DirectSDK sans login claude) et il tirait claude-code (unfree) dans
+  # le build. L'utilisateur hermes + sudo nixos-rebuild restent (déploiement
+  # remote depuis tower).
+  services.hermes.enableAgent = false;
+
   # Paquets système
   environment.systemPackages = with pkgs;
     [
@@ -104,6 +110,12 @@
       ../../modules/home/zellij
       # ../../modules/home/gh
     ];
+  };
+
+  home-manager.users.marc = {
+    home.stateVersion = "25.11";
+    sops.age.keyFile = "/home/marc/.config/sops/age/keys.txt";
+    imports = [ ../../users/marc/home.nix ];
   };
 
   networking.hostName = "anywhere";
