@@ -36,7 +36,76 @@ in {
     le token Discord du bot Hermes (secrets/hermes-discord.yml, destinataires = tower uniquement)
   '';
 
-  config = {
+  # Option : lancer le gateway hermes-agent (chat) sur cet hôte. Défaut actif
+  # partout où ce module est importé. Le couper (ex. VPS racknerd, où le chat
+  # est inerte : pas de token Matrix/Discord, modèle DirectSDK sans login
+  # claude) retire le service, ollama, claude-code (unfree) et les MCP, mais
+  # GARDE l'utilisateur hermes + clé SSH + sudo nixos-rebuild (accès remote).
+  options.services.hermes.enableAgent = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Lancer le gateway hermes-agent (chat) sur cet hôte.";
+  };
+
+  config = lib.mkMerge [
+    {
+    # --- utilisateur hermes (accès SSH remote + sudo nixos-rebuild) ---
+    # Défini ici pour TOUS les hôtes, même quand le gateway est coupé
+    # (enableAgent = false) : c'est via cet utilisateur que hermes@tower
+    # déploie et diagnostique les hôtes distants. Le module hermes-agent ne
+    # doit pas le recréer (createUser = false).
+    users.groups.hermes = {};
+    users.users.hermes = {
+      isSystemUser = true;
+      group = "hermes";
+      home = "/var/lib/hermes";
+      createHome = true;
+      shell = pkgs.bashInteractive;
+      openssh.authorizedKeys.keys = [
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+      ];
+    };
+    services.hermes-agent.createUser = false;
+
+    # python3 SYSTEME (pas celui du venv scelle) : le probe de demarrage SSH de
+    # Hermes Desktop execute `python3 -c ...` sur la machine distante pour lire
+    # ~/.hermes-update-in-progress. Sans python3 dans le PATH ssh, TOUTE connexion
+    # Desktop en SSH echoue avec "Could not prove that the remote Hermes install
+    # is clear for SSH startup." (verifie le 27/09/2026)
+    # claude-code (unfree) n'est ajouté QUE si le gateway tourne sur cet hôte :
+    # il ne sert qu'au provider claude-subscription-directsdk (Matrix).
+    environment.systemPackages = [pkgs.python3] ++ lib.optionals config.services.hermes.enableAgent [claudeCode];
+
+    # --- Accès SSH direct de hermes (tower) vers les autres hôtes qui importent
+    # ce module (laptop, anywhere) : ouvre un shell (et-session + zellij) pour
+    # agir/builder directement sur la machine, sans copier-coller par marc.
+    # Même clé que celle déjà posée pour root sur anywhere (25/09/2026).
+    security.sudo.extraRules = [
+      {
+        users = ["marc" "hermes"];
+        commands = [
+          {
+            command = "/run/current-system/sw/bin/nixos-rebuild";
+            options = ["NOPASSWD"];
+          }
+          {
+            command = "/nix/store/*-nixos-rebuild/bin/nixos-rebuild";
+            options = ["NOPASSWD"];
+          }
+        ];
+      }
+    ];
+
+    # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
+    # sans ça, libgit2 refuse d'ouvrir un flake appartenant à marc
+    programs.git = {
+      enable = true;
+      config.safe.directory = ["/home/marc/git/nixos"];
+    };
+    }
+
+    # --- gateway hermes-agent (chat) : actif par défaut, coupable par hôte ---
+    (lib.mkIf config.services.hermes.enableAgent {
     # --- déclaration des besoins postgresql ---
     # nixos fusionne automatiquement ces listes avec celles du module postgres
     services.postgresql.ensureDatabases = ["hermes"];
@@ -430,12 +499,8 @@ in {
     };
 
     # claude aussi dispo pour marc et les sessions CLI de hermes
-    # python3 SYSTEME (pas celui du venv scelle) : le probe de demarrage SSH de
-    # Hermes Desktop execute `python3 -c ...` sur la machine distante pour lire
-    # ~/.hermes-update-in-progress. Sans python3 dans le PATH ssh, TOUTE connexion
-    # Desktop en SSH echoue avec "Could not prove that the remote Hermes install
-    # is clear for SSH startup." (verifie le 27/09/2026)
-    environment.systemPackages = [claudeCode pkgs.python3];
+    # (le python3 SYSTEME est déjà ajouté hors du bloc ci-dessus, cf. en haut de
+    # `config` : requis par le probe SSH de Hermes Desktop)
 
     sops.secrets."hermes_env" = {};
 
@@ -476,13 +541,8 @@ in {
     };
 
     # --- Accès SSH direct de hermes (tower) vers les autres hôtes qui importent
-    # ce module (laptop, anywhere) : ouvre un shell (et-session + zellij) pour
-    # agir/builder directement sur la machine, sans copier-coller par marc.
-    # Même clé que celle déjà posée pour root sur anywhere (25/09/2026).
-    users.users.hermes.openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
-    ];
-
+    # ce module (laptop, anywhere) : défini en haut de `config` (utilisateur
+    # hermes + clé + sudo), commun à tous les hôtes.
     security.sudo.extraRules = [
       {
         users = ["marc" "hermes"];
@@ -539,14 +599,8 @@ in {
 
         # --- vim-bindings plugin : DISABLED (JS heredoc parsing issues in Nix)
         # systemd.services.hermes-vim-bindings-plugin = { ... };
-
-        # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
-    # sans ça, libgit2 refuse d'ouvrir un flake appartenant à marc
-    programs.git = {
-      enable = true;
-      config.safe.directory = ["/home/marc/git/nixos"];
-    };
+    })
 
     # --- MCP Nextcloud : voir services/nextcloud-mcp (single_user_basic, loopback) ---
-  };
+  ];
 }
