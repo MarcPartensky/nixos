@@ -45,6 +45,41 @@
   # par les autres membres du groupe `media`.
   systemd.services.sonarr.serviceConfig.UMask = lib.mkForce "0002";
 
+  # Exposition publique via Pangolin (newt, site "tower") : sonarr.marcpartensky.com
+  # -> 127.0.0.1:8006, même schéma que radarr (cle `proxy-resources` + champ
+  # `protocol` = ce que comprend le Pangolin du VPS, cf. services/newt).
+  # SSO Pangolin ACTIF et auth de l'appli coupée (settings.auth.method plus
+  # haut) : le tunnel vient de 127.0.0.1, donc Sonarr voit les requêtes
+  # distantes comme locales et sa propre auth ne filtrerait rien. Sans SSO,
+  # l'UI complète et l'API v3 seraient ouvertes à Internet.
+  services.newt.blueprint.proxy-resources.sonarr = {
+    name = "sonarr";
+    protocol = "http";
+    full-domain = "sonarr.marcpartensky.com";
+    auth.sso-enabled = true;
+    targets = [
+      {
+        hostname = "127.0.0.1";
+        port = 8006;
+        method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = 8006;
+          path = "/ping";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
+      }
+    ];
+  };
+
   # La règle tmpfiles du module viserait /home/marc/sonarr, que
   # systemd-tmpfiles refuserait de créer et signalerait à chaque activation :
   # supprimée, le dossier est créé par la migration ci-dessous.
