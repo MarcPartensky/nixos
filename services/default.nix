@@ -67,6 +67,7 @@
     ./reactive-resume
     ./anki-sync-server
     ./winnie
+    ./llm-steamdeck
     # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes

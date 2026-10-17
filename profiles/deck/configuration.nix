@@ -19,6 +19,7 @@
     ../../services/eternal-terminal
     ../../services/matrix-conduit
     ../../services/nginx-matrix
+    ../../services/llm-steamdeck
     ./switch-emu.nix
   ];
 
