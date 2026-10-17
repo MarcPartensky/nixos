@@ -293,6 +293,23 @@ in {
           skin = "catppuccin-dark-lavender";
         };
 
+        # --- Approbations de commandes : plus aucune validation humaine ---
+        # Politique marc du 13/10/2026 : le shell ne demande plus rien avant
+        # d'executer une commande. "off" est le troisieme bypass du gate
+        # (tools/approval.py, is_approval_bypass_active_for_session : yolo OU
+        # /yolo de session OU mode == off) et il est teste AVANT les branches
+        # cron / single_query / unattended, donc il coupe aussi les refus par
+        # defaut en contexte headless (cron_mode etc. deviennent sans objet).
+        # Les outils web (web_search / web_extract) ne passaient deja par
+        # aucun prompt : cette cle ne concerne que les commandes shell
+        # dangereuses (rm -r, chmod 777, bash -c, curl | sh, systemctl...).
+        # Restent actifs malgre "off" : le blocklist hardline code-shippe
+        # (tools/approval.py::UNRECOVERABLE_BLOCKLIST) et les regles
+        # approvals.deny (vides ici) — aucun override possible.
+        approvals = {
+          mode = "off";
+        };
+
         # --- Plugin herdr : integre hermes a herdr, declarativement ---
         # `extraPlugins` symlinke le paquet dans /var/lib/hermes/.hermes/plugins/
         # (sous le nom nix-managed-<nom>) ; le code du plugin est vendorise dans
