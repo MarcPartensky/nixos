@@ -8,6 +8,7 @@
   # Client WireGuard vers le VPS (voir la section WIREGUARD CLIENT en bas).
   wgClientEnable = false;
 in {
+
   imports = [
     ../../hosts/tower/disko.nix
     ../../hosts/laptop/hardware-configuration.nix
@@ -140,6 +141,34 @@ in {
     disableBasicAuth = true;
   };
 
+  # ========================================================================
+  # KASMVNC CHROME CDP - Chrome/Chromium avec remote debugging pour Playwright MCP
+  # ========================================================================
+  # But : VOIR en direct ce que fait l'automatisation. Un Chromium visible tourne
+  # dans le desktop Kasm (affichable sur 8443 en LAN et kasm.marcpartensky.com en
+  # Internet), et le MCP s'y attache via --cdp-endpoint http://127.0.0.1:9222 :
+  # toutes les actions Playwright se font alors dans CETTE fenetre.
+  # CDP en loopback uniquement (un port CDP joignable = controle total du
+  # navigateur par quiconque l'atteint, donc jamais au LAN ni sur Internet).
+  services.kasmvnc.chrome-cdp = {
+    enable = true;
+    browser = "chromium";
+    port = 9222;
+    bindAddress = "127.0.0.1";
+    profileDir = "/home/marc/chrome-cdp-profile";
+    extraFlags = [
+      "--no-first-run"
+      "--no-default-browser-check"
+      "--disable-background-networking"
+      "--disable-translate"
+      "--password-store=basic"
+      "--disable-component-extensions-with-background-pages"
+      "--disable-features=IsolateOrigins,site-per-process"
+    ];
+    openFirewall = false;
+    exposePublic = false;
+  };
+
   # /home/marc/.kasmpasswd : fichier au format kasmvncpasswd. Attention,
   # kasmvncpasswd n'a PAS d'option -f et refuse de tourner sans terminal
   # (« getpassword error: Inappropriate ioctl for device ») ; il lit le mot de
@@ -250,6 +279,25 @@ in {
         hostname = "127.0.0.1";
         port = 8288;
         method = "http";
+        # Healthcheck sur le vhost nginx local (8288 -> https KasmVNC 8443).
+        # KasmVNC repond 200 text/html sur "/" (desactiveBasicAuth) : mesure
+        # du 11/10/2026 sur http://127.0.0.1:8288/ -> 200. Meme schema que
+        # noVNC/winnie dans services/newt (schema ancien : proxy-resources +
+        # protocol, valide par ce Pangolin).
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = 8288;
+          path = "/";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
       }
     ];
   };

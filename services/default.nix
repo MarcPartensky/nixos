@@ -76,6 +76,7 @@
     ../modules/nixos/vault-rustguac
     ../modules/nixos/rustguac
     ../modules/nixos/kasmvnc
+    ../modules/nixos/kasmvnc-chrome-cdp.nix
     ../modules/nixos/rustdesk
     ../modules/nixos/nginx/rustguac
     ../modules/nixos/nginx/kasmvnc
