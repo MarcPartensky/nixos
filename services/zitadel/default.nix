@@ -13,12 +13,17 @@
       group = "keys";
     };
 
-    # Pour le mot de passe admin : le module NixOS n'a pas de stepsPasswordFile,
-    # mais steps ne tourne qu'une seule fois (fresh install).
-    # On l'exclut du nix store via un fichier steps séparé injecté par sops.
-    "zitadel/steps" = {
-      key = "zitadel_steps";
-    };
+    # "zitadel/steps" retiré le 12/10/2026 : le secret pointait sur
+    # zitadel_steps, chiffré en type:int dans secrets/anywhere.yml, ce que
+    # sops-install-secrets refuse ("the value of key '' is not a string"). Il
+    # faisait donc échouer tout le setupSecrets du VPS, donc l'activation
+    # entière : aucun secret n'était écrit (master key absente, zitadel en
+    # boucle de crash) et le switch retournait en erreur.
+    #
+    # Un steps YAML ne sert qu'à la première initialisation d'une instance, or
+    # celle-ci est déjà initialisée (base "zitadel" existante). Pour repartir
+    # d'une instance neuve : chiffrer le YAML des steps en type:str et remettre
+    # extraStepsPaths = [ config.sops.secrets."zitadel/steps".path ].
   };
 
   users.users.zitadel.extraGroups = ["keys"];
@@ -45,8 +50,7 @@
     enable = true;
     masterKeyFile = config.sops.secrets."zitadel/master_key".path;
 
-    # steps injecté via fichier sops plutôt qu'inline dans le nix store
-    extraStepsPaths = [config.sops.secrets."zitadel/steps".path];
+    # extraStepsPaths retiré : voir le commentaire sur sops.secrets ci-dessus.
 
     settings = {
       Port = 2080;

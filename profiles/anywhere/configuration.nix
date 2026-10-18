@@ -25,6 +25,7 @@
     # ../../services/oxicloud
     ../../services/zitadel
     ../../services/pangolin
+    ../../services/pangolin/gerbil-wg0-ensure.nix
     ../../services/wireguard
     # ../../services/tailscale # desactive 26/09: exige le secret sops tailscale/auth_key (absent de secrets/anywhere.yml). Reactiver avec le mesh.
     ../../services/headscale
@@ -33,7 +34,7 @@
     ../../services/stalwart
     ../../services/droplify
     ../../services/hermes
-    ../../services/vaultwarden-mcp
+    # ../../services/vaultwarden-mcp  # secret sops secrets/tower.yml, illisible sur ce VPS : cassait setupSecrets
   ];
 
   # Gateway hermes coupé sur le VPS : inerte (pas de token Matrix/Discord,
