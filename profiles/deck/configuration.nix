@@ -166,6 +166,16 @@
     };
   };
 
+  systemd.timers.deck-wake-downloads = {
+    wantedBy = ["timers.target"];
+    timerConfig = {
+      OnCalendar = "*-*-* 01:55:00";
+      WakeSystem = true; # réveille depuis la veille via l'horloge RTC
+    };
+  };
+
+  systemd.services.deck-wake-downloads.serviceConfig.ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=sleep:idle --why='Téléchargements Steam' ${pkgs.coreutils}/bin/sleep 5h35m";
+
   # home.file.${config.gtk.gtk2.configLocation}.force = true;
   # xdg.configFile = {
   #   "gtk-3.0/settings.ini".force = true;
