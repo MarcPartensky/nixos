@@ -8,17 +8,26 @@
 #          -> 127.0.0.1:9129 (nginx, réécrit Host: 127.0.0.1:9119)
 #          -> 127.0.0.1:9119 (hermes serve --isolated, profil pocket).
 #
-# L'appli ouvre ws(s)://<domaine>/api/ws?token=<HERMES_DASHBOARD_SESSION_TOKEN>.
-# Deux points vérifiés le 27/09/2026 sur cette machine :
-#  1. Le serveur n'accepte le token QU'en paramètre de requête (Authorization:
-#     Bearer est refusé en 403), d'où la ressource Pangolin sans SSO : l'appli
-#     native ne peut pas faire le flux navigateur. La protection est donc le
-#     token de session du profil pocket (profiles/pocket/serve.env, 0600).
-#  2. Le serveur refuse tout en-tête Host non loopback (anti DNS-rebinding),
-#     d'où la réécriture Host par nginx, comme dans hermes-webui et
-#     hermes-dashboard.
+# Depuis le 19/10/2026, la porte d'auth native du serve est ACTIVE : serve.env
+# déclare dashboard.public_url (HERMES_DASHBOARD_PUBLIC_URL), ce qui engage
+# auth_required=true même sur un bind loopback (doctrine upstream : derrière
+# un proxy, le token de session local ne doit jamais être servi sans auth).
+# Sans cette porte, le serve headless servait la page racine avec
+# window.__HERMES_SESSION_TOKEN__ en clair ; publiée par Pangolin (SSO
+# désactivé), elle exposait le token de session au monde entier. Fuite fermée
+# et token rotaté le 19/10/2026.
+#
+# Flux client (appli « Hermes Mobile » F-Droid, mode Username & Password) :
+# POST /auth/password-login (provider basic, identifiants dans serve.env)
+# -> cookies de session -> POST /api/auth/ws-ticket
+# -> ws(s)://<domaine>/api/ws?ticket=<billet> (usage unique, TTL 30 s).
+#
+# Notes de la période NON gardée (27/09/2026) : le token n'était accepté qu'en
+# paramètre de requête (Bearer refusé), et le serveur refuse tout Host non
+# loopback (anti DNS-rebinding), d'où la réécriture Host par nginx comme dans
+# hermes-webui et hermes-dashboard.
 # Ne jamais ouvrir 9119 ou 9129 au firewall : le serveur expose l'API complète
-# de l'agent (outils, fichiers, terminal) et le token protège tout l'accès.
+# de l'agent (outils, fichiers, terminal) ; la porte d'auth protège l'accès.
 {
   config,
   lib,
@@ -48,8 +57,9 @@ in {
         "HERMES_REAL_HOME=/var/lib/hermes"
       ];
 
-      # .env = clés de provider du profil ; serve.env = token de session
-      # (HERMES_DASHBOARD_SESSION_TOKEN), les deux hors du store nix.
+      # .env = clés de provider du profil ; serve.env = réglages de la porte
+      # d'auth (HERMES_DASHBOARD_PUBLIC_URL, HERMES_DASHBOARD_BASIC_AUTH_*) et
+      # token de session legacy — les deux hors du store nix.
       EnvironmentFile = [
         "${profileDir}/.env"
         "${profileDir}/serve.env"
@@ -62,8 +72,9 @@ in {
     };
   };
 
-  # Proxy local : seul point d'entrée loopback, il réécrit le Host que le
-  # serveur impose, et laisse passer l'Upgrade WebSocket.
+  # Proxy local : seul point d'entrée loopback ; il réécrit le Host que le
+  # serveur impose, laisse passer l'Upgrade WebSocket, et annonce au backend
+  # https + l'IP cliente réelle (cookies Secure, audit) via X-Forwarded-*.
   services.nginx.virtualHosts."hermes-pocket-proxy" = {
     listen = [
       {
@@ -76,6 +87,8 @@ in {
       proxyWebsockets = true;
       extraConfig = ''
         proxy_set_header Host ${backendHost};
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
         proxy_buffering off;
@@ -101,7 +114,9 @@ in {
           enabled = true;
           hostname = "127.0.0.1";
           port = proxyPort;
-          path = "/";
+          # La racine gardée redirige vers /login (302) ; /api/status est la
+          # sonde publique (200) tant que la porte est active.
+          path = "/api/status";
           scheme = "http";
           mode = "http";
           method = "GET";
