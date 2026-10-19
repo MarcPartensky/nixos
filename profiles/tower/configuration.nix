@@ -55,6 +55,17 @@ in {
   networking.hostName = "tower";
   sops.defaultSopsFile = lib.mkForce ../../secrets/tower.yml;
 
+  # PAT d'admin Zitadel (chiffre dans secrets/zitadel.yml, recipient tower)
+  # materialise lisible par hermes : sert aux operations d'admin ponctuelles
+  # via l'API REST (creation d'apps OIDC, inspection) tant que le zitadel-mcp
+  # upstream n'est pas provisionne (secret zitadel_mcp_env manquant).
+  sops.secrets."zitadel_mcp_pat" = {
+    sopsFile = ../../secrets/zitadel.yml;
+    owner = "hermes";
+    group = "hermes";
+    mode = "0400";
+  };
+
   nixpkgs.overlays = [ inputs.ankimcp.overlays.default ];
 
   # ACME/Let's Encrypt : PLUS UTILISE sur tower. Le DNS public

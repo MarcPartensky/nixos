@@ -13,6 +13,13 @@
       group = "keys";
     };
 
+    # Mot de passe du compte d'envoi noreply@marcpartensky.com (Stalwart sur le
+    # VPS). Fichier dédié pour que hermes puisse l'écrire sans toucher au reste.
+    "zitadel/smtp_password" = {
+      sopsFile = ../../secrets/zitadel-smtp.yml;
+      key = "zitadel_smtp_password";
+    };
+
     # "zitadel/steps" retiré le 12/10/2026 : le secret pointait sur
     # zitadel_steps, chiffré en type:int dans secrets/anywhere.yml, ce que
     # sops-install-secrets refuse ("the value of key '' is not a string"). Il
@@ -49,6 +56,13 @@
   services.zitadel = {
     enable = true;
     masterKeyFile = config.sops.secrets."zitadel/master_key".path;
+
+    # Pas de clé SMTP ici : depuis ZITADEL v2 la config SMTP vit dans la base
+    # (projection smtp_configs) et se modifie par l'API admin
+    # POST /admin/v1/smtp ou la console. Le fichier de config runtime l'ignore
+    # (vérifié le 19/10/2026 : SMTP.* dans --config ne produit que
+    # Errors.SMTPConfig.NotFound). Le mot de passe du compte d'envoi est dans
+    # secrets/zitadel-smtp.yml pour la provisioning par API.
 
     # extraStepsPaths retiré : voir le commentaire sur sops.secrets ci-dessus.
 
