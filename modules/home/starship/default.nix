@@ -13,6 +13,8 @@
         "$shlvl"
         "$singularity"
         "$directory"
+        "$git_branch"
+        "$git_status"
         "$vcsh"
         "$docker_context"
         "$package"
