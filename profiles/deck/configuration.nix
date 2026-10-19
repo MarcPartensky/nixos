@@ -124,6 +124,7 @@
     settings = {
       global = {
         server_name = "matrix.marcpartensky.com";
+        address = "127.0.0.1"; # IPv6 est desactive sur le Deck, ::1 par defaut casse conduit
         database_backend = "rocksdb";
         port = 6167;
         allow_registration = false;
