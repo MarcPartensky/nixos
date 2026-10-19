@@ -6,7 +6,7 @@
   ...
 }: let
   # Client WireGuard vers le VPS (voir la section WIREGUARD CLIENT en bas).
-  wgClientEnable = false;
+  wgClientEnable = true;
 in {
 
   imports = [
@@ -50,6 +50,13 @@ in {
 
   users.users.hermes.openssh.authorizedKeys.keys = lib.mkAfter [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
+  ];
+
+  # Clé root du VPS anywhere (/root/.ssh/id_ed25519) : donne au VPS l'accès SSH
+  # à tower par le tunnel wg1 (10.100.0.3), donc depuis n'importe où sans
+  # dépendre de l'IP publique de la box. Remplace l'ancien forward 42070.
+  users.users.marc.openssh.authorizedKeys.keys = lib.mkAfter [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAc2f6U09CWD2yQNcyGz6Pz9EN3aJzvdCvr7FrSSgpwx root@anywhere"
   ];
 
   networking.hostName = "tower";
@@ -409,32 +416,20 @@ in {
   users.users.hermes.extraGroups = [ "systemd-journal" ];
 
   # ========================================================================
-  # WIREGUARD CLIENT - Connexion au réseau VPN du VPS RackNerd (anywhere)
+  # WIREGUARD CLIENT - tower pair du VPS anywhere (hub-and-spoke wg1)
   # ========================================================================
-  # Objectif : tower rejoint le réseau wireguard (10.100.0.0/24) du VPS
-  # pour que macOS (et d'autres pairs) puisse s'y connecter directement
-  # via SSH dans le VPN (alias tower-rack), sans rediriger le trafic
-  # internet de tower via le serveur VPN.
-  #
-  # MANQUE AVANT ACTIVATION :
-  # 1. Générer la paire de clés de tower : `wg genkey | tee privatekey | wg pubkey > publickey`
-  # 2. Insérer le secret dans secrets/tower.yml (sops) :
-  #    wireguard:
-  #      tower_private_key: ENC[AES256_GCM,...]
-  # 3. Déclarer le secret dans la conf (déjà fait ci-dessous, conditionnel)
-  #
-  # Le peer (serveur anywhere) : publicKey = la clé publique du VPS
-  # (extraite du service wireguard de anywhere, ou via `wg showconf wg1` sur le VPS).
-  # Endpoint : le VPS RackNerd expose wireguard sur le port 443 UDP.
-  # IP attribuée au client tower : 10.100.0.3/32 (cohérente avec le réseau existant).
-  #
-  # ATTENTION : `allowedIPs = [ "10.100.0.0/24" ];` limite le tunnel au réseau
-  # privé du VPN ; le trafic internet de tower ne passe PAS par le VPS.
+  # tower n'a aucune exposition entrante utile (NAT residentiel + IP publique
+  # dynamique) : il rejoint donc en CLIENT le wg1 du VPS (10.100.0.1/24) et y
+  # prend 10.100.0.3. Depuis le VPS : `ssh marc@10.100.0.3` (alias `tower` dans
+  # modules/home/ssh). Le Mac est l'autre pair (10.100.0.2) et passe par le meme
+  # hub. Aucun port a ouvrir sur tower : wg-quick garde une socket source
+  # ephemere et conntrack suit la reponse. persistentKeepalive entretient la
+  # traduction NAT, donc le VPS joint tower a tout moment.
+  #   - allowedIPs = 10.100.0.0/24 : seul le reseau du VPN passe par le tunnel,
+  #     le trafic Internet de tower reste sur la connexion locale.
+  #   - Cle privee dans secrets/wireguard.yml (sops, recipient tower), cle
+  #     publique declaree en peer cote VPS (services/wireguard/default.nix).
   # ========================================================================
-  # DESACTIVE tant que le secret n'existe pas : sops-nix refuse de construire le
-  # manifeste si la cle est absente de tower.yml (« the key 'wireguard' cannot be
-  # found »), ce qui casse tout le build. Passer a true apres les etapes 1 et 2
-  # ci-dessus (et l'ajout de la cle publique de tower comme peer sur le VPS).
   networking.wg-quick.interfaces = lib.mkIf wgClientEnable {
     wg1 = {
       address = [ "10.100.0.3/32" ];
@@ -455,15 +450,16 @@ in {
     };
   };
 
-  # Secret sops nécessaire pour le client wireguard (à créer dans secrets/tower.yml)
+  # Clé privée du pair tower. Fichier sops dédié (recipient tower) pour ne pas
+  # toucher à tower.yml : `sops secrets/wireguard.yml` pour la rotation.
   sops.secrets."wireguard/tower_private_key" = lib.mkIf wgClientEnable {
-    sopsFile = ../../secrets/tower.yml;
+    sopsFile = ../../secrets/wireguard.yml;
     owner = "root";
     group = "root";
     mode = "0400";
   };
+  # Aucun port UDP à ouvrir : wg-quick en mode client n'écoute pas de port fixe.
 
-  networking.firewall.allowedUDPPorts = lib.mkIf wgClientEnable [ 443 ];
 
   # ========================================================================
 }
