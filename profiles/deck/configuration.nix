@@ -73,20 +73,8 @@
   sops.defaultSopsFile = ../../secrets/common.yml;
 
   sops.secrets."monero/wallet" = {
-    sopsFile = ../../secrets/monero.yml;
+    sopsFile = ../../secrets/monero-deck.yml;
     key = "wallet";
-    owner = "root";
-    mode = "0400";
-  };
-  sops.secrets."monero/nextcloud-user" = {
-    sopsFile = ../../secrets/common.yml;
-    key = "nextcloud_user";
-    owner = "root";
-    mode = "0400";
-  };
-  sops.secrets."monero/nextcloud-password" = {
-    sopsFile = ../../secrets/common.yml;
-    key = "nextcloud_password";
     owner = "root";
     mode = "0400";
   };
@@ -222,10 +210,7 @@
     thermalGuard.maxTemperature = 88;
     thermalGuard.resumeTemperature = 84;
     schedule.enable = true;
-    calendar.enable = true;
-    calendar.userFile = config.sops.secrets."monero/nextcloud-user".path;
-    calendar.passwordFile = config.sops.secrets."monero/nextcloud-password".path;
-    calendar.calendars = [ "sg" ];
+    calendar.enable = false;
   };
 
   networking.hostName = "deck";
