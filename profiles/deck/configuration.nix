@@ -72,6 +72,25 @@
   nixpkgs.config.allowUnfree = true;
   sops.defaultSopsFile = ../../secrets/common.yml;
 
+  sops.secrets."monero/wallet" = {
+    sopsFile = ../../secrets/monero.yml;
+    key = "wallet";
+    owner = "root";
+    mode = "0400";
+  };
+  sops.secrets."monero/nextcloud-user" = {
+    sopsFile = ../../secrets/common.yml;
+    key = "nextcloud_user";
+    owner = "root";
+    mode = "0400";
+  };
+  sops.secrets."monero/nextcloud-password" = {
+    sopsFile = ../../secrets/common.yml;
+    key = "nextcloud_password";
+    owner = "root";
+    mode = "0400";
+  };
+
   programs.zsh.enable = true; # requis par users.nix
   services.openssh.enable = true;
   services.automatic-timezoned.enable = false;
@@ -192,7 +211,7 @@
   # charge protegent la machine sur le long terme.
   services.monero-miner = {
     enable = true;
-    wallet = "46WTCDFTfzZ7uxKToJ27nN3v1RcGqEGACHWjVxgdcJLMGfZZLdyeTo2JoGksFCrpS7HMEm8yT8iKHPNdiMHXGEY3CS8drV6";
+    walletFile = config.sops.secrets."monero/wallet".path;
     pool = "gulf.moneroocean.stream:10008";
     tls = false;
     threads = 6;
@@ -202,6 +221,11 @@
     thermalGuard.enable = true;
     thermalGuard.maxTemperature = 88;
     thermalGuard.resumeTemperature = 84;
+    schedule.enable = true;
+    calendar.enable = true;
+    calendar.userFile = config.sops.secrets."monero/nextcloud-user".path;
+    calendar.passwordFile = config.sops.secrets."monero/nextcloud-password".path;
+    calendar.calendars = [ "sg" ];
   };
 
   networking.hostName = "deck";

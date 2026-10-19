@@ -13,6 +13,7 @@ in {
     ../../hosts/tower/disko.nix
     ../../hosts/laptop/hardware-configuration.nix
     ../../modules/nixos/herdr
+    ../../services/monero-miner
   ];
 
   # Sessions hermes lancees par marc (panes herdr, HERMES_HOME partage, cf
@@ -460,6 +461,45 @@ in {
   };
   # Aucun port UDP à ouvrir : wg-quick en mode client n'écoute pas de port fixe.
 
+  # ========================================================================
+  # MINEUR MONERO - planning sommeil / travail Nextcloud
+  # ========================================================================
+  sops.secrets."monero/wallet" = {
+    sopsFile = ../../secrets/monero.yml;
+    key = "wallet";
+    owner = "root";
+    mode = "0400";
+  };
+  sops.secrets."monero/nextcloud-user" = {
+    sopsFile = ../../secrets/common.yml;
+    key = "nextcloud_user";
+    owner = "root";
+    mode = "0400";
+  };
+  sops.secrets."monero/nextcloud-password" = {
+    sopsFile = ../../secrets/common.yml;
+    key = "nextcloud_password";
+    owner = "root";
+    mode = "0400";
+  };
+
+  services.monero-miner = {
+    enable = true;
+    walletFile = config.sops.secrets."monero/wallet".path;
+    pool = "gulf.moneroocean.stream:10008";
+    tls = false;
+    threads = 8;
+    cpuQuota = 800;
+    rigId = "tower";
+    thermalGuard.enable = true;
+    thermalGuard.maxTemperature = 88;
+    thermalGuard.resumeTemperature = 82;
+    schedule.enable = true;
+    calendar.enable = true;
+    calendar.userFile = config.sops.secrets."monero/nextcloud-user".path;
+    calendar.passwordFile = config.sops.secrets."monero/nextcloud-password".path;
+    calendar.calendars = [ "sg" ];
+  };
 
   # ========================================================================
 }
