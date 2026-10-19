@@ -88,6 +88,8 @@
     home = "/var/lib/hermes";
     createHome = true;
     shell = pkgs.zsh;
+    # Permet a l'agent de lire `journalctl -u <service>` sur le Deck.
+    extraGroups = [ "systemd-journal" ];
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
     ];
@@ -190,11 +192,15 @@
   services.monero-miner = {
     enable = true;
     wallet = "46WTCDFTfzZ7uxKToJ27nN3v1RcGqEGACHWjVxgdcJLMGfZZLdyeTo2JoGksFCrpS7HMEm8yT8iKHPNdiMHXGEY3CS8drV6";
+    pool = "gulf.moneroocean.stream:10008";
+    tls = false;
     threads = 8;
     cpuQuota = 800;
     rigId = "steamdeck";
     chargeLimit = 80;
     thermalGuard.enable = true;
+    thermalGuard.maxTemperature = 88;
+    thermalGuard.resumeTemperature = 78;
   };
 
   networking.hostName = "deck";

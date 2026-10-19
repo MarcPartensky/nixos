@@ -104,7 +104,7 @@ in
 
     pool = lib.mkOption {
       type = lib.types.str;
-      default = "moneroocean.stream:443";
+      default = "gulf.moneroocean.stream:10008";
       description = "Endpoint Stratum du pool, au format host:port.";
     };
 
@@ -116,8 +116,12 @@ in
 
     tls = lib.mkOption {
       type = lib.types.bool;
-      default = true;
-      description = "Active TLS vers le pool (le port 443 de MoneroOcean le supporte).";
+      default = false;
+      description = ''
+        Active TLS vers le pool. MoneroOcean ne le propose pas sur son port
+        Stratum (contrairement a son dashboard HTTPS) ; laisser false pour lui.
+        Le Stratum ne transporte que l'adresse publique du portefeuille.
+      '';
     };
 
     threads = lib.mkOption {
