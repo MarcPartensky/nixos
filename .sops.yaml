@@ -5,6 +5,11 @@ keys:
   - &deck age154uz4pavaj5qth25ytj0q8chsya4y65pgel04zcrm02je9w6uc9sug7dp2
 
 creation_rules:
+  - path_regex: secrets/monero\.yml$
+    key_groups:
+      - age:
+          - *tower
+          - *deck
   - path_regex: secrets/common\.yml$
     key_groups:
       - age:
@@ -12,6 +17,10 @@ creation_rules:
           - *tower
           - *mac
           - *deck
+  - path_regex: secrets/stalwart-mcp\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/hermes_api_server_env\.yml$
     key_groups:
       - age:
@@ -24,6 +33,10 @@ creation_rules:
     key_groups:
       - age:
           - *anywhere
+  - path_regex: secrets/wireguard\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/tower\.yml$
     key_groups:
       - age:
@@ -33,6 +46,10 @@ creation_rules:
       - age:
           - *tower
   - path_regex: secrets/zitadel\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/zitadel-smtp\.yml$
     key_groups:
       - age:
           - *tower
@@ -93,6 +110,10 @@ creation_rules:
       - age:
           - *tower
   - path_regex: secrets/winnie\.yml$
+    key_groups:
+      - age:
+          - *tower
+  - path_regex: secrets/wise\.yml$
     key_groups:
       - age:
           - *tower
