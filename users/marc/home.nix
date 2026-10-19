@@ -174,7 +174,9 @@
     '';
   };
 
-  # home.file.${config.gtk.gtk2.configLocation}.force = true;
+  # .gtkrc-2.0 est généré par gtk.enable ; l'ancien fichier n'est pas un lien
+  # vers le store, donc sans force = true l'activation échoue sur checkLinkTargets.
+  home.file.${config.gtk.gtk2.configLocation}.force = lib.mkForce true;
   xdg.configFile = {
     "gtk-3.0/settings.ini".force = true;
     "gtk-4.0/settings.ini".force = true;
