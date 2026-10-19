@@ -471,6 +471,22 @@
         "type": "github"
       }
     },
+    "hermes-menagerie": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1788415525,
+        "narHash": "sha256-HlRJHxVmTOJ553sYHsZYSW0/FwYFveFjdCMQWG6gFyg=",
+        "owner": "ZakiChair",
+        "repo": "hermes-catppuccin",
+        "rev": "0a72fd4159463b7dc598216a10b599e2d29c99ea",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ZakiChair",
+        "repo": "hermes-catppuccin",
+        "type": "github"
+      }
+    },
     "hermes-webui": {
       "inputs": {
         "nixpkgs": [
@@ -1559,6 +1575,7 @@
         "disko": "disko",
         "firefox-devtools-mcp": "firefox-devtools-mcp",
         "hermes-agent": "hermes-agent",
+        "hermes-menagerie": "hermes-menagerie",
         "hermes-webui": "hermes-webui",
         "home-manager": "home-manager_4",
         "jovian": "jovian",

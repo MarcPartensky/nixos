@@ -22,6 +22,7 @@
     # ../../modules/home/librewolf
 
     ../../modules/home-mac/aerospace
+    ../../modules/home-mac/hermes-skins
     # ../../modules/home-mac/autossh
   ];
 
@@ -115,6 +116,9 @@
   };
 
   programs.zsh.enable = true;
+
+  # Skins Hermes (pack Hermes Menagerie) -> ~/.hermes/skins/
+  my.hermesSkins.enable = true;
 
   # Connexions Eternal Terminal vers les hôtes NixOS : `et tower` = zellij enregistré.
   my.et = {

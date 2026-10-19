@@ -60,6 +60,12 @@
       flake = false; # The repo isn't a flake; use as raw source
     };
 
+    # Pack de skins Hermes (26 palettes) : source brute, cf. modules/home-mac/hermes-skins.
+    hermes-menagerie = {
+      url = "github:ZakiChair/hermes-catppuccin";
+      flake = false; # The repo isn't a flake; use as raw source
+    };
+
     # On crée une entrée SPÉCIALE pour le téléphone
     # nixpkgs-droid.url = "github:NixOS/nixpkgs/nixos-24.05";
 
