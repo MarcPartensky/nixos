@@ -43,5 +43,10 @@ in {
 
   # Hermes : transport HTTP vers le container loopback.
   # Les tools apparaissent préfixés mcp_nextcloud_* au démarrage d'hermes.
-  services.hermes-agent.mcpServers.nextcloud.url = "http://127.0.0.1:${toString port}/mcp";
+  # URL LAN (module services/mcp-lan-access) : joignable depuis tower (trafic
+  # local par lo) et cliquable depuis Hermes Desktop sur le Mac du marc.
+  services.hermes-agent.mcpServers.nextcloud.url =
+    if config.services.mcp-lan-access.enable
+    then "http://${config.services.mcp-lan-access.host}:${toString port}/mcp"
+    else "http://127.0.0.1:${toString port}/mcp";
 }

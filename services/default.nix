@@ -49,10 +49,12 @@
     # http://127.0.0.1:8642/p/discord-bridge/v1/chat/completions.
     ./eternal-terminal
     ./nextcloud-mcp
+    ./mcp-lan-access
     ./amazon-mcp
     ./hinge-auto
     ./firefox-mcp
-    # ./stalwart-mcp  # FIXME: cargoHash mismatch, needs fix
+    # ./stalwart-mcp  # importé par profiles/tower uniquement (voir le commentaire
+    # dans le module : sur anywhere la clé sops entre en conflit avec services/stalwart)
     ./gotify
     ./zitadel
     # ./zitadel-mcp  # FIXME: secret zitadel_mcp_env manquant dans zitadel.yml
@@ -66,7 +68,10 @@
     ./openrouter-mcp
     ./reactive-resume
     ./anki-sync-server
+    ./anki-mcp
     ./winnie
+    ./wise-mcp
+    ./bank-mcp
     ./llm-steamdeck
     # ./kanidm
     # ./syncserver

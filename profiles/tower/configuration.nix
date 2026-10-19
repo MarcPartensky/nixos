@@ -239,6 +239,37 @@ in {
   };
 
   # ========================================================================
+  # ANKI - serveur MCP headless (Anki + addon AnkiMCP)
+  # ========================================================================
+  # Anki sans bureau + addon AnkiMCP, expose en HTTP MCP sur la loopback
+  # (127.0.0.1:3141) et consomme par Hermes (mcpServers.anki). La collection
+  # est celle du compte "marc" du serveur de sync anki.marcpartensky.com :
+  # ce service en est un client de plus, comme le Mac et le telephone.
+  # Rien n'est ouvert au firewall ni expose par newt (exposition publique
+  # possible plus tard, avec cle http_api_key, cf services/anki-mcp).
+  services.anki-mcp.enable = true;
+
+  # ========================================================================
+  # MCP - accès LAN filtré (URLs cliquables depuis Hermes Desktop sur le Mac)
+  # ========================================================================
+  # Republie sur l'adresse LAN de tower les quatre endpoints MCP HTTP qui
+  # écoutent en loopback. Le firewall n'accepte que 192.168.1.48 (le Mac) ;
+  # rien n'est ouvert à la box ni à Pangolin. Les modules nextcloud-mcp,
+  # arr-mcp, anki-mcp et le serveur beeper lisent `host` pour construire leur
+  # URL MCP, donc une seule valeur à changer si l'adresse DHCP bouge.
+  services.mcp-lan-access = {
+    enable = true;
+    host = "192.168.1.44";
+    clientAddress = "192.168.1.48";
+    endpoints = {
+      nextcloud = 8710;
+      anki = 3141;
+      arrmcp = 6060;
+      beeper = 23373;
+    };
+  };
+
+  # ========================================================================
   # NGINX - vhosts locaux (TLS porte par Pangolin/newt, pas par nginx ici)
   # ========================================================================
   services.nginx.rustguac = {
