@@ -23,6 +23,7 @@ creation_rules:
           - *tower
           - *mac
           - *deck
+          - *deck-host
   - path_regex: secrets/stalwart-mcp\.yml$
     key_groups:
       - age:
