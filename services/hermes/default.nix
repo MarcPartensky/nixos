@@ -232,27 +232,25 @@ in {
           }
         ];
 
-        # --- Modèle par défaut : Nemotron 3 Ultra gratuit (OpenRouter) ---
-        # Politique marc du 27/09/2026 : nemotron-3-ultra:free high par défaut,
-        # puis inkling:free, DeepSeek Flash en dernier recours.
+        # --- Modèle par défaut : DeepSeek v4.1 Flash (OpenRouter) ---
+        # Politique marc : DeepSeek v4.1 Flash par défaut, Nemotron en secours.
         model = {
           provider = "openrouter";
-          default = "nvidia/nemotron-3-ultra-550b-a55b:free";
+          default = "deepseek/deepseek-v4.1-flash";
         };
 
-        # --- Chaîne de secours : TOUS sur nemotron (même modèle, jamais inkling) ---
-        # Politique : même famille, pas de basculement vers un modèle différent.
+        # --- Chaîne de secours : DeepSeek en premier, Nemotron en secours ---
         fallback_providers = [
-          {
-            provider = "openrouter";
-            model = "nvidia/nemotron-3-ultra-550b-a55b:free";
-          }
           {
             provider = "openrouter";
             model = "deepseek/deepseek-v4.1-flash";
             base_url = "https://openrouter.ai/api/v1";
             context_length = 1048576;
             supports_vision = true;
+          }
+          {
+            provider = "openrouter";
+            model = "nvidia/nemotron-3-ultra-550b-a55b:free";
           }
         ];
 
@@ -394,9 +392,10 @@ in {
                 provider = "openrouter";
                 model = "deepseek/deepseek-v4.1-flash";
               };
+              # Zoé : DeepSeek v4.1 Flash (OpenRouter), 1er secours par defaut.
               "!sylSYxsYVJRknngRnF:matrix.marcpartensky.com" = {
-                provider = "claude-subscription-directsdk-experimental";
-                model = "claude-sonnet-5[1m]";
+                provider = "openrouter";
+                model = "deepseek/deepseek-v4.1-flash";
               };
               "!JgWSzbTBCRPEOQTAZi:matrix.marcpartensky.com" = {
                 provider = "claude-subscription-directsdk-experimental";
@@ -480,6 +479,21 @@ in {
         GITEA_HOST = "https://git.marcpartensky.com";
         GITEA_ACCESS_TOKEN_FILE = config.sops.secrets."gitea-mcp/pat".path;
       };
+      timeout = 60;
+    };
+
+    # --- MCP Beeper : API locale de Beeper Desktop (loopback 23373) ---
+    # L'entrée n'existait qu'impérativement dans config.yaml, avec un token en
+    # dur (29 caractères) qui ne correspond plus à BEEPER_ACCESS_TOKEN et prend
+    # un 401. Déclarée ici : le token est lu depuis l'environnement (.env /
+    # sops hermes_env), jamais recopié dans le dépôt. L'URL LAN rend le lien
+    # cliquable depuis Hermes Desktop (module services/mcp-lan-access).
+    services.hermes-agent.mcpServers.beeper = {
+      url =
+        if config.services.mcp-lan-access.enable
+        then "http://${config.services.mcp-lan-access.host}:23373/v0/mcp"
+        else "http://127.0.0.1:23373/v0/mcp";
+      headers.Authorization = "Bearer \${env:BEEPER_ACCESS_TOKEN}";
       timeout = 60;
     };
 
