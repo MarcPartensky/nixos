@@ -88,6 +88,20 @@ in {
       # X-Forwarded-Host (HERMES_WEBUI_TRUST_FORWARDED_HOST), Pangolin/newt
       # n'étant pas garanti de le poser.
       HERMES_WEBUI_ALLOWED_ORIGINS = "https://hermes.marcpartensky.com";
+
+      # --- OIDC Zitadel (option a, 19/10/2026) ---
+      # L'auth applicative du WebUI remplace le SSO Pangolin (voir le
+      # blueprint plus bas). App Zitadel « Hermes WebUI » (User Agent, PKCE
+      # publique sans secret, client_id 395733475048620332, redirect
+      # exact enregistré). allow_claim=preferred_username : claim présent
+      # dans l'ID token (matrice de claims Zitadel) et égal au username
+      # Zitadel de marc. REDIRECT_URI explicite car nginx réécrit le Host
+      # vers 127.0.0.1:9130 (la redirect dérivée serait fausse).
+      HERMES_WEBUI_OIDC_ISSUER = "https://auth.marcpartensky.com";
+      HERMES_WEBUI_OIDC_CLIENT_ID = "395733475048620332";
+      HERMES_WEBUI_OIDC_ALLOW_CLAIM = "preferred_username";
+      HERMES_WEBUI_OIDC_ALLOW_VALUES = "marc@marcpartensky.com";
+      HERMES_WEBUI_OIDC_REDIRECT_URI = "https://hermes.marcpartensky.com/api/auth/oidc/callback";
     };
   };
 
@@ -127,7 +141,9 @@ in {
     name = "hermes-webui";
     protocol = "http";
     full-domain = "hermes.marcpartensky.com";
-    auth.sso-enabled = true;
+    # SSO Pangolin désactivé au profit de l'OIDC applicative du WebUI
+    # (option a, 19/10/2026) : une seule couche d'auth, pas de double login.
+    auth.sso-enabled = false;
     targets = [
       {
         hostname = "127.0.0.1";
