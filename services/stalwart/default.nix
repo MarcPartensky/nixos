@@ -9,44 +9,39 @@
   # SECRETS ACME (certificat) — injectés dans /etc/stalwart/ pour le module stalwart
   # ---------------------------------------------------------------------------
   environment.etc = {
-    "stalwart/acme-secret".text = config.sops.secrets."stalwart/acme_secret".path;
+    "stalwart/acme-secret".text = config.sops.secrets."stalwart/acme".path;
   };
 
   # ---------------------------------------------------------------------------
   # SECRETS SOPS
   # ---------------------------------------------------------------------------
   sops.secrets = {
-    "stalwart/mail_pw2" = {
-      key = "stalwart_mail_pw2";
+    "stalwart/mail" = {
+      key = "stalwart_mail_password";
       owner = "root";
       group = "root";
     };
-    "stalwart/mail_pw3" = {
-      key = "stalwart_mail_pw3";
+    "stalwart/spam" = {
+      key = "stalwart_spam_password";
       owner = "root";
       group = "root";
     };
-    "stalwart/spam_pw" = {
-      key = "stalwart_spam_pw";
+    "stalwart/noreply" = {
+      key = "stalwart_noreply_password";
       owner = "root";
       group = "root";
     };
-    "stalwart/noreply_pw" = {
-      key = "stalwart_noreply_pw";
+    "stalwart/admin" = {
+      key = "stalwart_admin_password";
       owner = "root";
       group = "root";
     };
-    "stalwart/admin_pw" = {
-      key = "stalwart_admin_pw";
+    "stalwart/bob" = {
+      key = "stalwart_bob_password";
       owner = "root";
       group = "root";
     };
-    "stalwart/bob_pw" = {
-      key = "stalwart_bob_pw";
-      owner = "root";
-      group = "root";
-    };
-    "stalwart/acme_secret" = {
+    "stalwart/acme" = {
       key = "stalwart_acme_secret";
       owner = "root";
       group = "root";
@@ -75,13 +70,12 @@
     # Les credentials sont passés via systemd credentials :
     # disponibles dans /run/credentials/stalwart.service/<nom>
     credentials = {
-      mail-pw2 = config.sops.secrets."stalwart/mail_pw2".path;
-      mail-pw3 = config.sops.secrets."stalwart/mail_pw3".path;
-      spam-pw = config.sops.secrets."stalwart/spam_pw".path;
-      noreply-pw = config.sops.secrets."stalwart/noreply_pw".path;
-      admin-pw = config.sops.secrets."stalwart/admin_pw".path;
-      bob-pw = config.sops.secrets."stalwart/bob_pw".path;
-      acme-secret = config.sops.secrets."stalwart/acme_secret".path;
+      mail-pw = config.sops.secrets."stalwart/mail".path;
+      spam-pw = config.sops.secrets."stalwart/spam".path;
+      noreply-pw = config.sops.secrets."stalwart/noreply".path;
+      admin-pw = config.sops.secrets."stalwart/admin".path;
+      bob-pw = config.sops.secrets."stalwart/bob".path;
+      acme-secret = config.sops.secrets."stalwart/acme".path;
     };
 
     settings = {
@@ -90,6 +84,18 @@
         # par aucun enregistrement MX) : le hostname annoncé en EHLO doit le
         # suivre, sinon rDNS/HELO ne collent plus.
         hostname = "mx1.marcpartensky.com";
+
+        # L'auto-ban de Stalwart (server.auto-ban.auth/scan/loiter, actif par
+        # défaut) écrit chaque IP bannie dans SA config DB, donc le ban survit
+        # aux redémarrages : une IP de domicile peut rester bloquée sur 25/465/993
+        # (connexion acceptée puis reset, log "Blocked IP address") jusqu'à un
+        # déblocage manuel. On autorise donc explicitement le domicile de marc :
+        # allowed-ip contourne l'auto-ban (127.0.0.1/::1 le sont déjà par défaut).
+        # Si l'IP publique change, mettre à jour cette entrée.
+        allowed-ip = {
+          "66.108.44.154" = "";
+        };
+
         tls = {
           enable = true;
           implicit = true;
@@ -160,19 +166,22 @@
           {
             class = "individual";
             name = "marc";
-            secret = "%{file:/run/credentials/stalwart.service/mail-pw2}%";
-            email = ["marc@marcpartensky.com"];
+            secret = "%{file:/run/credentials/stalwart.service/mail-pw}%";
+            email = [
+              "marc@marcpartensky.com"
+              "meetup@marcpartensky.com"
+            ];
           }
           {
             class = "individual";
             name = "postmaster";
-            secret = "%{file:/run/credentials/stalwart.service/mail-pw2}%";
+            secret = "%{file:/run/credentials/stalwart.service/mail-pw}%";
             email = ["postmaster@marcpartensky.com"];
           }
           {
             class = "individual";
             name = "pro";
-            secret = "%{file:/run/credentials/stalwart.service/mail-pw2}%";
+            secret = "%{file:/run/credentials/stalwart.service/mail-pw}%";
             email = ["pro@marcpartensky.com"];
           }
           {
