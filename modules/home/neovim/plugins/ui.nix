@@ -1,6 +1,12 @@
 {pkgs, ...}: {
   programs.nixvim = {
-    colorschemes.onedark.enable = true;
+    # transparent = true retire le fond opaque de TOUS les groupes du thème
+    # (Normal, EndOfBuffer, SignColumn, NeoTreeNormal...), pas seulement Normal.
+    # Sans ça, la zone vide sous la fin du buffer garde le bg0 gris de onedark.
+    colorschemes.onedark = {
+      enable = true;
+      settings.transparent = true;
+    };
 
     plugins = {
       lualine = {

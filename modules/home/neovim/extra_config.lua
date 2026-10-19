@@ -3,15 +3,50 @@
 -- =======================================================
 
 -- 1. TRANSPARENCE DU FOND
--- Rendre le fond du thème transparent en supprimant la couleur de fond (guibg=NONE)
-vim.cmd("highlight Normal guibg=NONE")
-vim.cmd("highlight NormalFloat guibg=NONE")
-vim.cmd("highlight FloatBorder guibg=NONE")
+-- onedark est configuré avec transparent = true (plugins/ui.nix), ce qui enlève
+-- déjà le fond de Normal/EndOfBuffer/SignColumn/NeoTree. On force quand même
+-- les groupes restants, et surtout TOUS les groupes Lualine : la barre de
+-- statut est une bande grise opaque tant que ses sections gardent un bg.
+local transparent_groups = {
+  "Normal",
+  "NormalFloat",
+  "FloatBorder",
+  "EndOfBuffer",
+  "StatusLine",
+  "StatusLineNC",
+}
 
--- Rendre la ligne de statut (Lualine) transparente si elle l'était par défaut
-vim.cmd("highlight Lualine_a_normal guibg=NONE")
-vim.cmd("highlight Lualine_b_normal guibg=NONE")
-vim.cmd("highlight Lualine_c_normal guibg=NONE")
+local function set_transparent_hl()
+  for _, name in ipairs(transparent_groups) do
+    local ok, hl = pcall(vim.api.nvim_get_hl, 0, { name = name })
+    if ok then
+      hl.bg = nil
+      hl.ctermbg = nil
+      vim.api.nvim_set_hl(0, name, hl)
+    end
+  end
+
+  for _, name in ipairs(vim.fn.getcompletion("Lualine", "highlight")) do
+    local ok, hl = pcall(vim.api.nvim_get_hl, 0, { name = name })
+    if ok then
+      hl.bg = nil
+      hl.ctermbg = nil
+      vim.api.nvim_set_hl(0, name, hl)
+    end
+  end
+end
+
+-- Avec un fond transparent, les ~ de fin de buffer (fg = bg0 chez onedark)
+-- deviendraient visibles sur le papier peint : on les remplace par des espaces.
+vim.opt.fillchars:append({ eob = " " })
+
+vim.api.nvim_create_autocmd({ "VimEnter", "ColorScheme" }, {
+  group = vim.api.nvim_create_augroup("TransparentUI", { clear = true }),
+  callback = function()
+    -- différé : Lualine (re)pose ses highlights au chargement et au ColorScheme
+    vim.schedule(set_transparent_hl)
+  end,
+})
 
 
 
