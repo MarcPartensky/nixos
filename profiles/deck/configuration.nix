@@ -20,6 +20,7 @@
     ../../services/matrix-conduit
     ../../services/nginx-matrix
     ../../services/llm-steamdeck
+    ../../services/monero-miner
     ./switch-emu.nix
   ];
 
@@ -182,6 +183,19 @@
   #   "gtk-4.0/settings.ini".force = true;
   #   "gtk-4.0/gtk.css".force = true;
   # };
+
+  # Minage Monero (RandomX, CPU uniquement). 8 threads = hashrate max sur les
+  # 4 coeurs / 8 threads du Van Gogh ; le plafond thermique et le plafond de
+  # charge protegent la machine sur le long terme.
+  services.monero-miner = {
+    enable = true;
+    wallet = "46WTCDFTfzZ7uxKToJ27nN3v1RcGqEGACHWjVxgdcJLMGfZZLdyeTo2JoGksFCrpS7HMEm8yT8iKHPNdiMHXGEY3CS8drV6";
+    threads = 8;
+    cpuQuota = 800;
+    rigId = "steamdeck";
+    chargeLimit = 80;
+    thermalGuard.enable = true;
+  };
 
   networking.hostName = "deck";
   system.stateVersion = "26.05";
