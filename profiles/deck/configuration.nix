@@ -195,13 +195,13 @@
     wallet = "46WTCDFTfzZ7uxKToJ27nN3v1RcGqEGACHWjVxgdcJLMGfZZLdyeTo2JoGksFCrpS7HMEm8yT8iKHPNdiMHXGEY3CS8drV6";
     pool = "gulf.moneroocean.stream:10008";
     tls = false;
-    threads = 8;
-    cpuQuota = 800;
+    threads = 6;
+    cpuQuota = 600;
     rigId = "steamdeck";
     chargeLimit = 80;
     thermalGuard.enable = true;
     thermalGuard.maxTemperature = 88;
-    thermalGuard.resumeTemperature = 78;
+    thermalGuard.resumeTemperature = 84;
   };
 
   networking.hostName = "deck";
