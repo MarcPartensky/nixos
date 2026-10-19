@@ -13,6 +13,8 @@ in {
     ../../hosts/tower/disko.nix
     ../../hosts/laptop/hardware-configuration.nix
     ../../modules/nixos/herdr
+    # MCP Stalwart (JMAP vers le VPS) : tower uniquement, hermes y tourne.
+    ../../services/stalwart-mcp
     ../../services/monero-miner
   ];
 

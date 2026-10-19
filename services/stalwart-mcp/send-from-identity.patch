@@ -1,0 +1,47 @@
+--- a/src/jmap/mail.rs
++++ b/src/jmap/mail.rs
+@@ -418,11 +418,14 @@
+ 
+     /// Send an email via EmailSubmission
+     pub async fn send_email(&self, compose: &ComposeEmail<'_>) -> Result<String, AppError> {
+-        // Find the Sent mailbox
+-        let sent_id = self
+-            .resolve_mailbox_id("Sent")
+-            .await?
+-            .ok_or_else(|| AppError::NotFound("Sent mailbox not found".into()))?;
++        // Find the Sent mailbox (par rôle d'abord : le nom peut être "Sent Items")
++        let sent_id = match self.resolve_mailbox_by_role("Sent").await? {
++            Some(id) => id,
++            None => self
++                .resolve_mailbox_id("Sent")
++                .await?
++                .ok_or_else(|| AppError::NotFound("Sent mailbox not found".into()))?,
++        };
+ 
+         // Get identity ID by listing all identities
+         let mut request = self.client.build();
+@@ -439,6 +442,15 @@
+             .ok_or_else(|| AppError::JmapRequest("No identity found for sending".into()))?
+             .to_string();
+ 
++        // Le username JMAP de Stalwart est le principal ("marc"), pas une
++        // adresse : le header From doit venir de l'identité, pas de username().
++        let identity_email = identity_response
++            .list()
++            .first()
++            .and_then(|i| i.email())
++            .ok_or_else(|| AppError::JmapRequest("No identity email found for sending".into()))?
++            .to_string();
++
+         let mut request = self.client.build();
+ 
+         // Create the email in Sent
+@@ -446,7 +458,7 @@
+         email
+             .mailbox_ids([&sent_id])
+             .keywords(["$seen"])
+-            .from([compose.from])
++            .from([identity_email.as_str()])
+             .to(compose.to.iter().map(|a| a.as_str()))
+             .subject(compose.subject)
+             .body_value("1".to_string(), compose.body)
