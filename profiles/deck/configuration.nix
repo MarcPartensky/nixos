@@ -78,6 +78,18 @@
     owner = "root";
     mode = "0400";
   };
+  sops.secrets."monero/nextcloud-user" = {
+    sopsFile = ../../secrets/common.yml;
+    key = "nextcloud_user";
+    owner = "root";
+    mode = "0400";
+  };
+  sops.secrets."monero/nextcloud-password" = {
+    sopsFile = ../../secrets/common.yml;
+    key = "nextcloud_password";
+    owner = "root";
+    mode = "0400";
+  };
 
   programs.zsh.enable = true; # requis par users.nix
   services.openssh.enable = true;
@@ -97,8 +109,14 @@
     shell = pkgs.zsh;
     # Permet a l'agent de lire `journalctl -u <service>` sur le Deck.
     extraGroups = [ "systemd-journal" ];
+    # KF3hu = hermes@tower (rebuild/diagnostic depuis tower ou le LAN).
+    # gpwx  = root@anywhere (le VPS joint le Deck par le tunnel wg1 -> tower,
+    #         une fois tower routeur du LAN).
+    # MdX5  = marc@Air-de-Marc (le Mac, pour `ssh deck` via ProxyJump rack).
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAc2f6U09CWD2yQNcyGz6Pz9EN3aJzvdCvr7FrSSgpwx root@anywhere"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
     ];
   };
 
@@ -210,7 +228,10 @@
     thermalGuard.maxTemperature = 88;
     thermalGuard.resumeTemperature = 84;
     schedule.enable = true;
-    calendar.enable = false;
+    calendar.enable = true;
+    calendar.userFile = config.sops.secrets."monero/nextcloud-user".path;
+    calendar.passwordFile = config.sops.secrets."monero/nextcloud-password".path;
+    calendar.calendars = [ "sg" ];
   };
 
   networking.hostName = "deck";
