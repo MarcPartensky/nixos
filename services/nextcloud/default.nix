@@ -71,6 +71,7 @@
         "192.168.1.44"
         "cloud.vps.marcpartensky.com"
         "cloud.marcpartensky.com"
+        "cloud.p2p.marcpartensky.com"
       ];
       # Si Traefik est en HTTPS et Nextcloud en HTTP derrière :
       overwriteprotocol = "https";
@@ -124,6 +125,14 @@
 
   systemd.services.nextcloud-cron.path = [pkgs.procps];
   systemd.services.nextcloud-setup = {
+    # postgresql.service est Type=notify : `after` = socket prêt. Le module
+    # nixpkgs n'ajoute cet ordre que si database.createLocally = true ; ici la
+    # base est déclarée par ensureDatabases/ensureUsers, donc sans ces lignes
+    # nextcloud-setup partait en parallèle du démarrage de postgres et mourait
+    # sur « connection to server on socket "/run/postgresql/.s.PGSQL.5432"
+    # failed: No such file or directory » (boots du 22/10 20:29 et 23/10 09:37).
+    after = ["postgresql.service"];
+    requires = ["postgresql.service"];
     path = [pkgs.procps];
     serviceConfig = {
       # Change cette valeur pour forcer un re-run au prochain switch : ré-active
@@ -148,6 +157,13 @@
         ''}"
       ];
     };
+  };
+
+  # Lancé par nextcloud-setup, mais il ouvre lui aussi la base : même garde
+  # (il échouait au boot du 23/10 09:37 sur le socket absent).
+  systemd.services.nextcloud-update-db = {
+    after = ["postgresql.service"];
+    requires = ["postgresql.service"];
   };
 
   # ---------------------------------------------------------------------------
