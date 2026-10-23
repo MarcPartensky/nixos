@@ -17,6 +17,15 @@
   claudeCode = pkgs.claude-code.override {
     manifest = lib.importJSON ./claude-code-manifest.json;
   };
+
+  # MCP Pangolin (script ./pangolin-mcp.py) : reconstruit ici le binaire qui
+  # n'existait qu'en store path brut (jamais référencé par le flake, donc
+  # ramassable par un GC). Interpréteur = python3 + SDK `mcp` ; les appels
+  # HTTP vont vers l'API d'intégration Pangolin (flag enable_integration_api
+  # de services/pangolin) sur api.marcpartensky.com/v1.
+  pangolinMcp = pkgs.writers.writePython3Bin "pangolin-mcp" {
+    libraries = [pkgs.python3Packages.mcp];
+  } (builtins.readFile ./pangolin-mcp.py);
 in {
   # Option : le token Matrix du bot @hermes (clé hermes_matrix_env de
   # secrets/hermes-matrix.yml). Les destinataires de ce fichier sops ne
@@ -497,23 +506,23 @@ in {
       timeout = 60;
     };
 
-    # --- MCP Pangolin : serveur auto-hébergé (pangolin.vps.marcpartensky.com) ---
-    # DÉSACTIVÉ TEMPORAIREMENT (29/09/2026) : sops.secrets."pangolin/api_key"
-    # ci-dessous n'a jamais eu de clé correspondante dans secrets/common.yml
-    # (nested pangolin.api_key absent), ce qui fait échouer TOUT
-    # nixos-rebuild switch sur tower ("the key 'pangolin' cannot be found").
-    # Déjà noté comme inerte (clé/URL placeholder) avant ce blocage. Réactiver
-    # une fois la vraie clé posée par marc (il a la clé age privée pour éditer
-    # secrets/common.yml en place).
-    # services.hermes-agent.mcpServers.pangolin = {
-    #   command = "/nix/store/pw5hn1g2icm9ll7li8qiy1wkpdzvkcs1-pangolin-mcp/bin/pangolin-mcp";
-    #   args = [ ];
-    #   env = {
-    #     PANGOLIN_BASE_URL = "https://pangolin.vps.marcpartensky.com/v1";
-    #     PANGOLIN_API_KEY_FILE = config.sops.secrets."pangolin/api_key".path;
-    #   };
-    #   timeout = 60;
-    # };
+    # --- MCP Pangolin : API d'intégration self-hosted ---
+    # L'API v1 (clé Bearer, clé "hermes" de la table apiKeys du dashboard) est
+    # activée par le flag enable_integration_api de services/pangolin et
+    # répond sur api.marcpartensky.com/v1 (routeur traefik dédié) ; PAS sur
+    # pangolin.vps.marcpartensky.com qui ne sert que le dashboard. Le script
+    # (services/hermes/pangolin-mcp.py) relit la clé à chaque appel ; un
+    # process déjà lancé garde son ancienne PANGOLIN_BASE_URL jusqu'au
+    # redémarrage de hermes.
+    services.hermes-agent.mcpServers.pangolin = {
+      command = "${pangolinMcp}/bin/pangolin-mcp";
+      args = [ ];
+      env = {
+        PANGOLIN_BASE_URL = "https://api.marcpartensky.com/v1";
+        PANGOLIN_API_KEY_FILE = config.sops.secrets."pangolin_api_key".path;
+      };
+      timeout = 60;
+    };
 
     # --- MCP Vaultwarden : temporairement désactivé (blocage sops manifest) ---
     # services.hermes-agent.mcpServers.vaultwarden = {
@@ -548,11 +557,18 @@ in {
       sopsFile = ../../secrets/discord-hermes-bridge.yml;
     };
 
-    # Clé API Pangolin pour le MCP server (clé "pangolin/api_key" du fichier sops)
-    # À ajouter (chiffrée) dans secrets/common.yml, clé imbriquée pangolin.api_key.
-    # Commenté avec le bloc mcpServers.pangolin ci-dessus (29/09/2026) : la clé
-    # n'existe pas dans secrets/common.yml, ça faisait échouer tout switch.
-    # sops.secrets."pangolin/api_key" = {};
+    # Clé API du MCP Pangolin (clé racine "pangolin_api_key" de
+    # secrets/common.yml, valeur = clé "hermes" créée dans le dashboard).
+    # owner hermes + 0400 : le MCP est un process de l'agent et relit ce
+    # fichier lui-même à chaque appel HTTP. L'ancienne déclaration pointait
+    # une clé imbriquée pangolin.api_key inexistante ("the key 'pangolin'
+    # cannot be found" faisait échouer tout switch : laissée hors service
+    # jusqu'à maintenant).
+    sops.secrets."pangolin_api_key" = lib.mkIf config.services.hermes.enableAgent {
+      sopsFile = ../../secrets/common.yml;
+      owner = "hermes";
+      mode = "0400";
+    };
 
     # Token Matrix du bot (@hermes) — clé "hermes_matrix_env" du fichier sops,
     # valeur = contenu dotenv (MATRIX_ACCESS_TOKEN=...) fusionné dans .env.
