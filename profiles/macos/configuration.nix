@@ -30,6 +30,10 @@ in {
   imports = [
     inputs.home-manager.darwinModules.home-manager
 
+    # Réseau privé ygg-mesh sur macOS (daemon yggdrasil + client tor) :
+    # voir services/ygg-mesh/darwin.nix ; /etc/yggdrasil.conf à créer une fois.
+    ../../services/ygg-mesh/darwin.nix
+
 
     # inputs.sops.nixosModules.sops  # Inclus dans sopswarden
 
