@@ -21,6 +21,9 @@
     ../../services/nginx-matrix
     ../../services/llm-steamdeck
     ../../services/monero-miner
+    # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
+    # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
+    ../../services/ygg-mesh
     ./switch-emu.nix
   ];
 

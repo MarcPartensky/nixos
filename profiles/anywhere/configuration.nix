@@ -32,6 +32,9 @@
     # ./services/chhoto
     ../../services/eternal-terminal
     ../../services/stalwart
+    # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
+    # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
+    ../../services/ygg-mesh
     ../../services/droplify
     ../../services/hermes
     # ../../services/vaultwarden-mcp  # secret sops secrets/tower.yml, illisible sur ce VPS : cassait setupSecrets

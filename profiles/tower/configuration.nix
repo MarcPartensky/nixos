@@ -16,6 +16,9 @@ in {
     # MCP Stalwart (JMAP vers le VPS) : tower uniquement, hermes y tourne.
     ../../services/stalwart-mcp
     ../../services/monero-miner
+    # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
+    # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
+    ../../services/ygg-mesh
   ];
 
   # Sessions hermes lancees par marc (panes herdr, HERMES_HOME partage, cf

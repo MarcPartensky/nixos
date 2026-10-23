@@ -24,6 +24,15 @@ creation_rules:
           - *mac
           - *deck
           - *deck-host
+  # Réseau ygg-mesh (services/ygg-mesh) : mot de passe commun aux machines
+  # membres du mesh. Mêmes destinataires que common.yml, sans le mac.
+  - path_regex: secrets/ygg-mesh\.yml$
+    key_groups:
+      - age:
+          - *anywhere
+          - *tower
+          - *deck
+          - *deck-host
   - path_regex: secrets/stalwart-mcp\.yml$
     key_groups:
       - age:
