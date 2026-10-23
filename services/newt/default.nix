@@ -2,6 +2,7 @@
   config,
   pkgs,
   lib,
+  inputs,
   ...
 }: {
   sops.secrets.newt_env = {
@@ -11,6 +12,14 @@
 
   services.newt = {
     enable = true;
+
+    # newt 1.17 (input unstable) rapporte les endpoints locaux au serveur
+    # (détection "same network" de Pangolin 1.21 : un client du même LAN
+    # passe en direct) et accepte les clients WireGuard par défaut
+    # (l'ancien flag --accept-clients n'existe plus ; --disable-clients
+    # permet de refuser). Le pin 26.05 (newt 1.12.4) ne sait pas faire ça.
+    package = inputs.unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.fosrl-newt;
+
     environmentFile = config.sops.secrets.newt_env.path;
 
     # Ressource publique Winnie : front Svelte 5 (build statique servi par
@@ -26,6 +35,28 @@
         {
           hostname = "127.0.0.1";
           port = 8888;
+          method = "http";
+        }
+      ];
+    };
+
+    # Serveur de dev Vite de l'app (port 8080) : c'est l'URL que charge l'APK
+    # debug (`tauri android dev`) et le navigateur du telephone pour le live
+    # reload. La ressource prod `winnie.marcpartensky.com` reste sur 8888
+    # (dist statique) : ici le port est celui du dev server, donc le domaine
+    # repond 502 quand `npm run dev` n'est pas lance.
+    # SSO desactive : le WebView Tauri devrait suivre une redirection de login.
+    # Le dev server refuse deja /@fs/ sur .keys/ (clé de signature APK), voir
+    # app/vite.config.ts.
+    blueprint.proxy-resources.winnie-dev = {
+      name = "winnie-dev";
+      protocol = "http";
+      full-domain = "dev.winnie.marcpartensky.com";
+      auth.sso-enabled = false;
+      targets = [
+        {
+          hostname = "127.0.0.1";
+          port = 8080;
           method = "http";
         }
       ];
