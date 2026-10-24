@@ -34,6 +34,19 @@ in {
 
   services.winnie.manageGarage = true;
 
+  # Rattrapage unique : le premier bootstrap a laisse un layout Garage a zero
+  # noeud (quorum de 0, impossible a appliquer). Le cluster ne contient aucune
+  # donnee, donc on recree son etat une seule fois avant que le service ne
+  # demarre ; winnie-bucket reprovisionne ensuite bucket, cle et s3.env.
+  systemd.services.winnie-garage-secrets.preStart = ''
+    if [ ! -e /var/lib/garage/.layout-reset ]; then
+      rm -rf /var/lib/garage/meta /var/lib/garage/data
+      install -d -m 0755 -o garage -g garage /var/lib/garage/meta /var/lib/garage/data
+      touch /var/lib/garage/.layout-reset
+      chown garage:garage /var/lib/garage/.layout-reset
+    fi
+  '';
+
   # OIDC env file from sops (PKCE - no client_secret)
   systemd.services.winnie-oidc-secret = {
     description = "Generate winnie OIDC env file from sops";
@@ -74,7 +87,7 @@ in {
   };
 
   systemd.services.winnie-backend = {
-    description = "Winnie backend (Rust/Axum, binaire epingle)";
+    description = "Winnie backend (Rust/Axum, binaire epingle, S3/Garage)";
     wantedBy = [ "multi-user.target" ];
     after = [
       "postgresql.service"
@@ -102,6 +115,10 @@ in {
         "RUST_LOG=info"
         "RESTAURANTS_JSON=${/home/marc/git/winnie/data/restaurants.json}"
         "CHAT_BACKEND=openrouter"
+        # Marker: changing the environment forces systemd to restart the unit,
+        # which is required to pick up s3.env when Garage is provisioned after
+        # the backend's first start.
+        "S3_ENV_FILE=/var/lib/winnie/s3.env"
       ];
       ExecStart = "${backendBin}/bin/winnie-backend";
       Restart = "on-failure";
@@ -143,7 +160,9 @@ in {
     requires = [ "postgresql.service" "winnie-ingest-env.service" ];
     path = [ pkgs."poppler-utils" ];
     serviceConfig = {
-      Type = "oneshot";
+      # `exec` (not `oneshot`) so RuntimeMaxSec is enforced: the batch is a
+      # long-running process, not a short activation task.
+      Type = "exec";
       User = "hermes";
       WorkingDirectory = "/var/lib/winnie";
       EnvironmentFile = "/var/lib/winnie/openrouter.env";
