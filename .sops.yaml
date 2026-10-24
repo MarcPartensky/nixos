@@ -11,6 +11,12 @@ creation_rules:
       - age:
           - *tower
           - *deck-host
+  # Clés Switch (prod.keys) pour Eden sur le deck (posées dans le home de marc)
+  - path_regex: secrets/switch-keys\.yml$
+    key_groups:
+      - age:
+          - *tower
+          - *deck-host
   - path_regex: secrets/monero\.yml$
     key_groups:
       - age:
@@ -32,6 +38,15 @@ creation_rules:
           - *anywhere
           - *tower
           - *deck
+          - *deck-host
+  # Mesh headscale (services/headscale + services/tailscale) : clé de
+  # pré-authentification partagée par les nœuds du tailnet, créée sur le VPS.
+  - path_regex: secrets/headscale\.yml$
+    key_groups:
+      - age:
+          - *anywhere
+          - *tower
+          - *mac
           - *deck-host
   - path_regex: secrets/stalwart-mcp\.yml$
     key_groups:
