@@ -40,7 +40,7 @@
     ./hermes
     ./hermes-webui
     ./hermes-dashboard
-    ./hermes-pocket
+    ./hermes-mobile
     ./discord-bot
     # ./discord-hermes-bridge  # inutile : un seul gateway par hote, celui du
     # profil default sert deja le profil discord-bridge (l'unite faisait

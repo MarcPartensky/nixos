@@ -50,7 +50,7 @@ in {
 
   # Proxy local : le backend refuse toute requête dont le Host diffère de
   # l'adresse sur laquelle il a bindé (défense anti-DNS-rebinding), d'où la
-  # réécriture. Même mécanique que services/hermes-pocket.
+  # réécriture. Même mécanique que services/hermes-mobile.
   services.nginx.virtualHosts."hermes-dashboard-proxy" = {
     listen = [
       {
