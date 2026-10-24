@@ -26,6 +26,7 @@
     ../../services/zitadel
     ../../services/pangolin
     ../../services/pangolin/gerbil-wg0-ensure.nix
+    ../../services/pangolin/wg0-runtime-guard.nix
     ../../services/wireguard
     # Mesh headscale : serveur sur ce VPS (services/headscale) + nœud
     # tailscale (services/tailscale, clé partagée secrets/headscale.yml).
