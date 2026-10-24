@@ -145,5 +145,15 @@ in {
     fi
   '';
 
+  # --- sudo pour l'agent : opérations root du toolchain Xcode -------------
+  # hermes@tower se connecte en ssh (marc@mac) et pilote les rares opérations
+  # root de Xcode : bascule de xcode-select, acceptation de la licence,
+  # téléchargement du runtime du simulateur. Fragment sudoers.d séparé (pas
+  # security.sudo.extraConfig, déjà posé par le bloc terminfo de nix-darwin).
+  # Limité aux trois shims : le reste du sudo de marc exige son mot de passe.
+  environment.etc."sudoers.d/20-hermes-xcode".text = ''
+    marc ALL=(root) NOPASSWD: /usr/bin/xcode-select, /usr/bin/xcodebuild, /usr/bin/xcrun
+  '';
+
   system.stateVersion = 6;
 }
