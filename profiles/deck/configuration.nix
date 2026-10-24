@@ -106,6 +106,13 @@
   # système est donc déclaré à la main. Accès shell direct (et-session +
   # zellij, cf services/eternal-terminal déjà importé plus haut) + sudo
   # NOPASSWD nixos-rebuild pour pouvoir builder sur place.
+  # Clé du Mac pour marc : `ssh deck` depuis le Mac passe par rack
+  # (ProxyJump), l'authentification finale est de bout en bout avec la clé du
+  # Mac. La clé RSA de users.nix reste valable.
+  users.users.marc.openssh.authorizedKeys.keys = lib.mkAfter [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
+  ];
+
   users.groups.hermes = {};
   users.users.hermes = {
     isSystemUser = true;

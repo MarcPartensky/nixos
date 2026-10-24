@@ -61,11 +61,14 @@ in {
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
   ];
 
-  # Clé root du VPS anywhere (/root/.ssh/id_ed25519) : donne au VPS l'accès SSH
-  # à tower par le tunnel wg1 (10.100.0.3), donc depuis n'importe où sans
-  # dépendre de l'IP publique de la box. Remplace l'ancien forward 42070.
+  # Clés autorisées pour marc, en plus de la clé RSA de users.nix :
+  #   - root@anywhere : accès SSH du VPS par wg1 (10.100.0.3), sans dépendre
+  #     de l'IP publique de la box ni d'un forward.
+  #   - marc@Air-de-Marc : le Mac, pour `ssh tower` qui passe par rack
+  #     (ProxyJump), d'où qu'il soit.
   users.users.marc.openssh.authorizedKeys.keys = lib.mkAfter [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAc2f6U09CWD2yQNcyGz6Pz9EN3aJzvdCvr7FrSSgpwx root@anywhere"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
   ];
 
   networking.hostName = "tower";
