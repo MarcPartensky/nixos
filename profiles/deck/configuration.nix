@@ -24,6 +24,9 @@
     # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
     # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
     ../../services/ygg-mesh
+    # Mesh headscale : nœud tailscale (contrôleur sur le VPS anywhere, cf
+    # services/headscale et services/tailscale).
+    ../../services/tailscale
     ./switch-emu.nix
   ];
 

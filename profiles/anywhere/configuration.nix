@@ -27,8 +27,10 @@
     ../../services/pangolin
     ../../services/pangolin/gerbil-wg0-ensure.nix
     ../../services/wireguard
-    # ../../services/tailscale # desactive 26/09: exige le secret sops tailscale/auth_key (absent de secrets/anywhere.yml). Reactiver avec le mesh.
+    # Mesh headscale : serveur sur ce VPS (services/headscale) + nœud
+    # tailscale (services/tailscale, clé partagée secrets/headscale.yml).
     ../../services/headscale
+    ../../services/tailscale
     # ./services/chhoto
     ../../services/eternal-terminal
     ../../services/stalwart

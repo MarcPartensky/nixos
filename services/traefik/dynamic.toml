@@ -32,6 +32,12 @@
   [[http.services.int-api.loadBalancer.servers]]
     url = "http://127.0.0.1:3003"
 
+# headscale (contrôleur du mesh tailscale, cf services/headscale) : porte aussi
+# le DERP embarqué des clients (/derp) ; le STUN est à part, en UDP 3478.
+[http.services.headscale.loadBalancer]
+  [[http.services.headscale.loadBalancer.servers]]
+    url = "http://127.0.0.1:8090"
+
 # --- ROUTERS ---
 [http.routers.traefik]
   rule = "Host(`traefik.vps.marcpartensky.com`)"
@@ -81,4 +87,10 @@
   rule = "Host(`api.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "int-api"
+  tls = { certResolver = "letsencrypt" }
+
+[http.routers.headscale]
+  rule = "Host(`headscale.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "headscale"
   tls = { certResolver = "letsencrypt" }
