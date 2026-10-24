@@ -192,12 +192,8 @@
       "Dolphin".target = pkgs.dolphin-emu;
       "Ryubing".target = pkgs.ryubing;
       "Eden".target = pkgs.eden;
-
-      # optionnel : une tuile par jeu en Gaming Mode, lancé directement en plein écran
-      "Mario Kart 8 Deluxe" = {
-        target = pkgs.eden;
-        args = ["-f" "-g" "/home/marc/Games/switch/mario-kart-8.nsp"];
-      };
+      # La tuile « Mario Kart 8 Deluxe » vit dans switch-emu.nix : elle passe
+      # par le script mk8dx, qui choisit le dump présent dans ~/Games/switch.
     };
   };
 
