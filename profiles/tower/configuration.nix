@@ -470,6 +470,23 @@ in {
   # Aucun port UDP à ouvrir : wg-quick en mode client n'écoute pas de port fixe.
 
   # ========================================================================
+  # SOUS-RESEAU : tower route le LAN 192.168.1.0/24 dans wg1
+  # ========================================================================
+  # Sans ça, le VPS (10.100.0.1) ne peut joindre que tower dans le tunnel :
+  # le Steam Deck et le reste du LAN restent invisibles depuis rack. tower
+  # fait donc routeur pour son LAN, avec MASQUERADE wg1 -> wlan0 (les hôtes du
+  # LAN n'ont aucune route retour vers 10.100.0.0/24, donc on sort avec l'IP
+  # LAN de tower, 192.168.1.44). Le pair tower côté VPS doit déclarer
+  # 192.168.1.0/24 dans ses allowedIPs pour que le VPS lui route le LAN.
+  # Effet de bord assumé : tout pair wg1 (le Mac, le VPS) peut joindre le LAN.
+  boot.kernel.sysctl."net.ipv4.ip_forward" = 1;
+  networking.nat = {
+    enable = true;
+    internalInterfaces = [ "wg1" ];
+    externalInterface = "wlan0";
+  };
+
+  # ========================================================================
   # MINEUR MONERO - planning sommeil / travail Nextcloud
   # ========================================================================
   sops.secrets."monero/wallet" = {

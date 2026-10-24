@@ -21,8 +21,10 @@
           # tower (NixOS, NAT residentiel) : pair client, sert au SSH/ET entrant
           # depuis ce VPS et depuis le Mac. Cle publique issue de
           # secrets/wireguard.yml (recipient tower) sur tower.
+          # 192.168.1.0/24 : tower est routeur de son LAN (NAT wg1 -> wlan0),
+          # ce qui rend le Steam Deck et le reste du LAN joignables depuis rack.
           publicKey = "Qd0IGtduY3Jq5jxAqx4s2B4QlWEvGG4ACeGmrM9V2W0=";
-          allowedIPs = [ "10.100.0.3/32" ];
+          allowedIPs = [ "10.100.0.3/32" "192.168.1.0/24" ];
         }
       ];
       postSetup = ''
