@@ -70,6 +70,7 @@
     ./anki-sync-server
     ./anki-mcp
     ./winnie
+    ./mac-mcp
     ./wise-mcp
     ./bank-mcp
     ./llm-steamdeck
