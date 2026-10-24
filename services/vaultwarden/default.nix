@@ -76,6 +76,13 @@
     wantedBy = ["multi-user.target"];
     before = ["vaultwarden.service"];
     requiredBy = ["vaultwarden.service"];
+    # postgresql.service est Type=notify : `after` garantit le socket prêt.
+    # Sans ces deux lignes le oneshot partait en parallèle du démarrage de
+    # postgres et mourait sur « connection to server on socket
+    # "/run/postgresql/.s.PGSQL.5432" failed: No such file or directory »
+    # (vérifié aux boots du 22/10 20:29 et du 23/10 09:37).
+    after = ["postgresql.service"];
+    requires = ["postgresql.service"];
     serviceConfig = {
       Type = "oneshot";
       User = "postgres";
