@@ -317,6 +317,27 @@ in {
           mode = "off";
         };
 
+        # --- Télémétrie « shared metrics » : réponse explicite « Non merci » ---
+        # Marc ne partage pas les stats (23/10/2026). L'offre (bandeau Desktop,
+        # bannière dashboard) est considérée répondue dès qu'UNE des deux clés
+        # est écrite EXPLICITEMENT dans config.yaml — le défaut (tout
+        # désactivé) n'est PAS une réponse, donc la question revient à chaque
+        # session tant que ces clés sont absentes.
+        #   enabled=false + send=false  -> réponse « Non merci »
+        #   offer_version=2             -> évite la « re-ask » unique prévue
+        #     pour les réponses « off » antérieures au fix type-ahead
+        #     (consent_state : une réponse off sans offer_version=2 est
+        #     reposée une fois). Avec ces trois clés, decided=true partout.
+        # Aucune donnée n'est collectée ni envoyée avec ces valeurs ; pour
+        # changer d'avis : éditer ce bloc + rebuild (install nix-managed).
+        telemetry = {
+          shared_metrics = {
+            enabled = false;
+            send = false;
+            offer_version = 2;
+          };
+        };
+
         # --- Plugin herdr : integre hermes a herdr, declarativement ---
         # `extraPlugins` symlinke le paquet dans /var/lib/hermes/.hermes/plugins/
         # (sous le nom nix-managed-<nom>) ; le code du plugin est vendorise dans
