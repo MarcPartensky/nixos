@@ -23,10 +23,25 @@
         User = "hermes";
         Port = 22;
       };
+      # deck : le Steam Deck, joignable depuis rack (il route le LAN par wg1).
+      # Côté Mac, `deck` est surchargé en marc@ + ProxyJump rack.
       "deck" = {
         HostName = "192.168.1.67";
         User = "hermes";
         Port = 22;
+      };
+      # Mac de marc : d'abord le LAN (IP DHCP), sinon le tunnel SSH inverse
+      # tenu par son agent launchd (modules/home-mac/autossh), que rack expose
+      # sur 2223. Hermes a les mêmes entrées dans son propre ~/.ssh/config.
+      "maclan" = {
+        HostName = "192.168.1.48";
+        User = "marc";
+      };
+      "mac" = {
+        HostName = "localhost";
+        User = "marc";
+        Port = 2223;
+        ProxyJump = "rack";
       };
       # tower par le VPN wg1 du VPS (10.100.0.1) : l'ancien forward de la box
       # (77.207.176.170:42070) est mort, l'IP publique change.
