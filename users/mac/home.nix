@@ -23,6 +23,7 @@
 
     ../../modules/home-mac/aerospace
     ../../modules/home-mac/hermes-skins
+    ../../modules/home-mac/winnie
     # ../../modules/home-mac/autossh
   ];
 
@@ -120,12 +121,48 @@
   # Skins Hermes (pack Hermes Menagerie) -> ~/.hermes/skins/
   my.hermesSkins.enable = true;
 
+  # Build de l'app Winnie sur le Mac : winnie-doctor, winnie-sync, winnie-ios,
+  # winnie-macos, winnie-front, winnie-verify. Le toolchain reste dans le
+  # devShell du flake `winnie`, ces commandes ne font que l'appeler.
+  my.winnie.enable = true;
+
   # Connexions Eternal Terminal vers les hôtes NixOS : `et tower` = zellij enregistré.
   my.et = {
     enable = true;
     hosts = {
       tower = {};
       towerlocal = {};
+    };
+  };
+
+  # Clé SSH de l'agent hermes@tower : l'agent (qui tourne sur tower) peut se
+  # connecter au Mac en marc@… (sshd activé par services.openssh dans
+  # profiles/macos/configuration.nix). Append idempotent plutôt que
+  # home.file.".ssh/authorized_keys" : ne remplace JAMAIS un authorized_keys
+  # déjà en place (le .bak de home-manager perdrait les clés existantes).
+  home.activation.addHermesAuthorizedKey = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    key='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower'
+    mkdir -p "$HOME/.ssh"
+    chmod 700 "$HOME/.ssh"
+    touch "$HOME/.ssh/authorized_keys"
+    grep -qxF "$key" "$HOME/.ssh/authorized_keys" || echo "$key" >> "$HOME/.ssh/authorized_keys"
+    chmod 600 "$HOME/.ssh/authorized_keys"
+  '';
+
+  # Accès distant par rack (VPS à IP publique) : marche depuis n'importe quel
+  # réseau, sans VPN sur le Mac. rack joint tower par le tunnel wg1
+  # (10.100.0.3) et le LAN (192.168.1.0/24) que tower route pour wg1.
+  # mkForce : ces deux entrées remplacent celles du module partagé.
+  programs.ssh.settings = {
+    "tower" = lib.mkForce {
+      HostName = "10.100.0.3";
+      User = "marc";
+      ProxyJump = "rack";
+    };
+    "deck" = lib.mkForce {
+      HostName = "192.168.1.67";
+      User = "marc";
+      ProxyJump = "rack";
     };
   };
 }
