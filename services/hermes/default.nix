@@ -196,7 +196,17 @@ in {
       #   les vocaux entrants. Sans lui le gateway répond "voice message could not
       #   be transcribed automatically" et le cas d'usage "je parle dans mes
       #   écouteurs depuis Element" ne marche pas.
-      extraDependencyGroups = ["matrix" "edge-tts" "stt-whisper"];
+      # - "anthropic" : paquet du provider natif `anthropic`, celui des lignes du
+      #   sélecteur de modèle SANS suffixe [1m] (claude-opus-5-5, claude-opus-5,
+      #   claude-sonnet-5). Sans lui, une session ouverte sur une de ces lignes
+      #   meurt en agent_init_failed ("The 'anthropic' package is required for the
+      #   Anthropic provider"). Les lignes AVEC [1m] passent par le provider
+      #   claude-subscription-directsdk (CLI `claude`) et n'en ont pas besoin.
+      #   Auth de ce provider natif : pas de clé API, agent/anthropic_credentials.py
+      #   prend l'OAuth de l'abonnement dans ~/.claude/.credentials.json (refresh et
+      #   réécriture gérés par Hermes) ou un grant Hermes
+      #   (hermes auth add anthropic --type oauth).
+      extraDependencyGroups = ["matrix" "edge-tts" "stt-whisper" "anthropic"];
 
       # claude-code CLI sur le PATH du service : requis par le plugin officiel
       # claude-subscription-directsdk (provider sur abonnement Claude Pro/Max,
@@ -215,7 +225,6 @@ in {
         # lecture en vocal échoue.
         pkgs.ffmpeg
       ];
-      # extraDependencyGroups = ["anthropic"];
       # settings.model = {
       #   base_url = "https://api.anthropic.com/v1";
       #   default = "anthropic/claude-sonnet-4";
