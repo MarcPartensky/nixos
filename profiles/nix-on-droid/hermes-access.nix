@@ -23,6 +23,12 @@
 let
   inherit (config.user) home;
 
+  # Le nixpkgs de nix-on-droid (inputs.nix-on-droid.inputs.nixpkgs) est ancien :
+  # `pkgs.wstunnel` y est en 0.5.1.0, une version qui n'a ni `client` ni `-R`.
+  # On prend donc celui d'unstable, comme pour tout paquet absent du nixpkgs
+  # épinglé par le profil.
+  wsTunnelPkg = inputs.unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.wstunnel;
+
   sshdDir = "${home}/sshd";
   sshdPort = 8023;
 
@@ -79,7 +85,7 @@ let
   wsLoop = pkgs.writeScriptBin "phone-wstunnel-loop" ''
     #!${pkgs.runtimeShell}
     while true; do
-      ${pkgs.wstunnel}/bin/wstunnel client \
+      ${wsTunnelPkg}/bin/wstunnel client \
         -R tcp://127.0.0.1:2225:127.0.0.1:${toString sshdPort} \
         -R socks5://127.0.0.1:1081 \
         -R http://127.0.0.1:1082 \
@@ -223,7 +229,7 @@ in
     gnugrep # pratique en session de debug
     tunnelLoop # référencés ici -> installés sur le tel
     wsLoop
-    wstunnel # client du tunnel WebSocket (phone-wstunnel-loop)
+    wsTunnelPkg # client du tunnel WebSocket (10.x, cf. commentaire dans le let)
     phoneUp
     phoneWatchdog
     phoneUpdate
