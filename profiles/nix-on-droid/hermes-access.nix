@@ -7,6 +7,7 @@
 #   - `phone-tunnel-loop` : boucle `ssh -R 127.0.0.1:2224:127.0.0.1:8023 root@marcpartensky.com` ;
 #   - `phone-up` : démarrage idempotent (sshd + tunnel + wake-lock), accroché à chaque
 #     session via ~/.zprofile, ~/.zshrc, ~/.profile et ~/.bashrc ;
+#   - `phone-watchdog` : rejoue `phone-up` toutes les 5 min (filet de sécurité) ;
 #   - `phone-status` : diagnostic (pids + logs).
 #
 # La clé privée du tunnel vit uniquement sur le tel (~/.ssh/relay_ed25519), jamais ici.
@@ -93,6 +94,24 @@ let
     if [ -x "$wl" ]; then
       "$wl" || true
     fi
+
+    # 4) watchdog : rejoue phone-up toutes les 5 min (relance ce qui est mort)
+    wd=${sshdDir}/watchdog.pid
+    if [ -f "$wd" ] && kill -0 "$($core/cat "$wd")" 2>/dev/null; then
+      :
+    else
+      $core/rm -f "$wd"
+      $core/nohup ${phoneWatchdog}/bin/phone-watchdog >> ${sshdDir}/watchdog.log 2>&1 &
+      echo $! > "$wd"
+    fi
+  '';
+
+  phoneWatchdog = pkgs.writeScriptBin "phone-watchdog" ''
+    #!${pkgs.runtimeShell}
+    while true; do
+      ${pkgs.coreutils}/bin/sleep 300
+      /nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/phone-up || true
+    done
   '';
 
   phoneStatus = pkgs.writeScriptBin "phone-status" ''
@@ -122,6 +141,7 @@ in
     gnugrep # pratique en session de debug
     tunnelLoop # référencés ici -> installés sur le tel
     phoneUp
+    phoneWatchdog
     phoneStatus
   ];
 
@@ -146,6 +166,15 @@ in
       $DRY_RUN_CMD ${pkgs.coreutils}/bin/chmod 700 ${home}/.ssh
       $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 600 ${sshdConfig} ${sshdDir}/sshd_config
       $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 600 ${authorizedKeysFile} ${home}/.ssh/authorized_keys
+    '';
+
+    termuxProps = ''
+      $DRY_RUN_CMD mkdir -p ${home}/.termux
+      if [ -z "''${DRY_RUN:-}" ]; then
+        if ! grep -qs allow-external-apps ${home}/.termux/termux.properties; then
+          printf 'allow-external-apps=true\n' >> ${home}/.termux/termux.properties
+        fi
+      fi
     '';
 
     autostart = ''
