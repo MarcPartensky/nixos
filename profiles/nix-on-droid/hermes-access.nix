@@ -69,6 +69,25 @@ let
     done
   '';
 
+  # Tunnel WebSocket (wstunnel) : publie sur le VPS le sshd du téléphone
+  # (127.0.0.1:2225) plus deux proxys sur sa boucle locale, un SOCKS5 (1081) et
+  # un proxy HTTP (1082). Les requêtes qui passent par là sortent avec l'IP du
+  # téléphone, pas celle de tower, et tout ça traverse du wss ordinaire, donc
+  # ça survit à un réseau qui ne laisse sortir que du 443. Les ports d'écoute
+  # vivent sur la boucle locale du VPS (services/wstunnel) puis sont relayés
+  # par le client de tower.
+  wsLoop = pkgs.writeScriptBin "phone-wstunnel-loop" ''
+    #!${pkgs.runtimeShell}
+    while true; do
+      ${pkgs.wstunnel}/bin/wstunnel client \
+        -R tcp://127.0.0.1:2225:127.0.0.1:${toString sshdPort} \
+        -R socks5://127.0.0.1:1081 \
+        -R http://127.0.0.1:1082 \
+        wss://ws.marcpartensky.com
+      ${pkgs.coreutils}/bin/sleep 15
+    done
+  '';
+
   phoneUp = pkgs.writeScriptBin "phone-up" ''
     #!${pkgs.runtimeShell}
     core=${pkgs.coreutils}/bin
@@ -131,6 +150,17 @@ let
       echo $! > ${sshdDir}/tunnel.pid
     fi
 
+    # 2b) tunnel WebSocket (wstunnel) : indépendant du tunnel SSH, c'est le
+    # chemin qui passe un réseau qui ne laisse sortir que le 443, et il porte
+    # aussi les proxys SOCKS5/HTTP qui sortent avec l'IP du téléphone.
+    if alive ${sshdDir}/wstunnel.pid; then
+      :
+    else
+      $core/rm -f ${sshdDir}/wstunnel.pid
+      $core/nohup ${wsLoop}/bin/phone-wstunnel-loop >> ${sshdDir}/wstunnel.log 2>&1 &
+      echo $! > ${sshdDir}/wstunnel.pid
+    fi
+
     # 3) watchdog : rejoue phone-up en boucle (relance ce qui est mort)
     if alive ${sshdDir}/watchdog.pid; then
       :
@@ -177,10 +207,13 @@ let
     check sshd ${sshdDir}/sshd.pid
     check tunnel ${sshdDir}/tunnel.pid
     check watchdog ${sshdDir}/watchdog.pid
+    check wstunnel ${sshdDir}/wstunnel.pid
     echo "== tunnel.log (5 dernieres lignes)"
     ${pkgs.coreutils}/bin/tail -n 5 ${sshdDir}/tunnel.log 2>/dev/null || true
     echo "== up.log (5 dernieres lignes)"
     ${pkgs.coreutils}/bin/tail -n 5 ${sshdDir}/up.log 2>/dev/null || true
+    echo "== wstunnel.log (5 dernieres lignes)"
+    ${pkgs.coreutils}/bin/tail -n 5 ${sshdDir}/wstunnel.log 2>/dev/null || true
   '';
 in
 {
@@ -189,6 +222,8 @@ in
     util-linux # flock pour phone-up
     gnugrep # pratique en session de debug
     tunnelLoop # référencés ici -> installés sur le tel
+    wsLoop
+    wstunnel # client du tunnel WebSocket (phone-wstunnel-loop)
     phoneUp
     phoneWatchdog
     phoneUpdate
