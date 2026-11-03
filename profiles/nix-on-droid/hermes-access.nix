@@ -75,8 +75,27 @@ let
     flock=${lib.getBin pkgs.util-linux}/bin/flock
     $core/mkdir -p ${sshdDir}
     lock=${sshdDir}/up.lock
-    exec 9>"$lock" || exit 0
-    if [ -x "$flock" ]; then "$flock" -n 9 || exit 0; fi
+    running=${sshdDir}/up.running
+    exec 9>>"$lock" || exit 0
+    if [ -x "$flock" ]; then
+      if ! "$flock" -n 9; then
+        # Verrou deja pris : si le porteur (up.running, sinon mtime du verrou)
+        # n'avance plus depuis 15 min, il est fige -> on le contourne en
+        # recreant le verrou sur un inode neuf (le fige garde l'ancien).
+        rts=$($core/stat -c %Y "$running" 2>/dev/null || echo 0)
+        [ "$rts" -eq 0 ] && rts=$($core/stat -c %Y "$lock" 2>/dev/null || echo 0)
+        now=$($core/date +%s)
+        if [ "$rts" -gt 0 ] && [ "$((now - rts))" -gt 900 ]; then
+          $core/rm -f "$lock"
+          exec 9>>"$lock" || exit 0
+          "$flock" -n 9 || exit 0
+        else
+          exit 0
+        fi
+      fi
+    fi
+    $core/touch "$running"
+    trap '$core/rm -f "$running"' EXIT
 
     alive() {
       [ -f "$1" ] && kill -0 "$($core/cat "$1" 2>/dev/null)" 2>/dev/null
@@ -121,11 +140,13 @@ let
       echo $! > ${sshdDir}/watchdog.pid
     fi
 
-    # 4) wake lock (anti-veille Android ; permission « fenêtres pop-up » requise),
-    # borné par timeout et en dernier : ne doit JAMAIS bloquer up.lock.
+    # 4) wake lock (anti-veille Android ; permission « fenêtres pop-up » requise).
+    # DÉTACHÉ (nohup, jamais attendu) : l'appel am peut se figer sans fin (vécu :
+    # `timeout 8` ne le tue pas, il tenait up.lock pour toujours et bloquait
+    # silencieusement TOUTES les relances suivantes).
     wl=/nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/termux-wake-lock
     if [ -x "$wl" ]; then
-      $core/timeout 8 "$wl" >/dev/null 2>&1 || true
+      $core/nohup "$wl" >/dev/null 2>&1 &
     fi
   '';
 
