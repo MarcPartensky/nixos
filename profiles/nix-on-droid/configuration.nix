@@ -6,6 +6,7 @@
   ...
 }: {
   imports = [
+    ./hermes-access.nix
     # ./modules/sshd
     # ../../nod-sshd
     # ../../zsh
