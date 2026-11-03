@@ -74,6 +74,7 @@
     ./wise-mcp
     ./bank-mcp
     ./llm-steamdeck
+    ./android-capture
     # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes
