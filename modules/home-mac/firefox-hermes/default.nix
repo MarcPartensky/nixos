@@ -1,31 +1,47 @@
-# Firefox du Mac pilotable par Hermes (module nix-darwin, importé par
+# Firefox du Mac : le quotidien de marc reste un Firefox NORMAL, et Hermes
+# pilote une instance Firefox SÉPARÉE (module nix-darwin, importé par
 # profiles/macos/configuration.nix).
 #
-# Firefox (profil quotidien de marc, session et cookies conservés) est lancé
-# par launchd avec Marionette (127.0.0.1:2828) et WebDriver BiDi
-# (127.0.0.1:9222). Le serveur MCP « firefox-mac » de tower
-# (services/firefox-mac-mcp) s'y attache en --connectExisting à travers ssh :
-# l'instance survit aux sessions Hermes, la musique continue après la fin
-# d'une conversation. LibreWolf reste le navigateur des sites sensibles.
+# Pourquoi deux instances (mesuré le 07/11/2026) : dès que Firefox tourne
+# avec --marionette, il annonce navigator.webdriver=true EN PERMANENCE (même
+# sans client connecté, sonde vérifiée), et le pref dom.webdriver.enabled qui
+# désactivait ça n'existe plus dans le binaire (Firefox >= 88, 0 occurrence).
+# Résultat : un navigateur piloté se fait détecter par les anti-bots
+# (Cloudflare Turnstile ne se rend même pas). On ne met donc JAMAIS marionette
+# sur le navigateur quotidien de marc.
 #
-# - Firefox reste l'app impérative de /Applications (auto-update Mozilla,
-#   binaire universel arm64) ; seul le lancement est déclaratif.
-# - Si Firefox tourne déjà SANS ces flags (lancé depuis le Dock, réouverture
-#   des fenêtres à la connexion), le wrapper attend qu'il soit quitté puis
-#   prend le relais : jamais deux instances sur le même profil.
-# - KeepAlive : un Cmd+Q relance Firefox (avec les flags) après ~30 s.
-#   Arrêt réel : launchctl bootout gui/$(id -u)/org.nixos.firefox-hermes
-# - Effets visibles du mode piloté : icône robot et barre d'adresse rayée,
-#   navigator.webdriver=true (certains anti-bots sont plus méfiants).
+# - Quotidien : lancé par marc (Dock, réouverture à la connexion), aucun flag,
+#   aucun agent launchd. Session restaurée via browser.startup.page=3 (user.js
+#   du profil, posé hors de ce module).
+# - Instance agent « firefox-hermes » : launchd, profil dédié
+#   ~/.firefox-hermes-agent, --marionette (port 2828 via user.js) et
+#   --remote-debugging-port 9222. Le serveur MCP « firefox-mac » de tower
+#   (services/hermes-browser) s'y attache en --connectExisting à travers ssh ;
+#   l'instance survit aux sessions Hermes. KeepAlive la relance après un Cmd+Q.
+# - Profils séparés + --no-remote : les deux instances coexistent sans jamais
+#   partager un profil. Le wrapper attend qu'une instance agent traîne déjà
+#   pour ne pas doubler sur le même profil.
+# - Arrêt réel de l'instance agent :
+#   launchctl bootout gui/$(id -u)/org.nixos.firefox-hermes
+# - Effets visibles sur l'instance agent uniquement : icône robot, barre
+#   d'adresse rayée, navigator.webdriver=true. Le quotidien est normal.
 # - Sécurité : ports en loopback seulement, mais sans authentification : tout
-#   process local du Mac peut piloter ce Firefox. Accepté par marc.
+#   process local du Mac peut piloter l'instance agent. Accepté par marc.
 {pkgs, ...}: let
   firefox = "/Applications/Firefox.app/Contents/MacOS/firefox";
   wrapper = pkgs.writeShellScript "firefox-hermes" ''
-    while /usr/bin/pgrep -f '^${firefox}( |$)' >/dev/null; do
+    PROFILE="$HOME/.firefox-hermes-agent"
+    mkdir -p "$PROFILE"
+    # Le MCP de tower s'attache en --connectExisting sur ce port.
+    if ! /usr/bin/grep -q 'marionette.port' "$PROFILE/user.js" 2>/dev/null; then
+      printf 'user_pref("marionette.port", 2828);\nuser_pref("browser.shell.checkDefaultBrowser", false);\n' >> "$PROFILE/user.js"
+    fi
+    # Une instance agent tourne déjà ? Attendre qu'elle parte (jamais deux
+    # process sur le même profil).
+    while /usr/bin/pgrep -f '^${firefox} .*firefox-hermes-agent' >/dev/null; do
       sleep 15
     done
-    exec ${firefox} --marionette --remote-debugging-port 9222
+    exec ${firefox} --no-remote -profile "$PROFILE" --marionette --remote-debugging-port 9222
   '';
 in {
   launchd.user.agents.firefox-hermes = {
