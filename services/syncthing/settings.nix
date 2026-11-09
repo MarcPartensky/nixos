@@ -33,13 +33,23 @@ in {
 
   options = {
     listenAddresses = ["tcp://0.0.0.0:22000" "quic://0.0.0.0:22000"];
+    # Aucun appel sortant vers l'infrastructure de Syncthing : découverte
+    # globale, relais, STUN, télémétrie, rapport de crash, vérification de
+    # mise à jour. Les URLs sont vidées en plus des booléens, pour que même un
+    # clic dans l'UI ne puisse pas les joindre.
     globalAnnounceEnabled = false;
-    localAnnounceEnabled = true;
+    globalAnnounceServers = [];
+    localAnnounceEnabled = true; # LAN uniquement (21027/udp, pas d'Internet)
     relaysEnabled = false;
     natEnabled = false;
+    stunServers = [];
     urAccepted = -1;
+    urURL = "";
+    crURL = "";
     crashReportingEnabled = false;
+    releasesURL = "";
     autoUpgradeIntervalH = 0;
+    upgradeToPreReleases = false;
     startBrowser = false;
   };
 
