@@ -1,38 +1,39 @@
-{ inputs, pkgs, ... }: {
-  services = {
-    # Syncthing
-    syncthing = {
-      enable = true;
-      # extraOptions = [
-      #   "--home=/home/marc/sync"
-      # ];
+# Module home-manager : Syncthing de marc (tower, laptop, deck, Mac).
+#
+# Le même fichier est importé par users/marc/home.nix (Linux, partagé par
+# tower/laptop/deck) et par users/mac/home.nix (Mac, via nix-darwin). La liste
+# des pairs, le dossier partagé et le durcissement réseau viennent de
+# services/syncthing/{mesh,settings}.nix.
+{
+  pkgs,
+  lib,
+  ...
+}: let
+  isDarwin = pkgs.stdenv.isDarwin;
 
-      # user = "marc";
-      # group = "users";
-      # dataDir = "/home/marc";
-      # configDir = "/home/marc/syncthing";
-      settings = {
-        option.urAccepted = 1;
-        devices = {
-          "xiaomi12" ={
-      	    id = "PEAKD4W-MDXJTZQ-C5WZWXZ-AW72EK3-WLFLM2L-A2GVBEM-HOB62UJ-BNHUQAB";
-            # autoAcceptFolders = true;
-      	  };
-        };
-      # 	folders."Camera" = {
-      # 	  path = "/home/marc/sync/Camera";
-      # 	  devices = [ "xiaomi12" ];
-      # 	  type = "sendreceive";
-      # 	  # one of "sendreceive", "sendonly", "receiveonly", "receiveencrypted"
-      # 	};
-      # 	folders."Personal" = {
-      # 	  path = "/home/marc/sync/Personal";
-      # 	  devices = [ "xiaomi12" ];
-      # 	  type = "sendreceive";
-      # 	};
+  fleet = import ../../../services/syncthing/settings.nix {
+    inherit lib isDarwin;
+  };
+in {
+  services.syncthing = {
+    enable = true;
+
+    settings =
+      {
+        # `options` (pluriel) est la clé attendue par le module home-manager,
+        # qui fait PUT /rest/config/options. `option` (singulier) n'existe pas
+        # côté API : Syncthing répond 404/405 et le réglage est perdu.
+        options = fleet.options;
+        devices = fleet.devices;
+        folders.${fleet.folderId} = fleet.folder;
+      }
+      // lib.optionalAttrs (!isDarwin) {
+        # L'UI est derrière la ressource Pangolin syncthing.marcpartensky.com :
+        # le proxy conserve le Host public, que Syncthing refuse par défaut
+        # (403 « Host check error »). Sans objet sur le Mac.
+        gui.insecureSkipHostCheck = true;
       };
-      guiAddress = "127.0.0.1:8384";
-      # openDefaultPorts = true;
-    };
+
+    guiAddress = "127.0.0.1:8384";
   };
 }
