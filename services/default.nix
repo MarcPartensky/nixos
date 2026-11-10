@@ -69,7 +69,6 @@
     ./reactive-resume
     ./anki-sync-server
     ./anki-mcp
-    ./winnie
     ./mac-mcp
     ./wise-mcp
     ./bank-mcp
