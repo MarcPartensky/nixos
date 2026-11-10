@@ -5,7 +5,6 @@
 }: {
   imports = [
     ./nextcloud
-    ./atop
     ./postgres
     ./vaultwarden
     ./newt
