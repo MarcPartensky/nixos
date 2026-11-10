@@ -21,6 +21,16 @@
       ScanSchedule = "@every 1h";
       TranscodingCacheSize = "500MB";
       DefaultLanguage = "fr";
+      # SSO en amont (Pangolin + Zitadel) : le proxy injecte Remote-User quand la
+      # session Pangolin est valide (badger). Navidrome n'a pas d'OIDC natif, il
+      # sait seulement faire confiance a un en-tete pose par un proxy de confiance.
+      # Consequence a connaitre : TrustedSources = 127.0.0.1 fait confiance a TOUT
+      # process local ; et la valeur de l'en-tete doit etre EXACTEMENT le user_name
+      # Navidrome (sinon un second compte est cree au premier login).
+      # /rest/* et /share/* sont hors du gate Pangolin (regles ACCEPT dans
+      # Pangolin), donc les clients Subsonic gardent leur Basic auth.
+      ExtAuth.TrustedSources = "127.0.0.1";
+      ExtAuth.UserHeader = "Remote-User";
     };
   };
 
@@ -37,5 +47,45 @@
     };
   };
 
+  # Exposition publique via Pangolin (newt, site "tower") : navidrome.marcpartensky.com
+  # -> 127.0.0.1:4533. Schéma `proxy-resources` + `protocol` = celui compris par
+  # le Pangolin du VPS (cf. services/newt, services/radarr).
+  #
+  # SSO Pangolin : Zitadel est IdP global de Pangolin, le login de l'UI web passe
+  # par Zitadel, et badger injecte Remote-User que Navidrome lit via ExtAuth
+  # (cf. settings ci-dessus), donc pas de second login dans l'app.
+  # Les clients Subsonic (Feishin, apps mobiles) ne suivent pas un redirect
+  # navigateur : /rest/* et /share/* sont sortis du gate par des règles ACCEPT
+  # côté Pangolin (ressource 62, applyRules), ils restent en Basic auth.
+  services.newt.blueprint.proxy-resources.navidrome = {
+    name = "navidrome";
+    protocol = "http";
+    full-domain = "navidrome.marcpartensky.com";
+    auth.sso-enabled = true;
+    targets = [
+      {
+        hostname = "127.0.0.1";
+        port = 4533;
+        method = "http";
+        healthcheck = {
+          enabled = true;
+          hostname = "127.0.0.1";
+          port = 4533;
+          path = "/ping";
+          scheme = "http";
+          mode = "http";
+          method = "GET";
+          interval = 30;
+          unhealthy-interval = 30;
+          timeout = 5;
+          healthy-threshold = 1;
+          unhealthy-threshold = 3;
+        };
+      }
+    ];
+  };
+
+  # Pas d'openFirewall : tower est derrière le NAT, seul le tunnel newt expose
+  # Navidrome, et le SSO Pangolin + son auth propre filtrent les accès.
   # networking.firewall.allowedTCPPorts = [ 4533 ];
 }
