@@ -29,7 +29,7 @@
       # Navidrome (sinon un second compte est cree au premier login).
       # /rest/* et /share/* sont hors du gate Pangolin (regles ACCEPT dans
       # Pangolin), donc les clients Subsonic gardent leur Basic auth.
-      ExtAuth.TrustedSources = "127.0.0.1";
+      ExtAuth.TrustedSources = "127.0.0.1/32";
       ExtAuth.UserHeader = "Remote-User";
     };
   };

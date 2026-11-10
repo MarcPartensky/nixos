@@ -25,6 +25,9 @@ in {
     # Agents invités (anna, yves) : tower uniquement, les homes et les
     # identifiants vivent sous /var/lib/hermes/guests (absents ailleurs).
     ../../services/hermes-guests
+    # Télémétrie CPU par process (atop 10 s + atop-peaks) : tower uniquement,
+    # c'est ici que les builds et les sessions Hermes se disputent le CPU.
+    ../../services/atop
   ];
 
   # Sessions hermes lancees par marc (panes herdr, HERMES_HOME partage, cf
