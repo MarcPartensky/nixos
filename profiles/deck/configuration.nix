@@ -27,8 +27,22 @@
     # Mesh headscale : nœud tailscale (contrôleur sur le VPS anywhere, cf
     # services/headscale et services/tailscale).
     ../../services/tailscale
+    # Worker Windmill : prend des jobs dans la base windmill de tower via le
+    # tailnet (Postgres 100.64.0.3:5432, role windmill en scram). Aucun port
+    # ouvert ici, aucun etat local : le deck peut s'endormir, le job est
+    # rejoue par Windmill au retour.
+    ../../services/windmill
     ./switch-emu.nix
   ];
+
+  services.windmillFleet = {
+    enable = true;
+    role = "worker";
+    dbHost = "100.64.0.3";
+    workerGroup = "deck";
+    workers = 2;
+    baseUrl = "https://windmill.marcpartensky.com";
+  };
 
   jovian.devices.steamdeck = {
     enable = true;

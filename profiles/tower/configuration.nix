@@ -28,7 +28,21 @@ in {
     # Télémétrie CPU par process (atop 10 s + atop-peaks) : tower uniquement,
     # c'est ici que les builds et les sessions Hermes se disputent le CPU.
     ../../services/atop
+    # Windmill : serveur de la flotte (UI/API + base Postgres `windmill`).
+    # Les workers tournent sur deck / anywhere et prennent les jobs dans la
+    # meme base via le tailnet. tower n'heberge PAS de worker : il reste libre.
+    ../../services/windmill
   ];
+
+  services.windmillFleet = {
+    enable = true;
+    role = "server";
+    expose = true;
+    # Pas de login Windmill : l'OIDC applicatif est une fonction Enterprise en
+    # CE (stubs), et Pangolin authentifie deja via Zitadel en amont.
+    noAuth = true;
+    baseUrl = "https://windmill.marcpartensky.com";
+  };
 
   # Sessions hermes lancees par marc (panes herdr, HERMES_HOME partage, cf
   # users/marc/home.nix) : elles ecrivent dans /var/lib/hermes/.hermes. Le

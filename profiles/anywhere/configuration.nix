@@ -40,8 +40,20 @@
     ../../services/ygg-mesh
     ../../services/droplify
     ../../services/hermes
+    # Worker Windmill : prend des jobs dans la base windmill de tower via le
+    # tailnet. Le VPS est toujours allume : c'est le noeud "toujours dispo".
+    ../../services/windmill
     # ../../services/vaultwarden-mcp  # secret sops secrets/tower.yml, illisible sur ce VPS : cassait setupSecrets
   ];
+
+  services.windmillFleet = {
+    enable = true;
+    role = "worker";
+    dbHost = "100.64.0.3";
+    workerGroup = "anywhere";
+    workers = 2;
+    baseUrl = "https://windmill.marcpartensky.com";
+  };
 
   # Gateway hermes coupé sur le VPS : inerte (pas de token Matrix/Discord,
   # modèle DirectSDK sans login claude) et il tirait claude-code (unfree) dans

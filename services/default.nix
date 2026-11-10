@@ -30,6 +30,7 @@
     ./matrix-marc-agent
     # ./matrix-telegram # attendre api_id/api_hash de my.telegram.org
     ./navidrome
+    ./aonsoku.nix
     ./jellyfin
     ./audiobookshelf
     ./media
