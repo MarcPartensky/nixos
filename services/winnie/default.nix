@@ -30,7 +30,7 @@ in {
     group = "winnie";
   };
 
-  imports = [ /home/marc/git/winnie/services/winnie/default.nix ];
+  imports = [ ../../winnie/services/winnie/default.nix ];
 
   services.winnie.manageGarage = true;
 
