@@ -61,6 +61,10 @@
     # ./stalwart-mcp  # importé par profiles/tower uniquement (voir le commentaire
     # dans le module : sur anywhere la clé sops entre en conflit avec services/stalwart)
     ./gotify
+    # Pont Gotify <-> Matrix (salle « 🪽 Hermes ») : relais gotify-matrix-relay
+    # + provisionnement des jetons Gotify. Le hook Matrix -> Gotify est lui
+    # vendorise dans services/hermes/hooks. Voir le module pour les pieges E2EE.
+    ./gotify-matrix
     ./zitadel
     # ./zitadel-mcp  # FIXME: secret zitadel_mcp_env manquant dans zitadel.yml
     ./roku

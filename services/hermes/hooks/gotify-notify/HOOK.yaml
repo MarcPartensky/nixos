@@ -1,0 +1,4 @@
+name: gotify-notify
+description: Pousse dans Gotify les reponses de l'agent publiees dans la salle Matrix du pont
+events:
+  - agent:end

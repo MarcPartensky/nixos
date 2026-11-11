@@ -494,6 +494,18 @@ in {
           cp ${./plugins/discord-auto-join/__init__.py} $out/__init__.py
         '')
       ];
+
+      # --- Hook de gateway : pont Matrix -> Gotify ---
+      # Vendorise ici, installe dans $HERMES_HOME/hooks/gotify-notify (extension
+      # point "trusted by placement" : le gateway charge au demarrage tout
+      # dossier contenant HOOK.yaml + handler.py, donc un switch suffit a
+      # l'activer). Le handler lit le jeton d'application Gotify provisionne par
+      # services/gotify-matrix et pousse les reponses publiees dans la salle du
+      # pont. Details et filtres : services/hermes/hooks/gotify-notify/handler.py.
+      hermesHomeFiles = {
+        "hooks/gotify-notify/HOOK.yaml" = ./hooks/gotify-notify/HOOK.yaml;
+        "hooks/gotify-notify/handler.py" = ./hooks/gotify-notify/handler.py;
+      };
     };
 
     # --- MCP GitHub : serveur officiel (@modelcontextprotocol/server-github) ---

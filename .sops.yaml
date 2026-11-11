@@ -150,6 +150,18 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  - path_regex: secrets/gotify-mesh\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Pont Gotify <-> Matrix (services/gotify-matrix) : mot de passe local du
+  # compte admin Gotify. L'unite gotify-pont-provision aligne le hash bcrypt en
+  # base sur cette valeur (le mot de passe historique n'etait plus connu), puis
+  # cree les jetons application + client du pont.
+  - path_regex: secrets/gotify-matrix\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/winnie\.yml$
     key_groups:
       - age:
