@@ -6,6 +6,11 @@ keys:
   - &deck-host age1rhnaejc5nwcqcuq5qt45wzr2fncurlwqw0adhnavfraqsdzffatqh5yhl4
 
 creation_rules:
+  # Open Notebook (services/open-notebook) : clé de chiffrement applicative.
+  - path_regex: secrets/open-notebook\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/monero-deck\.yml$
     key_groups:
       - age:
