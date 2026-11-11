@@ -575,6 +575,45 @@ in {
       timeout = 300;
     };
 
+    # --- MCP iprep : score de reputation d'IP agrege ---------------------------
+    # Serveur stdio ecrit a la main (stdlib python, aucune dependance) qui
+    # interroge les sources publiques sans cle (Scamalytics, AlienVault OTX,
+    # StopForumSpam, GreyNoise community, Project HoneyPot, DNSBL) et renvoie
+    # un risque normalise 0-100 par source + la moyenne. AbuseIPDB et
+    # IPQualityScore s'ajoutent si ABUSEIPDB_API_KEY / IPQS_API_KEY sont
+    # fournies dans l'environnement (facultatif, sans cle ils sont ignores).
+    services.hermes-agent.mcpServers.iprep = {
+      command = "${pkgs.python3}/bin/python3";
+      args = [ "/var/lib/hermes/workspace/iprep-mcp/server.py" ];
+      # Le MCP lit quatre sources dans le vrai Chrome du Mac : il a besoin de
+      # node pour driver le CDP et du tunnel loopback ci-dessous.
+      env.IPREP_NODE = "${pkgs.nodejs}/bin/node";
+      timeout = 300;
+    };
+
+    # Tunnel loopback vers le CDP du Chrome "agent" du Mac (9222 cote Mac,
+    # 19222 cote tower). Le MCP iprep s'en sert pour les quatre sources que
+    # Cloudflare ferme a curl et au Chromium headless : AbuseIPDB,
+    # IPQualityScore, Cisco Talos, check.spamhaus.org. Meme pattern que
+    # phone-mcp-tunnel : un service, pas un `ssh -N -L` de session, pour qu'il
+    # survive aux deconnexions. Hote `mac` (tunnel inverse autossh du Mac), donc
+    # valable aussi hors du LAN de tower.
+    systemd.services.mac-cdp-tunnel = {
+      description = "Tunnel loopback vers le CDP du Chrome agent du Mac";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      serviceConfig = {
+        User = "hermes";
+        Group = "users";
+        Restart = "always";
+        RestartSec = 15;
+        ExecStart = "${pkgs.openssh}/bin/ssh -N -T -o ExitOnForwardFailure=yes "
+          + "-o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes "
+          + "-o BatchMode=yes -L 127.0.0.1:19222:127.0.0.1:9222 mac";
+      };
+    };
+
     # --- MCP Pangolin : API d'intégration self-hosted ---
     # L'API v1 (clé Bearer, clé "hermes" de la table apiKeys du dashboard) est
     # activée par le flag enable_integration_api de services/pangolin et
