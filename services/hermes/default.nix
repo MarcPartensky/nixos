@@ -566,6 +566,19 @@ in {
       timeout = 60;
     };
 
+    # --- MCP voix (TTS) : serveur HTTP sur le PORTABLE, joint par le tailnet ---
+    # Les moteurs (Phonon, Kokoro en CPU ; OmniVoice, Ming, Chatterbox, Breeze
+    # en GPU), les poids et la RTX 3060 sont sur le portable : toute generation
+    # de voix y reste, quelle que soit la machine qui pilote l'agent. Le
+    # serveur vit dans services/tts-mcp (laptop) et garde les modeles chauds ;
+    # timeout large car un moteur GPU charge son modele avant de parler.
+    # Adresse : tailscale du portable (100.64.0.4), port ouvert sur
+    # tailscale0 seulement.
+    services.hermes-agent.mcpServers.tts = {
+      url = "http://100.64.0.4:8092/mcp";
+      timeout = 900;
+    };
+
     # --- MCP Vaultwarden : temporairement désactivé (blocage sops manifest) ---
     # services.hermes-agent.mcpServers.vaultwarden = {
     #   command = "vaultwarden-mcp";
