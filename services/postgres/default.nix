@@ -47,6 +47,12 @@
 
       # IPv6 localhost
       host all all ::1/128 trust
+
+      # Workers Windmill (deck, anywhere) : uniquement le role `windmill` sur
+      # la base `windmill`, uniquement depuis le tailnet headscale, et avec le
+      # mot de passe scram (sops). Sans cette ligne, le worker echoue en
+      # "no pg_hba.conf entry for host 100.64.x.x" et reste en CrashLoop.
+      host windmill windmill 100.64.0.0/10 scram-sha-256
     '';
 
     # # Script SQL initial pour créer utilisateurs et droits
