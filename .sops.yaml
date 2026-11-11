@@ -73,6 +73,14 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  # Coffre Vaultwarden DEDIÉ À L'AGENT (compte hermes@marcpartensky.com) :
+  # mot de passe maître d'un coffre qui ne contient que des capacités
+  # révocables. Séparé du coffre de marc pour que le navigateur piloté ne
+  # touche jamais le principal. Voir services/vaultwarden-mcp.
+  - path_regex: secrets/vaultwarden-agent\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/tower\.yml$
     key_groups:
       - age:

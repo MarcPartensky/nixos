@@ -40,13 +40,31 @@
     '';
   };
 
+  # Coffre Vaultwarden TECHNIQUE de l'agent (compte hermes@marcpartensky.com).
+  # Déclaré ici pour que le secret soit rendu à chaque activation, même quand
+  # services/vaultwarden-mcp n'est pas encore importé. Le mot de passe est
+  # chiffré vers la seule clé age de tower (secrets/vaultwarden-agent.yml).
+  sops.secrets."vaultwarden/agent_password" = {
+    key = "vaultwarden_agent_password";
+    sopsFile = ../../secrets/vaultwarden-agent.yml;
+    owner = "hermes";
+    group = "hermes";
+    mode = "0400";
+  };
+
   services.vaultwarden = {
     enable = true;
     dbBackend = "postgresql";
     environmentFile = config.sops.templates."vaultwarden.env".path;
     config = {
       DOMAIN = "https://vault.marcpartensky.com";
-      SIGNUPS_ALLOWED = true;
+      # Fermé depuis le 10/11/2026 : l'inscription était ouverte à Internet
+      # (/api/config répondait disableUserRegistration:false et /identity
+      # n'est pas derrière le SSO Pangolin). Le compte technique de l'agent
+      # (hermes@marcpartensky.com) et celui de marc existent maintenant, donc
+      # plus aucune raison d'accepter des inscriptions. Pour en créer un
+      # nouveau : repasser à true, créer, redescendre à false.
+      SIGNUPS_ALLOWED = false;
 
       WEBSOCKET_ENABLED = true;
       WEBSOCKET_ADDRESS = "0.0.0.0";

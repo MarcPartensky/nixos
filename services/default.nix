@@ -70,7 +70,10 @@
     ./roku
     ./codeberg-mcp
     ./ibkr-mcp
-    # ./vaultwarden-mcp  # FIXME: missing input
+    # ./vaultwarden-mcp  # prêt et testé (binaire + wrapper + secret) : à
+    # décommenter lors d'un rebuild où couper hermes-agent ne gêne pas, car
+    # ajouter un mcpServer régénère hermes-config.yaml et redémarre le gateway.
+    # En attendant, l'accès passe par ~/.hermes/scripts/vault-get.sh (CLI bw).
     ./meetup-mcp
     ./gitea
     ./gitea-mcp
