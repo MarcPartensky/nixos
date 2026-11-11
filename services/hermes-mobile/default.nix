@@ -49,6 +49,9 @@
   backendHost = "127.0.0.1:${toString backendPort}";
 in {
   systemd.services.hermes-mobile-serve = {
+    # Un rebuild NixOS ne doit pas couper ce serveur : les sessions mobiles
+    # vivent dedans. La nouvelle config s'applique au prochain demarrage.
+    restartIfChanged = false;
     description = "Hermes serve (profil default) : backend de l'appli mobile Hermes Mobile";
     wantedBy = ["multi-user.target"];
     after = ["network.target"];

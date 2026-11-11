@@ -755,6 +755,88 @@ in {
     systemd.services.hermes-agent.serviceConfig.NoNewPrivileges = lib.mkForce false;
     systemd.services.hermes-backend.serviceConfig.NoNewPrivileges = lib.mkForce false;
 
+    # --- Le gateway ne doit jamais etre tue ni affame ---
+    # Sans ce bloc, hermes-agent vit dans system.slice au poids par defaut
+    # (100), a egalite avec un build nix, sans protection memoire.
+    #
+    #  - hermes.slice CPUWeight=2000 : sous contention il passe avant tout le
+    #    reste de system.slice (poids 100), soit 20x la priorite par defaut.
+    #    Un POIDS, pas un quota : machine libre il prend tout le CPU, et rien
+    #    ne le bride jamais. (10000 donnait ~91 % du CPU sous contention et
+    #    tombait les builds a ~0,2 % : trop brutal, 2000 suffit largement.)
+    #  - MemoryMin/MemoryLow : plancher cgroup v2, sa memoire n'est plus
+    #    recuperable par un autre cgroup sous pression. Surtout PAS de
+    #    MemoryMax : ca le rendrait tuable depuis l'interieur de son cgroup.
+    #  - OOMScoreAdjust=-1000 : le killer OOM du noyau l'exclut.
+    #  - StartLimitIntervalSec=0 : systemd ne renonce plus jamais a relancer.
+    #
+    # Les ENFANTS heritent du cgroup : les serveurs MCP et les sous-processus
+    # des taches (builds, navigateurs, scripts) sont bornes par ce meme poids.
+    systemd.slices.hermes = {
+      description = "Hermes Agent (priorite interactive)";
+      sliceConfig = {
+        CPUWeight = 2000;
+        IOWeight = 1000;
+        # Reservation materielle : les deux threads du coeur physique 6
+        # (cpu12, cpu13) sont a Hermes, exclus de background.slice. Meme sous
+        # un build 14 threads, le gateway garde un coeur physique entier.
+        # Un POIDS seul ne garantit rien en valeur absolue ; cpuset, si.
+        # Contrepartie assumee : les sous-processus des taches (builds,
+        # navigateurs lances par un agent) heritent du cpuset et tournent sur
+        # ces 2 threads. Le travail lourd doit partir sur la flotte (Windmill).
+        AllowedCPUs = "12-13";
+      };
+    };
+
+    # `member` n'exclut personne : system.slice/user.slice peuvent encore
+    # tourner sur 12-13. On promeut la slice en partition root cgroup v2, ce
+    # qui rend ces 2 threads exclusifs a Hermes et a ses descendants. Aucun
+    # parametre de boot (isolcpus) necessaire. Contrepartie : 12-13 ne sont
+    # plus utilisables par le reste du systeme, meme quand Hermes est idle.
+    systemd.services.hermes-cpuset = {
+      description = "Promeut hermes.slice en partition root cpuset (12-13 exclusifs)";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "hermes.slice" ];
+      before = [ "hermes-agent.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = pkgs.writeShellScript "hermes-cpuset" ''
+          set -eu
+          cg=/sys/fs/cgroup/hermes.slice
+          echo "12-13" > "$cg/cpuset.cpus.exclusive"
+          echo "root" > "$cg/cpuset.cpus.partition"
+        '';
+      };
+    };
+    systemd.services.hermes-agent = {
+      # Un rebuild NixOS ne doit pas couper le gateway : ses taches vivent
+      # dedans. restartIfChanged=false => switch-to-configuration met a jour
+      # le fichier d'unite mais ne redemarre pas le process en cours ; la
+      # nouvelle config s'applique au prochain demarrage manuel.
+      restartIfChanged = false;
+      serviceConfig = {
+        Slice = "hermes.slice";
+        OOMScoreAdjust = -1000;
+        MemoryMin = "1G";
+        MemoryLow = "2G";
+        ManagedOOMPreference = "avoid";
+      };
+      unitConfig.StartLimitIntervalSec = 0;
+    };
+    # Le backend sert le desktop et le terminal web : meme traitement.
+    systemd.services.hermes-backend = {
+      restartIfChanged = false;
+      serviceConfig = {
+        Slice = "hermes.slice";
+        OOMScoreAdjust = -1000;
+        MemoryMin = "256M";
+        MemoryLow = "512M";
+        ManagedOOMPreference = "avoid";
+      };
+      unitConfig.StartLimitIntervalSec = 0;
+    };
+
     # --- Opus pour la voix Discord ---
     # L'adaptateur Discord de Hermes (plugins/platforms/discord/adapter.py) charge
     # libopus via ctypes.util.find_library("opus"), qui sur NixOS ne trouve rien :

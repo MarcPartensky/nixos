@@ -34,6 +34,10 @@
 in {
   imports = [ inputs.hermes-webui.nixosModules.default ];
 
+  # Un rebuild NixOS ne doit pas couper le WebUI : les runs en cours vivent
+  # dedans. La nouvelle config s'applique au prochain demarrage.
+  systemd.services.hermes-webui.restartIfChanged = false;
+
   services.hermes-webui = {
     enable = true;
     # Paquet amont + patch local : le WebUI n'écrit son titre de session qu'à
