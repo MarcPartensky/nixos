@@ -66,6 +66,14 @@
   # Aligne le mot de passe du rôle postgres sur le secret sops utilisé par
   # DATABASE_URL (ensureUsers ne pose pas de mot de passe). Même pattern que
   # vaultwarden-db-password.
+  #
+  # PIEGE VECU (11/11/2026, 00:24) : ce unit peut demarrer AVANT que sops-nix
+  # ait pose le fichier du secret avec son proprietaire. Le `cat` sortait alors
+  # en « Permission denied », psql recevait un mot de passe VIDE et repondait
+  # « empty string is not a valid password, clearing password » : le role
+  # perdait son mot de passe, l'app se mettait en boucle de redemarrage
+  # (204 relances en 4 h) sur « password authentication failed ». Le script
+  # refuse donc maintenant de tourner si le secret n'est pas lisible.
   systemd.services.reactive-resume-db-password = {
     description = "Aligne le mot de passe du rôle postgres reactive-resume sur le secret sops";
     wantedBy = ["multi-user.target"];
@@ -79,8 +87,17 @@
       RemainAfterExit = true;
     };
     script = ''
-      ${config.services.postgresql.package}/bin/psql \
-        -v pw="$(cat ${config.sops.secrets."reactive-resume/db_password".path})" <<'SQL'
+      secret=${config.sops.secrets."reactive-resume/db_password".path}
+      if [ ! -r "$secret" ]; then
+        echo "reactive-resume : secret $secret illisible (sops pas encore pose), on ne touche pas au mot de passe" >&2
+        exit 1
+      fi
+      pw="$(cat "$secret")"
+      if [ -z "$pw" ]; then
+        echo "reactive-resume : secret vide, on ne touche pas au mot de passe" >&2
+        exit 1
+      fi
+      ${config.services.postgresql.package}/bin/psql -v pw="$pw" <<'SQL'
       ALTER ROLE "reactive-resume" WITH PASSWORD :'pw';
       SQL
     '';
