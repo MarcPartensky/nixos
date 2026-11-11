@@ -16,6 +16,10 @@ in {
     # MCP Stalwart (JMAP vers le VPS) : tower uniquement, hermes y tourne.
     ../../services/stalwart-mcp
     ../../services/monero-miner
+    # Cache binaire Nix locale (atticd, stockage disque) : evite de recompiler
+    # les paquets maison apres un GC ou un flake update, et alimente la cache
+    # via le post-build-hook du demon nix.
+    ../../services/attic
     # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
     # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
     ../../services/ygg-mesh
