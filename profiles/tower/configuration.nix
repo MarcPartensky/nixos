@@ -22,6 +22,9 @@ in {
     # Mesh headscale : nœud tailscale (contrôleur sur le VPS anywhere, cf
     # services/headscale et services/tailscale).
     ../../services/tailscale
+    # Dashboard des nœuds du tailnet (mesh.marcpartensky.com, SSO Pangolin ;
+    # http://100.64.0.3:9140 depuis le tailnet). Lit `tailscale status --json`.
+    ../../services/mesh-dashboard
     # Agents invités (anna, yves) : tower uniquement, les homes et les
     # identifiants vivent sous /var/lib/hermes/guests (absents ailleurs).
     ../../services/hermes-guests
