@@ -82,6 +82,9 @@
     # Raccourcisseurs publics anonymes a domaine 4 car (x.gd, v.gd, t.tl) :
     # MCP hermes "shorturl", sans compte ni secret.
     ./shorturl-mcp
+    # Classements Elo d'Arena (ex-LMArena) sans auth, lus depuis le dataset
+    # public lmarena-ai/leaderboard-dataset (CC BY 4.0). MCP hermes "arena-elo".
+    ./arena-elo-mcp
     # Garage : S3 pour les artifacts de build (remplace rustfs, retire pour son
     # CPU au repos) + MCP S3 cote hermes.
     ./garage
