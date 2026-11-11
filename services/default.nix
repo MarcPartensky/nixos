@@ -7,6 +7,9 @@
     ./nextcloud
     ./cpu-priority
     ./postgres
+    # Sauvegardes chiffrées de tower (pqbox : ML-KEM-768) : trois étages,
+    # timers coeur (quotidien) et volume (hebdomadaire). Détail dans le module.
+    ./backup-pqbox
     ./vaultwarden
     ./newt
     ./readarr

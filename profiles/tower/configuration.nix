@@ -43,6 +43,11 @@ in {
     ../../services/windmill
   ];
 
+  # Sauvegardes chiffrées pqbox en trois étages (coeur quotidien, volume
+  # hebdomadaire, mortes à la main). Clé publique dans services/backup-pqbox,
+  # clé privée scellée chez marc uniquement. Cf. le module pour le détail.
+  services.backup-pqbox.enable = true;
+
   services.windmillFleet = {
     enable = true;
     role = "server";
