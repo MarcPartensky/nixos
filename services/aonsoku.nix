@@ -52,6 +52,11 @@
 
   # Exposition publique : music.marcpartensky.com -> 127.0.0.1:8099, avec le
   # SSO Pangolin (Zitadel) comme les autres UIs.
+  # NB : `auth.sso-enabled` gate la ressource, mais le blueprint ne porte pas de
+  # champ pour aller directement a l'IdP : `resources.skipToIdpId = 1` est pose
+  # en base Pangolin (comme pour navidrome), sinon la page de login interne du
+  # proxy s'affiche avant Zitadel. A reposer si la ressource est recreee (uuid
+  # qui change).
   services.newt.blueprint.proxy-resources.aonsoku = {
     name = "aonsoku";
     protocol = "http";
