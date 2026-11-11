@@ -39,6 +39,7 @@
     eza
     nano
     openssh
+    curl # relance du bootstrap par lien court (curl -fsSL https://x.gd/a6gpx | sh)
     iproute2
     shadow
     neovim

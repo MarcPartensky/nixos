@@ -10,7 +10,10 @@
 #     zsh (precmd rate-limité 60s : n'importe quelle touche dans l'app répare) ;
 #   - `phone-watchdog` : rejoue `phone-up` toutes les 2 min (filet de sécurité) ;
 #   - `phone-update` : met à jour la conf (switch nix-on-droid, tarball-ttl 0) ;
-#   - `phone-status` : diagnostic (verdicts + pids + logs).
+#   - `phone-status` : diagnostic (verdicts + pids + logs) ;
+#   - `nod-bootstrap` : (re)provisionne l'appareil (switch declaratif + phone-up
+#     + verification). Meme script que l'artefact public du lien court
+#     (https://x.gd/a6gpx), installe ici pour etre relancable sans reseau.
 #
 # IMPORTANT (fiabilité Xiaomi/HyperOS) : accorder à l'app Nix la permission
 # « Afficher des fenêtres pop-up en arrière-plan » (display over other apps),
@@ -221,6 +224,15 @@ let
     echo "== wstunnel.log (5 dernieres lignes)"
     ${pkgs.coreutils}/bin/tail -n 5 ${sshdDir}/wstunnel.log 2>/dev/null || true
   '';
+
+  # Provisionnement/reparation de l'appareil en une commande. Le fichier est la
+  # copie exacte de l'artefact publie derriere le lien court
+  # (https://x.gd/a6gpx -> s.marcpartensky.com/nod -> Nextcloud) ; patchShebangs
+  # remplace son `#!/bin/sh` par l'interpreteur du store, comme les autres
+  # scripts du module.
+  nodBootstrap = pkgs.runCommandLocal "nod-bootstrap" { } ''
+    install -D -m 0755 ${./nod-bootstrap.sh} $out/bin/nod-bootstrap
+  '';
 in
 {
   environment.packages = with pkgs; [
@@ -234,6 +246,7 @@ in
     phoneWatchdog
     phoneUpdate
     phoneStatus
+    nodBootstrap # (re)provisionne l'appareil : switch + phone-up + verification
   ];
 
   android-integration = {
