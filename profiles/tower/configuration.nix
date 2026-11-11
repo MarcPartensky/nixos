@@ -20,6 +20,8 @@ in {
     # les paquets maison apres un GC ou un flake update, et alimente la cache
     # via le post-build-hook du demon nix.
     ../../services/attic
+    # Glances web (htop web, 61208) expose en proc.marcpartensky.com.
+    ../../services/glances
     # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
     # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
     ../../services/ygg-mesh
