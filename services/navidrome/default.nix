@@ -54,14 +54,28 @@
   # SSO Pangolin : Zitadel est IdP global de Pangolin, le login de l'UI web passe
   # par Zitadel, et badger injecte Remote-User que Navidrome lit via ExtAuth
   # (cf. settings ci-dessus), donc pas de second login dans l'app.
-  # Les clients Subsonic (Feishin, apps mobiles) ne suivent pas un redirect
-  # navigateur : /rest/* et /share/* sont sortis du gate par des règles ACCEPT
-  # côté Pangolin (ressource 62, applyRules), ils restent en Basic auth.
+  # Les clients Subsonic (Feishin, apps mobiles, subtracks) ne suivent pas un
+  # redirect navigateur : /rest/* et /share/* sortent du gate par des regles
+  # `allow` DECLAREES ICI (et pas posees a la main dans Pangolin : chaque
+  # application du blueprint recree la ressource et efface ses regles, ce qui
+  # remet /rest/* derriere le SSO et casse tous les clients).
   services.newt.blueprint.proxy-resources.navidrome = {
     name = "navidrome";
     protocol = "http";
     full-domain = "navidrome.marcpartensky.com";
     auth.sso-enabled = true;
+    rules = [
+      {
+        action = "allow";
+        match = "path";
+        value = "rest/*";
+      }
+      {
+        action = "allow";
+        match = "path";
+        value = "share/*";
+      }
+    ];
     targets = [
       {
         hostname = "127.0.0.1";
