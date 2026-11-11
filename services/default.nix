@@ -75,6 +75,9 @@
     # Garage : S3 pour les artifacts de build (remplace rustfs, retire pour son
     # CPU au repos) + MCP S3 cote hermes.
     ./garage
+    # Photos du telephone (camera, WhatsApp, Messenger) : arborescence sur le
+    # dataset media + miroir S3 dans Garage, un bucket par source.
+    ./photos
     ./anki-sync-server
     ./anki-mcp
     ./mac-mcp
