@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs, ... }:
 
 # Accès SSH de hermes vers le téléphone (modèle tmate : le tel sort vers le VPS
 # `rack`, aucun port ouvert, aucun tiers, pas d'app VPN en plus).
