@@ -73,6 +73,9 @@
     ./openrouter-mcp
     ./reactive-resume
     ./open-notebook
+    # Shlink : raccourcisseur d'URL (s.marcpartensky.com) + son MCP hermes.
+    ./shlink
+    ./shlink-mcp
     # Garage : S3 pour les artifacts de build (remplace rustfs, retire pour son
     # CPU au repos) + MCP S3 cote hermes.
     ./garage

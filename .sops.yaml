@@ -109,6 +109,11 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  # Shlink (services/shlink) : mot de passe Postgres + clé d'API initiale.
+  - path_regex: secrets/shlink\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/gitea\.yml$
     key_groups:
       - age:
