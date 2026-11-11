@@ -614,6 +614,20 @@ in {
       };
     };
 
+    # --- MCP phonerep : score de reputation de NUMERO DE TELEPHONE agrege ------
+    # Meme convention que iprep (risque 0-100 par source + moyenne, 0 = propre).
+    # Sources sans cle : veriastra (spam score + plaintes FTC, validite et
+    # operateur), spamcalls, RoboKiller, shouldianswer, Nomorobo,
+    # 800notes/whocallsme. phonenumbers (paquet nix) donne la normalisation
+    # E.164 et le type de ligne hors ligne. VERIASTRA_API_KEY et IPQS_API_KEY
+    # sont optionnelles : sans cle ces sources sont ignorees et signalees.
+    # tellows et la page gratuite IPQS restent a lire dans un vrai navigateur.
+    services.hermes-agent.mcpServers.phonerep = {
+      command = "${pkgs.python3.withPackages (p: [ p.phonenumbers ])}/bin/python3";
+      args = [ "/var/lib/hermes/workspace/phonerep-mcp/server.py" ];
+      timeout = 180;
+    };
+
     # --- MCP Pangolin : API d'intégration self-hosted ---
     # L'API v1 (clé Bearer, clé "hermes" de la table apiKeys du dashboard) est
     # activée par le flag enable_integration_api de services/pangolin et
