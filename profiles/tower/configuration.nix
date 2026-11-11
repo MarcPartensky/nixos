@@ -31,9 +31,6 @@ in {
     # Dashboard des nœuds du tailnet (mesh.marcpartensky.com, SSO Pangolin ;
     # http://100.64.0.3:9140 depuis le tailnet). Lit `tailscale status --json`.
     ../../services/mesh-dashboard
-    # Agents invités (anna, yves) : tower uniquement, les homes et les
-    # identifiants vivent sous /var/lib/hermes/guests (absents ailleurs).
-    ../../services/hermes-guests
     # Télémétrie CPU par process (atop 10 s + atop-peaks) : tower uniquement,
     # c'est ici que les builds et les sessions Hermes se disputent le CPU.
     ../../services/atop
