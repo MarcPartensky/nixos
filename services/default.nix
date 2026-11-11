@@ -5,6 +5,7 @@
 }: {
   imports = [
     ./nextcloud
+    ./cpu-priority
     ./postgres
     ./vaultwarden
     ./newt
