@@ -79,6 +79,9 @@
     # Partage de fichiers par lien court : bucket public Garage exposé en
     # files.marcpartensky.com + MCP `share` (S3 -> Shlink -> façade x.gd).
     ./share-mcp
+    # Raccourcisseurs publics anonymes a domaine 4 car (x.gd, v.gd, t.tl) :
+    # MCP hermes "shorturl", sans compte ni secret.
+    ./shorturl-mcp
     # Garage : S3 pour les artifacts de build (remplace rustfs, retire pour son
     # CPU au repos) + MCP S3 cote hermes.
     ./garage
