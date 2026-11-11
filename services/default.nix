@@ -69,6 +69,9 @@
     ./gitea-mcp
     ./openrouter-mcp
     ./reactive-resume
+    # Garage : S3 pour les artifacts de build (remplace rustfs, retire pour son
+    # CPU au repos) + MCP S3 cote hermes.
+    ./garage
     ./anki-sync-server
     ./anki-mcp
     ./mac-mcp
