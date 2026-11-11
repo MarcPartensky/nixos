@@ -548,6 +548,33 @@ in {
       timeout = 60;
     };
 
+    # --- MCP Hinge : pilotage de l'app sur le telephone de marc -----------------
+    # Le telephone fait tourner android-remote-control-mcp sur son 127.0.0.1:8080.
+    # On l'atteint par le sshd du tel (maintenu par phone-up/watchdog cote tel).
+    # Le forward est un service ici, jamais un `ssh -N -L` de session : il survit
+    # aux deconnexions et redemarre seul. Cote client, hinge_mcp.py parle stdio.
+    systemd.services.phone-mcp-tunnel = {
+      description = "Forward loopback vers le MCP du telephone (ssh -L 18080)";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      serviceConfig = {
+        User = "hermes";
+        Group = "users";
+        Restart = "always";
+        RestartSec = 10;
+        ExecStart = "${pkgs.openssh}/bin/ssh -N -T -o ExitOnForwardFailure=yes "
+          + "-o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes "
+          + "-L 127.0.0.1:18080:127.0.0.1:8080 phone";
+      };
+    };
+
+    services.hermes-agent.mcpServers.hinge = {
+      command = "${pkgs.python3}/bin/python3";
+      args = [ "/var/lib/hermes/workspace/hinge-re/hinge_mcp.py" ];
+      timeout = 300;
+    };
+
     # --- MCP Pangolin : API d'intégration self-hosted ---
     # L'API v1 (clé Bearer, clé "hermes" de la table apiKeys du dashboard) est
     # activée par le flag enable_integration_api de services/pangolin et
