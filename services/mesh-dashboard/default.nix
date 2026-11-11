@@ -16,6 +16,22 @@
 { config, lib, pkgs, ... }:
 let
   port = 9140;
+
+  # Jeton d'application Gotify pour les alertes de transition (nœud hors ligne
+  # / de retour). Le jeton vit dans son propre fichier sops, chiffré vers tower
+  # seulement, et il est OPTIONNEL : tant que le fichier n'existe pas, le module
+  # se déploie quand même (le dashboard mesure, mais ne notifie pas, et l'affiche
+  # dans l'en-tête « Gotify : jeton manquant »).
+  #
+  # Créer le jeton : Gotify (https://gotify.marcpartensky.com, connexion OIDC)
+  # -> Apps -> Create Application -> nom « mesh-dashboard », puis :
+  #   printf 'mesh_token: %s\n' '<jeton>' | sops --encrypt \
+  #     --filename-override secrets/gotify-mesh.yml --input-type yaml \
+  #     /dev/stdin > secrets/gotify-mesh.yml
+  # (règle `path_regex: secrets/gotify-mesh\.yml$` dans .sops.yaml)
+  gotifySecretFile = ../../secrets/gotify-mesh.yml;
+  gotifyTokenAvailable = builtins.pathExists gotifySecretFile;
+  gotifyTokenPath = "/run/secrets/gotify/mesh_token";
 in
 {
   users.users.mesh-dash = {
@@ -24,6 +40,16 @@ in
     description = "Dashboard du tailnet (lecture de tailscaled)";
   };
   users.groups.mesh-dash = { };
+
+  sops.secrets = lib.mkIf gotifyTokenAvailable {
+    "gotify/mesh_token" = {
+      sopsFile = gotifySecretFile;
+      key = "mesh_token";
+      owner = "mesh-dash";
+      group = "mesh-dash";
+      mode = "0400";
+    };
+  };
 
   systemd.services.mesh-dashboard = {
     description = "Dashboard des nœuds du tailnet (headscale)";
@@ -42,7 +68,21 @@ in
       Environment = [
         "MESH_DASHBOARD_HOST=0.0.0.0"
         "MESH_DASHBOARD_PORT=${toString port}"
-      ];
+        "MESH_DASHBOARD_STATE=/var/lib/mesh-dashboard/state.json"
+        # Gotify tourne sur tower en loopback : aucune sortie réseau nécessaire.
+        "MESH_DASHBOARD_GOTIFY_URL=http://127.0.0.1:8070"
+        # Appareils à enrôler dans le tailnet : affichés « en attente » tant
+        # qu'ils ne sont pas vus par le contrôleur. `phone` = Xiaomi de marc
+        # (app Tailscale Android, serveur alternatif headscale), `tablet` =
+        # tablette Nix-on-Droid à venir.
+        "MESH_DASHBOARD_EXPECTED=phone,tablet"
+      ]
+      ++ lib.optional gotifyTokenAvailable "MESH_DASHBOARD_GOTIFY_TOKEN_FILE=${gotifyTokenPath}";
+
+      # État persistant : « vu en ligne pour la dernière fois à » survit ainsi à
+      # un redémarrage du service (le dossier est créé et chowné par systemd).
+      StateDirectory = "mesh-dashboard";
+      StateDirectoryMode = "0750";
       ExecStart = "${pkgs.python3}/bin/python3 ${./mesh_dashboard.py}";
       Restart = "always";
       RestartSec = 3;
@@ -65,8 +105,9 @@ in
       AmbientCapabilities = "";
       RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
       # Le socket du démon tailscale (srw-rw-rw-, cf. tailscaled) : lecture et
-      # connexion, rien d'autre n'est écrit sur le disque.
-      ReadWritePaths = [ "/var/run/tailscale" ];
+      # connexion ; l'état persistant du dashboard (StateDirectory) est le seul
+      # autre chemin inscriptible.
+      ReadWritePaths = [ "/var/run/tailscale" "/var/lib/mesh-dashboard" ];
     };
   };
 
