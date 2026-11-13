@@ -1,58 +1,59 @@
 # services/backup-pqbox : sauvegardes chiffrées de tower, en trois étages.
 #
-#   pqbox        : outil Go (ML-KEM-768 + X25519, HKDF-SHA256, AES-256-GCM,
-#                  clé privée scellée par PBKDF2 + mot de passe de marc).
-#   pqbackup.sh  : construit l'archive d'un étage et la pousse sur rack.
+#   pqbox.py  : outil unique, chiffrement + orchestration + transport.
+#               Chiffrement : cryptography (ML-KEM-768 FIPS 203 + X25519 hybride,
+#                             HKDF-SHA256, AES-256-GCM par chunks de 1 Mio,
+#                             PBKDF2 1e6 pour la clé privée scellée par le mot de
+#                             passe de marc).
+#               Transport   : paramiko (SFTP + exec, lecture de ~/.ssh/config,
+#                             ProxyJump, retries, upload atomique). Aucun
+#                             appel à ssh/scp/rsync.
 #
 # Étage    contenu                                            cadence    rétention
-#   coeur  bases vivantes + état Hermes léger (config, skills, 03:30/jour 30
-#          sessions, profils)
+#   coeur  bases vivantes + état Hermes léger (config, skills, 03:30/jour 30 rack
+#          sessions, profils)                                             7 miroir
 #   volume winnie, matrix-synapse, state.db, pièces jointes    dim 04:30  3
 #   mortes bases abandonnées, à garder avant de les dropper    manuel     2
 #
+# Deux destinations, sur deux machines distinctes de tower :
+#   rack : VPS, /var/backups/pqbox         (toujours, échec = échec du service)
+#   mac  : Mac de marc, ~/backups-pqbox    (miroir best-effort, nœud différent)
+#
 # La clé publique vit dans ce dossier (backup.pub). La clé privée scellée est
 # écrite par marc lui-même (setup-key.sh) dans ~/.config/pqbox/backup.key : ni
-# l'agent ni la machine hôte ne peuvent la lire. Sans son mot de passe, les
-# archives sont indéchiffrables, y compris pour root sur tower comme sur rack.
+# l'agent ni les hôtes ne peuvent la lire. Sans son mot de passe, les archives
+# sont indéchiffrables, y compris pour root sur tower comme sur rack.
 { config, lib, pkgs, ... }:
 
 let
   cfg = config.services.backup-pqbox;
 
-  pqbox = pkgs.buildGoModule {
-    pname = "pqbox";
-    version = "1.0.0";
-    src = ./.;
-    vendorHash = null;
-    env.CGO_ENABLED = "0";
-    ldflags = [ "-s" "-w" ];
-    meta = {
-      description = "Dump chiffre vers une cle publique post-quantique (ML-KEM-768)";
-      mainProgram = "pqbox";
-    };
-  };
+  pythonEnv = pkgs.python3.withPackages (ps: [ ps.cryptography ps.paramiko ]);
 
-  script = pkgs.writeShellScript "backup-pqbox" ''
-    set -eu
-    export PUB=${./backup.pub}
-    export PQBOX=${pqbox}/bin/pqbox
-    export OUTDIR=${cfg.directory}
-    export RACK=${cfg.rack}
-    export KEEP_COEUR=${toString cfg.keepCoeur}
-    export KEEP_VOLUME=${toString cfg.keepVolume}
-    export KEEP_MORTES=${toString cfg.keepMortes}
-    ${lib.optionalString cfg.noRack "export NO_RACK=1"}
-    exec ${pkgs.bash}/bin/bash ${./pqbackup.sh} "$1"
+  # un seul outil, pour systemd comme pour l'agent à la main
+  pqbox = pkgs.writeShellScriptBin "pqbox" ''
+    exec ${pythonEnv}/bin/python3 ${./pqbox.py} "$@"
   '';
 
   mkService = name: extra: {
     description = "Sauvegarde chiffree pqbox (${name}) vers la cle publique de marc";
-    path = with pkgs; [ bash coreutils inetutils gnutar zstd postgresql openssh ];
+    # pq_dump/pg_dump, zstd et coreutils : le reste (tar, sha256) est en Python
+    path = with pkgs; [ coreutils zstd postgresql ];
+    environment = {
+      PUB = "${./backup.pub}";
+      OUTDIR = cfg.directory;
+      RACK = cfg.rack;
+      MIRROR = cfg.mirror;
+      KEEP_COEUR = toString cfg.keepCoeur;
+      KEEP_VOLUME = toString cfg.keepVolume;
+      KEEP_MORTES = toString cfg.keepMortes;
+      KEEP_MIRROR = toString cfg.keepMirror;
+    } // lib.optionalAttrs cfg.mirrorVolume { MIRROR_VOLUME = "1"; };
     serviceConfig = {
       Type = "oneshot";
       User = "hermes";
       Group = "hermes";
-      ExecStart = "${script} ${name}";
+      ExecStart = "${pqbox}/bin/pqbox backup ${name}";
       # un dump ne doit pas disputer le CPU a marc
       Nice = 10;
       IOSchedulingClass = "idle";
@@ -72,16 +73,26 @@ in
     rack = lib.mkOption {
       type = lib.types.str;
       default = "rack:/var/backups/pqbox";
-      description = "Destination distante des archives (scp).";
+      description = "Destination principale : alias ssh et chemin.";
     };
-    noRack = lib.mkOption {
+    mirror = lib.mkOption {
+      type = lib.types.str;
+      default = "mac:backups-pqbox";
+      description = ''
+        Second dépôt, sur une AUTRE machine que tower et que le VPS. Copie
+        best-effort : une machine éteinte ne fait pas échouer la sauvegarde.
+        Chaîne vide = pas de miroir.
+      '';
+    };
+    mirrorVolume = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Garder les archives en local seulement.";
+      description = "Miroiter aussi l'étage volume (775 Mo) ; le Mac n'a que ~6 Go libres.";
     };
-    keepCoeur = lib.mkOption { type = lib.types.int; default = 30; description = "Archives coeur conservées."; };
-    keepVolume = lib.mkOption { type = lib.types.int; default = 3; description = "Archives volume conservées."; };
-    keepMortes = lib.mkOption { type = lib.types.int; default = 2; description = "Archives mortes conservées."; };
+    keepCoeur = lib.mkOption { type = lib.types.int; default = 30; description = "Archives coeur conservées sur rack."; };
+    keepVolume = lib.mkOption { type = lib.types.int; default = 3; description = "Archives volume conservées sur rack."; };
+    keepMortes = lib.mkOption { type = lib.types.int; default = 2; description = "Archives mortes conservées sur rack."; };
+    keepMirror = lib.mkOption { type = lib.types.int; default = 7; description = "Archives conservées sur le miroir."; };
     coeurAt = lib.mkOption {
       type = lib.types.str;
       default = "*-*-* 03:30:00";
@@ -100,7 +111,7 @@ in
       backup-pqbox-volume = mkService "volume" { startAt = cfg.volumeAt; };
       # L'étage mortes reste manuel : il sert une fois, avant de dropper les
       # bases abandonnées. `systemctl start backup-pqbox-mortes` ou
-      # `./pqbackup.sh mortes`.
+      # `pqbox backup mortes`.
       backup-pqbox-mortes = mkService "mortes" { };
     };
   };

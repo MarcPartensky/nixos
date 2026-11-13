@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pqbox: post-quantum encrypted backups for a one-person homelab</title>
+<style>
+  :root {
+    --base: #1e1e2e;
+    --mantle: #181825;
+    --crust: #11111b;
+    --surface0: #313244;
+    --surface1: #45475a;
+    --text: #cdd6f4;
+    --subtext: #a6adc8;
+    --overlay: #6c7086;
+    --lavender: #b4befe;
+    --blue: #89b4fa;
+    --green: #a6e3a1;
+    --yellow: #f9e2af;
+    --red: #f38ba8;
+    --mauve: #cba6f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--base);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    font-size: 16px;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 56px 28px 96px; }
+  header { border-bottom: 1px solid var(--surface0); padding-bottom: 28px; margin-bottom: 36px; }
+  .kicker { color: var(--lavender); text-transform: uppercase; letter-spacing: .14em; font-size: 12px; font-weight: 600; }
+  h1 { font-size: 34px; line-height: 1.2; margin: 10px 0 12px; font-weight: 650; }
+  .lede { color: var(--subtext); font-size: 17px; margin: 0; }
+  h2 { font-size: 22px; margin: 48px 0 14px; color: var(--lavender); font-weight: 620; }
+  h2 .num { color: var(--overlay); font-variant-numeric: tabular-nums; margin-right: 10px; }
+  h3 { font-size: 17px; margin: 28px 0 8px; color: var(--blue); font-weight: 600; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0 10px 22px; padding: 0; }
+  li { margin: 6px 0; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    background: var(--mantle);
+    border: 1px solid var(--surface0);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  pre {
+    background: var(--crust);
+    border: 1px solid var(--surface0);
+    border-radius: 8px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--surface0); vertical-align: top; }
+  th { color: var(--subtext); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: var(--mantle); }
+  .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 26px 0 8px; }
+  .fig { background: var(--mantle); border: 1px solid var(--surface0); border-radius: 10px; padding: 14px 16px; }
+  .fig .v { font-size: 22px; font-weight: 650; color: var(--lavender); font-variant-numeric: tabular-nums; }
+  .fig .k { font-size: 12px; color: var(--subtext); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+  .note {
+    border-left: 3px solid var(--yellow);
+    background: var(--mantle);
+    padding: 12px 16px;
+    margin: 18px 0;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    color: var(--subtext);
+  }
+  .note strong { color: var(--yellow); }
+  .ok { color: var(--green); }
+  .warn { color: var(--yellow); }
+  .bad { color: var(--red); }
+  footer { margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--surface0); color: var(--overlay); font-size: 13px; }
+  footer code { font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">Backup system &middot; design and operations</div>
+  <h1>pqbox: post-quantum encrypted backups for a one-person homelab</h1>
+  <p class="lede">Three tiers, two destinations on three machines, one key pair that the automation can use to write and never to read. Built and verified on a single NixOS host with 64 PostgreSQL databases.</p>
+</header>
+
+<div class="figures">
+  <div class="fig"><div class="v">64</div><div class="k">databases covered</div></div>
+  <div class="fig"><div class="v">4.98 GB</div><div class="k">logical data, raw</div></div>
+  <div class="fig"><div class="v">48 MB</div><div class="k">daily core tier</div></div>
+  <div class="fig"><div class="v">~4 min</div><div class="k">daily cycle, wall clock</div></div>
+  <div class="fig"><div class="v">2</div><div class="k">remote destinations</div></div>
+  <div class="fig"><div class="v">ML-KEM-768</div><div class="k">plus AES-256-GCM</div></div>
+</div>
+
+<h2><span class="num">1</span>Starting point</h2>
+<p>There was no working backup. Two things existed and both were misleading:</p>
+<ul>
+  <li>ZFS auto-snapshots (10 min, hourly, daily, weekly, monthly) on the same pool. Useful for rollback after a mistake, useless against disk loss.</li>
+  <li>A single nightly <code>pg_dump</code> of one database, written to <code>/root/backup</code> on the same pool. One database out of sixty-four.</li>
+</ul>
+<p>An earlier restic setup had been built, then lost with the rest of its config. Four snapshots survived on the VPS, but the repository password was gone with the deleted secret file, which made them unreadable. That failure shaped the design: a backup system whose key can disappear with a directory is not a backup system.</p>
+
+<h2><span class="num">2</span>Goals</h2>
+<ol>
+  <li><strong>Write-only for the machine.</strong> The agent and the host may create archives, and must not be able to open them. Encryption keyed to a public key, private key held only by the human, sealed with a passphrase he types once and never shares.</li>
+  <li><strong>Quantum-resistant by construction.</strong> No RSA, no bare ECC in the data path. A passive attacker who archives ciphertext today must gain nothing when a large quantum computer exists.</li>
+  <li><strong>Cheap enough to leave running.</strong> A daily cycle that finishes in minutes, keeps CPU out of the way of interactive work, and does not fill a 46 GB VPS.</li>
+  <li><strong>Honest about scope.</strong> Say what is covered, what is not, and what cannot be recovered.</li>
+</ol>
+
+<h2><span class="num">3</span>Encryption</h2>
+<p>Each archive is an envelope: a fresh random content key per file, wrapped to a long-term hybrid KEM public key.</p>
+<table>
+  <thead><tr><th>Layer</th><th>Primitive</th><th>Why this one</th></tr></thead>
+  <tbody>
+    <tr><td>Key establishment</td><td>ML-KEM-768 (FIPS 203) + X25519, mixed with HKDF-SHA256</td><td>Shor breaks X25519, so it cannot carry the secret alone; ML-KEM carries it against quantum attackers. Mixing both means an attacker must break both.</td></tr>
+    <tr><td>Data</td><td>AES-256-GCM, 1 MiB chunks, counter nonces, per-chunk AAD</td><td>Grover only halves the margin, leaving 128 bits; chunking keeps memory flat and makes truncation detectable.</td></tr>
+    <tr><td>Private key at rest</td><td>PBKDF2-HMAC-SHA256, 1,000,000 iterations, AES-256-GCM wrap</td><td>The key file alone is inert. The passphrase is the only thing that opens it.</td></tr>
+  </tbody>
+</table>
+<h3>What this design buys</h3>
+<ul>
+  <li>Hosting providers, a stolen VPS, or an attacker with unlimited storage see blobs and nothing else. No asymmetric secret exists on any server, so there is no key to steal from the remote side.</li>
+  <li>Harvest-now-decrypt-later has no target in the data path: the only long-term public key is a KEM key, and the session secret is ephemeral on both sides.</li>
+  <li>Losing the passphrase loses the archives, by design. There is no recovery path, no escrow, no reset.</li>
+</ul>
+<div class="note"><strong>Honest limits.</strong> No cipher is proven unbreakable. ML-KEM rests on the assumed hardness of Module-LWE; NIST standardized it in 2024 as the best available option. The practical weak link is not the math, it is passphrase strength: a million PBKDF2 iterations costs an offline attacker about a second per guess, which is irrelevant against six diceware words and fatal against a ten-character human password.</div>
+
+<h2><span class="num">4</span>Three tiers, because not all data deserves the same treatment</h2>
+<p>Measured on the real dump: the archive was 58% one abandoned application's scraped HTML, 27% agent state, 10% the chat server, and 6% everything that actually matters day to day. Compressing all of it at maximum effort would have paid for nothing.</p>
+<table>
+  <thead><tr><th>Tier</th><th>Contents</th><th>zstd</th><th class="num">Archive</th><th>Cadence</th><th class="num">Retention</th></tr></thead>
+  <tbody>
+    <tr><td><strong class="ok">core</strong></td><td>15 live databases (cloud storage, identity provider, source control, queues, agent memory) plus light Hermes state: config, credentials, cron, skills, sessions, profiles</td><td><code>-19 --long=27</code></td><td class="num">48 MB</td><td>daily 03:30</td><td class="num">30 rack / 7 mirror</td></tr>
+    <tr><td><strong class="warn">volume</strong></td><td>the abandoned scraped dataset, the chat server database, agent <code>state.db</code>, chat attachments</td><td><code>-3</code></td><td class="num">775 MB</td><td>Sunday 04:30</td><td class="num">3</td></tr>
+    <tr><td><strong class="bad">dead</strong></td><td>31 abandoned databases, archived once so they can be dropped afterwards</td><td><code>-12</code></td><td class="num">51 MB</td><td>manual, once</td><td class="num">2</td></tr>
+  </tbody>
+</table>
+<p>Compression level is assigned by tier, not globally: the core tier is small enough that 15 minutes of CPU to gain 40% is free at night, while the volume tier is dominated by incompressible attachments (99.7% ratio, 345 MB) where extra effort is pointless.</p>
+
+<h2><span class="num">5</span>How the snapshots accumulate</h2>
+<p>The temptation is to chase compression. The measurement says otherwise. Two dumps of the live databases taken thirty minutes apart contained <strong>2.39 million lines, of which 5,730 were new: 0.2%</strong>. The busiest database changed 674 lines out of 1.86 million. A daily dump is 95 to 99% identical to yesterday's.</p>
+<p>Three ways to exploit that, and why we picked what we picked:</p>
+<table>
+  <thead><tr><th>Option</th><th>Gain</th><th>Cost</th><th>Decision</th></tr></thead>
+  <tbody>
+    <tr><td>Content-addressed repository (restic, kopia, borg) over the dumps</td><td>10 to 100x smaller daily deltas, byte-level dedup</td><td>Needs a symmetric repository key on the machine, so the host can read everything</td><td>Rejected: breaks the write-only property</td></tr>
+    <tr><td>PostgreSQL 17 incremental base backups plus WAL archiving</td><td>True block-level incrementals, point-in-time recovery</td><td>Requires <code>summarize_wal</code>, a replication line in pg_hba, and physical-only restores pinned to the same major version</td><td>Deferred: the version has the feature, the deployment does not enable it yet</td></tr>
+    <tr><td>Tiering by value and cadence</td><td>2.6 GB raw per day becomes 48 MB per day</td><td>Three code paths, one shared implementation</td><td><strong class="ok">Chosen</strong></td></tr>
+  </tbody>
+</table>
+<p>Retention is enforced on every destination after each successful copy, so disk usage is bounded by policy rather than by luck.</p>
+
+<h2><span class="num">6</span>Transport</h2>
+<p>Early versions shelled out to <code>ssh</code> and <code>scp</code>. That is fragile by nature: it depends on a binary in PATH, on exit codes surfaced through pipes, and on remote command quoting. The transfer layer is now a library, <code>paramiko</code>, driven from Python:</p>
+<ul>
+  <li>reads <code>~/.ssh/config</code>, including <code>ProxyJump</code> chaining, so a destination behind a bastion needs no extra glue;</li>
+  <li>three attempts with backoff, keepalive, and explicit timeouts;</li>
+  <li>atomic uploads: write <code>.part-&lt;pid&gt;</code>, then rename;</li>
+  <li>verification after upload by running <code>sha256sum -c</code> on the remote side, and treating a mismatch as a hard failure on the primary destination;</li>
+  <li>the mirror destination is best effort: a laptop that is asleep at 03:30 must not fail the backup or page anyone.</li>
+</ul>
+<p>The crypto and the orchestration live in one Python file: <code>cryptography</code> for the primitives, <code>tarfile</code> for packaging, <code>zstd</code> for compression, <code>paramiko</code> for transport. No shell pipeline, no temp files left behind, and one code path for the timer and for a human running it by hand.</p>
+
+<h2><span class="num">7</span>What was actually verified</h2>
+<ul>
+  <li><strong>Round-trip at edge sizes:</strong> 0, 1, 15, 1,000, chunk&minus;1, exactly one chunk, chunk+1, and three chunks plus seven bytes.</li>
+  <li><strong>Adversarial cases:</strong> one flipped bit, a truncated file, and a wrong private key are all rejected with a chunk-level authentication error.</li>
+  <li><strong>Interoperability:</strong> an archive written by the previous Go implementation decrypts with the Python one and vice versa, so archives produced during the transition remain readable and the key pair did not need to change.</li>
+  <li><strong>Remote paths:</strong> upload, remote checksum verification and cleanup exercised against both destinations, including the one reached through a jump host.</li>
+  <li><strong>Restore, not just compression:</strong> a database section was replayed into a throwaway PostgreSQL cluster built with <code>initdb</code>, with the 87 roles restored first. Row counts matched the live database exactly: 4 applications, 5 clients, 543 messages, 1 user.</li>
+  <li><strong>Both ends of every archive:</strong> <code>sha256sum -c</code> on the host and on the VPS, four archives each.</li>
+</ul>
+
+<h2><span class="num">8</span>Operating it</h2>
+<pre><code>pqbox backup core|volume|dead|all     # build, encrypt, ship, verify, prune
+pqbox decrypt --key &lt;sealed key&gt; --in archive.pqbox --out -
+pqbox check  rack:/path              # replay remote checksums
+pqbox test-ssh rack:/path            # upload, verify, delete a probe file
+pqbox selftest                       # crypto + tamper + interop</code></pre>
+<p>Restoring a single database: decrypt the archive, decompress it, extract the section for that database, create an empty cluster, replay the roles, then <code>psql -f</code>. Restoring everything is the same dump in one pass.</p>
+<div class="note"><strong>If the passphrase is lost, the archives are lost.</strong> That is the whole point of the design and it has no workaround. The public key stays valid, so a new passphrase can be set on the same key without re-encrypting anything, but only while the old one is still known.</div>
+
+<h2><span class="num">9</span>Known gaps</h2>
+<ul>
+  <li><strong>Chat attachments are incompressible</strong> and make up 40% of the encrypted volume. They belong in a deduplicating repository or on object storage, not in a daily envelope.</li>
+  <li><strong>The volume tier has a single destination.</strong> The mirror machine only has about 6 GB free, so it receives the core tier only.</li>
+  <li><strong>No third-party copy yet.</strong> Both destinations belong to the same person, on two machines and two networks. A cheap object store would close that gap.</li>
+  <li><strong>Some state is out of reach</strong> of the backup user: cloud storage files, the password vault's attachments, and the bridges' SQLite stores live under directories that require root. They need a system-level extension, not this tool.</li>
+  <li><strong>The disk itself raised a flag during this work:</strong> the pool reported three data errors and one scratch file became unreadable. The affected file was disposable, and a fresh dump of the same database read back cleanly, but a single-disk pool cannot repair a bad block. Scrubbing is overdue.</li>
+</ul>
+
+<footer>
+  Generated from live measurements on 2026-11-11. Figures come from <code>pg_database_size()</code> across 64 databases, <code>pg_stat_wal</code> over an 11.6 hour window, per-database line-by-line comparison of two consecutive dumps, and the archive sizes actually produced and mirrored. No internal addresses, ports, hostnames or credentials appear in this document on purpose.
+</footer>
+
+</div>
+</body>
+</html>
