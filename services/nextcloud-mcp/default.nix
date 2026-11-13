@@ -16,30 +16,17 @@
 {config, ...}: let
   port = 8710;
 in {
-  virtualisation.oci-containers.containers.nextcloud-mcp = {
-    image = "ghcr.io/cbcoutinho/nextcloud-mcp-server:latest"; # épingler un tag une fois validé
-    # network=host : Nextcloud est sur 127.0.0.1:8083 (trusted_domains) ; depuis
-    # le netns du container, 127.0.0.1 ne pointe pas vers l'hôte et l'IP du
-    # bridge podman0 n'est pas dans trusted_domains (400 Nextcloud).
-    extraOptions = ["--network=host"];
-    # Pas de --enable-app : par défaut TOUTES les apps sont exposées (notes,
-    # webdav/fichiers, calendar, contacts, deck, tables, sharing, news,
-    # collectives...) — c'est ce qui donne les tools d'écriture
-    # (nc_notes_create_note, nc_webdav_write_file, etc.). Pour restreindre :
-    # répéter "--enable-app" "<app>" (cf. docs/running.md du repo upstream).
-    cmd = ["--host" "127.0.0.1" "--port" (toString port)];
-    environment = {
-      # Nextcloud tourne sur tower (nginx :8083) ; l'URL publique passe par
-      # Pangolin (SSO) qui redirige status.php -> on tape directement le local.
-      NEXTCLOUD_HOST = "http://127.0.0.1:8083";
-      MCP_DEPLOYMENT_MODE = "single_user_basic";
-    };
-    environmentFiles = [config.sops.secrets."nextcloud_mcp_env".path];
-  };
+  # Conteneur sorti de la conf hote : deploy/containers.nix (entree
+  # `nextcloud-mcp`, migrated = true), quadlet podman
+  # `nextcloud-mcp.service`. network=host et le cmd --host 127.0.0.1 y sont
+  # repris a l'identique ; le fichier d'environnement reste le secret sops
+  # ci-dessous, lu par le quadlet (/run/secrets/nextcloud_mcp_env).
+  # Reprise : `just deploy nextcloud-mcp --takeover` AVANT le switch qui
+  # retire ce bloc.
 
-  sops.secrets."nextcloud_mcp_env".restartUnits = [
-    "${config.virtualisation.oci-containers.backend}-nextcloud-mcp.service"
-  ];
+  # Le secret reste declare ici : c'est ce qui le rend disponible pour le
+  # quadlet. restartUnits vise le nom du quadlet (plus de podman-*.service).
+  sops.secrets."nextcloud_mcp_env".restartUnits = ["nextcloud-mcp.service"];
 
   # Hermes : transport HTTP vers le container loopback.
   # Les tools apparaissent préfixés mcp_nextcloud_* au démarrage d'hermes.

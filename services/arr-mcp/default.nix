@@ -4,22 +4,11 @@
 { config, ... }: let
   port = 6060;
 in {
-  virtualisation.oci-containers.containers.arr-mcp = {
-    image = "ghcr.io/bardesss/arr-mcp:latest";
-    # Port publié sur la loopback uniquement : l'accès LAN passe par le
-    # redirecteur filtré de services/mcp-lan-access, jamais par le container.
-    # (Avant, "6060:6060" publiait sur 0.0.0.0 et seul le firewall retenait
-    # l'instance non claimée.)
-    ports = [ "127.0.0.1:${toString port}:6060" ];
-    # Le serveur arr-mcp doit atteindre Radarr (8086), Sonarr (8006),
-    # Jellyfin (8096) et Prowlarr (8087) en loopback.
-    environment = {
-      # Configuration minimale : URL et clé API seront ajoutées dans
-      # l'interface web du conteneur (http://tower:6060) par marc.
-      # Pas de clé API dans le dépôt — l'utilisateur les configure
-      # dans le dashboard du conteneur après installation.
-    };
-  };
+  # Conteneur sorti de la conf hote : deploy/containers.nix (entree `arr-mcp`,
+  # migrated = true), quadlet podman `arr-mcp.service`. Sa configuration (URL
+  # et cles API des *arr) vit dans le dashboard du conteneur, pas dans nix.
+  # Reprise : `just deploy arr-mcp --takeover` AVANT le switch qui retire ce
+  # bloc.
 
   # Hermes : connexion au serveur MCP arr-mcp (transport HTTP). L'URL passe par
   # le redirecteur LAN de services/mcp-lan-access pour être cliquable depuis

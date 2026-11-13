@@ -21,34 +21,16 @@
   pkgs,
   ...
 }: {
-  virtualisation.oci-containers.backend = "podman";
-
-  virtualisation.oci-containers.containers.aonsoku = {
-    image = "ghcr.io/victoralvesf/aonsoku:latest";
-    autoStart = true;
-    # Port publie sur la loopback uniquement : seul newt joint l'app, rien
-    # n'est ouvert au LAN (pas de port dans networking.firewall).
-    extraOptions = [
-      "--publish=127.0.0.1:8099:8080"
-      "--pull=newer"
-      "--health-cmd=wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"
-      "--health-interval=30s"
-      "--health-timeout=10s"
-      "--health-retries=3"
-    ];
-    environment = {
-      # Serveur Subsonic prerenseigne et champ serveur masque : il ne reste
-      # que user + mot de passe a saisir.
-      SERVER_URL = "https://navidrome.marcpartensky.com";
-      HIDE_SERVER = "true";
-      SERVER_TYPE = "navidrome";
-      # Theme par defaut de marc ; APP_HIDE_THEMES reste false pour qu'il
-      # puisse changer dans l'UI.
-      APP_THEME = "catppuccin-mocha";
-      # Pas d'auto-login : APP_USER/APP_PASSWORD exigeraient le mot de passe
-      # en clair dans le store nix. A saisir une fois, le navigateur le garde.
-    };
-  };
+  # Le conteneur n'est plus declare ici : il est sorti de la conf hote dans
+  # deploy/containers.nix (entree `aonsoku`, migrated = true) et tourne en
+  # quadlet podman (`aonsoku.service`, fichier
+  # /etc/containers/systemd/aonsoku.container pose par deploy/render.sh).
+  # Changer l'image, le port ou une variable ne coute donc plus d'eval ni de
+  # generation NixOS. Reprise (ordre documente dans deploy/containers.nix) :
+  # `just deploy aonsoku --takeover` AVANT le switch qui retire ce bloc,
+  # sinon le conteneur est supprime sans remplacant.
+  #
+  # Ce qui reste ici, et doit rester : la route newt/Pangolin ci-dessous.
 
   # Exposition publique : music.marcpartensky.com -> 127.0.0.1:8099, avec le
   # SSO Pangolin (Zitadel) comme les autres UIs.
