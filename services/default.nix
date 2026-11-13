@@ -7,6 +7,19 @@
     ./nextcloud
     ./cpu-priority
     ./postgres
+    # Labo de hook navigateur (BeEF) : console d'operateur sur
+    # beef.marcpartensky.com (SSO Pangolin), leurre diffuse par un tunnel rapide
+    # Cloudflare. Le module porte les trois unites (filtre, tunnel, beef) et la
+    # ressource Pangolin. Voir services/beef/default.nix.
+    ./beef
+    # Les serveurs MCP maison (beef, shlink, shorturl, meetup, mac, roku...) ne
+    # sont PAS importes ici : leur code est monte par modules/nixos/mcp-host
+    # depuis les fichiers .py, et leur binaire reste disponible en sortie de
+    # flake (`nix build .#shlink-mcp`). Les garder en module ne leur ajoutait
+    # qu'un `environment.systemPackages`, donc une evaluation de paquet a
+    # chaque eval de l'hote pour un binaire que personne n'appelait plus.
+    # Un MCP maison encore en stdio (arena-elo, username-recon, share, tts)
+    # garde son module : c'est sa declaration mcpServers qui le rend vivant.
     # Sauvegardes chiffrées de tower (pqbox : ML-KEM-768) : trois étages,
     # timers coeur (quotidien) et volume (hebdomadaire). Détail dans le module.
     ./backup-pqbox
@@ -36,6 +49,12 @@
     ./navidrome
     ./aonsoku.nix
     ./jellyfin
+    # Agregateur de flux camera (tablette, tel...) et page web a plusieurs flux
+    # sur cam.marcpartensky.com. Voir services/go2rtc/default.nix.
+    ./go2rtc
+    # Comparaison de plateformes de documentation (5 générateurs statiques +
+    # Wiki.js 3 sur wiki.marcpartensky.com, OIDC Zitadel).
+    ./docs-compare
     ./audiobookshelf
     ./media
     ./arr-mcp
@@ -46,6 +65,10 @@
     ./hermes-webui
     ./hermes-dashboard
     ./hermes-mobile
+    # Terminal web REEL sur terminal.marcpartensky.com (ttyd + session zellij
+    # persistante, SSO Pangolin). C'est ce domaine qui servait avant le panneau
+    # d'admin Hermes, deplace sur dash.marcpartensky.com.
+    ./terminal
     ./discord-bot
     # ./discord-hermes-bridge  # inutile : un seul gateway par hote, celui du
     # profil default sert deja le profil discord-bridge (l'unite faisait
@@ -67,14 +90,18 @@
     ./gotify-matrix
     ./zitadel
     # ./zitadel-mcp  # FIXME: secret zitadel_mcp_env manquant dans zitadel.yml
-    ./roku
+    # ./roku
+    # Module mort : son unique contenu etait `mcpServers.roku` en stdio, et
+    # services/roku/ est en lecture seule pour l'agent (mask r--), donc il n'a
+    # pas pu etre vide. Le serveur vit maintenant dans services/roku-mcp.py,
+    # monte par modules/nixos/mcp-host. A supprimer le jour ou l'ACL redevient
+    # inscriptible ; l'import est commente pour qu'il ne revienne pas.
     ./codeberg-mcp
     ./ibkr-mcp
     # ./vaultwarden-mcp  # prêt et testé (binaire + wrapper + secret) : à
     # décommenter lors d'un rebuild où couper hermes-agent ne gêne pas, car
     # ajouter un mcpServer régénère hermes-config.yaml et redémarre le gateway.
     # En attendant, l'accès passe par ~/.hermes/scripts/vault-get.sh (CLI bw).
-    ./meetup-mcp
     ./gitea
     ./gitea-mcp
     ./openrouter-mcp
@@ -82,13 +109,12 @@
     ./open-notebook
     # Shlink : raccourcisseur d'URL (s.marcpartensky.com) + son MCP hermes.
     ./shlink
-    ./shlink-mcp
+    # Console d'admin de Shlink (PWA officielle) sur shlink.marcpartensky.com,
+    # derriere le SSO Pangolin.
+    ./shlink-web-client
     # Partage de fichiers par lien court : bucket public Garage exposé en
     # files.marcpartensky.com + MCP `share` (S3 -> Shlink -> façade x.gd).
     ./share-mcp
-    # Raccourcisseurs publics anonymes a domaine 4 car (x.gd, v.gd, t.tl) :
-    # MCP hermes "shorturl", sans compte ni secret.
-    ./shorturl-mcp
     # Classements Elo d'Arena (ex-LMArena) sans auth, lus depuis le dataset
     # public lmarena-ai/leaderboard-dataset (CC BY 4.0). MCP hermes "arena-elo".
     ./arena-elo-mcp
@@ -100,9 +126,22 @@
     ./photos
     ./anki-sync-server
     ./anki-mcp
-    ./mac-mcp
+    # Winnie n'est PLUS dans la conf hote (decision marc du 13/11) : le module
+    # lisait le flake du projet avec `builtins.getFlake`, ce qui forcait Nix a
+    # relire et hacher les 16 Go de son arbre de travail (11,5 Go de*/target/,
+    # 72 570 fichiers) a CHAQUE evaluation : eval de tower a 863 s mesuree.
+    # C'est aussi ce getFlake, et lui seul, qui rendait --impure obligatoire.
+    #
+    # Attention : un switch qui part de cet etat RETIRE les unites winnie
+    # (backend, front, dev, ingest, schema, bucket, jwt-secret) et son
+    # provisionnement Postgres. Winnie doit donc etre redeploye hors de la conf
+    # hote AVANT le prochain switch (meme schema que deploy/containers.nix).
+    # ./winnie
     ./wise-mcp
     ./bank-mcp
+    # Enumeration de comptes par username / email (sherlock + maigret +
+    # socialscan) avec controle negatif : MCP hermes "username-recon".
+    ./sherlock-mcp
     ./llm-steamdeck
     ./android-capture
     # ./kanidm

@@ -98,6 +98,20 @@ in {
   # tower joint par `ssh -J rack -p 2223 marc@localhost`.
   services.openssh.enable = true;
 
+  # --- Tailscale (mesh headscale, contrôleur sur le VPS anywhere) ---------
+  # Ne rien confurer côté DNS : headscale pousse à tous les nœuds du tailnet
+  # le résolveur AdGuard (services/adguard, sur anywhere et tower), donc le
+  # Mac est filtré comme les autres appareils et suit les changements de
+  # résolveur sans rebuild. overrideLocalDns = le Mac accepte ce DNS poussé.
+  # Premier enrôlement (une fois) : `tailscale up --login-server
+  # https://headscale.marcpartensky.com --auth-key hskey-…`, puis l'état est
+  # persistant ; renommer côté contrôleur avec `headscale nodes rename`.
+  services.tailscale = {
+    enable = true;
+    overrideLocalDns = true;
+    magicDNS = true;
+  };
+
   # deactivated
   homebrew = {
     enable = false;

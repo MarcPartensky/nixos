@@ -184,7 +184,7 @@
     nixosConfigurations = {
       laptop = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
+        specialArgs = {inherit inputs self;};
         modules = [
           ./profiles/common
           ./profiles/laptop/configuration.nix
@@ -194,7 +194,7 @@
 
       tower = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
+        specialArgs = {inherit inputs self;};
         modules = [
           ./profiles/common
           ./profiles/tower/configuration.nix
@@ -204,7 +204,7 @@
 
       deck = inputs.jovian.inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
+        specialArgs = {inherit inputs self;};
         modules = [
           ./profiles/deck/configuration.nix
           # ./services
@@ -213,7 +213,7 @@
 
       laptop-iso = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
+        specialArgs = {inherit inputs self;};
         modules = [
           ./modules/nixos/iso
 
@@ -236,7 +236,7 @@
 
       anywhere = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
+        specialArgs = {inherit inputs self;};
         modules = [
           ./profiles/anywhere/configuration.nix
           ./users.nix
@@ -247,7 +247,7 @@
       # `nix run .#dev`. Dupliquer vms/dev.nix pour une 2e VM.
       dev = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = {inherit inputs;};
+        specialArgs = {inherit inputs self;};
         modules = [
           inputs.microvm.nixosModules.microvm
           ./vms/dev.nix
@@ -256,7 +256,18 @@
     };
 
     # Runners des VM de dev, lançables directement : `nix run .#dev`.
-    packages.x86_64-linux.dev = self.nixosConfigurations.dev.config.microvm.declaredRunner;
+    # Plus les serveurs MCP maison (mcp/default.nix), constructibles sans
+    # evaluer la conf NixOS : `nix build .#shlink-mcp`.
+    packages.x86_64-linux =
+      import ./mcp {pkgs = nixpkgs.legacyPackages.x86_64-linux;}
+      // {
+        dev = self.nixosConfigurations.dev.config.microvm.declaredRunner;
+      };
+
+    # Conteneurs SORTIS de la conf hote (deploy/containers.nix), lus par
+    # `just deploy`. Jamais importes par nixosConfigurations : les modifier ne
+    # declenche aucun eval de la conf NixOS.
+    deploy.containers = import ./deploy/containers.nix;
 
     # Appareils Nix-on-Droid. `default` = le tel (Xiaomi 13T Pro). Chaque
     # appareil doit avoir SES ports sur la boucle locale du VPS, sinon les
@@ -328,7 +339,7 @@
 
     darwinConfigurations."macos" = inputs.nix-darwin.lib.darwinSystem {
       system = "aarch64-darwin";
-      specialArgs = {inherit inputs;};
+      specialArgs = {inherit inputs self;};
       pkgs = import inputs.nixpkgs-darwin {system = "aarch64-darwin";};
       modules = [
         ./profiles/macos/configuration.nix

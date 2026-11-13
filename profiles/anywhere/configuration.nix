@@ -4,6 +4,11 @@
   pkgs,
   ...
 }: {
+  # Le VPS sort le trafic du tailnet (exit node) : c'est le même chemin que le
+  # tunnel WireGuard du tel, avec un débit de datacenter au lieu de l'upload
+  # résidentiel de tower. Routes à approuver côté contrôleur.
+  meshTailscale.advertiseExitNode = true;
+
   imports = [
     (modulesPath + "/installer/scan/not-detected.nix")
     (modulesPath + "/profiles/qemu-guest.nix")
@@ -21,6 +26,16 @@
     ../../services/traefik
     ../../services/postgres
     ../../services/vaultwarden
+    # Disponibilite de la flotte, les trois sur ce VPS et jamais sur tower :
+    #  - tuptime   : historique local uptime/downtime de la machine ;
+    #  - zabbix    : serveur + frontal web, ses agents vont sur les autres
+    #                machines par le tailnet (base Postgres locale, port 9600 en
+    #                loopback derriere une ressource Pangolin) ;
+    #  - uptime-kuma : sondes HTTP/TCP bout en bout des domaines publics.
+    ../../services/tuptime
+    ../../services/zabbix/server.nix
+    ../../services/zabbix/agent.nix
+    ../../services/uptime-kuma
     # ../../services/nextcloud
     # ../../services/oxicloud
     ../../services/zitadel
@@ -32,6 +47,12 @@
     # tailscale (services/tailscale, clé partagée secrets/headscale.yml).
     ../../services/headscale
     ../../services/tailscale
+    # Résolveur filtrant du tailnet, en double : ici (nœud toujours allumé, et
+    # colocalisé avec l'exit node internet) et sur tower (voisin de la maison).
+    # C'est headscale qui pousse ces deux IP à TOUS les appareils du tailnet,
+    # donc aucun réglage DNS par appareil. Le 53 n'est pas ouvert au firewall :
+    # tailscale0 est trusted, le résolveur n'écoute que sur le mesh.
+    ../../services/adguard
     # ./services/chhoto
     ../../services/eternal-terminal
     ../../services/stalwart

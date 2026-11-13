@@ -80,10 +80,11 @@ Registry in `services/default.nix`. Active on tower:
 - **Cloud / files**: `nextcloud` (+ postgres), `gitea`.
 - **Media**: `jellyfin`, `navidrome`, `audiobookshelf`, `radarr`/`sonarr`/`readarr`/`prowlarr`/`flaresolverr`, `qbittorrent`/`rqbit`, `media` (shared `/srv/media` dataset).
 - **Matrix bridges**: `matrix` (Synapse), `matrix-whatsapp`, `matrix-signal`, `matrix-discord`, `matrix-meta`, `matrix-linkedin`.
+- **Notifications**: `gotify` (gotify.marcpartensky.com, OIDC Zitadel) + `gotify-matrix` (pont bidirectionnel Gotify <-> salle Matrix « 🪽 Hermes » : relais système + hook de gateway, jetons auto-provisionnés).
 - **Hermes agent**: `hermes` (gateway + plugins), `hermes-webui`, `hermes-dashboard`, `hermes-pocket` (mobile app backend), `discord-bot`.
 - **MCP servers** (tools for Hermes): `nextcloud-mcp`, `amazon-mcp`, `firefox-mcp`, `zitadel-mcp`, `roku`, `codeberg-mcp`, `ibkr-mcp`, `meetup-mcp`, `gitea-mcp`, `arr-mcp`, `mcp-nixos`.
 - **Other apps**: `jupyterhub`.
-- **Disabled in the registry** (commented out, pending a fix or waiting on something): `dnscrypt`, `minio`, `stalwart-mcp` (cargoHash mismatch), `gotify`, `kanidm`, `syncserver`, `matrix-telegram` (waiting on api_id/api_hash), `vaultwarden-mcp` (missing input).
+- **Disabled in the registry** (commented out, pending a fix or waiting on something): `dnscrypt`, `minio`, `stalwart-mcp` (cargoHash mismatch), `kanidm`, `syncserver`, `matrix-telegram` (waiting on api_id/api_hash), `vaultwarden-mcp` (missing input).
 
 ## Conventions
 

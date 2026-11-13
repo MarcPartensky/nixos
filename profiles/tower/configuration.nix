@@ -9,7 +9,22 @@
   wgClientEnable = true;
 in {
 
+  # tower sort le trafic du tel vers internet (exit node) et annonce le LAN
+  # maison, pour retrouver le comportement du tunnel WireGuard. La sortie du
+  # VPS reste préférable pour le débit (cf. meshTailscale sur anywhere).
+  meshTailscale = {
+    advertiseExitNode = true;
+    advertiseRoutes = [ "192.168.1.0/24" ];
+  };
+
   imports = [
+    # Serveur MCP unique : un seul processus pour tous les serveurs maison, sur
+    # une URL loopback. Mesure : 8 serveurs reels, 90 outils, 85 Mo de RSS,
+    # contre 133 process et 1,7 Go avec un process par session. Les sessions
+    # Hermes peuvent basculer dessus en pointant mcpServers sur l'URL ; tant
+    # qu'elles ne le font pas, l'ancien cablage stdio reste en place et rien ne
+    # casse. Voir modules/nixos/mcp-host et mcp/main.py.
+    ../../modules/nixos/mcp-host
     ../../hosts/tower/disko.nix
     ../../hosts/laptop/hardware-configuration.nix
     ../../modules/nixos/herdr
@@ -22,6 +37,20 @@ in {
     ../../services/attic
     # Glances web (htop web, 61208) expose en proc.marcpartensky.com.
     ../../services/glances
+    # Immich (immich.marcpartensky.com, 2283) : interface photos/videos de
+    # l'arbre /home/marc/media/photos en bibliotheque externe read-only.
+    ../../services/immich
+    # PhotoPrism (photos.marcpartensky.com, 2342) : comparatif d'interface sur
+    # le meme arbre, en lecture seule. A eteindre quand marc a choisi.
+    ../../services/photoprism
+    # Comparatif de dashboards homelab (homer, homepage, glance, homarr) :
+    # chaque candidat en boucle locale, relayé par newt via une ressource
+    # Pangolin avec SSO. Voir services/dashboards.
+    ../../services/dashboards
+    # Octo (octo.marcpartensky.com) : proxy OpenSubsonic devant Navidrome qui
+    # cherche hors bibliotheque, joue un titre absent en preview YouTube et le
+    # telecharge sur un coeur. Deux conteneurs podman. Voir services/octo.
+    ../../services/octo
     # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
     # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
     ../../services/ygg-mesh
@@ -31,6 +60,14 @@ in {
     # Dashboard des nœuds du tailnet (mesh.marcpartensky.com, SSO Pangolin ;
     # http://100.64.0.3:9140 depuis le tailnet). Lit `tailscale status --json`.
     ../../services/mesh-dashboard
+    # Dashboard d'usage LLM (usage.marcpartensky.com, SSO Pangolin) : solde et
+    # depense OpenRouter par modele / cle / jour, plus les soldes directs
+    # (Moonshot) et les abonnements hors OpenRouter. Lit /api/v1/analytics.
+    ../../services/usage-dashboard
+    # Page de suivi des dépenses (finance.marcpartensky.com, SSO Pangolin) :
+    # lit /var/lib/hermes/workspace/finance/dashboard.json, écrit chaque matin
+    # par le cron « Daily finances recap » (Wise + Chase via SimpleFIN).
+    ../../services/finance-dashboard
     # Télémétrie CPU par process (atop 10 s + atop-peaks) : tower uniquement,
     # c'est ici que les builds et les sessions Hermes se disputent le CPU.
     ../../services/atop
@@ -38,12 +75,18 @@ in {
     # Les workers tournent sur deck / anywhere et prennent les jobs dans la
     # meme base via le tailnet. tower n'heberge PAS de worker : il reste libre.
     ../../services/windmill
+    # Depot F-Droid personnel (fdroid.marcpartensky.com) : les APK release des
+    # applis de marc, ajoutable dans Droidify. Voir services/fdroid-repo.
+    ../../services/fdroid-repo
   ];
 
   # Sauvegardes chiffrées pqbox en trois étages (coeur quotidien, volume
   # hebdomadaire, mortes à la main). Clé publique dans services/backup-pqbox,
   # clé privée scellée chez marc uniquement. Cf. le module pour le détail.
   services.backup-pqbox.enable = true;
+
+  # Page de suivi des dépenses (finance.marcpartensky.com).
+  services.financeDashboard.enable = true;
 
   services.windmillFleet = {
     enable = true;
@@ -67,7 +110,50 @@ in {
     "a /var/lib/hermes/.hermes/plugins - - - - u:marc:rwx,d:u:marc:rwx,m::rwx,d:m::rwx"
   ];
 
-  boot.kernelParams = ["panic=10"];
+  # Journal systemd : sans cap, journald monte a 10 % du systeme de fichiers,
+  # soit ~18 Go sur le dataset root (186 Go). Meme correctif que
+  # profiles/anywhere (500M) : on garde de quoi diagnostiquer une semaine, pas
+  # de quoi remplir un pool deja a 96 %. Le reste de /var/log (atop, 3 jours
+  # voulus) n'est pas concerne.
+  services.journald.extraConfig = "SystemMaxUse=1G";
+
+  # Plafond du cache ARC de ZFS. Sans lui, zfs_arc_max vaut 0 (defaut) et le
+  # cache monte jusqu'a ~61 Go sur 62, ce qui pousse les services et les builds
+  # dans le swap: mesure d'eval 236 s sous pression contre 90 s au repos.
+  # Ce parametre s'applique au chargement du module, donc au boot.
+  boot.kernelParams = ["panic=10" "zfs.zfs_arc_max=17179869184"];
+
+  # Application a chaud, sans reboot : un no-op au boot (la valeur est deja
+  # posee par le parametre noyau) et l'effet immediat au premier switch.
+  systemd.services.zfs-arc-cap = {
+    description = "Plafonne le cache ARC de ZFS a 16 Go";
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.writeShellScript "zfs-arc-cap" ''
+        want=17179869184
+        cur=$(cat /sys/module/zfs/parameters/zfs_arc_max)
+        if [ "$cur" != "$want" ]; then
+          echo "$want" > /sys/module/zfs/parameters/zfs_arc_max || true
+        fi
+        echo "zfs_arc_max=$(cat /sys/module/zfs/parameters/zfs_arc_max)"
+      ''}";
+    };
+  };
+
+  # Swap compresse en RAM : 25% de la memoire, soit ~15 Go, pour eviter que la
+  # moindre pression reparte sur le NVMe. Remplace le disque comme premier
+  # niveau de swap.
+  zramSwap = {
+    enable = true;
+    memoryPercent = 25;
+    algorithm = "zstd";
+  };
+
+  # Avec un cache plafonne et du zram, inutile de pousser les pages anonymes
+  # dehors a 60% : on les garde en RAM.
+  boot.kernel.sysctl."vm.swappiness" = 10;
   systemd.settings.Manager.RuntimeWatchdogSec = "30s";
   boot.kernelModules = ["vkms"];
   boot.initrd.secrets."/etc/secrets/zfs-root.key" = "/etc/secrets/zfs-root.key";
@@ -130,7 +216,19 @@ in {
   # (l'ancienne option security.acme.email est depreciee) + acceptTerms = true.
 
   services.hermes.enableMatrixToken = true;
-  services.hermes.enableDiscordToken = true;
+  # Faux depuis le depart : la valeur de secrets/hermes-discord.yml est un
+  # PLACEHOLDER (pas un token Discord), et discord.py n'est pas dans le venv
+  # scelle. Avec ce drapeau a true, le gateway activait quand meme la plateforme
+  # (auto-enable des qu'un token existe dans .env) puis echouait en
+  # "No adapter available for discord" : d'ou le backend Discord "down" affiche
+  # en permanence dans le dashboard. Discord passe par services/discord-bot
+  # (bot de marc) -> API server Hermes -> profil discord-bridge : c'est CE
+  # chemin qui sert Discord, et il ne demande aucun token cote Hermes.
+  # Pour un jour l'activer nativement (vocal Discord) : creer une DEUXIEME
+  # application Discord (un token ne se partage pas entre deux process),
+  # remplacer le placeholder dans secrets/hermes-discord.yml, poser ce drapeau
+  # a true et ajouter "discord" a extraDependencyGroups (services/hermes).
+  services.hermes.enableDiscordToken = false;
 
   # ========================================================================
   # RUSTGUAC - Gateway Rust (remplace Guacamole Java)
@@ -448,8 +546,16 @@ in {
   #   « iptables (legacy): can't initialize iptables table `nat' »
   # et la session ne demarre jamais. La variante nftables utilise nft.
   # ========================================================================
+  # WAYDROID : DESACTIVE le 13/11/2026 a la demande de marc.
+  # Raison mesurée : le conteneur Android tourne en permanence pour le lab de
+  # capture et son compilateur AOT (dex2oat) prend jusqu'à 7,5 cœurs sur 16 à
+  # chaque mise à jour d'appli / tâche d'entretien de fond (Android se croit
+  # toujours inactif sur secteur dans un conteneur, donc il optimise tout).
+  # Aucun apk installé le 13/11, donc c'est bien l'entretien de fond, pas une
+  # installation. Pour le rallumer : passer enable a true (le lab
+  # android-capture et cage-waydroid se rebranchent tout seuls via waydroid0).
   virtualisation.waydroid = {
-    enable = true;
+    enable = false;
     package = pkgs.waydroid-nftables;
   };
 
@@ -457,6 +563,23 @@ in {
   # marc, ex. kasmvnc) : sans ca, aucun diagnostic possible sans root, et sudo
   # n'est autorise que pour nixos-rebuild.
   users.users.hermes.extraGroups = [ "systemd-journal" ];
+
+  # PROVISOIRE : executeur root one-shot pour l'agent (entretien disques USB).
+  systemd.paths.hermes-once3 = {
+    wantedBy = [ "multi-user.target" ];
+    pathConfig.PathExists = "/var/lib/hermes/once3/action";
+  };
+  systemd.services.hermes-once3 = {
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "/run/current-system/sw/bin/bash /var/lib/hermes/once3/run.sh";
+      RuntimeMaxSec = "10800";
+      TimeoutStopSec = "120";
+    };
+    startLimitIntervalSec = 0;
+    startLimitBurst = 0;
+  };
+
 
   # ========================================================================
   # WIREGUARD CLIENT - tower pair du VPS anywhere (hub-and-spoke wg1)
@@ -559,6 +682,83 @@ in {
     calendar.passwordFile = config.sops.secrets."monero/nextcloud-password".path;
     calendar.calendars = [ "sg" ];
   };
+
+  # ========================================================================
+
+  # ── Serveur MCP unique ──────────────────────────────────────────────────
+  # Un seul processus pour tous les serveurs maison. Le demon demarre a cote
+  # de l'ancien cablage stdio : tant que les mcpServers d'hermes pointent sur
+  # les commandes, rien ne change pour les outils. Basculer une session
+  # revient a remplacer ses entrees par l'URL http://127.0.0.1:4780/mcp.
+  #
+  # Les serveurs listes doivent exposer un objet FastMCP (`mcp`, `app` ou
+  # `server`). Les trois faits main (arena-elo, username-recon, roku,
+  # androidtv) n'en ont pas et restent en stdio tant qu'ils ne sont pas
+  # convertis.
+  services.mcp-host = {
+    enable = true;
+    # Bascule Hermes ACTIVE : les sessions lisent l'URL unique au lieu de
+    # lancer un processus par serveur. Les entrees stdio des sept serveurs
+    # concernes ont ete retirees des modules ; share-mcp (wrapper aws) et tts
+    # (serveur HTTP distant) restent en stdio / URL dediee.
+    hermesGateway = true;
+    # Les serveurs montes lisent leur configuration a l'import et partagent un
+    # seul environnement : c'est l'union de ce que chaque entree stdio recevait.
+    env = {
+      SHLINK_URL = "http://127.0.0.1:8097";
+      SHLINK_API_KEY_FILE = config.sops.secrets.shlink_api_key.path;
+      SHLINK_ALLOW_WRITES = "1";
+      SHORTURL_STATE_DIR = "/var/lib/hermes/.local/state/shorturl-mcp";
+      SHORTURL_TIMEOUT = "25";
+      BEEF_URL = "http://127.0.0.1:3010";
+      BEEF_API_TOKEN_FILE = config.sops.secrets.beef_api_token.path;
+      BEEF_PUBLIC_HOST_FILE = "/var/lib/beef/public-host";
+      MEETUP_API_URL = "https://api.meetup.com/gql-ext";
+      MEETUP_TOKEN_FILE = "/run/secrets/meetup_oauth_token";
+      IBKR_FLEX_ENV_FILE = config.sops.templates."ibkr-flex.env".path;
+      PANGOLIN_BASE_URL = "https://api.marcpartensky.com/v1";
+      PANGOLIN_API_KEY_FILE = config.sops.secrets."pangolin_api_key".path;
+      # TV Roku de la chambre (ECP). Servie par le meme demon que les autres.
+      ROKU_URL = "http://192.168.1.167:8060";
+    };
+    servers = {
+      shlink = ../../services/shlink-mcp/server.py;
+      shorturl = ../../services/shorturl-mcp/server.py;
+      beef = ../../services/beef-mcp/server.py;
+      meetup = ../../services/meetup-mcp/meetup_mcp.py;
+      mac = ../../services/mac-mcp/mac-mcp.py;
+      ibkr = ../../services/ibkr-mcp/ibkr_flex.py;
+      pangolin = ../../services/hermes/pangolin-mcp.py;
+      roku = ../../services/roku-mcp.py;
+    };
+  };
+
+  # ── Garde-fou de migration des conteneurs ───────────────────────────────
+  # Les quatre conteneurs ci-dessous ont ete SORTIS de la conf hote (blocs
+  # virtualisation.oci-containers retires, cf. deploy/containers.nix). Un
+  # switch les supprime, donc le quadlet podman doit exister AVANT. Cette
+  # assertion transforme un switch qui casserait quatre services en un echec
+  # d'eval explicite, y compris pour une autre session qui switcherait tower
+  # sans savoir ou en est la migration.
+  #
+  # Elle se resout toute seule : `just deploy <nom> --takeover` (root) ecrit
+  # /etc/containers/systemd/<nom>.container, et l'eval repasse.
+  # A retirer quand les quatre quadlets seront geres par Nix (environment.etc)
+  # ou quand on assumera la migration comme acquise.
+  # Echappatoire pour un BUILD (nixos-rebuild build, aucune activation) :
+  #   SKIP_QUADLET_GUARD=1 nixos-rebuild build ...
+  # Ne jamais s'en servir pour un switch : le garde-fou existe justement pour
+  # empecher qu'un switch supprime un conteneur sans remplacant.
+  assertions = map (name: {
+    assertion = builtins.getEnv "SKIP_QUADLET_GUARD" != ""
+      || builtins.pathExists "/etc/containers/systemd/${name}.container";
+    message = ''
+      Le conteneur ${name} n'est plus declare dans la conf NixOS : son quadlet
+      doit exister avant ce switch. Lancer, en root, sur tower :
+        just deploy ${name} --takeover
+      (ou deploy/render.sh ${name} --takeover). Voir deploy/containers.nix.
+    '';
+  }) ["aonsoku" "arr-mcp" "nextcloud-mcp" "shlink-web-client"];
 
   # ========================================================================
 }

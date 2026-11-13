@@ -21,6 +21,10 @@
     ../../services/nginx-matrix
     ../../services/llm-steamdeck
     ../../services/monero-miner
+    # Disponibilite de la flotte : historique local (tuptime) + agent Zabbix
+    # vers le serveur qui vit sur le VPS, par le tailnet.
+    ../../services/tuptime
+    ../../services/zabbix/agent.nix
     # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
     # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
     ../../services/ygg-mesh
@@ -226,7 +230,11 @@
     };
   };
 
-  systemd.services.deck-wake-downloads.serviceConfig.ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=sleep:idle --why='Téléchargements Steam' ${pkgs.coreutils}/bin/sleep 5h35m";
+  # `sleep` de coreutils n'accepte pas une duree composee comme « 5h35m » (une
+  # seule unite par argument, mais plusieurs arguments sont additionnes) : la
+  # forme « 5h35m » sortait en « invalid time interval » et l'unite echouait a
+  # chaque declenchement. 5h35m = 20100 s.
+  systemd.services.deck-wake-downloads.serviceConfig.ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=sleep:idle --why='Téléchargements Steam' ${pkgs.coreutils}/bin/sleep 20100";
 
   # home.file.${config.gtk.gtk2.configLocation}.force = true;
   # xdg.configFile = {

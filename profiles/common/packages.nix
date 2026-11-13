@@ -2,6 +2,19 @@
   pkgs,
   inputs,
 }: let
+  # thClaws : paquet du flake projet /home/marc/git/thclaws (binaire prebuilt
+  # repackage avec autoPatchelf + wrapGAppsHook). Le flake du projet reste
+  # utilisable seul (nix build .#), et le systeme consomme son package.nix pour
+  # construire contre le nixpkgs du systeme (pas de GTK duplique, pas d'input
+  # supplementaire dans flake.lock).
+  #
+  # POURQUOI PAS getFlake ICI : `builtins.getFlake (toString src)` refuse une
+  # chaine qui pointe dans le store ("not allowed to refer to a store path"), et
+  # un chemin brut ferait lire le .git par Nix alors qu'un nixos-rebuild tourne
+  # sous root et que le depot appartient a marc. `callPackage <fichier>` copie
+  # le seul package.nix dans le store : aucun git, aucun flake a evaluer.
+  thclaws = pkgs.callPackage /home/marc/git/thclaws/package.nix { };
+
   # Initialisation correcte de NUR
   nur = import inputs.nur {
     inherit pkgs;
@@ -97,7 +110,7 @@
     gsettings-desktop-schemas
     glib
     exfatprogs
-  ];
+  ] ++ [ thclaws ];
 
   unfree = with pkgs; [
     steam

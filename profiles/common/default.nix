@@ -21,6 +21,13 @@ in {
 
     ../../users.nix
 
+    # Disponibilite de la flotte : tuptime tient l'historique local
+    # uptime/downtime de la machine (il survit a une coupure reseau), et l'agent
+    # Zabbix pousse vers le serveur qui vit sur le VPS. Cf. services/tuptime et
+    # services/zabbix.
+    ../../services/tuptime
+    ../../services/zabbix/agent.nix
+
     # Include the results of the hardware scan.
     # ../../services
     # ../../modules/nixos/iso # not the way to build iso
