@@ -57,6 +57,7 @@
     neofetch
     # gemini-cli-bin
     tmate
+    tmux # session visible par marc : l'agent tape dans `tmux -s hermes`, il attache
     bat
     ripgrep
     qemu
