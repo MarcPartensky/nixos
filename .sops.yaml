@@ -138,6 +138,26 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  # Cle API du compte DeepSeek direct, partagee par deux consommateurs : le
+  # dashboard d'usage (solde, lit deepseek_api_key) et l'agent hermes (provider
+  # custom deepseek-direct, lit hermes_deepseek_env, un contenu dotenv).
+  - path_regex: secrets/deepseek\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Dashboard d'usage LLM (services/usage-dashboard) : cle management OpenRouter
+  # (lecture seule, analytics) + cle d'inference (usage temps reel) + cle
+  # Moonshot (solde du provider kimi direct).
+  - path_regex: secrets/usage-dashboard\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # BeEF (services/beef) : mot de passe de la console d'operateur. Le reste du
+  # module n'a pas de secret (le nom du tunnel rapide est public par nature).
+  - path_regex: secrets/beef\.yml$
+    key_groups:
+      - age:
+          - *tower
   - path_regex: secrets/codeberg\.yml$
     key_groups:
       - age:
@@ -175,6 +195,13 @@ creation_rules:
       - age:
           - *tower
   - path_regex: secrets/wise\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Depot F-Droid personnel (services/fdroid-repo) : cle de signature du depot
+  # (keystore JKS en base64) + son mot de passe. La perdre oblige les clients a
+  # re-ajouter le depot (nouvelle empreinte), d'ou le stockage chiffre en git.
+  - path_regex: secrets/fdroid\.yml$
     key_groups:
       - age:
           - *tower
