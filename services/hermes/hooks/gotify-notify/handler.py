@@ -21,11 +21,9 @@
 # journalisees dans le log du gateway + une ligne `gotify-notify:` visible.
 
 import json
-import logging
 import os
 import urllib.request
 
-logger = logging.getLogger("gotify-notify")
 
 ROOM = os.environ.get("GOTIFY_PONT_ROOM", "!bHIbXBYEcLDiMFtbse:matrix.marcpartensky.com")
 GOTIFY_URL = os.environ.get("GOTIFY_PONT_URL", "http://127.0.0.1:8070")
@@ -53,10 +51,8 @@ def handle(*args, **kwargs):
     chat_id = str(context.get("chat_id") or "")
     text = str(context.get("response") or "").strip()
     if chat_id != ROOM:
-        logger.debug("gotify-notify: ignore (salle %r)", chat_id)
         return
     if not text:
-        logger.debug("gotify-notify: tour sans texte, rien a pousser")
         return
     payload = {"title": "Hermes (Matrix)", "message": text[:MAX_CHARS], "priority": PRIORITY}
     request = urllib.request.Request(
@@ -66,7 +62,7 @@ def handle(*args, **kwargs):
     )
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
-            logger.info("gotify-notify: pousse dans Gotify (plateforme %s) -> HTTP %s",
-                        context.get("platform"), response.status)
+            print("gotify-notify: pousse dans Gotify (plateforme %s, salle %s) -> HTTP %s"
+                  % (context.get("platform"), chat_id, response.status), flush=True)
     except Exception as exc:  # noqa: BLE001 — un hook ne doit jamais casser un tour
-        logger.warning("gotify-notify: echec de la poussee Gotify : %s", exc)
+        print("gotify-notify: echec de la poussee Gotify : %s" % exc, flush=True)

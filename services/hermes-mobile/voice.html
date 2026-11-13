@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e1e2e">
+<title>Hermes vocal</title>
+<style>
+  :root{
+    --base:#1e1e2e; --mantle:#181825; --crust:#11111b;
+    --surface0:#313244; --surface1:#45475a; --surface2:#585b70;
+    --text:#cdd6f4; --subtext:#a6adc8; --overlay:#6c7086;
+    --lavender:#b4befe; --mauve:#cba6f7; --green:#a6e3a1; --red:#f38ba8; --yellow:#f9e2af; --blue:#89b4fa;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--base); color:var(--text);
+    font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  header{display:flex;align-items:center;gap:.6rem;padding:.7rem .9rem;border-bottom:1px solid var(--surface0)}
+  header .dot{width:.6rem;height:.6rem;border-radius:50%;background:var(--overlay);flex:none}
+  header .dot.ok{background:var(--green)} header .dot.bad{background:var(--red)} header .dot.busy{background:var(--yellow)}
+  header h1{font-size:.95rem;margin:0;font-weight:600;letter-spacing:.02em}
+  header .grow{flex:1}
+  header button{background:none;border:1px solid var(--surface1);color:var(--subtext);border-radius:.6rem;padding:.35rem .6rem;font-size:.8rem}
+  #log{flex:1;overflow-y:auto;padding:.8rem .9rem 0;display:flex;flex-direction:column;gap:.6rem}
+  .msg{max-width:92%;padding:.6rem .75rem;border-radius:.9rem;white-space:pre-wrap;word-break:break-word;font-size:.95rem}
+  .msg.user{align-self:flex-end;background:var(--surface0);border-bottom-right-radius:.25rem}
+  .msg.hermes{align-self:flex-start;background:var(--mantle);border:1px solid var(--surface0);border-bottom-left-radius:.25rem}
+  .msg.sys{align-self:center;background:none;color:var(--overlay);font-size:.8rem;padding:.1rem}
+  .msg.tool{align-self:flex-start;color:var(--subtext);font-size:.8rem;font-family:ui-monospace,monospace;background:none;padding:.05rem .2rem}
+  #stage{display:flex;flex-direction:column;align-items:center;gap:.5rem;padding:.9rem 1rem 1.1rem;border-top:1px solid var(--surface0);background:var(--mantle)}
+  #hint{font-size:.8rem;color:var(--subtext);min-height:1.2em;text-align:center}
+  #orb{
+    width:6.2rem;height:6.2rem;border-radius:50%;border:none;flex:none;
+    background:radial-gradient(circle at 35% 30%, var(--lavender), var(--mauve));
+    color:var(--crust);font-weight:700;font-size:.85rem;letter-spacing:.03em;
+    box-shadow:0 0 0 0 rgba(180,190,254,.45);
+    transition:transform .12s ease, background .2s ease;
+  }
+  #orb:active{transform:scale(.96)}
+  #orb.listening{background:radial-gradient(circle at 35% 30%, var(--green), #74c7ec);animation:pulse 1.3s infinite}
+  #orb.thinking{background:radial-gradient(circle at 35% 30%, var(--yellow), #fab387);animation:pulse 1.1s infinite}
+  #orb.speaking{background:radial-gradient(circle at 35% 30%, var(--blue), var(--lavender));animation:pulse 1.6s infinite}
+  #orb.off{background:var(--surface1);color:var(--subtext);animation:none}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(180,190,254,.45)}70%{box-shadow:0 0 0 1.1rem rgba(180,190,254,0)}100%{box-shadow:0 0 0 0 rgba(180,190,254,0)}}
+  #meter{display:flex;gap:3px;align-items:flex-end;height:1.4rem}
+  #meter i{display:block;width:5px;background:var(--surface2);border-radius:2px;height:20%}
+  #meter i.on{background:var(--lavender)}
+  form#type{display:flex;gap:.5rem;width:100%;max-width:38rem}
+  form#type input{
+    flex:1;background:var(--base);border:1px solid var(--surface1);color:var(--text);
+    border-radius:.8rem;padding:.6rem .8rem;font-size:1rem;min-width:0
+  }
+  form#type button{background:var(--lavender);color:var(--crust);border:none;border-radius:.8rem;padding:.6rem .9rem;font-weight:600}
+  #login{position:fixed;inset:0;background:var(--crust);display:flex;align-items:center;justify-content:center;padding:1.2rem;z-index:10}
+  #login .card{width:100%;max-width:22rem;background:var(--base);border:1px solid var(--surface0);border-radius:1rem;padding:1.1rem;display:flex;flex-direction:column;gap:.7rem}
+  #login h2{margin:0;font-size:1rem}
+  #login input{background:var(--mantle);border:1px solid var(--surface1);color:var(--text);border-radius:.7rem;padding:.7rem;font-size:1rem}
+  #login button{background:var(--lavender);color:var(--crust);border:none;border-radius:.7rem;padding:.7rem;font-weight:700;font-size:1rem}
+  #login .err{color:var(--red);font-size:.82rem;min-height:1.1em}
+  .hidden{display:none!important}
+  /* --- panneau réglages de voix --- */
+  #sheet{position:fixed;inset:0;background:rgba(17,17,27,.72);display:flex;align-items:flex-end;z-index:20}
+  #sheet .panel{background:var(--base);border-top-left-radius:1.2rem;border-top-right-radius:1.2rem;
+    width:100%;max-height:86vh;display:flex;flex-direction:column;border-top:1px solid var(--surface1)}
+  #sheet header{display:flex;align-items:center;padding:.8rem .9rem;border-bottom:1px solid var(--surface0)}
+  #sheet header h2{margin:0;font-size:1rem}
+  #sheet .body{overflow-y:auto;padding:.6rem .9rem 1rem;display:flex;flex-direction:column;gap:.9rem}
+  .row{display:flex;align-items:center;gap:.6rem}
+  .row label{font-size:.85rem;color:var(--subtext);min-width:5.2rem}
+  .row output{font-size:.8rem;color:var(--lavender);min-width:3.2rem;text-align:right}
+  input[type=range]{flex:1;accent-color:var(--lavender)}
+  .voice{display:flex;align-items:center;gap:.6rem;padding:.55rem .6rem;border:1px solid var(--surface0);border-radius:.7rem}
+  .voice.on{border-color:var(--lavender);background:rgba(180,190,254,.08)}
+  .voice .name{flex:1;font-size:.92rem}
+  .voice .name small{display:block;color:var(--overlay);font-size:.72rem}
+  .voice button{background:var(--surface0);border:none;color:var(--text);border-radius:.5rem;padding:.35rem .5rem;font-size:.9rem}
+  .voice .pick{background:var(--lavender);color:var(--crust);font-weight:700;padding:.35rem .7rem;border-radius:.5rem;border:none}
+  .hintline{font-size:.75rem;color:var(--overlay)}
+</style>
+</head>
+<body>
+<header>
+  <span id="dot" class="dot"></span>
+  <h1>Hermes vocal</h1>
+  <span class="grow"></span>
+  <button id="btnVoice">Voix</button>
+  <button id="btnToggle">Couper</button>
+</header>
+
+<div id="sheet" class="hidden">
+  <div class="panel">
+    <header>
+      <h2>Voix</h2>
+      <span class="grow" style="flex:1"></span>
+      <button id="btnSheetClose">Fermer</button>
+    </header>
+    <div class="body">
+      <div class="row"><label>Vitesse</label><input id="rate" type="range" min="-40" max="40" step="5" value="0"><output id="rateOut">0 %</output></div>
+      <div class="row"><label>Hauteur</label><input id="pitch" type="range" min="-20" max="20" step="2" value="0"><output id="pitchOut">0 Hz</output></div>
+      <button id="btnTest" style="background:var(--surface0);border:none;color:var(--text);border-radius:.7rem;padding:.6rem">▶ Tester la voix sélectionnée</button>
+      <div class="hintline" id="sheetHint">Les aperçus utilisent la voix et les réglages affichés. Le choix est enregistré sur la tour et vaut pour toutes tes sessions vocales.</div>
+      <div id="voiceList"></div>
+    </div>
+  </div>
+</div>
+
+<div id="log"></div>
+
+<div id="stage">
+  <div id="hint">Appuie pour parler</div>
+  <button id="orb" class="off">PARLER</button>
+  <div id="meter"></div>
+  <form id="type">
+    <input id="typed" placeholder="ou écris ici" autocomplete="off" autocapitalize="sentences">
+    <button type="submit">↑</button>
+  </form>
+</div>
+
+<div id="login" class="hidden">
+  <div class="card">
+    <h2>Connexion</h2>
+    <input id="u" placeholder="utilisateur" autocapitalize="none" autocomplete="username">
+    <input id="p" type="password" placeholder="mot de passe" autocomplete="current-password">
+    <div class="err" id="loginErr"></div>
+    <button id="btnLogin">Entrer</button>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = (s) => document.querySelector(s);
+const dot = $("#dot"), orb = $("#orb"), hint = $("#hint"), logEl = $("#log"), meter = $("#meter");
+const state = {
+  ws: null, sid: null, running: false, busy: false,
+  audioCtx: null, analyser: null, micStream: null, mediaRec: null, chunks: [],
+  recording: false, speechStartedAt: 0, silenceSince: 0, maxTimer: null,
+  noiseFloor: 0.006, speaking: false, playAbort: null, queue: [], playing: false,
+  buf: "", wakeLock: null, stopPhrase: true,
+};
+
+/* ---------- journal ---------- */
+function addMsg(kind, text) {
+  const d = document.createElement("div");
+  d.className = "msg " + kind;
+  d.textContent = text;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+  return d;
+}
+function sys(t) { addMsg("sys", t); }
+function setHint(t) { hint.textContent = t; }
+function setOrb(cls, label) {
+  orb.className = cls || "off";
+  if (label) orb.textContent = label;
+}
+function setDot(cls) { dot.className = "dot " + (cls || ""); }
+
+/* ---------- HTTP ---------- */
+async function api(path, body, method) {
+  const r = await fetch(path, {
+    method: method || (body === undefined ? "GET" : "POST"),
+    credentials: "same-origin",
+    headers: body === undefined ? {} : { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (r.status === 401) { showLogin(); throw new Error("auth"); }
+  const ct = r.headers.get("content-type") || "";
+  const data = ct.includes("json") ? await r.json() : await r.text();
+  if (!r.ok) throw new Error((data && data.detail) || ("HTTP " + r.status));
+  return data;
+}
+
+/* ---------- connexion ---------- */
+async function login() {
+  const u = $("#u").value.trim(), p = $("#p").value;
+  $("#loginErr").textContent = "";
+  try {
+    const r = await fetch("/auth/password-login", {
+      method: "POST", credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "basic", username: u, password: p, next: "" }),
+    });
+    if (!r.ok) { $("#loginErr").textContent = "Identifiants refusés"; return; }
+    $("#p").value = "";
+    $("#login").classList.add("hidden");
+    connect();
+  } catch (e) {
+    $("#loginErr").textContent = String(e.message || e);
+  }
+}
+function showLogin() {
+  $("#login").classList.remove("hidden");
+  state.running = false; setOrb("off", "HORS LIGNE"); setDot("bad");
+}
+
+/* ---------- WebSocket JSON-RPC ---------- */
+function rpc(method, params) {
+  return new Promise((resolve, reject) => {
+    if (!state.ws || state.ws.readyState !== 1) return reject(new Error("ws fermé"));
+    const id = String(++rpc.seq);
+    const onMsg = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.id !== id) return;
+      state.ws.removeEventListener("message", onMsg);
+      m.error ? reject(new Error(m.error.message || "erreur rpc")) : resolve(m.result);
+    };
+    state.ws.addEventListener("message", onMsg);
+    state.ws.send(JSON.stringify({ jsonrpc: "2.0", id, method, params: params || {} }));
+  });
+}
+rpc.seq = 0;
+
+async function connect() {
+  setDot("busy"); setOrb("off", "…");
+  try {
+    const t = await api("/api/auth/ws-ticket", {});
+    const proto = location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(proto + "//" + location.host + "/api/ws?ticket=" + encodeURIComponent(t.ticket));
+    state.ws = ws;
+    ws.onclose = () => { setDot("bad"); setOrb("off", "COUPÉ"); state.running = false; };
+    ws.onerror = () => setDot("bad");
+    ws.onmessage = onFrame;
+    await new Promise((res, rej) => { ws.onopen = res; setTimeout(rej, 8000, new Error("timeout ws")); });
+    await rpc("client.capabilities", { server_requests: false });
+    const s = await rpc("session.create", {});
+    state.sid = s.session_id;
+    try { await rpc("session.title", { session_id: state.sid, title: "vocal téléphone" }); } catch {}
+    setDot("ok");
+    if (!state.audioCtx) {
+      try { await startMic(); }
+      catch (e) {
+        addMsg("sys", "micro indisponible (" + (e.message || e) + ") : mode texte seulement");
+      }
+    }
+    state.running = true;
+    setOrb("listening", "PARLER");
+    setHint(state.micStream ? "Parle, je t'écoute" : "écris ta question ci-dessous");
+    sys("session " + state.sid + " · modèle " + (s.info && s.info.model || "?"));
+    requestWakeLock();
+    warmVoice();
+    setInterval(() => { if (document.visibilityState === "visible") warmVoice(); }, 300000);
+  } catch (e) {
+    console.error(e);
+    setDot("bad"); setOrb("off", "ERREUR");
+    setHint("Connexion impossible : " + (e.message || e));
+  }
+}
+
+/* ---------- trames serveur ---------- */
+function onFrame(ev) {
+  let m; try { m = JSON.parse(ev.data); } catch { return; }
+  // requête serveur -> client : on refuse proprement (pas de UI ici)
+  if (m.method && m.id !== undefined && m.id !== null) {
+    state.ws.send(JSON.stringify({ jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "not supported by voice client" } }));
+    sys("demande « " + m.method + " » ignorée (réponds sur le desktop)");
+    return;
+  }
+  if (m.method !== "event") return;
+  const type = m.params && m.params.type;
+  const p = (m.params && m.params.payload) || {};
+  switch (type) {
+    case "message.delta": {
+      if (p.text) feed(p.text);
+      break;
+    }
+    case "tool.start":
+      addMsg("tool", "⚙ " + (p.name || p.tool || "outil"));
+      break;
+    case "message.complete": {
+      const full = p.text || "";
+      if (full) finishText(full);
+      state.busy = false;
+      if (state.running && !state.speaking) { setOrb("listening", "PARLER"); setHint("Parle, je t'écoute"); }
+      break;
+    }
+    case "error":
+      sys("erreur agent : " + (p.message || JSON.stringify(p).slice(0, 120)));
+      state.busy = false;
+      break;
+  }
+}
+
+/* ---------- texte -> parole ---------- */
+let liveEl = null, fullText = "";
+function feed(t) {
+  fullText += t;
+  if (!liveEl) liveEl = addMsg("hermes", "");
+  liveEl.textContent = fullText;
+  logEl.scrollTop = logEl.scrollHeight;
+  state.buf += t;
+  flushSentences(false);
+}
+function finishText(full) {
+  if (full && (!liveEl || liveEl.textContent.length < full.length)) {
+    if (!liveEl) liveEl = addMsg("hermes", "");
+    liveEl.textContent = full;
+  }
+  state.buf += "\n";
+  flushSentences(true);
+  liveEl = null; fullText = "";
+}
+function flushSentences(force) {
+  for (;;) {
+    const m = state.buf.match(/^([\s\S]*?[.!?…]+["»)]*)\s+/);
+    if (!m || m[1].trim().length < 12) break;
+    enqueue(m[1].trim());
+    state.buf = state.buf.slice(m[0].length);
+  }
+  if (force) {
+    const rest = state.buf.trim();
+    if (rest) enqueue(rest);
+    state.buf = "";
+  }
+}
+
+/* file d'attente audio */
+function speakable(t) {
+  return String(t)
+    .replace(/```[\s\S]*?```/g, " code ")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/^\s*\|.*\|\s*$/gm, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/https?:\/\/\S+/g, " lien ")
+    .replace(/[*_#>~|]+/g, " ")
+    .replace(/[•·]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function enqueue(text) {
+  const clean = speakable(text);
+  if (clean.length < 3) return;
+  state.queue.push(clean);
+  pump();
+}
+/* cache d'anticipation : la phrase suivante est synthétisée pendant que la
+   précédente se joue (le premier appel à froid coûte ~4 s, les suivants ~0,5 s) */
+const speechCache = new Map();
+function cachedSpeech(text) {
+  let entry = speechCache.get(text);
+  if (!entry) {
+    entry = fetchSpeech(text, null);
+    speechCache.set(text, entry);
+    if (speechCache.size > 6) speechCache.delete(speechCache.keys().next().value);
+  }
+  return entry;
+}
+function prefetchQueued() {
+  state.queue.slice(0, 2).forEach((text) => { if (text) cachedSpeech(text); });
+}
+
+async function pump() {
+  if (state.playing) return;
+  const text = state.queue.shift();
+  if (!text) { onSpeechDone(); return; }
+  state.playing = true;
+  if (!state.speaking) { state.speaking = true; }
+  const ac = new AbortController(); state.playAbort = ac;
+  setOrb("speaking", "PARLE"); setHint("je réponds");
+  try {
+    const pending = cachedSpeech(text);
+    prefetchQueued();
+    const blob = await pending;
+    await playBlob(blob, ac.signal);
+  } catch (e) {
+    if (e.name !== "AbortError") console.warn("tts", e);
+    state.queue.length = 0;
+  } finally {
+    state.playing = false; state.playAbort = null;
+    if (!state.queue.length) onSpeechDone();
+    else pump();
+  }
+}
+
+/* ---------- synthèse (service de réglages de voix) ---------- */
+function voiceParams() {
+  return { engine: settings.engine, voice: settings.voice, rate: settings.rate, pitch: settings.pitch };
+}
+async function fetchSpeech(text, signal) {
+  try {
+    const r = await fetch("/voice/api/speak", {
+      method: "POST", credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text, ...voiceParams() }),
+      signal,
+    });
+    if (!r.ok) throw new Error("voice-api " + r.status);
+    const blob = await r.blob();
+    if (!blob.size) throw new Error("audio vide");
+    return blob;
+  } catch (e) {
+    if (e.name === "AbortError") throw e;
+    console.warn("voice-api indisponible, repli sur le TTS Hermes", e);
+    const r = await fetch("/api/audio/speak", {
+      method: "POST", credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal,
+    });
+    if (!r.ok) throw new Error("tts " + r.status);
+    const j = await r.json();
+    const res = await fetch(j.data_url);
+    return await res.blob();
+  }
+}
+function playBlob(blob, signal) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const a = new Audio(url);
+    const done = () => { URL.revokeObjectURL(url); resolve(); };
+    a.onended = a.onerror = done;
+    if (signal) signal.addEventListener("abort", () => { a.pause(); done(); });
+    a.play().catch(done);
+  });
+}
+function onSpeechDone() {
+  if (!state.speaking) return;
+  state.speaking = false;
+  if (state.running) { setOrb("listening", "PARLER"); setHint("Parle, je t'écoute"); }
+}
+function playDataUrl(url, signal) {
+  return new Promise((resolve) => {
+    const a = new Audio(url);
+    a.onended = a.onerror = () => resolve();
+    if (signal) signal.addEventListener("abort", () => { a.pause(); resolve(); });
+    a.play().catch(() => resolve());
+  });
+}
+function bargeIn() {
+  if (state.playAbort) state.playAbort.abort();
+  state.queue.length = 0;
+  state.speaking = false;
+  state.playing = false;
+}
+
+/* ---------- micro + VAD ---------- */
+async function startMic() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+  });
+  state.micStream = stream;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new Ctx();
+  state.audioCtx = ctx;
+  const src = ctx.createMediaStreamSource(stream);
+  const an = ctx.createAnalyser();
+  an.fftSize = 1024; an.smoothingTimeConstant = 0.6;
+  src.connect(an);
+  state.analyser = an;
+  state.data = new Float32Array(an.fftSize);
+  // niveau visuel + décisions VAD
+  meter.innerHTML = "";
+  for (let i = 0; i < 9; i++) meter.appendChild(document.createElement("i"));
+  const bars = [...meter.children];
+  const tick = () => {
+    requestAnimationFrame(tick);
+    an.getFloatTimeDomainData(state.data);
+    let sum = 0;
+    for (let i = 0; i < state.data.length; i++) sum += state.data[i] * state.data[i];
+    const rms = Math.sqrt(sum / state.data.length);
+    bars.forEach((b, i) => b.classList.toggle("on", rms * 9 > (i + 1) / bars.length));
+    onLevel(rms);
+  };
+  tick();
+}
+
+let lastLevelAt = 0, speechAboveAt = 0, loudSince = 0, lastLoudAt = 0;
+function onLevel(rms) {
+  const now = performance.now();
+  if (now - lastLevelAt < 60) return;
+  lastLevelAt = now;
+  const speech = Math.max(state.noiseFloor * 3.2, 0.02);
+  const loud = rms > speech;
+
+  // barge-in : on parle pendant la réponse
+  if (state.speaking && loud) {
+    if (!loudSince) loudSince = now;
+    if (now - loudSince > 260) { loudSince = 0; bargeIn(); beginRecording(); }
+    return;
+  }
+  loudSince = 0;
+
+  if (!state.recording) {
+    // calibration du bruit de fond quand tout est calme
+    if (!state.speaking && !state.busy && rms < 0.02) state.noiseFloor = state.noiseFloor * 0.97 + rms * 0.03;
+    return;
+  }
+  if (loud) {
+    if (!speechAboveAt) speechAboveAt = now;
+    lastLoudAt = now;
+    return;
+  }
+  // fin de prise : on a entendu de la voix, puis 1,1 s de silence
+  if (speechAboveAt && now - lastLoudAt > 1100 && now - speechAboveAt > 350) stopRecording();
+}
+
+/* ---------- enregistrement ---------- */
+function beginRecording() {
+  if (state.recording || !state.micStream) return;
+  const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
+    : (MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "");
+  let rec;
+  try { rec = new MediaRecorder(state.micStream, mime ? { mimeType: mime } : undefined); }
+  catch (e) { sys("enregistrement impossible : " + e.message); return; }
+  state.chunks = [];
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) state.chunks.push(e.data); };
+  rec.onstop = () => transcribe(rec.mimeType || mime || "audio/webm");
+  rec.start(200);
+  state.mediaRec = rec;
+  state.recording = true;
+  state.speechAboveAt = 0; state.silenceSince = 0;
+  setOrb("listening", "J'ÉCOUTE");
+  setHint("je t'écoute…");
+  clearTimeout(state.maxTimer);
+  state.maxTimer = setTimeout(() => { if (state.recording) stopRecording(); }, 60000);
+}
+function stopRecording() {
+  if (!state.recording) return;
+  state.recording = false;
+  clearTimeout(state.maxTimer);
+  setOrb("thinking", "…"); setHint("transcription");
+  try { state.mediaRec.stop(); } catch {}
+}
+function blobToDataUrl(blob) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = rej;
+    fr.readAsDataURL(blob);
+  });
+}
+async function transcribe(mime) {
+  const blob = new Blob(state.chunks, { type: mime });
+  state.chunks = [];
+  if (blob.size < 1200) { setOrb("listening", "PARLER"); setHint("Parle, je t'écoute"); return; }
+  try {
+    const dataUrl = await blobToDataUrl(blob);
+    const r = await api("/api/audio/transcribe", { data_url: dataUrl, mime_type: mime.split(";")[0] });
+    const text = (r.transcript || "").trim();
+    if (!text) { setOrb("listening", "PARLER"); setHint("rien entendu, réessaie"); return; }
+    addMsg("user", text);
+    if (state.stopPhrase && /^(stop|arrete|arrête|silence)[.!]?$/i.test(text)) { sys("arrêt demandé"); return; }
+    submit(text);
+  } catch (e) {
+    sys("transcription : " + (e.message || e));
+    setOrb("listening", "PARLER"); setHint("Parle, je t'écoute");
+  }
+}
+
+/* ---------- tour agent ---------- */
+async function submit(text) {
+  if (!state.ws || state.ws.readyState !== 1) { sys("hors ligne"); return; }
+  state.busy = true;
+  setOrb("thinking", "…"); setHint("Hermes réfléchit");
+  liveEl = null; fullText = ""; state.buf = "";
+  try { await rpc("prompt.submit", { session_id: state.sid, text }); }
+  catch (e) { sys("envoi : " + (e.message || e)); state.busy = false; }
+}
+
+/* ---------- veille ---------- */
+async function requestWakeLock() {
+  try { if ("wakeLock" in navigator) state.wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && state.running) requestWakeLock();
+});
+
+/* ---------- réglages de voix ---------- */
+const settings = { engine: "edge", voice: "", rate: 0, pitch: 0 };
+let catalogue = null;
+let saveTimer = null;
+
+async function loadSettings() {
+  try {
+    const r = await fetch("/voice/api/state", { credentials: "same-origin" });
+    if (r.ok) {
+      const j = await r.json();
+      if (j.state) Object.assign(settings, j.state);
+    }
+  } catch (e) { console.warn("state", e); }
+  $("#rate").value = settings.rate;
+  $("#pitch").value = settings.pitch;
+  $("#rateOut").textContent = settings.rate + " %";
+  $("#pitchOut").textContent = settings.pitch + " Hz";
+}
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const r = await fetch("/voice/api/state", {
+        method: "POST", credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      const j = await r.json();
+      if (j.state) Object.assign(settings, j.state);
+      setHint("voix enregistrée");
+    } catch (e) { setHint("enregistrement impossible"); }
+  }, 400);
+}
+async function loadVoices() {
+  const list = $("#voiceList");
+  if (catalogue) { renderVoices(); return; }
+  list.innerHTML = '<div class="hintline">chargement du catalogue…</div>';
+  try {
+    const r = await fetch("/voice/api/voices", { credentials: "same-origin" });
+    const j = await r.json();
+    catalogue = [];
+    (j.engines || []).forEach((eng) => {
+      (eng.voices || []).forEach((v) => catalogue.push({ ...v, engine: eng.id }));
+    });
+    if (!settings.voice && catalogue.length) settings.voice = catalogue[0].id;
+    renderVoices();
+  } catch (e) {
+    list.innerHTML = '<div class="hintline">catalogue indisponible (service de voix injoignable)</div>';
+  }
+}
+function renderVoices() {
+  const list = $("#voiceList");
+  list.innerHTML = "";
+  let lastLang = "";
+  catalogue.forEach((v) => {
+    if (v.lang !== lastLang) {
+      lastLang = v.lang;
+      const h = document.createElement("div");
+      h.className = "hintline";
+      h.textContent = v.lang.toUpperCase();
+      list.appendChild(h);
+    }
+    const row = document.createElement("div");
+    row.className = "voice" + (v.id === settings.voice ? " on" : "");
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = v.label;
+    const small = document.createElement("small");
+    small.textContent = v.id;
+    name.appendChild(small);
+    const play = document.createElement("button");
+    play.textContent = "▶";
+    play.title = "écouter";
+    play.onclick = () => previewVoice(v.id);
+    const pick = document.createElement("button");
+    pick.className = "pick";
+    pick.textContent = v.id === settings.voice ? "✓" : "Choisir";
+    pick.onclick = () => {
+      settings.voice = v.id;
+      settings.engine = v.engine || "edge";
+      speechCache.clear();
+      warmVoice();
+      scheduleSave();
+      renderVoices();
+      previewVoice(v.id);
+    };
+    row.appendChild(name);
+    row.appendChild(play);
+    row.appendChild(pick);
+    list.appendChild(row);
+  });
+}
+function warmVoice() {
+  fetch("/voice/api/preview", {
+    method: "POST", credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ...voiceParams(), text: "a" }),
+  }).catch(() => {});
+}
+
+async function previewVoice(voiceId) {
+  const body = {
+    ...voiceParams(),
+    voice: voiceId || settings.voice,
+    text: "Salut Marc, voilà ma voix. Elle te va ?",
+  };
+  try {
+    setHint("aperçu…");
+    const r = await fetch("/voice/api/preview", {
+      method: "POST", credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const blob = await r.blob();
+    bargeIn();
+    await playBlob(blob, null);
+    setHint("aperçu terminé");
+  } catch (e) {
+    setHint("aperçu impossible : " + (e.message || e));
+  }
+}
+
+/* ---------- interactions ---------- */
+orb.addEventListener("click", () => {
+  if (!state.running) return;
+  if (state.speaking) { bargeIn(); beginRecording(); return; }
+  if (state.recording) { stopRecording(); return; }
+  beginRecording();
+});
+$("#type").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const v = $("#typed").value.trim();
+  if (!v) return;
+  $("#typed").value = "";
+  addMsg("user", v);
+  bargeIn();
+  submit(v);
+});
+$("#btnToggle").addEventListener("click", () => {
+  if (state.running) {
+    state.running = false;
+    if (state.recording) stopRecording();
+    bargeIn();
+    setOrb("off", "COUPÉ"); setHint("appuie sur le bouton pour reprendre");
+  } else {
+    setOrb("listening", "PARLER"); setHint("Parle, je t'écoute");
+    state.running = true;
+  }
+});
+$("#btnLogin").addEventListener("click", login);
+$("#p").addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+
+$("#btnVoice").addEventListener("click", () => {
+  $("#sheet").classList.remove("hidden");
+  loadVoices();
+});
+$("#btnSheetClose").addEventListener("click", () => $("#sheet").classList.add("hidden"));
+$("#btnTest").addEventListener("click", () => previewVoice(settings.voice));
+$("#rate").addEventListener("input", (e) => {
+  settings.rate = Number(e.target.value);
+  $("#rateOut").textContent = settings.rate + " %";
+  speechCache.clear();
+  scheduleSave();
+});
+$("#pitch").addEventListener("input", (e) => {
+  settings.pitch = Number(e.target.value);
+  $("#pitchOut").textContent = settings.pitch + " Hz";
+  speechCache.clear();
+  scheduleSave();
+});
+
+/* ---------- démarrage ---------- */
+loadSettings();
+(async () => {
+  try {
+    const st = await api("/api/status");
+    if (st && st.auth_required) {
+      const r = await fetch("/api/auth/me", { credentials: "same-origin" });
+      if (r.ok) { connect(); return; }
+      showLogin(); return;
+    }
+    connect();
+  } catch (e) {
+    addMsg("sys", "serveur injoignable : " + (e.message || e));
+    showLogin();
+  }
+})();
+})();
+</script>
+</body>
+</html>

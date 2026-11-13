@@ -99,7 +99,15 @@ in {
       # publique sans secret, client_id 395733475048620332, redirect
       # exact enregistré). allow_claim=preferred_username : claim présent
       # dans l'ID token (matrice de claims Zitadel) et égal au username
-      # Zitadel de marc. REDIRECT_URI explicite car nginx réécrit le Host
+      # Zitadel de marc. PRÉREQUIS CÔTÉ ZITADEL (état en base, pas dans ce
+      # fichier) : l'app « Hermes WebUI » doit garder « User Info inside ID
+      # Token » (idTokenUserinfoAssertion) ACTIVÉ. Sans lui, Zitadel n'émet
+      # aucun claim de scope (profile/email) dans l'id_token dès qu'un
+      # access_token est émis : preferred_username est absent et le WebUI
+      # répond 403 « OIDC identity is not allowed » après un login pourtant
+      # réussi (vérifié le 11/11/2026). Le WebUI ne retombe PAS sur
+      # /userinfo, le claim doit venir de l'id_token.
+      # REDIRECT_URI explicite car nginx réécrit le Host
       # vers 127.0.0.1:9130 (la redirect dérivée serait fausse).
       HERMES_WEBUI_OIDC_ISSUER = "https://auth.marcpartensky.com";
       HERMES_WEBUI_OIDC_CLIENT_ID = "395733475048620332";

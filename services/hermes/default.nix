@@ -18,14 +18,11 @@
     manifest = lib.importJSON ./claude-code-manifest.json;
   };
 
-  # MCP Pangolin (script ./pangolin-mcp.py) : reconstruit ici le binaire qui
-  # n'existait qu'en store path brut (jamais référencé par le flake, donc
-  # ramassable par un GC). Interpréteur = python3 + SDK `mcp` ; les appels
-  # HTTP vont vers l'API d'intégration Pangolin (flag enable_integration_api
-  # de services/pangolin) sur api.marcpartensky.com/v1.
-  pangolinMcp = pkgs.writers.writePython3Bin "pangolin-mcp" {
-    libraries = [pkgs.python3Packages.mcp];
-  } (builtins.readFile ./pangolin-mcp.py);
+  # MCP Pangolin : plus de paquet ici. Le serveur est monte par
+  # modules/nixos/mcp-host directement depuis ./pangolin-mcp.py (entree
+  # `pangolin` de profiles/tower/configuration.nix), donc le binaire
+  # writePython3Bin ne servait plus a rien et n'etait plus reference nulle
+  # part : il ne faisait qu'evaluer un paquet python a chaque eval de l'hote.
 in {
   # Option : le token Matrix du bot @hermes (clé hermes_matrix_env de
   # secrets/hermes-matrix.yml). Les destinataires de ce fichier sops ne
@@ -70,6 +67,12 @@ in {
       home = "/var/lib/hermes";
       createHome = true;
       shell = pkgs.bashInteractive;
+      # Plage subuid/subgid pour podman rootless (agents : conteneurs d'outils
+      # jetables). Sans elle, `podman pull` echoue a l'unpack sur
+      # "potentially insufficient UIDs or GIDs available in user namespace".
+      # 200000 pour ne pas chevaucher la plage de marc (100000:65536).
+      subUidRanges = [{ startUid = 200000; count = 65536; }];
+      subGidRanges = [{ startGid = 200000; count = 65536; }];
       openssh.authorizedKeys.keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
       ];
@@ -131,7 +134,18 @@ in {
         [ config.sops.secrets."hermes_env".path ]
         ++ lib.optional config.services.hermes.enableMatrixToken config.sops.secrets."hermes_matrix_env".path
         ++ lib.optional config.services.hermes.enableDiscordToken config.sops.secrets."hermes_discord_env".path
-        ++ [ config.sops.secrets."hermes_api_server_env".path ];
+        # API_SERVER_KEY : la valeur chiffrée est la CLÉ NUE (64 hex), pas un
+        # dotenv « API_SERVER_KEY=... ». Le module ne fait que CONCATÉNER les
+        # environmentFiles dans $HERMES_HOME/.env, donc la clé arrivait seule sur
+        # une ligne sans nom de variable : API_SERVER_KEY restait vide,
+        # l'api_server refuse de démarrer sans clé utilisable (min 16 car.), et
+        # le pont Discord (services/discord-bot -> 127.0.0.1:8642) n'avait plus
+        # de listener. Un template sops-nix préfixe la clé.
+        ++ [ config.sops.templates."hermes-api-server.env".path ]
+        # DEEPSEEK_API_KEY (compte direct), consommée par le provider custom
+        # provider deepseek : sans ce fichier le provider existe mais l'appel part
+        # sans jeton et rend 401.
+        ++ [ config.sops.secrets."hermes_deepseek_env".path ];
       addToSystemPackages = true;
 
       # venv nix scellé -> deps mem0 (mem0ai) installées au runtime dans une cible durable
@@ -149,10 +163,14 @@ in {
       # @marc + son ghost Signal (mautrix-signal)
       environment.MATRIX_ALLOWED_USERS = "@marc:matrix.marcpartensky.com,@signal_ad927dda-4064-48ff-8652-01a0d71005e4:matrix.marcpartensky.com";
 
-      # --- Discord : bot dédié (voix + texte), profil `discord-bridge` ---
-      # Le token vient de secrets/hermes-discord.yml (environmentFiles) ; le
-      # profil active `platforms.discord` dans sa propre config.yaml. Allowlist =
-      # @marc uniquement (id Discord, déjà master côté services/discord-bot).
+      # --- Discord : NATIF DESACTIVE (cf. profiles/tower : enableDiscordToken) ---
+      # Historiquement : bot dedie (voix + texte) sur le profil `discord-bridge`.
+      # Aujourd'hui Discord est servi par services/discord-bot (bot de marc) qui
+      # appelle l'API server du profil default sous /p/discord-bridge/. La
+      # plateforme native reste donc desactivee : son token sops est un
+      # placeholder et discord.py n'est pas dans le venv scelle, ce qui la
+      # faisait apparaitre "down" en permanence. Allowlist conservee pour le jour
+      # ou elle sera reactivee (@marc uniquement, id Discord).
       environment.DISCORD_ALLOWED_USERS = "478552571510915072";
 
       # --- Opus (voix Discord) : voir le bloc "Opus" plus bas, au niveau `config`
@@ -230,6 +248,18 @@ in {
       #   default = "anthropic/claude-sonnet-4";
       # };
       settings = {
+        # --- Limites de la mémoire persistante ---
+        # La mémoire (MEMORY.md, injectée à CHAQUE tour) est plafonnée par défaut
+        # à 2200 chars (~800 tokens) et le profil utilisateur (USER.md) à 1375.
+        # Valeurs relevées dans le code (tools/memory_tool.py) : les clés lues
+        # sont memory_char_limit / user_char_limit dans la section `memory`.
+        # Le savoir procédural reste dans les skills (chargés à la demande) ;
+        # ces limites ne servent qu'aux faits valables dans toute session.
+        memory = {
+          memory_char_limit = 6000; # ~2200 tokens, contre 2200 chars par défaut
+          user_char_limit = 3000; # ~1100 tokens, contre 1375 par défaut
+        };
+
         # --- Provider custom Kimi/Moonshot ---
         custom_providers = [
           {
@@ -248,13 +278,75 @@ in {
               };
             };
           }
+
+          # --- Provider custom : llama.cpp + llama-swap du portable ---
+          # Le portable (RTX 3060 6 Go) sert plusieurs GGUF sur UN seul port
+          # compatible OpenAI, joint par le tailnet (100.64.0.4:8080). Serveur
+          # local sans cle : pas de key_env, Hermes substitue « no-key-required ».
+          # qwen3.5-4b est le seul modele confortable dans Hermes (64k, 20-40
+          # tok/s mesures, appels d'outils corrects) ; qwen3.5-2b est minuscule
+          # et rapide ; ornith-9b plafonne a 16k et ~5 tok/s (interface web
+          # de llama-swap seulement). Cette entree doit vivre ICI : une entree
+          # ajoutee a chaud dans config.yaml est ecrasee a l'activation (le
+          # merge Nix remplace les listes, il ne les fusionne pas).
+          {
+            name = "laptop-llama";
+            base_url = "http://100.64.0.4:8080/v1";
+            api_mode = "chat_completions";
+            model = "qwen3.5-4b";
+            models = {
+              "qwen3.5-4b".context_length = 65536;
+              "qwen3.5-2b".context_length = 65536;
+              "ornith-9b".context_length = 16384;
+            };
+          }
+
+          # --- Provider custom : Qwen3.5 4B abliterated sur le portable ---
+          # Second endpoint du portable, distinct de llama-swap (100.64.0.4:8080,
+          # service SYSTEME `llm-server` en Vulkan) : celui-ci est notre propre
+          # llama-server compile en CUDA sm_86, 128k de contexte, KV q4_0.
+          # Verifie : prompt de 36 640 tokens avec retrieval exact, pp ~560-680
+          # tok/s, 12-27 tok/s en generation, 4.8-5.1 Go de VRAM sur 6.
+          # Mesure Hermes reelle : 49 058 tokens d'entree pour un one-shot, donc
+          # 8k etait inutilisable et 32k juste ; 128k laisse la marge.
+          # Unite cote portable : ~/.config/systemd/user/llama-abl.service.
+          {
+            name = "laptop-abl";
+            base_url = "http://100.64.0.4:8083/v1";
+            api_mode = "chat_completions";
+            model = "qwen3.5-4b-abl";
+            models = {
+              "qwen3.5-4b-abl".context_length = 131072;
+            };
+          }
+
+          # (DeepSeek direct : PAS de provider custom ici, le provider intégré
+          # `deepseek` couvre le cas. Il porte le ProviderProfile upstream qui
+          # émet `extra_body.thinking` explicitement et mappe l'effort sur
+          # `reasoning_effort` : sans ça l'API V4 laisse thinking ON par défaut
+          # et exige de renvoyer `reasoning_content` au tour suivant (HTTP 400
+          # après le premier appel d'outil). Un provider custom ne reçoit pas ce
+          # profil, il ne servait qu'à déclarer les métadonnées 1 M / vision.)
         ];
 
-        # --- Modèle par défaut : DeepSeek v4.1 Flash (OpenRouter) ---
-        # Politique marc : DeepSeek v4.1 Flash par défaut, Nemotron en secours.
+        # --- Modèle par défaut : DeepSeek v4.1 Flash, servi EN DIRECT ---
+        # Politique marc du 11/11/2026 : le compte DeepSeek direct remplace
+        # OpenRouter pour le modele par defaut (solde recharge suivi sur
+        # usage.marcpartensky.com, hors heures pleines deux fois moins cher).
+        # Provider = le slug INTÉGRÉ `deepseek` (pas un custom) : une seule
+        # entrée DeepSeek dans le picker, et le ProviderProfile upstream gère
+        # le contrat thinking de l'API V4. Le slug custom `deepseek-direct`
+        # faisait doublon avec la même paire de modèles.
+        # La chaine de secours juste en dessous reste OpenRouter puis le
+        # Nemotron gratuit : un solde DeepSeek a zero ne coupe pas l'agent.
         model = {
-          provider = "openrouter";
-          default = "deepseek/deepseek-v4.1-flash";
+          provider = "deepseek";
+          default = "deepseek-flash";
+          # base_url declaree EXPLICITEMENT : le fichier en place gardait
+          # https://openrouter.ai/api/v1 du defaut precedent, et un base_url
+          # perime avec un nom de modele DeepSeek ferait un 400 silencieux
+          # (bascule sur la chaine de secours sans que ca se voie).
+          base_url = "https://api.deepseek.com/v1";
         };
 
         # --- Chaîne de secours : DeepSeek en premier, Nemotron en secours ---
@@ -282,6 +374,11 @@ in {
           reasoning_overrides = {
             "deepseek/deepseek-v4.1-flash" = "high";
             "deepseek-v4.1-flash" = "high";
+            # Memes niveaux pour les noms servis par l'API DeepSeek directe
+            # (provider intégré `deepseek`). V4-Pro est le gros modele :
+            # max, comme Opus 5.
+            "deepseek-flash" = "high";
+            "deepseek-v4-pro" = "max";
             "nvidia/nemotron-3-ultra-550b-a55b:free" = "max";
             "nemotron-3-ultra" = "max";
             "claude-opus-5-5[1m]" = "max";
@@ -362,8 +459,12 @@ in {
         # tourne dans le pane avec l'env herdr et sous le meme utilisateur que le
         # serveur herdr. Le lancement habituel (`sudo su -l hermes hermes chat`)
         # efface cet env -> plugin inerte mais sans effet de bord.
+        # `matrix-loop-emoji` : emoji 🔄 en fin de chaque message Matrix, et une
+        # reaction 🔄 d'un utilisateur autorise sur un message du bot renouvelle
+        # la session (chemin de /new, sans confirmation). Code vendorise dans
+        # services/hermes/plugins/matrix-loop-emoji et pose par hermesHomeFiles.
         plugins = {
-          enabled = [ "herdr-agent-state" ];
+          enabled = [ "herdr-agent-state" "matrix-loop-emoji" ];
         };
 
         # --- TTS : Edge TTS (gratuit, sans clé API) ---
@@ -505,6 +606,12 @@ in {
       hermesHomeFiles = {
         "hooks/gotify-notify/HOOK.yaml" = ./hooks/gotify-notify/HOOK.yaml;
         "hooks/gotify-notify/handler.py" = ./hooks/gotify-notify/handler.py;
+
+        # Plugin matrix-loop-emoji : pose directement dans $HERMES_HOME/plugins/
+        # sous son nom d'origine (pas de prefixe nix-managed-), pour qu'il soit
+        # charge comme plugin "user" et non en doublon via extraPlugins.
+        "plugins/matrix-loop-emoji/plugin.yaml" = ./plugins/matrix-loop-emoji/plugin.yaml;
+        "plugins/matrix-loop-emoji/__init__.py" = ./plugins/matrix-loop-emoji/__init__.py;
       };
     };
 
@@ -636,15 +743,6 @@ in {
     # (services/hermes/pangolin-mcp.py) relit la clé à chaque appel ; un
     # process déjà lancé garde son ancienne PANGOLIN_BASE_URL jusqu'au
     # redémarrage de hermes.
-    services.hermes-agent.mcpServers.pangolin = {
-      command = "${pangolinMcp}/bin/pangolin-mcp";
-      args = [ ];
-      env = {
-        PANGOLIN_BASE_URL = "https://api.marcpartensky.com/v1";
-        PANGOLIN_API_KEY_FILE = config.sops.secrets."pangolin_api_key".path;
-      };
-      timeout = 60;
-    };
 
     # --- MCP voix (TTS) : serveur HTTP sur le PORTABLE, joint par le tailnet ---
     # Les moteurs (Phonon, Kokoro en CPU ; OmniVoice, Ming, Chatterbox, Breeze
@@ -679,6 +777,16 @@ in {
 
     sops.secrets."hermes_env" = {};
 
+    # Clé du compte DeepSeek direct, en clair pour l'agent : son contenu est un
+    # dotenv (« DEEPSEEK_API_KEY=... ») ajouté aux environmentFiles de l'unité,
+    # donc lue par le provider INTÉGRÉ deepseek (model.provider ci-dessus).
+    # Même fichier que
+    # le solde affiché par le dashboard d'usage (secrets/deepseek.yml).
+    sops.secrets."hermes_deepseek_env" = {
+      key = "hermes_deepseek_env";
+      sopsFile = ../../secrets/deepseek.yml;
+    };
+
     # Clé du listener API Server du profil default (clé "hermes_api_server_env"
     # du fichier sops, valeur = contenu dotenv "API_SERVER_KEY=..."). Même valeur
     # que HERMES_BRIDGE_API_KEY côté services/discord-bot, qui l'envoie en Bearer :
@@ -691,6 +799,13 @@ in {
       key = "hermes_discord_bridge_env";
       sopsFile = ../../secrets/discord-hermes-bridge.yml;
     };
+
+    # Le secret ci-dessus est une clé NUE : rendue en .env par concaténation, elle
+    # n'aurait pas de nom de variable. Le template ci-dessous en fait un vrai
+    # dotenv (API_SERVER_KEY=...), consommé par l'unité hermes-agent.
+    sops.templates."hermes-api-server.env".content = ''
+      API_SERVER_KEY=${config.sops.placeholder."hermes_api_server_env"}
+    '';
 
     # Clé API du MCP Pangolin (clé racine "pangolin_api_key" de
     # secrets/common.yml, valeur = clé "hermes" créée dans le dashboard).

@@ -7,10 +7,17 @@
 # qui est le terminal web ; `dashboard` ajoute en plus l'interface navigateur
 # sur le même port. Un seul des deux modes peut tourner par instance.
 #
-# Chaîne : Pangolin (terminal.marcpartensky.com, SSO)
+# Chaîne : Pangolin (dash.marcpartensky.com, SSO)
 #          -> newt (site tower)
 #          -> 127.0.0.1:9121 (nginx, réécrit Host: 127.0.0.1:9120)
 #          -> 127.0.0.1:9120 (hermes-backend.service, mode dashboard).
+#
+# Le domaine était terminal.marcpartensky.com jusqu'au 11/11/2026 : ce nom est
+# désormais pris par le vrai terminal web (services/terminal, ttyd). Un domaine
+# Pangolin ne peut porter qu'une ressource, d'où le déplacement ici.
+# L'identifiant Pangolin (niceId) de cette ressource est `hermes-dashboard` :
+# c'est une ressource NEUVE (l'ancienne, niceId `hermes-terminal`, est reprise
+# par services/terminal, qui la met à jour sur place pour garder le domaine).
 #
 # Le backend bindé en loopback ne déclenche PAS la garde d'authentification du
 # dashboard (elle ne s'active que sur une adresse non-loopback) : c'est le SSO
@@ -76,10 +83,10 @@ in {
   # (donc tower) : `site` est omis volontairement, cf. services/newt.
   # NB : cle `proxy-resources` + `protocol` (schema attendu par le Pangolin du
   # VPS), cf. le commentaire detaille dans services/newt.
-  services.newt.blueprint.proxy-resources.hermes-terminal = {
-    name = "hermes-terminal";
+  services.newt.blueprint.proxy-resources.hermes-dashboard = {
+    name = "hermes-dashboard";
     protocol = "http";
-    full-domain = "terminal.marcpartensky.com";
+    full-domain = "dash.marcpartensky.com";
     auth.sso-enabled = true;
     targets = [
       {

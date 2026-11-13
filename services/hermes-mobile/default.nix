@@ -37,8 +37,28 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }: let
+  # Page « Hermes vocal » : client web duplex (VAD + barge-in) servi par le même
+  # domaine que l'appli mobile, donc same-origin avec la porte d'auth (cookies)
+  # et le WebSocket. Cf. voice.html.
+  voicePage = pkgs.runCommandLocal "hermes-voice-page" {} ''
+    mkdir -p $out
+    cp ${./voice.html} $out/voice.html
+  '';
+
+  # Service de réglages de voix (moteur, voix, vitesse, hauteur) + synthèse des
+  # aperçus, proxifié sous /voice/api/ (même origine que la page, donc cookies).
+  voiceSettingsPort = 9134;
+  voiceSettingsState = "/var/lib/hermes/.hermes/voice-settings.json";
+  # Interpréteur = venv scellé de Hermes (edge-tts 7.3.x y est). Le edge-tts de
+  # nixpkgs (7.2.8) se fait refuser par le service Microsoft : 403 « Invalid
+  # response status » sur le websocket, donc la version compte.
+  voiceSettingsPython = "${config.services.hermes-agent.package.hermesVenv}/bin/python3";
+  voiceSettingsScript = pkgs.writeText "hermes-voice-settings.py"
+    (builtins.readFile ./voice-settings.py);
+
   # Profil default : /var/lib/hermes/.hermes (config Nix-managed, marqueur
   # .managed écrit par l'activation NixOS, donc les écritures de config depuis
   # l'appli sont refusées comme depuis le dashboard).
@@ -58,6 +78,14 @@ in {
     serviceConfig = {
       User = config.services.hermes-agent.user;
       Group = config.services.hermes-agent.group;
+
+      # Même traitement que hermes-agent et hermes-backend : sans cette ligne
+      # l'unité vit dans system.slice au poids 100, sur les 16 threads, à
+      # égalité avec le bureau de marc. Mesuré le 12/11/2026 : 37 % d'un cœur
+      # en continu avec une session ouverte à 2 messages, pendant que la
+      # machine était en swap plein. hermes.slice la confine aux threads
+      # réservés (12-13, poids 2000) comme le reste de la pile Hermes.
+      Slice = "hermes.slice";
 
       # même cwd que la session d'origine de l'appli (cf. README du projet)
       WorkingDirectory = "/var/lib/hermes/workspace";
@@ -83,6 +111,31 @@ in {
     };
   };
 
+  # Réglages de voix : même utilisateur que le backend, état dans le home Hermes.
+  systemd.services.hermes-voice-settings = {
+    description = "Hermes vocal : réglages de voix et synthèse des aperçus";
+    wantedBy = ["multi-user.target"];
+    after = ["network.target"];
+    serviceConfig = {
+      User = config.services.hermes-agent.user;
+      Group = config.services.hermes-agent.group;
+      WorkingDirectory = "/var/lib/hermes/workspace";
+      Environment = [
+        "HOME=/var/lib/hermes"
+        "VOICE_SETTINGS_PORT=${toString voiceSettingsPort}"
+        "VOICE_SETTINGS_STATE=${voiceSettingsState}"
+      ];
+      ExecStart = "${voiceSettingsPython} ${voiceSettingsScript}";
+      Restart = "always";
+      RestartSec = 5;
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+      ProtectHome = false;
+      ReadWritePaths = ["/var/lib/hermes/.hermes"];
+    };
+  };
+
   # Proxy local : seul point d'entrée loopback ; il réécrit le Host que le
   # serveur impose, laisse passer l'Upgrade WebSocket, et annonce au backend
   # https + l'IP cliente réelle (cookies Secure, audit) via X-Forwarded-*.
@@ -105,6 +158,33 @@ in {
         proxy_buffering off;
       '';
     };
+
+    # Client vocal web (same-origin : cookies de la porte d'auth + /api/ws).
+    # La page elle-même ne contient aucun secret : la connexion se fait par le
+    # formulaire, puis toutes les requêtes /api/* repassent par le proxy ci-dessus.
+    locations."= /voice" = {
+      alias = "${voicePage}/voice.html";
+      extraConfig = "default_type text/html; add_header Cache-Control \"no-store\";";
+    };
+    locations."= /voice/" = {
+      return = "302 /voice";
+    };
+
+    # API des réglages de voix (état, catalogue, aperçus, synthèse). Préfixe
+    # plus spécifique que "/" : il gagne sur le proxy du backend.
+    locations."/voice/api/" = {
+      proxyPass = "http://127.0.0.1:${toString voiceSettingsPort}/";
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+        client_max_body_size 1m;
+        proxy_buffering off;
+      '';
+    };
+
   };
 
   # Ressource publique Pangolin, appliquée par le site qui porte le blueprint

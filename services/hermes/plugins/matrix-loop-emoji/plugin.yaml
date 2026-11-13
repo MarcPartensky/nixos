@@ -1,0 +1,3 @@
+name: matrix-loop-emoji
+version: "1.0"
+description: Ajoute un emoji de boucle en fin de chaque message Matrix et renouvelle la session quand on y réagit avec cet emoji.

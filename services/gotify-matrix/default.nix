@@ -35,6 +35,12 @@
 #   journalctl -u gotify-matrix-relay -f          # lecture Gotify + envois
 #   curl -s -H "X-Gotify-Key: $(cat /var/lib/gotify-pont/client_token)" \
 #     'http://127.0.0.1:8070/message?limit=5'     # lire la file (hermes)
+#   # verifier le pont de bout en bout (sens Gotify -> Matrix) : la notification
+#   # doit apparaitre dans la salle en quelques secondes
+#   curl -s -H "X-Gotify-Key: $(cat /var/lib/gotify-pont/ping_token)" \
+#     -H 'Content-Type: application/json' \
+#     -d '{"title":"ping","message":"test du pont"}' \
+#     http://127.0.0.1:8070/message
 {
   pkgs,
   config,
@@ -125,21 +131,45 @@
     fi
     echo "gotify-pont: auth admin OK ($AUTH_USER)"
 
+    # Le FICHIER de jeton fait foi : Gotify ne rend JAMAIS les jetons dans ses
+    # reponses de liste (`GET /client` et `GET /application` portent id et name,
+    # pas `token`), donc « retrouver le jeton existant par son nom » est
+    # impossible — une logique qui s'y fie cree un doublon a chaque activation et
+    # fait tourner les jetons (vecu). On reutilise donc le fichier tel quel, et on
+    # ne cree qu'a defaut ; dans ce cas on supprime d'abord les entrees du meme
+    # nom (leurs jetons sont perdus, on ne peut pas les reprendre).
+    # `validate` = "message" : le jeton est verifie par un GET /message (possible
+    # pour un jeton CLIENT ; un jeton d'APPLICATION ne sait que poster, on le
+    # prend donc sur parole pour ne pas injecter de notification a chaque switch).
     get_or_create() {
-      res=$1; name=$2; out=$3
-      curl -s -o "$TMP/$res.json" -u "$AUTH_USER:$PW" "$API/$res"
-      token=$(jq -r --arg n "$name" '.[] | select(.name == $n) | .token' "$TMP/$res.json" | head -1)
-      if [ -z "$token" ] || [ "$token" = null ]; then
-        echo "gotify-pont: creation $res \"$name\""
-        curl -s -o "$TMP/$res.json" -u "$AUTH_USER:$PW" \
-          -H 'Content-Type: application/json' -d "{\"name\": \"$name\"}" "$API/$res"
-        token=$(jq -r '.token // empty' "$TMP/$res.json")
-      else
-        echo "gotify-pont: $res \"$name\" deja present (reutilise)"
+      res=$1; name=$2; out=$3; validate=$4
+      if [ -s "$out" ]; then
+        if [ "$validate" = message ]; then
+          if curl -fsS -o /dev/null -H "X-Gotify-Key: $(cat "$out")" "$API/message?limit=1"; then
+            echo "gotify-pont: $res \"$name\" : jeton existant valide (reutilise)"
+            return 0
+          fi
+          echo "gotify-pont: $res \"$name\" : jeton existant REFUSE, recreation"
+        else
+          echo "gotify-pont: $res \"$name\" : jeton existant reutilise ($out)"
+          return 0
+        fi
       fi
+      code=$(curl -s -o "$TMP/$res.json" -w '%{http_code}' -u "$AUTH_USER:$PW" "$API/$res" || echo 000)
+      echo "gotify-pont: $res $name -> HTTP $code"
+      for id in $(jq -r --arg n "$name" \
+        'if type == "array" then (.[] | select(.name == $n) | .id) else empty end' \
+        "$TMP/$res.json" 2>/dev/null || true); do
+        echo "gotify-pont: suppression de l'entree perimee $res id=$id"
+        curl -s -o /dev/null -X DELETE -u "$AUTH_USER:$PW" "$API/$res/$id"
+      done
+      echo "gotify-pont: creation $res \"$name\""
+      curl -s -o "$TMP/$res.json" -u "$AUTH_USER:$PW" \
+        -H 'Content-Type: application/json' -d "{\"name\": \"$name\"}" "$API/$res"
+      token=$(jq -r '.token // empty' "$TMP/$res.json" 2>/dev/null || true)
       if [ -z "$token" ]; then
-        echo "gotify-pont: aucun jeton rendu par $res" >&2
-        exit 1
+        echo "gotify-pont: aucun jeton rendu par $res, pont INACTIF" >&2
+        exit 0
       fi
       printf '%s' "$token" > "$out"
       chown hermes:hermes "$out"
@@ -147,14 +177,26 @@
       echo "gotify-pont: jeton $res ecrit ($(wc -c < "$out") octets)"
     }
 
-    get_or_create client ${cfg.clientName} "$DIR/client_token"
-    get_or_create application ${cfg.applicationName} "$DIR/application_token"
+    get_or_create client ${cfg.clientName} "$DIR/client_token" message
+    get_or_create application ${cfg.applicationName} "$DIR/application_token" ""
+    # Application « ping » : sert a VERIFIER le pont a la demande (une
+    # notification emise avec ce jeton doit apparaitre dans la salle) sans avoir
+    # a se connecter comme admin. Le relais ne l'ignore pas (seule l'application
+    # du pont est filtree, pour couper l'echo).
+    get_or_create application "${cfg.applicationName}-ping" "$DIR/ping_token" ""
 
     # table appid -> nom, pour que le relais nomme la source de la notification
     curl -s -u "$AUTH_USER:$PW" "$API/application" \
       | jq -c '[.[] | {id, name}]' > "$DIR/applications.json"
     chmod 0644 "$DIR/applications.json"
     echo "gotify-pont: applications.json a jour"
+
+    # Id de NOTRE application : le relais s'en sert pour ne pas recopier dans la
+    # salle les notifications que le hook y a lui-meme poussees (echo).
+    jq -r --arg n "${cfg.applicationName}" '.[] | select(.name == $n) | .id' \
+      "$DIR/applications.json" | head -1 > "$DIR/appid"
+    chmod 0444 "$DIR/appid"
+    echo "gotify-pont: application du pont id=$(cat "$DIR/appid")"
   '';
 
   # --- relais Gotify -> Matrix ---
@@ -219,11 +261,47 @@
         os.replace(tmp, STATE)
 
 
-    def fetch(token, since):
-        url = "%s/message?since=%d&limit=%d" % (API, since, PAGE)
-        request = urllib.request.Request(url, headers={"X-Gotify-Key": token})
+    def api_get(token, path):
+        request = urllib.request.Request(API + path, headers={"X-Gotify-Key": token})
         with urllib.request.urlopen(request, timeout=20) as response:
-            return json.load(response)
+            payload = json.load(response)
+        # GET /message rend un OBJET {"messages": [...], "paging": {...}} : iterer
+        # la reponse directement fait planter le relais (vecu : "string indices
+        # must be integers, not 'str'").
+        if isinstance(payload, dict):
+            return list(payload.get("messages") or [])
+        return list(payload)
+
+
+    def newest_id(token):
+        """Id du message le plus recent (0 si la file est vide)."""
+        messages = api_get(token, "/message?since=0&limit=%d" % PAGE)
+        return max([int(item["id"]) for item in messages] or [0])
+
+
+    def fetch_after(token, after):
+        """Messages d'id STRICTEMENT superieur a `after`, du plus ancien au plus
+        recent.
+
+        PIEGE de l'API Gotify : `since=N` rend les messages d'id < N, du plus
+        recent au plus ancien (`since=0` = les derniers). Il n'existe donc pas de
+        « tout ce qui est plus recent que N » : on descend les pages tant que la
+        plus ancienne id vue reste au-dessus du curseur, puis on rend la liste
+        remise dans l'ordre croissant.
+        """
+        collected = []
+        since = 0
+        while True:
+            messages = api_get(token, "/message?since=%d&limit=%d" % (since, PAGE))
+            if not messages:
+                break
+            collected.extend(item for item in messages if int(item["id"]) > after)
+            oldest = min(int(item["id"]) for item in messages)
+            if oldest <= after or len(messages) < PAGE:
+                break
+            since = oldest
+        collected.sort(key=lambda item: int(item["id"]))
+        return collected
 
 
     def label(message, names):
@@ -266,9 +344,33 @@
         return True
 
 
+    def own_appid():
+        """Id de NOTRE application Gotify (celle ou le hook pousse les reponses de
+        l'agent). Le relais doit l'ignorer, sinon chaque reponse Matrix repart dans
+        Gotify (hook) puis revient dans la salle (relais) : echo visible.
+        L'id est ecrit par le provisionnement ($DIR/appid)."""
+        try:
+            with open(os.path.join(DIR, "appid"), encoding="utf-8") as handle:
+                return int(handle.read().strip())
+        except Exception:
+            return None
+
+
+    def drop_own(messages, own):
+        if not isinstance(own, int):
+            return list(messages)
+        kept = [item for item in messages if int(item.get("appid") or 0) != own]
+        if len(kept) != len(messages):
+            log("anti-echo : %d message(s) de l'application du pont ignores"
+                % (len(messages) - len(kept)))
+        return kept
+
+
     def main():
         log("demarrage : API=%s salle=%s" % (API, ROOM))
         names = app_names()
+        own = own_appid()
+        log("application du pont (ignoree par le relais) : %s" % own)
         since = read_state()
         if since is None:
             # Premier demarrage : on n'inonde pas la salle avec l'historique,
@@ -280,7 +382,7 @@
                     time.sleep(60)
                     continue
                 try:
-                    since = max([int(item["id"]) for item in fetch(read_token(), 0)] or [0])
+                    since = newest_id(read_token())
                     break
                 except Exception as exc:
                     log("amorcage impossible (%s), nouvel essai dans %ds" % (exc, POLL))
@@ -292,30 +394,42 @@
             cycles += 1
             if cycles % 60 == 0:
                 names = app_names()
+                own = own_appid()
             if not os.path.exists(token_path()):
                 log("jeton client absent (%s) : pont inactif, nouvelle tentative dans 60s"
                     % token_path())
                 time.sleep(60)
                 continue
             try:
-                batch = fetch(read_token(), since)
+                raw = fetch_after(read_token(), since)
             except Exception as exc:
                 log("lecture Gotify en echec (%s), nouvel essai dans %ds" % (exc, POLL))
                 time.sleep(POLL)
                 continue
+            if not raw:
+                time.sleep(POLL)
+                continue
+            # Le curseur avance meme si tout est filtre : sinon les messages de
+            # notre propre application seraient relus a chaque tour.
+            highest = max(int(item["id"]) for item in raw)
+            batch = drop_own(raw, own)
             if batch:
                 # regroupe la rafale : une seule connexion E2EE cote gateway
                 time.sleep(BATCH)
                 try:
-                    batch += fetch(read_token(), max(int(item["id"]) for item in batch))
+                    extra = drop_own(fetch_after(read_token(), highest), own)
+                    known = {int(item["id"]) for item in batch}
+                    batch += [item for item in extra if int(item["id"]) not in known]
+                    highest = max([highest] + [int(item["id"]) for item in extra])
                 except Exception:
                     pass
                 batch.sort(key=lambda item: int(item["id"]))
-                if deliver(format_batch(batch, names)):
-                    since = max(int(item["id"]) for item in batch)
-                    write_state(since)
-                else:
+                if not deliver(format_batch(batch, names)):
                     log("envoi en echec : nouvelle tentative au prochain tour")
+                    time.sleep(POLL * 3)
+                    continue
+            since = highest
+            write_state(since)
             time.sleep(POLL)
 
 
