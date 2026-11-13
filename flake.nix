@@ -258,23 +258,45 @@
     # Runners des VM de dev, lançables directement : `nix run .#dev`.
     packages.x86_64-linux.dev = self.nixosConfigurations.dev.config.microvm.declaredRunner;
 
-    nixOnDroidConfigurations.default = inputs.nix-on-droid.lib.nixOnDroidConfiguration {
-      # pkgs = import inputs.nixpkgs-droid {
-      pkgs = import inputs.nix-on-droid.inputs.nixpkgs {
-        system = "aarch64-linux";
-      };
-      extraSpecialArgs = {inherit inputs;};
-      # extraSpecialArgs = {
-      #   inputs = inputs // {
-      #     nixpkgs = inputs.nixpkgs-droid;
-      #     home-manager = inputs.home-manager-droid;
-      #     nixvim = inputs.nixvim-droid;
-      #   };
-      # };
-      modules = [
-        # inputs.home-manager.nixosModules.default
-        ./profiles/nix-on-droid/configuration.nix
-        # ./users.nix
+    # Appareils Nix-on-Droid. `default` = le tel (Xiaomi 13T Pro). Chaque
+    # appareil doit avoir SES ports sur la boucle locale du VPS, sinon les
+    # tunnels inverses se disputent les mêmes numéros (voir nod-access dans
+    # profiles/nix-on-droid/hermes-access.nix).
+    nixOnDroidConfigurations = let
+      mkNod = extraModules:
+        inputs.nix-on-droid.lib.nixOnDroidConfiguration {
+          # pkgs = import inputs.nixpkgs-droid {
+          pkgs = import inputs.nix-on-droid.inputs.nixpkgs {
+            system = "aarch64-linux";
+          };
+          extraSpecialArgs = {inherit inputs;};
+          # extraSpecialArgs = {
+          #   inputs = inputs // {
+          #     nixpkgs = inputs.nixpkgs-droid;
+          #     home-manager = inputs.home-manager-droid;
+          #     nixvim = inputs.nixvim-droid;
+          #   };
+          # };
+          modules =
+            [
+              # inputs.home-manager.nixosModules.default
+              ./profiles/nix-on-droid/configuration.nix
+              # ./users.nix
+            ]
+            ++ extraModules;
+        };
+    in {
+      default = mkNod [];
+      # Tablette : relais 2226, sshd publié par wstunnel 2227, proxys 1083/1084.
+      tablet = mkNod [
+        {
+          nod-access = {
+            relayPort = 2226;
+            wsSshdPort = 2227;
+            wsSocksPort = 1083;
+            wsHttpPort = 1084;
+          };
+        }
       ];
     };
 

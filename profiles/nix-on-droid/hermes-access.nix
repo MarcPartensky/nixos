@@ -26,6 +26,13 @@
 let
   inherit (config.user) home;
 
+  # Ports propres à l'appareil. `nixOnDroidConfigurations.default` est partagé
+  # par plusieurs appareils (tel, tablette) : s'ils utilisaient les mêmes
+  # numéros, leurs tunnels se battraient pour les mêmes ports sur la boucle
+  # locale du VPS (`remote port forwarding failed for listen port 2224`).
+  # Chaque instance de flake surcharge donc `nod-access.*` (voir flake.nix).
+  inherit (config.nod-access) wsSocksPort wsHttpPort wsSshdPort;
+
   # Le nixpkgs de nix-on-droid (inputs.nix-on-droid.inputs.nixpkgs) est ancien :
   # `pkgs.wstunnel` y est en 0.5.1.0, une version qui n'a ni `client` ni `-R`.
   # On prend donc celui d'unstable, comme pour tout paquet absent du nixpkgs
@@ -36,7 +43,7 @@ let
   sshdPort = 8023;
 
   relayHost = "marcpartensky.com";
-  relayPort = 2224;
+  inherit (config.nod-access) relayPort;
   relayKey = "${home}/.ssh/relay_ed25519";
 
   # Clés autorisées sur le sshd du téléphone.
@@ -66,6 +73,12 @@ let
   tunnelLoop = pkgs.writeScriptBin "phone-tunnel-loop" ''
     #!${pkgs.runtimeShell}
     while true; do
+      # Rotation : sans ça le log grossit sans fin quand le forward est refuse
+      # en boucle (mesure : 275 Mo de wstunnel.log sur le tel).
+      log=${sshdDir}/tunnel.log
+      if [ -f "$log" ] && [ "$(${pkgs.coreutils}/bin/stat -c %s "$log" 2>/dev/null || echo 0)" -gt 5000000 ]; then
+        ${pkgs.coreutils}/bin/tail -c 200000 "$log" > "$log.tmp" && ${pkgs.coreutils}/bin/mv "$log.tmp" "$log"
+      fi
       ${pkgs.openssh}/bin/ssh -NT \
         -i ${relayKey} \
         -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=15 \
@@ -88,10 +101,14 @@ let
   wsLoop = pkgs.writeScriptBin "phone-wstunnel-loop" ''
     #!${pkgs.runtimeShell}
     while true; do
+      log=${sshdDir}/wstunnel.log
+      if [ -f "$log" ] && [ "$(${pkgs.coreutils}/bin/stat -c %s "$log" 2>/dev/null || echo 0)" -gt 5000000 ]; then
+        ${pkgs.coreutils}/bin/tail -c 200000 "$log" > "$log.tmp" && ${pkgs.coreutils}/bin/mv "$log.tmp" "$log"
+      fi
       ${wsTunnelPkg}/bin/wstunnel client \
-        -R tcp://127.0.0.1:2225:127.0.0.1:${toString sshdPort} \
-        -R socks5://127.0.0.1:1081 \
-        -R http://127.0.0.1:1082 \
+        -R tcp://127.0.0.1:${toString wsSshdPort}:127.0.0.1:${toString sshdPort} \
+        -R socks5://127.0.0.1:${toString wsSocksPort} \
+        -R http://127.0.0.1:${toString wsHttpPort} \
         wss://ws.marcpartensky.com
       ${pkgs.coreutils}/bin/sleep 15
     done
@@ -235,63 +252,90 @@ let
   '';
 in
 {
-  environment.packages = with pkgs; [
-    openssh
-    util-linux # flock pour phone-up
-    gnugrep # pratique en session de debug
-    tunnelLoop # référencés ici -> installés sur le tel
-    wsLoop
-    wsTunnelPkg # client du tunnel WebSocket (10.x, cf. commentaire dans le let)
-    phoneUp
-    phoneWatchdog
-    phoneUpdate
-    phoneStatus
-    nodBootstrap # (re)provisionne l'appareil : switch + phone-up + verification
-  ];
-
-  android-integration = {
-    termux-wake-lock.enable = true;
-    termux-wake-unlock.enable = true;
-    termux-setup-storage.enable = true;
-    termux-open.enable = true;
-    termux-open-url.enable = true;
-    am.enable = true;
+  # Ports de l'appareil. Valeurs par défaut = celles du tel ; chaque instance
+  # du flake les surcharge pour ne pas se battre avec les autres appareils.
+  options.nod-access = {
+    relayPort = lib.mkOption {
+      type = lib.types.port;
+      default = 2224;
+      description = ''
+        Port du relais inverse sur la boucle locale du VPS. L'entrée restreinte
+        d'authorized_keys du VPS doit avoir permitlisten="127.0.0.1:<port>".
+      '';
+    };
+    wsSshdPort = lib.mkOption {
+      type = lib.types.port;
+      default = 2225;
+    };
+    wsSocksPort = lib.mkOption {
+      type = lib.types.port;
+      default = 1081;
+    };
+    wsHttpPort = lib.mkOption {
+      type = lib.types.port;
+      default = 1082;
+    };
   };
 
-  build.activation = {
-    sshd = ''
-      $DRY_RUN_CMD mkdir -p ${sshdDir}
-      if [ ! -f ${sshdDir}/ssh_host_ed25519_key ]; then
-        $VERBOSE_ECHO "phone: generating sshd host key"
-        $DRY_RUN_CMD ${pkgs.openssh}/bin/ssh-keygen -t ed25519 -N "" -f ${sshdDir}/ssh_host_ed25519_key
-      fi
-      $VERBOSE_ECHO "phone: installing sshd_config + authorized_keys"
-      $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p ${home}/.ssh
-      $DRY_RUN_CMD ${pkgs.coreutils}/bin/chmod 700 ${home}/.ssh
-      $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 600 ${sshdConfig} ${sshdDir}/sshd_config
-      $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 600 ${authorizedKeysFile} ${home}/.ssh/authorized_keys
-    '';
+  config = {
+    environment.packages = with pkgs; [
+      openssh
+      util-linux # flock pour phone-up
+      gnugrep # pratique en session de debug
+      tunnelLoop # référencés ici -> installés sur le tel
+      wsLoop
+      wsTunnelPkg # client du tunnel WebSocket (10.x, cf. commentaire dans le let)
+      phoneUp
+      phoneWatchdog
+      phoneUpdate
+      phoneStatus
+      nodBootstrap # (re)provisionne l'appareil : switch + phone-up + verification
+    ];
 
-    termuxProps = ''
-      $DRY_RUN_CMD mkdir -p ${home}/.termux
-      if [ -z "''${DRY_RUN:-}" ]; then
-        if ! grep -qs allow-external-apps ${home}/.termux/termux.properties; then
-          printf 'allow-external-apps=true\n' >> ${home}/.termux/termux.properties
+    android-integration = {
+      termux-wake-lock.enable = true;
+      termux-wake-unlock.enable = true;
+      termux-setup-storage.enable = true;
+      termux-open.enable = true;
+      termux-open-url.enable = true;
+      am.enable = true;
+    };
+
+    build.activation = {
+      sshd = ''
+        $DRY_RUN_CMD mkdir -p ${sshdDir}
+        if [ ! -f ${sshdDir}/ssh_host_ed25519_key ]; then
+          $VERBOSE_ECHO "phone: generating sshd host key"
+          $DRY_RUN_CMD ${pkgs.openssh}/bin/ssh-keygen -t ed25519 -N "" -f ${sshdDir}/ssh_host_ed25519_key
         fi
-      fi
-    '';
+        $VERBOSE_ECHO "phone: installing sshd_config + authorized_keys"
+        $DRY_RUN_CMD ${pkgs.coreutils}/bin/mkdir -p ${home}/.ssh
+        $DRY_RUN_CMD ${pkgs.coreutils}/bin/chmod 700 ${home}/.ssh
+        $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 600 ${sshdConfig} ${sshdDir}/sshd_config
+        $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 600 ${authorizedKeysFile} ${home}/.ssh/authorized_keys
+      '';
 
-    autostart = ''
-      if [ -z "''${DRY_RUN:-}" ]; then
-        for f in ${home}/.zprofile ${home}/.zshrc ${home}/.profile ${home}/.bashrc; do
-          if ! grep -q nod-phone-autostart2 "$f" 2>/dev/null; then
-            printf '\n# nod-phone-autostart2\nif [ -x /nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/phone-up ]; then /nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/phone-up >/dev/null 2>&1 || true; fi\n' >> "$f"
+      termuxProps = ''
+        $DRY_RUN_CMD mkdir -p ${home}/.termux
+        if [ -z "''${DRY_RUN:-}" ]; then
+          if ! grep -qs allow-external-apps ${home}/.termux/termux.properties; then
+            printf 'allow-external-apps=true\n' >> ${home}/.termux/termux.properties
           fi
-        done
-        if ! grep -q nod-phone-autorepair3 ${home}/.zshrc 2>/dev/null; then
-          printf '\n# nod-phone-autorepair3\nalias up="phone-up"\n_nod_autorepair() {\n  local p=/nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/phone-up\n  [ -x "$p" ] || return 0\n  local s="$HOME/sshd/.up-stamp" now last\n  now=$(date +%s 2>/dev/null) || return 0\n  last=0\n  [ -f "$s" ] && last=$(stat -c %%Y "$s" 2>/dev/null || echo 0)\n  if [ "$((now - last))" -gt 60 ]; then\n    : > "$s"\n    ( "$p" >/dev/null 2>&1 & )\n  fi\n}\nprecmd_functions+=(_nod_autorepair)\n' >> ${home}/.zshrc
         fi
-      fi
-    '';
+      '';
+
+      autostart = ''
+        if [ -z "''${DRY_RUN:-}" ]; then
+          for f in ${home}/.zprofile ${home}/.zshrc ${home}/.profile ${home}/.bashrc; do
+            if ! grep -q nod-phone-autostart2 "$f" 2>/dev/null; then
+              printf '\n# nod-phone-autostart2\nif [ -x /nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/phone-up ]; then /nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/phone-up >/dev/null 2>&1 || true; fi\n' >> "$f"
+            fi
+          done
+          if ! grep -q nod-phone-autorepair3 ${home}/.zshrc 2>/dev/null; then
+            printf '\n# nod-phone-autorepair3\nalias up="phone-up"\n_nod_autorepair() {\n  local p=/nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/phone-up\n  [ -x "$p" ] || return 0\n  local s="$HOME/sshd/.up-stamp" now last\n  now=$(date +%s 2>/dev/null) || return 0\n  last=0\n  [ -f "$s" ] && last=$(stat -c %%Y "$s" 2>/dev/null || echo 0)\n  if [ "$((now - last))" -gt 60 ]; then\n    : > "$s"\n    ( "$p" >/dev/null 2>&1 & )\n  fi\n}\nprecmd_functions+=(_nod_autorepair)\n' >> ${home}/.zshrc
+          fi
+        fi
+      '';
+    };
   };
 }
