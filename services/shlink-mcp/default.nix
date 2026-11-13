@@ -17,25 +17,13 @@
 # Debug à la main (garder stdin ouvert, un EOF tue la requête) :
 #   { printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'; sleep 5; } \
 #     | /nix/store/.../bin/shlink-mcp
-{pkgs, config, ...}: let
-  shlink-mcp =
-    pkgs.writers.writePython3Bin "shlink-mcp" {
-      libraries = [pkgs.python3Packages.mcp];
-      flakeIgnore = ["E501" "W503" "W504"];
-    } (builtins.readFile ./server.py);
+{self, pkgs, config, ...}: let
+  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
+  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  shlink-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.shlink-mcp;
+
 in {
   # Le binaire sur le PATH, et référencé par mcpServers.shlink.command.
   environment.systemPackages = [shlink-mcp];
 
-  services.hermes-agent.mcpServers.shlink = {
-    command = "${shlink-mcp}/bin/shlink-mcp";
-    args = [];
-    env = {
-      # Loopback : le conteneur shlink publie 8097 sur l'hôte (--network=host).
-      SHLINK_URL = "http://127.0.0.1:8097";
-      SHLINK_API_KEY_FILE = config.sops.secrets.shlink_api_key.path;
-      SHLINK_ALLOW_WRITES = "1";
-    };
-    timeout = 60;
-  };
 }

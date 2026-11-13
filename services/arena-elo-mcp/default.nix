@@ -21,12 +21,10 @@
 #
 # Le serveur parle JSON-RPC 2.0 sur stdio lui-meme (stdlib seule, pas de SDK
 # mcp) : stdin ligne par ligne, stdout reserve au protocole, logs sur stderr.
-{pkgs, ...}: let
-  arena-elo-mcp =
-    pkgs.writers.writePython3Bin "arena-elo-mcp" {
-      libraries = [];
-      flakeIgnore = ["E501"];
-    } (builtins.readFile ./arena-elo.py);
+{self, pkgs, ...}: let
+  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
+  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  arena-elo-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.arena-elo-mcp;
 in {
   environment.systemPackages = [arena-elo-mcp];
 

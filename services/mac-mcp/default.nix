@@ -4,13 +4,9 @@
 # Xcode via la regle sudo NOPASSWD). Le script vit dans ./mac-mcp.py ; hote
 # ssh choisi au premier appel : alias maclan (LAN) puis mac (tunnel inverse
 # par rack), cle id_ed25519 de hermes. Contexte : skill marc-mac-operations.
-{pkgs, ...}: let
-  mac-mcp = pkgs.writers.writePython3Bin "mac-mcp" {
-    libraries = [pkgs.python3Packages.mcp];
-  } (builtins.readFile ./mac-mcp.py);
+{self, pkgs, ...}: let
+  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
+  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  mac-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.mac-mcp;
 in {
-  services.hermes-agent.mcpServers.mac = {
-    command = "${mac-mcp}/bin/mac-mcp";
-    timeout = 1800;
-  };
 }

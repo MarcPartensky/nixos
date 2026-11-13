@@ -17,23 +17,13 @@
 # ouvert, un EOF tue la requete en vol) :
 #   { printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'; sleep 5; } \
 #     | /nix/store/.../bin/shorturl-mcp
-{pkgs, ...}: let
-  shorturl-mcp =
-    pkgs.writers.writePython3Bin "shorturl-mcp" {
-      libraries = [pkgs.python3Packages.mcp];
-    } (builtins.readFile ./server.py);
+{self, pkgs, ...}: let
+  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
+  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  shorturl-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.shorturl-mcp;
+
 in {
   # Le binaire sur le PATH, et reference par mcpServers.shorturl.command.
   environment.systemPackages = [shorturl-mcp];
 
-  services.hermes-agent.mcpServers.shorturl = {
-    command = "${shorturl-mcp}/bin/shorturl-mcp";
-    args = [];
-    env = {
-      # Journal local des liens crees (le service ne garde rien).
-      SHORTURL_STATE_DIR = "/var/lib/hermes/.local/state/shorturl-mcp";
-      SHORTURL_TIMEOUT = "25";
-    };
-    timeout = 60;
-  };
 }

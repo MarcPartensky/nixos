@@ -22,11 +22,10 @@
 # Le token Flex est INDEPENDANT du mot de passe IBKR et revocable depuis le
 # portail : le serveur ne detient aucun identifiant de compte, donc aucun
 # pouvoir de passer un ordre.
-{pkgs, config, ...}: let
-  ibkr-mcp =
-    pkgs.writers.writePython3Bin "ibkr-mcp" {
-      libraries = [pkgs.python3Packages.mcp];
-    } (builtins.readFile ./ibkr_flex.py);
+{self, pkgs, config, ...}: let
+  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
+  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  ibkr-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.ibkr-mcp;
 in {
   # Dotenv genere depuis sops et relu a chaque appel par le serveur : ni le
   # token ni les identifiants de requetes ne sont dans le nix store (les `env`
@@ -64,11 +63,6 @@ in {
   # Sur le PATH pour pouvoir sonder le serveur a la main (stdio).
   environment.systemPackages = [ibkr-mcp];
 
-  services.hermes-agent.mcpServers.ibkr = {
-    command = "${ibkr-mcp}/bin/ibkr-mcp";
-    env.IBKR_FLEX_ENV_FILE = config.sops.templates."ibkr-flex.env".path;
-    timeout = 120;
-  };
 }
 
 # Phase 2 (non faite) : temps reel + carnet d'ordres. Exige IB Gateway (paquet

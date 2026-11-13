@@ -18,19 +18,9 @@
 #
 # Debug : { printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'; sleep 5; } \
 #   | /nix/store/.../bin/meetup-mcp   (garder stdin ouvert : un EOF tue la requête)
-{pkgs, ...}: let
-  meetup-mcp =
-    pkgs.writers.writePython3Bin "meetup-mcp" {
-      libraries = [pkgs.python3Packages.mcp];
-      flakeIgnore = ["E501" "W503" "W504"];
-    } (builtins.readFile ./meetup_mcp.py);
+{self, pkgs, ...}: let
+  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
+  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  meetup-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.meetup-mcp;
 in {
-  services.hermes-agent.mcpServers.meetup = {
-    command = "${meetup-mcp}/bin/meetup-mcp";
-    env = {
-      MEETUP_API_URL = "https://api.meetup.com/gql-ext";
-      # Optionnel : token OAuth (fichier absent = mode public).
-      MEETUP_TOKEN_FILE = "/run/secrets/meetup_oauth_token";
-    };
-  };
 }

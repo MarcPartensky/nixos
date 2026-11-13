@@ -13,15 +13,13 @@
 # partagés. Contrepartie assumée : tout objet du bucket `public` est lisible par
 # qui connaît son URL. Les buckets artifacts et photos-* ne sont pas marqués
 # website, donc Garage continue de les refuser en anonyme sur ce même endpoint.
-{pkgs, config, ...}: let
+{self, pkgs, config, ...}: let
   # Port de l'endpoint web Garage (déclaré dans services/garage).
   webPort = 3902;
 
-  share-mcp =
-    pkgs.writers.writePython3Bin "share-mcp" {
-      libraries = [pkgs.python3Packages.mcp];
-      flakeIgnore = ["E501" "W503" "W504"];
-    } (builtins.readFile ./server.py);
+  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
+  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  share-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.share-mcp;
 
   # Wrapper : les identifiants S3 sont générés à l'activation par
   # garage-bootstrap et vivent dans /var/lib/garage/s3-key.env (0400 hermes),
