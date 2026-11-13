@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage LLM · tower</title>
+<style>
+  :root {
+    --base:#1e1e2e; --mantle:#181825; --crust:#11111b;
+    --surface0:#313244; --surface1:#45475a; --surface2:#585b70;
+    --text:#cdd6f4; --subtext1:#bac2de; --subtext0:#a6adc8; --overlay0:#6c7086;
+    --lavender:#b4befe; --mauve:#cba6f7; --blue:#89b4fa; --sapphire:#74c7ec;
+    --teal:#94e2d5; --green:#a6e3a1; --yellow:#f9e2af; --peach:#fab387;
+    --maroon:#eba0ac; --red:#f38ba8; --pink:#f5c2e7;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    background:var(--base); color:var(--text);
+    font-family:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    font-size:14px; line-height:1.5; padding:20px 22px 40px;
+    -webkit-font-smoothing:antialiased;
+  }
+  a { color:var(--lavender); text-decoration:none; }
+  .wrap { max-width:1180px; margin:0 auto; }
+
+  header { display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  h1 { font-size:20px; margin:0; letter-spacing:.2px; }
+  h1 .accent { color:var(--lavender); }
+  .sub { color:var(--subtext0); font-size:12.5px; }
+  .spacer { flex:1; }
+  button {
+    background:var(--surface0); color:var(--text); border:1px solid var(--surface1);
+    border-radius:8px; padding:6px 11px; font-size:12.5px; cursor:pointer; font-family:inherit;
+  }
+  button:hover { border-color:var(--lavender); color:var(--lavender); }
+
+  .banner {
+    border:1px solid var(--surface1); border-left:3px solid var(--yellow);
+    background:var(--mantle); border-radius:8px; padding:9px 12px; margin-bottom:16px;
+    color:var(--subtext1); font-size:12.5px; display:none;
+  }
+  .banner.err { border-left-color:var(--red); }
+  .banner code { color:var(--peach); background:var(--crust); padding:1px 5px; border-radius:4px; }
+
+  .card {
+    background:var(--mantle); border:1px solid var(--surface0); border-radius:12px; padding:16px 18px;
+  }
+  .hero { display:flex; gap:26px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  .hero .balance { font-size:34px; font-weight:600; line-height:1.15; color:var(--green); }
+  .hero .balance.low { color:var(--yellow); }
+  .hero .balance.critical { color:var(--red); }
+  .hero .eur { color:var(--subtext0); font-size:14px; margin-top:2px; }
+  .meter { flex:1; min-width:240px; }
+  .meter .bar { height:10px; background:var(--crust); border-radius:99px; overflow:hidden; border:1px solid var(--surface0); }
+  .meter .bar > i { display:block; height:100%; background:linear-gradient(90deg,var(--lavender),var(--mauve)); }
+  .meter .legend { display:flex; justify-content:space-between; color:var(--subtext0); font-size:12px; margin-top:6px; }
+
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:22px; }
+  .kpi { background:var(--mantle); border:1px solid var(--surface0); border-radius:12px; padding:13px 15px; }
+  .kpi .label { color:var(--subtext0); font-size:11.5px; text-transform:uppercase; letter-spacing:.6px; }
+  .kpi .value { font-size:22px; font-weight:600; margin-top:4px; }
+  .kpi .note { color:var(--overlay0); font-size:11.5px; margin-top:2px; }
+
+  h2 { font-size:14px; margin:26px 0 10px; color:var(--subtext1); font-weight:600; letter-spacing:.3px; }
+  h2 .hint { color:var(--overlay0); font-weight:400; font-size:12px; margin-left:8px; }
+
+  .fam-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:12px; }
+  .fam { background:var(--mantle); border:1px solid var(--surface0); border-radius:12px; padding:13px 15px; }
+  .fam .top { display:flex; align-items:center; gap:8px; }
+  .dot { width:9px; height:9px; border-radius:99px; flex:none; }
+  .fam .name { font-weight:600; }
+  .fam .share { margin-left:auto; color:var(--overlay0); font-size:11.5px; }
+  .fam .amount { font-size:19px; font-weight:600; margin-top:6px; }
+  .fam .amount small { font-weight:400; color:var(--subtext0); font-size:12px; margin-left:6px; }
+  .fam .bar { height:6px; background:var(--crust); border-radius:99px; overflow:hidden; margin-top:9px; }
+  .fam .bar > i { display:block; height:100%; }
+  .fam .foot { color:var(--overlay0); font-size:11.5px; margin-top:7px; }
+
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { text-align:right; padding:7px 9px; border-bottom:1px solid var(--surface0); white-space:nowrap; }
+  th { color:var(--subtext0); font-size:11.5px; font-weight:500; text-transform:uppercase; letter-spacing:.4px; }
+  th:first-child, td:first-child { text-align:left; }
+  tbody tr:hover { background:var(--surface0); }
+  .model { color:var(--text); }
+  .tag { display:inline-flex; align-items:center; gap:6px; color:var(--subtext0); font-size:12px; }
+  .mini { display:inline-block; height:6px; border-radius:99px; vertical-align:middle; }
+  .muted { color:var(--overlay0); }
+  .scroll { overflow-x:auto; }
+
+  .chart { display:flex; align-items:flex-end; gap:3px; height:150px; margin-top:6px; }
+  .col { flex:1; display:flex; flex-direction:column; justify-content:flex-end; min-width:5px; }
+  .col > span { display:block; width:100%; }
+  .axis { display:flex; justify-content:space-between; color:var(--overlay0); font-size:11px; margin-top:6px; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; color:var(--subtext0); font-size:12px; margin-top:10px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+
+  .other { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+  .other .card .value { font-size:20px; font-weight:600; margin-top:4px; }
+  .other .card .note { color:var(--overlay0); font-size:11.5px; }
+
+  footer { margin-top:28px; border-top:1px solid var(--surface0); padding-top:12px; color:var(--overlay0); font-size:11.5px; }
+  footer .src { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
+  footer .src b { font-weight:500; color:var(--subtext0); }
+  .ok { color:var(--green); } .warn { color:var(--yellow); } .bad { color:var(--red); }
+  @media (max-width:640px) { body { padding:14px 12px 30px; } .hero .balance { font-size:28px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Usage <span class="accent">LLM</span></h1>
+      <div class="sub">tower · OpenRouter + providers directs · argent par modele</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="sub" id="freshness">chargement...</div>
+    <button id="reload" title="Rafraichir maintenant">rafraichir</button>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="card hero">
+    <div>
+      <div class="sub">Solde restant OpenRouter</div>
+      <div class="balance" id="balance">·</div>
+      <div class="eur" id="balance-eur"></div>
+    </div>
+    <div class="meter">
+      <div class="bar"><i id="used-bar" style="width:0%"></i></div>
+      <div class="legend">
+        <span id="used-text">·</span>
+        <span id="total-text">·</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <h2>Par famille de modeles <span class="hint" id="window-hint"></span></h2>
+  <div class="fam-grid" id="families"></div>
+
+  <h2>Par modele <span class="hint">depense reelle facturee, tokens et taux effectif</span></h2>
+  <div class="card scroll"><table id="models">
+    <thead><tr>
+      <th>Modele</th><th>Depense</th><th>Part</th><th>Tokens</th>
+      <th>Requetes</th><th>$/Mtok</th><th>Cache</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table></div>
+
+  <h2>Depense quotidienne <span class="hint">empilee par famille</span></h2>
+  <div class="card">
+    <div class="chart" id="daily"></div>
+    <div class="axis" id="daily-axis"></div>
+    <div class="legend" id="daily-legend"></div>
+  </div>
+
+  <h2>Par cle d'API <span class="hint">quel pipeline consomme</span></h2>
+  <div class="card scroll"><table id="keys">
+    <thead><tr><th>Cle</th><th>Depense</th><th>Tokens</th><th>Requetes</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+
+  <h2>Hors OpenRouter <span class="hint">abonnements et soldes directs, non factures au token par OpenRouter</span></h2>
+  <div class="other" id="other"></div>
+
+  <footer>
+    <div class="src" id="sources"></div>
+    <div id="stamp"></div>
+  </footer>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const PALETTE = ["#b4befe","#89b4fa","#94e2d5","#f9e2af","#fab387","#f5c2e7","#eba0ac","#74c7ec","#a6e3a1","#cba6f7"];
+
+function usd(v, digits) {
+  if (v === null || v === undefined || isNaN(v)) return "·";
+  const d = digits !== undefined ? digits : (Math.abs(v) < 10 ? 2 : 2);
+  return "$" + Number(v).toFixed(d);
+}
+function usd4(v) { return v === null || v === undefined ? "·" : "$" + Number(v).toFixed(4); }
+function money(v, currency) {
+  if (v === null || v === undefined || isNaN(v)) return "·";
+  if (currency === "CNY") return "¥" + Number(v).toFixed(2);
+  if (currency === "EUR") return Number(v).toFixed(2).replace(".", ",") + " €";
+  return usd(v);
+}
+// fx est l'OBJET {usd_eur, usd_cny} : ne pas le confondre avec eur(v, taux).
+function eurAny(v, currency, fx) {
+  if (!fx || v === null || v === undefined || isNaN(v)) return "";
+  const rate = fx.usd_eur;
+  if (!rate) return "";
+  if (currency === "CNY") {
+    if (!fx.usd_cny) return "";
+    return "≈ " + ((v * rate) / fx.usd_cny).toFixed(2).replace(".", ",") + " €";
+  }
+  if (currency === "EUR") return "";
+  return "≈ " + (v * rate).toFixed(2).replace(".", ",") + " €";
+}
+function eur(v, fx) { return fx ? "≈ " + (v * fx).toFixed(2).replace(".", ",") + " €" : ""; }
+function compact(v) {
+  if (!v) return "0";
+  if (v >= 1e9) return (v / 1e9).toFixed(2) + " G";
+  if (v >= 1e6) return (v / 1e6).toFixed(2) + " M";
+  if (v >= 1e3) return (v / 1e3).toFixed(1) + " k";
+  return String(Math.round(v));
+}
+function pct(v) { return (100 * v).toFixed(1).replace(".", ",") + " %"; }
+
+function render(payload, ageSeconds) {
+  const fxData = (payload && payload.fx) || null;
+  const fx = fxData ? fxData.usd_eur : null;
+  const acc = (payload && payload.account) || null;
+  const rt = (payload && payload.realtime) || null;
+  const windows = (payload && payload.windows) || {};
+  const families = (payload && payload.by_family) || [];
+  const models = (payload && payload.by_model) || [];
+  const daily = (payload && payload.daily) || [];
+  const keys = (payload && payload.by_key) || [];
+  const others = (payload && payload.other_providers) || [];
+  const subs = (payload && payload.subscriptions) || [];
+  const days = (payload && payload.window_days) || 30;
+
+  // --- bandeau d'etat -----------------------------------------------------
+  const errors = (payload && payload.errors) || [];
+  const banner = $("banner");
+  if (errors.length) {
+    banner.style.display = "block";
+    banner.className = "banner" + (errors.some(e => /HTTP 4|HTTP 5|Error|error/.test(e)) ? " err" : "");
+    banner.innerHTML = errors.map(e => escapeHtml(e)).join("<br>");
+  } else {
+    banner.style.display = "none";
+  }
+
+  // --- solde --------------------------------------------------------------
+  if (acc) {
+    $("balance").textContent = usd(acc.remaining);
+    $("balance-eur").textContent = eur(acc.remaining, fx) || "taux EUR indisponible";
+    const cls = acc.used_pct > 95 ? "balance critical" : (acc.used_pct > 85 ? "balance low" : "balance");
+    $("balance").className = cls;
+    $("used-bar").style.width = Math.min(100, acc.used_pct) + "%";
+    $("used-text").textContent = usd(acc.total_usage) + " consommes (" + acc.used_pct.toFixed(1).replace(".", ",") + " %)";
+    $("total-text").textContent = usd(acc.total_credits) + " achetes";
+  } else {
+    $("balance").textContent = "·";
+    $("balance-eur").textContent = "solde indisponible";
+  }
+
+  // --- KPI ----------------------------------------------------------------
+  const kpis = [];
+  const w = (name) => windows[name] || null;
+  const today = w("today");
+  kpis.push({
+    label: "Aujourd'hui (UTC)",
+    value: today ? usd(today.usage) : "en attente",
+    note: today ? eur(today.usage, fx) + " · " + compact(today.requests) + " req · " + compact(today.tokens) + " tok" : "cle management OpenRouter requise"
+  });
+  const week = w("week");
+  kpis.push({
+    label: "7 derniers jours",
+    value: week ? usd(week.usage) : "en attente",
+    note: week ? eur(week.usage, fx) + " · " + compact(week.requests) + " req" : "cle management OpenRouter requise"
+  });
+  const month = w("month");
+  kpis.push({
+    label: days + " derniers jours",
+    value: month ? usd(month.usage) : "en attente",
+    note: month ? eur(month.usage, fx) + " · " + compact(month.tokens) + " tok" : "cle management OpenRouter requise"
+  });
+  if (rt) {
+    kpis.push({
+      label: "Cle d'inference, temps reel",
+      value: usd(rt.usage_monthly),
+      note: "30 j · jour " + usd(rt.usage_daily) + " · semaine " + usd(rt.usage_weekly) +
+            (rt.expires_at ? " · expire le " + rt.expires_at.slice(0, 10) : "")
+    });
+  }
+  if (month && month.tokens > 0) {
+    kpis.push({
+      label: "Taux effectif moyen",
+      value: usd4(month.usage / month.tokens * 1e6) + "/Mtok",
+      note: "toutes familles confondues"
+    });
+  }
+  $("kpis").innerHTML = kpis.map(k => `
+    <div class="kpi">
+      <div class="label">${escapeHtml(k.label)}</div>
+      <div class="value">${escapeHtml(k.value)}</div>
+      <div class="note">${escapeHtml(k.note || "")}</div>
+    </div>`).join("");
+
+  // --- familles -----------------------------------------------------------
+  $("window-hint").textContent = "· " + days + " derniers jours";
+  const totalFam = families.reduce((s, f) => s + f.usage, 0);
+  const maxFam = families.reduce((s, f) => Math.max(s, f.usage), 0) || 1;
+  $("families").innerHTML = families.length ? families.map(f => `
+    <div class="fam">
+      <div class="top">
+        <span class="dot" style="background:${f.color}"></span>
+        <span class="name">${escapeHtml(f.label)}</span>
+        <span class="share">${totalFam ? ((100 * f.usage) / totalFam).toFixed(1).replace(".", ",") + " %" : ""}</span>
+      </div>
+      <div class="amount">${usd(f.usage)}<small>${escapeHtml(eur(f.usage, fx))}</small></div>
+      <div class="bar"><i style="width:${(100 * f.usage) / maxFam}%;background:${f.color}"></i></div>
+      <div class="foot">${f.models} modele${f.models > 1 ? "s" : ""} · ${compact(f.tokens)} tok · ${compact(f.requests)} req</div>
+    </div>`).join("") : `<div class="card muted">Aucune donnee par famille (cle management OpenRouter requise).</div>`;
+
+  // --- modeles ------------------------------------------------------------
+  const maxModel = models.reduce((s, m) => Math.max(s, m.usage), 0) || 1;
+  $("models").querySelector("tbody").innerHTML = models.length ? models.map(m => `
+    <tr>
+      <td>
+        <div class="model">${escapeHtml(m.model)}</div>
+        <div class="tag"><span class="dot" style="background:${m.color};width:7px;height:7px"></span>${escapeHtml(m.family_label)}</div>
+      </td>
+      <td>${usd(m.usage)}<div class="muted" style="font-size:11.5px">${escapeHtml(eur(m.usage, fx))}</div></td>
+      <td>
+        <div>${((100 * m.usage) / totalFam).toFixed(1).replace(".", ",")} %</div>
+        <div class="mini" style="width:${(100 * m.usage) / maxModel}%;max-width:70px;background:${m.color}"></div>
+      </td>
+      <td>${compact(m.tokens)}<div class="muted" style="font-size:11.5px">${compact(m.tokens_prompt)} in / ${compact(m.tokens_completion)} out</div></td>
+      <td>${compact(m.requests)}</td>
+      <td>${m.usd_per_mtok === null ? "·" : usd4(m.usd_per_mtok)}</td>
+      <td>${m.cache_hit_rate ? pct(m.cache_hit_rate) : "·"}</td>
+    </tr>`).join("") : `<tr><td colspan="7" class="muted">Aucun modele facture sur la periode (ou cle management absente).</td></tr>`;
+
+  // --- serie quotidienne --------------------------------------------------
+  const dailyEl = $("daily"), axisEl = $("daily-axis"), legendEl = $("daily-legend");
+  const maxDay = daily.reduce((s, d) => Math.max(s, d.usage), 0) || 1;
+  const famKeys = {};
+  daily.forEach(d => Object.keys(d.families || {}).forEach(k => { famKeys[k] = d.families[k]; }));
+  const orderedFams = Object.values(famKeys).sort((a, b) => b.usage - a.usage);
+  const colors = {};
+  orderedFams.forEach((f, i) => { colors[f.label] = f.color || PALETTE[i % PALETTE.length]; });
+  if (daily.length) {
+    dailyEl.innerHTML = daily.map(d => {
+      const parts = Object.values(d.families || {});
+      const title = d.date + " · " + usd(d.usage) + " · " + compact(d.requests) + " req" +
+        (parts.length ? "\n" + parts.sort((a, b) => b.usage - a.usage).map(f => f.label + " " + usd(f.usage)).join("\n") : "");
+      const segs = (parts.length ? parts : [{ label: "total", usage: d.usage, color: "#b4befe" }]).map(f => {
+        const h = (100 * f.usage) / maxDay;
+        return `<span style="height:${h}%;background:${f.color || colors[f.label] || "#b4befe"}" title="${escapeAttr(f.label + " " + usd(f.usage))}"></span>`;
+      }).join("");
+      return `<div class="col" title="${escapeAttr(title)}">${segs}</div>`;
+    }).join("");
+    axisEl.innerHTML = `<span>${daily[0].date}</span><span>${daily[Math.floor(daily.length / 2)].date}</span><span>${daily[daily.length - 1].date}</span>`;
+    legendEl.innerHTML = orderedFams.map(f =>
+      `<span><i class="dot" style="background:${colors[f.label]}"></i>${escapeHtml(f.label)} ${usd(f.usage)}</span>`).join("");
+  } else {
+    dailyEl.innerHTML = "";
+    axisEl.innerHTML = `<span class="muted">Aucune serie quotidienne disponible.</span>`;
+    legendEl.innerHTML = "";
+  }
+
+  // --- cles d'API ---------------------------------------------------------
+  $("keys").querySelector("tbody").innerHTML = keys.length ? keys.map(k => `
+    <tr><td>${escapeHtml(k.key)}</td><td>${usd(k.usage)}<div class="muted" style="font-size:11.5px">${escapeHtml(eur(k.usage, fx))}</div></td>
+    <td>${compact(k.tokens)}</td><td>${compact(k.requests)}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="muted">Aucune repartition par cle (cle management absente).</td></tr>`;
+
+  // --- hors OpenRouter ----------------------------------------------------
+  const other = [];
+  others.forEach(p => {
+    const cur = p.currency || "USD";
+    const notes = [];
+    if (p.voucher !== undefined || p.cash !== undefined) {
+      notes.push("solde disponible · vouchers " + money(p.voucher, cur) + " · cash " + money(p.cash, cur));
+    }
+    if (p.granted !== undefined || p.topped_up !== undefined) {
+      notes.push("offert " + money(p.granted, cur) + " · recharge " + money(p.topped_up, cur));
+      if (p.usable === false) notes.push("solde insuffisant pour appeler l'API");
+    }
+    const conv = eurAny(p.available, cur, fxData);
+    if (conv) notes.push(conv);
+    other.push({
+      title: p.name,
+      value: money(p.available, cur),
+      note: notes.join(" · ")
+    });
+  });
+  subs.forEach(s => {
+    other.push({
+      title: s.name,
+      value: (s.monthly === null || s.monthly === undefined) ? "abonnement" : usd(s.monthly) + " / mois",
+      note: s.note || "abonnement hors OpenRouter"
+    });
+  });
+  if (!other.length) {
+    other.push({
+      title: "Claude (abonnement MAX)",
+      value: "hors OpenRouter",
+      note: "le provider claude-subscription-directsdk-experimental ne passe pas par OpenRouter : aucun cout au token a afficher"
+    });
+  }
+  $("other").innerHTML = other.map(o => `
+    <div class="card">
+      <div class="sub">${escapeHtml(o.title)}</div>
+      <div class="value">${escapeHtml(o.value)}</div>
+      <div class="note">${escapeHtml(o.note)}</div>
+    </div>`).join("");
+
+  // --- sources ------------------------------------------------------------
+  const status = (payload && payload.status) || {};
+  const labels = {
+    "openrouter/credits": "solde",
+    "openrouter/key": "temps reel",
+    "openrouter/analytics/meta": "schema analytics",
+    "openrouter/analytics/today": "aujourd'hui",
+    "openrouter/analytics/week": "7 j",
+    "openrouter/analytics/month": "30 j",
+    "openrouter/analytics/by_model": "par modele",
+    "openrouter/analytics/daily": "quotidien",
+    "openrouter/analytics/daily_family": "quotidien/famille",
+    "openrouter/analytics/by_key": "par cle",
+    "openrouter/analytics": "analytics",
+    "moonshot": "moonshot",
+    "deepseek": "deepseek",
+    "frankfurter": "taux EUR"
+  };
+  $("sources").innerHTML = Object.entries(status).map(([k, v]) => {
+    const cls = v.state === "ok" ? "ok" : (v.state === "missing" ? "warn" : "bad");
+    return `<span><b>${escapeHtml(labels[k] || k)}</b> <span class="${cls}">${escapeHtml(v.state)}</span></span>`;
+  }).join("");
+
+  const when = payload && payload.generated_at ? new Date(payload.generated_at) : null;
+  $("stamp").textContent = when
+    ? "collecte " + when.toLocaleString("fr-FR") + (ageSeconds !== null && ageSeconds !== undefined ? " (il y a " + Math.round(ageSeconds) + " s)" : "")
+    : "";
+}
+
+function escapeHtml(s) {
+  return String(s === null || s === undefined ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function escapeAttr(s) { return escapeHtml(s).replace(/\n/g, "&#10;"); }
+
+let lastFetch = 0;
+async function load() {
+  try {
+    const res = await fetch("/api/data", { cache: "no-store" });
+    const body = await res.json();
+    lastFetch = Date.now();
+    render(body.data, body.age_seconds);
+  } catch (err) {
+    $("freshness").innerHTML = `<span class="bad">service injoignable : ${escapeHtml(err)}</span>`;
+  }
+}
+function tick() {
+  if (!lastFetch) return;
+  const s = (Date.now() - lastFetch) / 1000;
+  $("freshness").innerHTML = `donnees il y a <b>${Math.round(s)} s</b> · auto 60 s`;
+}
+$("reload").addEventListener("click", load);
+load();
+setInterval(load, 60000);
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
