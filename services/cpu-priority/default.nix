@@ -18,6 +18,22 @@
 # 4800H, et Tctl montait à 100 °C.
 { pkgs, ... }:
 {
+  # Sessions desktop Hermes (utilisateur hermes, uid 988) : elles ne peuvent pas
+  # entrer dans hermes.slice (cpuset root partition : une session logind ne
+  # franchit pas la frontière d'hiérarchie), donc elles tournent sur les 16
+  # threads au poids 100, à égalité avec le bureau de marc. Mesuré le
+  # 12/11/2026 : 199 % + 18 % d'un cœur sur deux sessions desktop, load 25-33.
+  # Un POIDS bas ne les bride pas machine libre ; sous concurrence le bureau de
+  # marc obtient 4/5 du CPU au lieu d'1/2. Idem IO (builds, scans de store).
+  # Le travail lourd des agents reste à router vers taskq ou un scope de fond.
+  systemd.slices."user-988" = {
+    description = "Sessions Hermes (poids bas sous concurrence)";
+    sliceConfig = {
+      CPUWeight = 25;
+      IOWeight = 25;
+    };
+  };
+
   systemd.slices.background = {
     description = "Charges de fond (poids CPU/IO bas)";
     sliceConfig = {

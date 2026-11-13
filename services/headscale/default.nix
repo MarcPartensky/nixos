@@ -67,8 +67,20 @@
       dns = {
         magic_dns = true;
         base_domain = "ts.marcpartensky.com";
-        nameservers.global = [ "1.1.1.1" "9.9.9.9" ];
-        override_local_dns = false;
+        # AdGuard est le résolveur de TOUT le tailnet : le filtrage s'applique
+        # donc aux appareils hors de la maison (téléphone, laptop, Mac), sans
+        # conf par appareil, puisque c'est le contrôleur qui pousse ces IP.
+        # Deux instances, dans cet ordre :
+        #  - 100.64.0.1 : le VPS, toujours allumé et colocalisé avec l'exit node
+        #    internet, donc le seul qui garantit le filtrage en déplacement ;
+        #  - 100.64.0.3 : tower, à un saut du LAN de la maison ;
+        #  - 1.1.1.1 : filet brut si les deux AdGuard sont morts (un domaine
+        #    bloqué est répondu 0.0.0.0, donc la bascule ne fuit rien de pire
+        #    qu'un domaine public).
+        nameservers.global = [ "100.64.0.1" "100.64.0.3" "1.1.1.1" ];
+        # Sans ce flag headscale ne pousse RIEN (`tailscale dns status` affiche
+        # « no resolvers configured »), même avec nameservers.global rempli.
+        override_local_dns = true;
       };
     };
   };

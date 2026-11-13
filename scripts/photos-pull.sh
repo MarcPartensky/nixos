@@ -34,6 +34,9 @@ fi
 
 ROOT=${PHOTOS_ROOT:-/home/marc/media/photos}
 MARKERS="$ROOT/.pulled"
+# Nombre d'entrees par flux tar (une photo par flux = un handshake ssh par
+# photo). PHOTOS_BATCH=1 retrouve l'ancien comportement pour un diagnostic.
+BATCH=${PHOTOS_BATCH:-200}
 SSH_HOST=${SSH_HOST:-phone}
 STORAGE=/storage/emulated/0
 ADB=${ADB:-$(command -v adb 2>/dev/null || ls -d /nix/store/*android-tools-*/bin/adb 2>/dev/null | tail -1 || true)}
@@ -47,6 +50,11 @@ declare -A REMOTE_PATHS=(
 DRY_RUN=0
 FORCE=0
 VIA=auto
+# ONLY=photos|videos|all : filtre par extension cote tel (utile pour DCIM/Camera
+# ou deux tiers du volume sont des videos). `all` fait du sous-dossier par
+# sous-dossier, `photos`/`videos` passent par une liste de fichiers
+# (find | tar -T -) : toybox tar sait lire une liste sur stdin, verifie.
+ONLY=${ONLY:-all}
 WANTED=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -113,22 +121,38 @@ echo "transport : $TRANSPORT$( [ "$TRANSPORT" = adb ] && echo " (appareil $SERIA
 
 # --- acces distant ----------------------------------------------------------
 # PATH /system/bin cote tel : toybox fournit tar, find, du, ls.
-remote_tar() { # $1=parent  $2=nom
+remote_tar() { # $1=dossier distant  $2..=noms relatifs a ce dossier
+  # Le tar part du dossier lui-meme. L'ancienne version prenait dirname($1),
+  # donc pour /DCIM/Camera elle cherchait « Facebook » dans /DCIM : tout
+  # echouait en « tar: Facebook: No such file or directory » (bug invisible
+  # tant que l'autorisation de stockage manquait, le script sortait avant).
+  #
+  # `</dev/null` est OBLIGATOIRE : ssh lit son entree standard, qui est ici la
+  # boucle `while read` de pull_dir. Sans cette redirection, le premier appel
+  # avalait les lignes restantes de la liste et la passe s'arretait apres une
+  # seule entree, sans message d'erreur.
+  local dir="$1"
+  shift
+  local names=() quoted="" n
+  for n in "$@"; do
+    names+=("$n")
+    quoted="$quoted'$n' "
+  done
   case "$TRANSPORT" in
-    adb) "$ADB" -s "$SERIAL" exec-out tar -C "$1" -cf - "$2" ;;
-    ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; tar -C '$1' -cf - '$2'" ;;
+    adb) "$ADB" -s "$SERIAL" exec-out tar -C "$dir" -cf - "${names[@]}" </dev/null ;;
+    ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; tar -C '$dir' -cf - $quoted" </dev/null ;;
   esac
 }
 remote_ls() { # $1=dossier
   case "$TRANSPORT" in
-    adb) "$ADB" -s "$SERIAL" shell "ls -1 '$1'" ;;
-    ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; ls -1 '$1'" ;;
+    adb) "$ADB" -s "$SERIAL" shell "ls -1 '$1'" </dev/null ;;
+    ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; ls -1 '$1'" </dev/null ;;
   esac
 }
 remote_du() { # $1=dossier
   case "$TRANSPORT" in
-    adb) "$ADB" -s "$SERIAL" shell "du -sh '$1' 2>/dev/null | cut -f1" ;;
-    ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; du -sh '$1' 2>/dev/null | cut -f1" ;;
+    adb) "$ADB" -s "$SERIAL" shell "du -sh '$1' 2>/dev/null | cut -f1" </dev/null ;;
+    ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; du -sh '$1' 2>/dev/null | cut -f1" </dev/null ;;
   esac
 }
 remote_is_dir() {
@@ -138,40 +162,88 @@ remote_is_dir() {
   esac
 }
 
+# Extensions par mode. jpg/heic couvrent l'appareil photo de marc.
+case "$ONLY" in
+  photos) FIND_FILTER='\( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.heic" -o -iname "*.webp" -o -iname "*.gif" -o -iname "*.bmp" \)' ;;
+  videos) FIND_FILTER='\( -iname "*.mp4" -o -iname "*.mov" -o -iname "*.3gp" -o -iname "*.mkv" -o -iname "*.webm" -o -iname "*.avi" \)' ;;
+  all) FIND_FILTER='' ;;
+  *) echo "ONLY inconnu : $ONLY (photos, videos ou all)" >&2; exit 2 ;;
+esac
+
+# Flux d'un ARBRE ENTIER filtre par extension, en un seul tar (la liste de
+# fichiers passe par stdin, toybox tar la lit avec -T -).
+remote_tar_filtered() { # $1=dossier distant
+  case "$TRANSPORT" in
+    adb) "$ADB" -s "$SERIAL" shell "cd '$1' && find . -type f $FIND_FILTER -print | tar -cf - -T -" ;;
+    ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; cd '$1' && find . -type f $FIND_FILTER -print | tar -cf - -T -" ;;
+  esac
+}
+
 command -v tar >/dev/null 2>&1 || { echo "tar manquant sur tower" >&2; exit 1; }
 mkdir -p "$MARKERS"
 
 pull_dir() { # $1=source  $2=dossier distant
-  local source="$1" remote="$2" dest="$ROOT/$source" parent sub slug marker
+  local source="$1" remote="$2" dest="$ROOT/$source"
+  local parent sub slug marker n
   if ! remote_is_dir "$remote"; then
     echo "  $remote : absent ou illisible, ignore"
     return 0
   fi
-  parent=$(dirname "$remote")
   local subs
   subs=$(remote_ls "$remote" 2>/dev/null | tr -d '\r' | grep -v '^\.\{1,2\}$' || true)
-  [ -n "$subs" ] || echo "  $remote : vide"
+  [ -n "$subs" ] || { echo "  $remote : vide"; return 0; }
+
+  if [ $DRY_RUN -eq 1 ]; then
+    # Un `du` par entree couterait un aller-retour ssh PAR FICHIER (des heures
+    # sur une galerie plate de plusieurs milliers de fichiers) : une seule
+    # mesure du dossier suffit pour savoir ce qu'il reste a rapatrier.
+    echo "  $remote : $(printf '%s\n' "$subs" | wc -l) entrees, $(remote_du "$remote" | tr -d '\r' | tr -d '\r')"
+    return 0
+  fi
+
+  # Lot de N entrees par flux tar. Un flux par fichier (l'ancien
+  # comportement) ajoutait un handshake ssh par photo : sur une galerie plate
+  # de 7500 fichiers, l'overhead depassait le temps de transfert. Les marqueurs
+  # restent unitaires (un par entree), donc un lot interrompu ne fait perdre
+  # que ce lot, et une relance recalcule les lots a partir de ce qui manque.
+  local batch=() names=()
+  flush_batch() {
+    [ ${#names[@]} -eq 0 ] && return 0
+    mkdir -p "$dest"
+    echo "  -> $remote : ${#names[@]} entree(s) de ${names[0]} a ${names[-1]}"
+    if remote_tar "$remote" "${names[@]}" | tar -C "$dest" -xf -; then
+      for n in "${batch[@]}"; do
+        touch "$MARKERS/${source}-${n}"
+      done
+    else
+      echo "     lot interrompu : relancer la meme commande pour reprendre" >&2
+      batch=()
+      names=()
+      return 1
+    fi
+    batch=()
+    names=()
+    return 0
+  }
+
   while IFS= read -r sub; do
     [ -n "$sub" ] || continue
+    case "$sub" in
+      *"'"*) echo "  $remote/$sub : apostrophe dans le nom, ignore" >&2 ; continue ;;
+    esac
     slug=$(printf '%s' "$remote/$sub" | tr '/ ' '__')
     marker="$MARKERS/${source}-${slug}"
     if [ $FORCE -eq 0 ] && [ -f "$marker" ]; then
-      echo "  $remote/$sub : deja rapatrie"
       continue
     fi
-    if [ $DRY_RUN -eq 1 ]; then
-      echo "  $remote/$sub : $(remote_du "$remote/$sub" | tr -d '\r')"
-      continue
-    fi
-    mkdir -p "$dest"
-    echo "  -> $remote/$sub"
-    if remote_tar "$parent" "$sub" | tar -C "$dest" -xf -; then
-      touch "$marker"
-    else
-      echo "     interrompu : relancer la meme commande pour reprendre" >&2
-      return 1
+    batch+=("$slug")
+    names+=("$sub")
+    if [ ${#names[@]} -ge $BATCH ]; then
+      flush_batch || return 1
     fi
   done <<<"$subs"
+  flush_batch || return 1
+  return 0
 }
 
 rc=0
@@ -179,7 +251,34 @@ for source in "${WANTED[@]}"; do
   echo "=== $source ==="
   [ -n "${REMOTE_PATHS[$source]:-}" ] || { echo "  source inconnue : $source" >&2; rc=1; continue; }
   for remote in ${REMOTE_PATHS[$source]}; do
-    pull_dir "$source" "$remote" || rc=1
+    if [ "$ONLY" = all ]; then
+      pull_dir "$source" "$remote" || rc=1
+    else
+      # Mode filtre : un seul flux par dossier distant, marqueur par (source,
+      # dossier, mode) pour que photos et videos soient repris independamment.
+      if ! remote_is_dir "$remote"; then
+        echo "  $remote : absent ou illisible, ignore"
+        continue
+      fi
+      slug=$(printf '%s' "$remote" | tr '/ ' '__')
+      marker="$MARKERS/${source}-${slug}-${ONLY}"
+      if [ $FORCE -eq 0 ] && [ -f "$marker" ]; then
+        echo "  $remote ($ONLY) : deja rapatrie"
+        continue
+      fi
+      if [ $DRY_RUN -eq 1 ]; then
+        echo "  $remote ($ONLY) : filtre par extension, $(remote_du "$remote" | tr -d '\r') au total"
+        continue
+      fi
+      mkdir -p "$ROOT/$source"
+      echo "  -> $remote ($ONLY)"
+      if remote_tar_filtered "$remote" | tar -C "$ROOT/$source" -xf -; then
+        touch "$marker"
+      else
+        echo "     interrompu : relancer la meme commande pour reprendre" >&2
+        rc=1
+      fi
+    fi
   done
   if [ $DRY_RUN -eq 0 ] && [ -d "$ROOT/$source" ]; then
     echo "  local : $(find "$ROOT/$source" -type f | wc -l) fichiers, $(du -sh "$ROOT/$source" | cut -f1)"

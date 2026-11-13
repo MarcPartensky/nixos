@@ -86,6 +86,16 @@ in
     ];
     volumes = [ "/var/lib/open-notebook/data:/app/data" ];
     environmentFiles = [ config.sops.templates."open-notebook.env".path ];
+    # Sans API_URL, la route /config du front détecte l'hôte public ET y
+    # recolle le port interne de l'API : le navigateur appelait
+    # https://notebook.marcpartensky.com:5055, que Pangolin n'expose pas (seul
+    # 443 -> 8555 existe), donc /notebooks restait vide. Avec l'origine
+    # publique, le front appelle /api en same-origin et le rewrite Next.js
+    # (INTERNAL_API_URL par défaut http://localhost:5055) joint l'API dans le
+    # conteneur.
+    environment = {
+      API_URL = "https://notebook.marcpartensky.com";
+    };
     extraOptions = [ "--pull=newer" ];
   };
 

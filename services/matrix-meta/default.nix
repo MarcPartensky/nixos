@@ -36,6 +36,20 @@ in {
         appservice.hostname = "127.0.0.1";
         bridge.permissions = permissions;
         encryption.pickle_key = "$ENCRYPTION_PICKLE_KEY";
+        # Le defaut du module (cross-signed-tofu) exige des signatures
+        # cross-signing : tout message venu d'un appareil non cross-signe est
+        # refuse ("your message was not bridged: your device is not trusted"),
+        # donc un appareil d'agent (HERMESMARC01, jamais verifie par marc) ne
+        # peut ni piloter le bot ni lancer 'login'. L'amont mautrix-meta
+        # utilise deja 'unverified' par defaut.
+        encryption.verification_levels.receive = "unverified";
+        encryption.verification_levels.send = "unverified";
+        # 'share' regit les cles megolm que le bridge accepte de donner a un
+        # appareil : laisse a cross-signed-tofu, il ne partage rien avec
+        # HERMESMARC01, donc l'agent ne peut PAS lire les messages des ponts
+        # (marcmsg read renvoie SessionNotFound). L'amont met deja
+        # 'cross-signed-tofu' ici ; on l'abaisse au meme titre que send.
+        encryption.verification_levels.share = "unverified";
       };
     };
 
@@ -59,6 +73,18 @@ in {
         };
         bridge.permissions = permissions;
         encryption.pickle_key = "$ENCRYPTION_PICKLE_KEY";
+        # Backfill desactive par defaut dans ce build : les portails sont crees
+        # VIDES (0 message), seules les nouvelles conversations arrivent. Sur un
+        # serveur Matrix standard (pas Beeper) le backfill ne peut remplir
+        # qu'une salle neuve : la file « backwards » de la doc ne s'applique pas.
+        backfill.enabled = true;
+        backfill.max_initial_messages = 200;
+        backfill.threads.max_initial_messages = 200;
+        # Cf. instagram ci-dessus : necessaire pour que l'agent puisse envoyer
+        # 'login messenger' depuis HERMESMARC01 et lire les reponses du bot.
+        encryption.verification_levels.receive = "unverified";
+        encryption.verification_levels.send = "unverified";
+        encryption.verification_levels.share = "unverified";
       };
     };
   };
@@ -69,6 +95,13 @@ in {
   systemd.services = {
     mautrix-meta-instagram-registration.script = lib.mkBefore (mkPickleKey "instagram");
     mautrix-meta-messenger-registration.script = lib.mkBefore (mkPickleKey "messenger");
+
+    # Le bridge ne relit sa config qu'au demarrage : sans ces declencheurs un
+    # changement de config (ex. verification_levels) n'est jamais actif apres un
+    # switch, l'unite restant active avec l'ancien fichier deja lu. La valeur
+    # doit changer pour provoquer le restart : incrementer la date.
+    mautrix-meta-instagram.restartTriggers = ["meta-config-2026-11-13-verification3"];
+    mautrix-meta-messenger.restartTriggers = ["meta-config-2026-11-13-verification3"];
 
     # BUG nixpkgs (vérifié 25/09/2026, toujours présent sur master) : l'unité de
     # registration chgrp les meta-registration.yaml au groupe

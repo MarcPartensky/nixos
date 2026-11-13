@@ -180,6 +180,53 @@
         }
       ];
     };
+
+    # Wiki.js 3 (comparaison de plateformes de documentation, cf.
+    # services/docs-compare) : conteneur podman lié à 127.0.0.1:8916.
+    # Seule ressource docs-compare exposée : les builds statiques des cinq
+    # générateurs (hub, mdbook, mkdocs, starlight, docusaurus, ref) ont été
+    # effacés de /var/lib/docs-compare et sont à regénérer hors Nix avant
+    # d'exposer de nouveau leurs domaines.
+    # SSO Pangolin désactivé : l'auth se fait DANS Wiki.js (stratégies local +
+    # OIDC Zitadel), une redirection Pangolin court-circuiterait le login de
+    # l'app elle-même.
+    blueprint.proxy-resources.docs-compare-wiki = {
+      name = "docs-compare-wiki";
+      protocol = "http";
+      full-domain = "wiki.marcpartensky.com";
+      auth.sso-enabled = false;
+      targets = [
+        {
+          hostname = "127.0.0.1";
+          port = 8916;
+          method = "http";
+        }
+      ];
+    };
+
+    # Cameras (go2rtc, cf. services/go2rtc) : une page, un bouton par flux.
+    # SSO ACTIVE : go2rtc n'a aucune authentification propre, donc la ressource
+    # publique serait une camera ouverte au monde sans cette ligne. Le champ
+    # `skipToIdpId` qui envoie directement sur Zitadel n'existe pas dans le
+    # blueprint : si Pangolin affiche son formulaire email/mot de passe interne
+    # au lieu de la redirection Zitadel, poser l'idp en base
+    # (`UPDATE resources SET skipToIdpId=<id> WHERE niceId='cam'`) puis le
+    # noter ici. Cible loopback 1984 : go2rtc n'ecoute que la loopback, rien
+    # n'est expose sur le LAN.
+    blueprint.proxy-resources.cam = {
+      name = "cam";
+      protocol = "http";
+      full-domain = "cam.marcpartensky.com";
+      auth.sso-enabled = true;
+      targets = [
+        {
+          hostname = "127.0.0.1";
+          port = 1984;
+          method = "http";
+        }
+      ];
+    };
+
   };
 
   # systemd.services.newt.serviceConfig = {
