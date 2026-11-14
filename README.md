@@ -128,8 +128,8 @@ flowchart LR
   subgraph l3["3. LAN"]
     lan["192.168.1.0/24, server, laptop, Mac, TV, phone dock"]
   end
-  l1 --> l2
-  l2 --> l3
+  pub --> ts
+  ts --> lan
 ```
 
 The overlays are not redundant toys. The tailnet is how the phone reaches the LAN from anywhere. ygg-mesh keeps a path alive when DNS or the control plane is unhappy. WireGuard `wg1` is the older path that a few services still use to reach the LAN through the VPS.
@@ -181,7 +181,11 @@ flowchart TB
   end
   brk["hermes-broker: PAM password or WebAuthn passkey, audited"]
   root["root, and only through the broker"]
-  surfaces --> gw
+  mx --> gw
+  dc --> gw
+  mob --> gw
+  web --> gw
+  desk --> gw
   gw --> mcp
   gw --> plug
   gw --> tools
