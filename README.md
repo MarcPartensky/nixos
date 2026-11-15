@@ -15,6 +15,8 @@ Four things make it usable, in this order:
 
 Written up for a general audience, with no internal address: **[AI infrastructure: the harness, the models, the tools, the privilege](https://drop.marcpartensky.com/73a63cf5)**. French version: [Infra IA](https://drop.marcpartensky.com/82ef90ae).
 
+The wider picture, as a single schema of what the harness receives and what it reaches across the fleet: **[the harness and what it controls](https://drop.marcpartensky.com/5f4668f9)** (surfaces, providers, tool families, hosts), French version [here](https://drop.marcpartensky.com/34eb4f73).
+
 ## The platform underneath
 
 ![the whole system on one page](docs/diagrams/map.svg)
@@ -37,6 +39,7 @@ Most surfaces answer with an SSO wall to an anonymous visitor, which is the poin
 | | |
 |---|---|
 | AI infrastructure write-up | <https://drop.marcpartensky.com/73a63cf5> · [FR](https://drop.marcpartensky.com/82ef90ae) |
+| The harness and what it controls, as a schema | <https://drop.marcpartensky.com/5f4668f9> · [FR](https://drop.marcpartensky.com/34eb4f73) |
 | 3D map of the whole stack | <https://atlas.marcpartensky.com> (SSO) |
 | Agent console | <https://dash.marcpartensky.com> (SSO) |
 | Files and calendar | <https://cloud.marcpartensky.com> (app login) |
