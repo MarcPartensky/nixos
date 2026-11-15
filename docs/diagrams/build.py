@@ -302,6 +302,53 @@ def d_agent():
     return svg(W, by + 76 + 16, "the agent", "\n".join(out))
 
 
+# -------------------------------------------------------------- 6. couche IA
+def d_ai_layer():
+    """La couche IA: harness, modeles, outils, privilege. Le coeur du repo."""
+    W, M = 1240, 24
+    out = [txt(M, 30, "the AI layer: a harness with 35 tool servers, and a bounded privilege", 13, LAV, 700, SANS)]
+    top = 52
+    surf = ["matrix", "discord bot", "mobile app", "web ui", "desktop app"]
+    sw = (W - 2 * M - 4 * 10) / 5
+    for i, s in enumerate(surf):
+        out.append(chip(M + i * (sw + 10), top, sw, 24, s, (), TEAL))
+    out.append(arrow(W / 2 - 40, top + 26, W / 2 - 40, top + 44, LAV))
+
+    cy = top + 52
+    cw = (W - 2 * M - 3 * 14) / 4
+    cols = [
+        ("the harness", LAV, [("hermes-agent 2026.9.24", ["one gateway", "3 profiles"]),
+                              ("memory + skills", ["31 skills on demand", "sessions persisted"]),
+                              ("scheduling", ["cron, webhooks,", "sub-agent delegation"])]),
+        ("the models", TEAL, [("deepseek  default", ["1M context, vision"]),
+                              ("openrouter  fallback", ["per task routes"]),
+                              ("claude + 2 local", ["heavy reasoning,", "two LAN endpoints"])]),
+        ("the tools", MAU, [("35 MCP servers", ["infra, apps, money,", "personal, OSINT"]),
+                            ("two transports", ["local stdio,", "private network HTTP"]),
+                            ("one process", ["8 servers, 90 tools,", "85 MB instead of 1.7 GB"])]),
+        ("the privilege", RED, [("brokered", ["no sudo, no ambient", "credential"]),
+                               ("gated", ["serialized rebuilds,", "pure evaluation"]),
+                               ("audited", ["scope, rate limit,", "one record per call"])]),
+    ]
+    bottom = cy
+    for i, (name, col, chips) in enumerate(cols):
+        x = M + i * (cw + 14)
+        inner = sum(chip_h(c[1]) + 10 for c in chips)
+        ph = 50 + inner + 8
+        out.append(pane(x, cy, cw, ph, col, name, None, lab_w=cw - 30))
+        y = cy + 46
+        for c in chips:
+            hh = chip_h(c[1])
+            out.append(chip(x + 12, y, cw - 24, hh, c[0], c[1], col))
+            y += hh + 10
+        bottom = max(bottom, cy + ph)
+    by = bottom + 14
+    out.append(pane(M, by, W - 2 * M, 74, GRN, "same repo as the host",
+                    "the agent edits the configuration it runs on, and cannot merge without a human"))
+    out.append(txt(M + 18, by + 60, "every surface is a client of the same gateway: one brain, one state directory, one audit trail", 9.5, DIM))
+    return svg(W, by + 74 + 16, "the AI layer", "\n".join(out))
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     out_dir = os.path.join(here, "svg")
@@ -312,6 +359,7 @@ def main():
         "request-path": d_request(),
         "backups": d_backup(),
         "agent": d_agent(),
+        "ai-layer": d_ai_layer(),
     }
     for name, content in docs.items():
         p = os.path.join(out_dir, name + ".svg")
