@@ -2,18 +2,22 @@
 
 **An internal platform for one person, built as if it had to serve a hundred.** One flake describes every machine, every service, every secret, every public route and the AI agent that operates the whole thing under audit. Nothing is configured by hand at runtime, and nothing is clicked in a web UI that could have been declared.
 
-This repo is the source of truth. The interesting part is not the desktop: it is the software layer of the cloud. A control plane that refuses drift, an identity plane that covers services which have no authentication of their own, a data plane with a tested restore path, and an agent plane where an autonomous process holds tools instead of credentials.
+This repo is the source of truth. The interesting part is not the desktop, it is the software layer: configuration that refuses drift, one login that also covers the services which have no authentication of their own, a backup you can actually restore, and an agent that holds tools instead of credentials.
 
-## The 30 second version
+## In plain words
 
-| Plane | What it is made of |
+I run a small private cloud: a server at home, one small VPS, a laptop, a handheld, a Mac and a phone. It serves photos, files, mail, git, chat, media, password storage, remote desktops, backups, and an AI agent that operates all of it. Every machine, every service, every secret and every public domain is described in this one repository, so the whole thing can be rebuilt from bare metal with one command instead of being remembered.
+
+| | |
 |---|---|
-| Control plane | One flake, pinned inputs, pure evaluation, rebuilds behind a lock, no runtime configuration drift |
-| Identity plane | One OIDC provider for the services that speak OIDC, SSO at the reverse proxy for those that do not, brokered and audited privilege for the agent |
-| Data plane | One database and role per app, an S3 object store for artifacts and phone photos, ZFS datasets and snapshots, three encrypted backup tiers |
-| Agent plane | A gateway multiplexing several surfaces and profiles, a single MCP host holding all tools, plugins packaged by Nix, one audited path to root |
-| Exposure plane | One wildcard domain, 36 routes declared in Nix, TLS and identity decided at the edge, no inbound connection to the server at home |
-| Shape of the codebase | 133 service modules, about 52 000 lines of Nix, 42 encrypted secret files, 118 services running on the main host |
+| Machines | a server at home, a laptop with the only GPU, a handheld, a VPS, a Mac, a phone |
+| Running now | 118 services on the main host, 133 service modules in the repo |
+| Public surface | one wildcard domain, 36 routes, all declared in Nix |
+| Secrets | 42 sops files, 194 encrypted fields, nothing in plaintext in git |
+| Rebuild a machine | boot the installer, `just install`, no manual step |
+| Replaces | photos, files, git, mail, chat, VPN, password vault, media, CI cache, status pages |
+
+Two kinds of readers land here. If you are hiring: the map below, then the decisions I would defend. If you are evaluating whether this is a product: it is not, see "What this is not" at the end.
 
 ## What this proves, if you are evaluating it
 
@@ -90,7 +94,7 @@ Consequences worth stating: there is no port published to the internet anywhere 
 
 The data host holds no certificate and accepts no inbound connection. Identity is decided before the app is reached, and the app keeps its own session only if it knows how.
 
-### Control plane: no runtime configuration
+### Nothing is configured by hand
 
 - **One flake, pinned.** `nixpkgs` is pinned by channel, upstream projects by revision, and packages that are not in nixpkgs are packaged here with real hashes. If it is not in the flake, it does not exist on the machine.
 - **Pure evaluation as a rule.** No `builtins.getFlake`, no `getEnv`, no `pathExists` outside the store in any evaluated module. Anything that reads external state becomes an input. `scripts/pure-check.sh` fails the build if a shortcut sneaks back in.
@@ -99,7 +103,7 @@ The data host holds no certificate and accepts no inbound connection. Identity i
 
 Two speeds on purpose: structural changes go through the flake and pay the evaluation (90 s at rest), container changes go through a quadlet and cost seconds. Deciding per service which speed it deserves is the difference between a platform and a ritual.
 
-### Identity plane: one provider, two enforcement points
+### One login for everything
 
 - **Apps that speak OIDC** authenticate themselves against Zitadel: code hosting, notification, photos, wiki, monitoring, the agent console.
 - **Apps that cannot** inherit identity from the proxy. Pangolin checks the session before forwarding, so an application with no auth of its own never receives an anonymous request. That single capability is what makes exposing small tools safe here.
@@ -107,7 +111,7 @@ Two speeds on purpose: structural changes go through the flake and pay the evalu
 - **Secrets follow the same logic.** 42 sops files, one age key per machine, 72 declared secret references, 194 encrypted fields. A stolen machine decrypts its own file and the shared one, nothing else. No secret has ever been in plaintext in this repo, across the whole history.
 - **Privilege is a service, not a capability.** The agent has no sudo. It asks a broker, which accepts a PAM password or a WebAuthn passkey, records the request, rate limits it, and grants the one thing asked for.
 
-### Data plane: lifecycle over storage
+### Databases, storage, and a backup you can restore
 
 - **A database per app**, declared in the flake with its role, provisioned at activation. No shared schema between services, so a restore of one app never depends on another.
 - **An object store** for what is not relational: build artifacts, and a mirror of the phone photo tree with one bucket per source.
@@ -118,7 +122,7 @@ Two speeds on purpose: structural changes go through the flake and pay the evalu
 
 - **A local binary cache** fed by the build hook, so a garbage collection or a flake update does not recompile what was already built here.
 
-### Agent plane: tools instead of credentials
+### The agent: tools instead of credentials
 
 ![the agent plane](docs/diagrams/agent.svg)
 
