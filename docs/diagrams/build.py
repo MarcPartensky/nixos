@@ -331,10 +331,9 @@ def d_ai_layer():
                                ("audited", ["scope, rate limit,", "one record per call"])]),
     ]
     bottom = cy
+    ph = 58 + max(sum(chip_h(c[1]) + 10 for c in chips) for _, _, chips in cols)
     for i, (name, col, chips) in enumerate(cols):
         x = M + i * (cw + 14)
-        inner = sum(chip_h(c[1]) + 10 for c in chips)
-        ph = 50 + inner + 8
         out.append(pane(x, cy, cw, ph, col, name, None, lab_w=cw - 30))
         y = cy + 46
         for c in chips:
