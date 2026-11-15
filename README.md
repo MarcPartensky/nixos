@@ -34,6 +34,7 @@ This repo is the source of truth. The interesting part is not the desktop: it is
 | `deploy/containers.nix` | Why containers escaped the host config, and how |
 | `scripts/pure-check.sh` | A linter that forbids the impure shortcuts that break evaluation |
 | `services/backup-pqbox/` | Backup tiers, post-quantum encryption, restore notes |
+| `docs/diagrams/build.py` | The schemas below are generated from this script, not drawn by hand |
 
 ## Public links
 
@@ -63,71 +64,23 @@ Everything answers under one wildcard domain. Most surfaces return an SSO wall t
 
 ## The software layer
 
+The schemas below are generated SVG, committed with their generator in `docs/diagrams`: they are recomputed from the same facts as the text instead of being drawn once and left to rot.
+
 ### Four planes, one source of truth
 
-```mermaid
-flowchart TB
-  subgraph cp["Control plane"]
-    flake["one flake, every input pinned"]
-    pure["pure evaluation: no runtime state, no getEnv, no getFlake"]
-    gate["gated rebuild: serialized by a lock, impure refused"]
-  end
-  subgraph ip["Identity plane"]
-    idp["Zitadel: a single OIDC provider"]
-    sso["SSO enforced at the proxy for apps without OIDC"]
-    brk["brokered privilege for the agent"]
-  end
-  subgraph dp["Data plane"]
-    pg["Postgres: one database and role per app"]
-    s3["S3: build artifacts, phone photo mirror"]
-    zfs["ZFS: datasets, snapshots, capped cache"]
-    backup["encrypted backup tiers, PQ KEM"]
-  end
-  subgraph ap["Agent plane"]
-    gw["gateway: surfaces and profiles"]
-    mcp["MCP host: all tools in one process"]
-    plug["plugins packaged by Nix"]
-  end
-```
+![the four planes of the platform](docs/diagrams/planes.svg)
 
 ### The contract of a service
 
 Adding a service is not copying a unit file. It is declaring six things, and forgetting one is a failure at evaluation time.
 
-```mermaid
-flowchart LR
-  mod["module: package, dedicated user, unit"] --> run["process: systemd unit or podman quadlet"]
-  mod --> sec["sops: secret materialized at activation"]
-  sec --> run
-  mod --> db["database and role, provisioned by the flake"]
-  db --> run
-  run --> route["route: hostname, target, protocol"]
-  route --> auth["auth policy: SSO required, or the app authenticates itself"]
-  auth --> url["public URL under the wildcard domain"]
-  run --> obs["observation: agent, uptime probe, live map"]
-```
+![the contract of a service](docs/diagrams/service-contract.svg)
 
 Consequences worth stating: there is no port published to the internet anywhere in this repo, no service holds a TLS certificate except the one at the edge, and a new domain is a rebuild rather than a dashboard click in someone else's product.
 
 ### One request, end to end
 
-```mermaid
-sequenceDiagram
-  participant V as Visitor
-  participant D as DNS
-  participant P as the proxy at the edge
-  participant Z as identity provider
-  participant T as the tunnel on the data host
-  participant A as the app
-  V->>D: ask for a subdomain
-  D-->>V: wildcard record, always the edge
-  V->>P: HTTPS
-  P->>Z: is this session valid
-  Z-->>P: yes, or redirect to login
-  P->>T: forward over the outbound tunnel
-  T->>A: HTTP on loopback
-  A-->>V: response
-```
+![one request, end to end](docs/diagrams/request-path.svg)
 
 The data host holds no certificate and accepts no inbound connection. Identity is decided before the app is reached, and the app keeps its own session only if it knows how.
 
@@ -136,33 +89,13 @@ The data host holds no certificate and accepts no inbound connection. Identity i
 - **One flake, pinned.** `nixpkgs` is pinned by channel, upstream projects by revision, and packages that are not in nixpkgs are packaged here with real hashes. If it is not in the flake, it does not exist on the machine.
 - **Pure evaluation as a rule.** No `builtins.getFlake`, no `getEnv`, no `pathExists` outside the store in any evaluated module. Anything that reads external state becomes an input. `scripts/pure-check.sh` fails the build if a shortcut sneaks back in.
 - **Rebuilds are gated.** A wrapper sits in front of `nixos-rebuild` for both the human and the agent: it refuses `--impure` and serializes activations with a lock, because two parallel activations had already corrupted system file permissions.
-- **Two speeds.** Container-only changes go through `just deploy`, which renders a podman quadlet and restarts it with zero Nix evaluation. Everything structural goes through the flake. Choosing per service which speed it deserves is the point.
 - **Reversibility.** Every generation is a store path, so a bad change is a rollback, not an archaeology project. A machine can be rebuilt from bare metal with one command.
 
-```mermaid
-flowchart LR
-  e["change a module"] --> pure["pure evaluation check"]
-  pure --> ev["evaluate the system derivation, no build"]
-  ev --> gate["gated rebuild: lock, impure refused"]
-  gate --> act["activation: units, secrets, hooks"]
-  act --> cache["build hook feeds the local binary cache"]
-  img["image tag or env change"] --> quad["quadlet render, zero evaluation"]
-```
+![two deployment speeds](docs/diagrams/change-flow.svg)
 
 Two speeds on purpose: structural changes go through the flake and pay the evaluation, containers do not. Deciding per service which speed it deserves is the difference between a platform and a ritual.
 
 ### Identity plane: one provider, two enforcement points
-
-```mermaid
-flowchart TB
-  req["request for a hostname"] --> q{"does the app speak OIDC"}
-  q -->|"yes"| own["app authenticates itself, the proxy only routes"]
-  q -->|"no"| proxy["proxy enforces SSO against the provider"]
-  proxy --> fwd["forwarded, already authenticated"]
-  own --> fwd2["forwarded, the app checks its own session"]
-  fwd --> end1["one policy, one place to revoke"]
-  fwd2 --> end1
-```
 
 - **Apps that speak OIDC** authenticate themselves against Zitadel: code hosting, notification, photos, wiki, monitoring, the agent console.
 - **Apps that cannot** inherit identity from the proxy. Pangolin checks the session before forwarding, so an application with no auth of its own never receives an anonymous request. That single capability is what makes exposing small tools safe here.
@@ -177,67 +110,15 @@ flowchart TB
 - **ZFS with a capped cache and compressed swap.** The cache was allowed to grow until services swapped: capping it took evaluation from 236 s under pressure back to 90 s, and giving compressed swap a higher priority than the disk stopped the multi second stalls.
 - **Backups where the producer is not the server.** A second machine pulls dumps and agent state over SSH, on its own schedule, and the server only runs a fallback that skips if a fresh archive exists. Archives are encrypted before they leave, with a post-quantum KEM, in three tiers. The reasoning is simple: a backup that the compromised machine can delete is not a backup.
 
-```mermaid
-flowchart LR
-  pg["database dumps"] --> pack["archive plus agent state"]
-  st["agent state"] --> pack
-  pull["second machine pulls at 03:10, the producer"] --> pack
-  fb["data host at 05:00, fallback, skips if an archive under 4 h exists"] -.-> pack
-  pack --> enc["encrypted before leaving: post-quantum KEM"]
-  enc --> d["daily tier"]
-  enc --> w["weekly tier"]
-  enc --> m["manual tier"]
-```
+![backups where the producer is not the server](docs/diagrams/backups.svg)
 
 - **A local binary cache** fed by the build hook, so a garbage collection or a flake update does not recompile what was already built here.
 
 ### Agent plane: tools instead of credentials
 
-```mermaid
-flowchart TB
-  subgraph surfaces["Surfaces"]
-    mx["Matrix"]
-    dc["Discord bot"]
-    mob["Mobile app"]
-    web["Web UI"]
-    desk["Desktop app"]
-  end
-  gw["hermes-agent gateway: one process, several profiles"]
-  subgraph host["Host integration"]
-    mcp["mcp-host: all hand written MCP servers, one process"]
-    plug["plugins packaged by Nix"]
-    tools["git, nix, browsers, mail, calendar"]
-  end
-  brk["hermes-broker: PAM password or WebAuthn passkey, audited"]
-  root["root, and only through the broker"]
-  mx --> gw
-  dc --> gw
-  mob --> gw
-  web --> gw
-  desk --> gw
-  gw --> mcp
-  gw --> plug
-  gw --> tools
-  gw --> brk
-  brk --> root
-```
+![the agent plane](docs/diagrams/agent.svg)
 
 The design choices that matter: **one gateway process** multiplexes surfaces and profiles, so a Discord bot is a client of the same brain rather than a second deployment. **One MCP host** holds every tool in a single process, because a process per session reached 133 processes and 1.7 GB where one holds the same tools in 85 MB. **Tools are code, not prompts**: each MCP server is a small program in this repo, packaged and restarted by the flake or hot-reloaded without one. And the agent works on the same repository that defines the host, which is why the control plane is so strict about purity and locking.
-
-```mermaid
-sequenceDiagram
-  participant A as Agent
-  participant B as Broker
-  participant H as Human
-  participant S as Host
-  A->>B: request privilege for one action
-  B->>H: prompt, password or passkey
-  H-->>B: second proof
-  B->>B: rate limit, scope, expiry
-  B->>S: execute the narrow action
-  S-->>A: result
-  B-->>A: audit entry
-```
 
 ### Supply chain and packaging
 
@@ -266,6 +147,28 @@ The platform does not care which box does what. One machine carries the services
 | Cluster | `k3s` single node serving the Rancher console on a fixed ClusterIP, with no port open anywhere |
 | Job queue | `windmill`: server and database on the main host, workers on the other machines, over the tailnet |
 | Observability | `zabbix` server plus an agent everywhere, `uptime-kuma`, `glances`, `atop`, a tailnet dashboard, an LLM spend dashboard, a daily finance dashboard, the 3D stack map |
+
+## Repo layout
+
+```
+flake.nix              every nixosConfigurations / homeConfigurations / darwinConfigurations
+Justfile + .env        common commands
+profiles/<host>/       per machine composition: imports, firewall, hostname, sops file
+  common/              base shared by the main host and the laptop
+hosts/<name>/          disko and hardware configuration per machine
+modules/nixos/<name>/  unit system modules, enabled by being imported
+modules/home/<name>/   Home Manager modules
+users/                 desktop profile standalone, root inside NixOS, Mac and handheld profiles
+services/<name>/       one folder per service, registry in services/default.nix
+  hermes/plugins/      Nix managed plugins for the agent
+mcp/                   mcp-host: one process serving the hand written MCP servers
+deploy/                containers moved out of the host config
+docs/diagrams/         generated SVG schemas, next to the script that builds them
+secrets/*.yml          sops age ciphertext
+scripts/, vms/         helpers and microvm definitions
+```
+
+`services/` is imported by the main host and the laptop only. The handheld and the VPS pick modules one at a time, because a module without an `enable` option would activate on every host.
 
 ## Decisions I would defend in an interview
 
