@@ -66,15 +66,21 @@ Everything answers under one wildcard domain. Most surfaces return an SSO wall t
 
 The schemas below are generated SVG, committed with their generator in `docs/diagrams`: they are recomputed from the same facts as the text instead of being drawn once and left to rot.
 
-### Four planes, one source of truth
+### The map
 
-![the four planes of the platform](docs/diagrams/planes.svg)
+![the whole system on one page](docs/diagrams/map.svg)
+
+Everything that follows is a consequence of this shape: one public door, one outbound tunnel, one flake.
+
+### What runs
+
+![what actually runs](docs/diagrams/inventory.svg)
+
+The same list in words, if you prefer: `services/` is the registry, `services/default.nix` says what is on, and a commented line means the module is kept as reference rather than running.
 
 ### The contract of a service
 
-Adding a service is not copying a unit file. It is declaring six things, and forgetting one is a failure at evaluation time.
-
-![the contract of a service](docs/diagrams/service-contract.svg)
+Adding a service is not copying a unit file. It is declaring six things: the module, its secret, its database, its route, its auth policy, its observation. Forget one and the failure happens at evaluation time, not at 3 a.m.
 
 Consequences worth stating: there is no port published to the internet anywhere in this repo, no service holds a TLS certificate except the one at the edge, and a new domain is a rebuild rather than a dashboard click in someone else's product.
 
@@ -91,9 +97,7 @@ The data host holds no certificate and accepts no inbound connection. Identity i
 - **Rebuilds are gated.** A wrapper sits in front of `nixos-rebuild` for both the human and the agent: it refuses `--impure` and serializes activations with a lock, because two parallel activations had already corrupted system file permissions.
 - **Reversibility.** Every generation is a store path, so a bad change is a rollback, not an archaeology project. A machine can be rebuilt from bare metal with one command.
 
-![two deployment speeds](docs/diagrams/change-flow.svg)
-
-Two speeds on purpose: structural changes go through the flake and pay the evaluation, containers do not. Deciding per service which speed it deserves is the difference between a platform and a ritual.
+Two speeds on purpose: structural changes go through the flake and pay the evaluation (90 s at rest), container changes go through a quadlet and cost seconds. Deciding per service which speed it deserves is the difference between a platform and a ritual.
 
 ### Identity plane: one provider, two enforcement points
 
@@ -131,22 +135,6 @@ Four levels, each answering a different question: host (`atop` per process with 
 ### Fleet, by role
 
 The platform does not care which box does what. One machine carries the services. One workstation has the GPU and is used only for local model inference and speech. One handheld is a queue worker and runs scheduled jobs. One small VPS holds the public edge, identity and mail. A laptop on macOS and a phone are managed by the same repository as everything else, which is the real test of a platform: the model does not change when the hardware does.
-
-### What runs
-
-| Domain | Services |
-|---|---|
-| Edge and networking | `pangolin`, `newt`, `traefik`, `headscale`, `tailscale`, `ygg-mesh`, `wireguard`, `adguard` (DNS), `tor` |
-| Identity and secrets | `zitadel` (OIDC), `vaultwarden`, `hermes-broker` |
-| Files and sync | `nextcloud` with Postgres, Redis and nginx; `immich` on an external read-only photo library with indexing limited to a nightly window; `gitea`; `syncthing` |
-| Media | `jellyfin`, `navidrome` with `aonsoku` and `octo`, `audiobookshelf`, `radarr`/`sonarr`/`readarr`/`prowlarr`/`flaresolverr`, `qbittorrent`/`rqbit`, `go2rtc` |
-| Communication | `matrix-synapse` with `mautrix` bridges for WhatsApp, Signal, Discord, Meta and LinkedIn; `stalwart` mail; `gotify` and its Matrix bridge |
-| Knowledge | `anki-sync-server` plus a headless Anki MCP, `open-notebook`, Wiki.js and a static docs comparison, `jupyterhub` |
-| Small tools | `shlink` short links with an S3 to link to share page flow, `reactive-resume`, `thclaws`, an F-Droid repo, `windmill` |
-| Remote access | `rustguac` (Guacamole compatible), `kasmvnc` (a full desktop in the browser plus a visible Chromium with CDP for automation), `novnc`, `rustdesk`, `ttyd` with `zellij`, `eternal-terminal` |
-| Cluster | `k3s` single node serving the Rancher console on a fixed ClusterIP, with no port open anywhere |
-| Job queue | `windmill`: server and database on the main host, workers on the other machines, over the tailnet |
-| Observability | `zabbix` server plus an agent everywhere, `uptime-kuma`, `glances`, `atop`, a tailnet dashboard, an LLM spend dashboard, a daily finance dashboard, the 3D stack map |
 
 ## Repo layout
 

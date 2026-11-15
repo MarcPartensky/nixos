@@ -1,85 +1,56 @@
 #!/usr/bin/env python3
-"""Genere les schemas SVG du README du repo nixos, dans le style des docs droplify.
+"""Schemas SVG du README (style des docs droplify).
 
-Regles reprises de skill droplify-publishing/references/svg-doc-rendering.md :
-- largeur monospace = len * font_size * 0.6, 8 % de marge dans les chips ;
-- hauteurs de panneaux calculees, pas devinees ;
-- fleches : 40 px de gap, pointe a 10 px de la boite visee ;
-- aucun rgba() ni classe CSS : GitHub sanitise les SVG, on reste en
-  presentation attributes (fill + fill-opacity, stroke, stroke-dasharray).
+Principe : un schema = une idee, des objets concrets. Vrais noms de services,
+vrais domaines, aucune prose abstraite dans les boites. Regles de geometrie du
+skill droplify-publishing (largeur monospace = len * size * 0.6, hauteurs
+calculees, 40 px entre deux couches), plus un controle qui fait echouer le build
+si un texte sort de sa boite ou du canevas.
+
+    python3 build.py
 """
 from html import escape
 import os
 import re
 
-BASE = "#1e1e2e"
-SURF = "#313244"
-TEXT = "#cdd6f4"
-MUT = "#9399b2"
-DIM = "#6c7086"
-LAV = "#b4befe"
-BLU = "#89b4fa"
-TEAL = "#94e2d5"
-GRN = "#a6e3a1"
-YEL = "#f9e2af"
-PEACH = "#fab387"
-MAU = "#cba6f7"
-RED = "#f38ba8"
-PINK = "#f5c2e7"
-SKY = "#89dceb"
-
-WARN = []
-
-
-def warn(msg):
-    WARN.append(msg)
-
+BASE, SURF = "#1e1e2e", "#313244"
+TEXT, MUT, DIM = "#cdd6f4", "#9399b2", "#6c7086"
+LAV, BLU, TEAL = "#b4befe", "#89b4fa", "#94e2d5"
+GRN, YEL, PEACH = "#a6e3a1", "#f9e2af", "#fab387"
+MAU, RED, SKY, PINK = "#cba6f7", "#f38ba8", "#89dceb", "#f5c2e7"
 
 MONO = "ui-monospace, SFMono-Regular, Menlo, monospace"
 SANS = "ui-sans-serif, system-ui, -apple-system, sans-serif"
-CW = 0.6  # facteur de largeur monospace
+CW = 0.6
+WARN = []
+
+
+def warn(m):
+    WARN.append(m)
 
 
 def w_of(s, size):
     return len(s) * size * CW
 
 
-def wrap(s, size, maxw):
-    """Decoupe un texte en lignes qui tiennent dans maxw."""
-    out, cur = [], ""
-    for word in s.split():
-        cand = (cur + " " + word).strip()
-        if w_of(cand, size) <= maxw or not cur:
-            cur = cand
-        else:
-            out.append(cur)
-            cur = word
-    if cur:
-        out.append(cur)
-    return out
-
-
-def txt(x, y, s, size=9.5, fill=MUT, weight=None, family=MONO, anchor=None, opacity=None):
+def txt(x, y, s, size=9.5, fill=MUT, weight=None, family=MONO, anchor=None):
     a = f' font-weight="{weight}"' if weight else ""
     b = f' text-anchor="{anchor}"' if anchor else ""
-    c = f' opacity="{opacity}"' if opacity is not None else ""
     return (f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" fill="{fill}"'
-            f' font-family="{family}"{a}{b}{c}>{escape(s)}</text>')
+            f' font-family="{family}"{a}{b}>{escape(s)}</text>')
 
 
-def chip(x, y, w, h, title, lines, color, dashed=False, size=9.5):
+def chip(x, y, w, h, title, lines=(), color=LAV, dashed=False, size=9.5):
     if w_of(title, 11.5) > w - 22:
-        warn(f"chip title overflow ({w_of(title, 11.5):.0f} > {w - 22:.0f}): {title}")
+        warn(f"titre hors chip ({w_of(title, 11.5):.0f} > {w - 22:.0f}): {title}")
     for ln in lines:
         if w_of(ln, size) > w - 22:
-            warn(f"chip line overflow ({w_of(ln, size):.0f} > {w - 22:.0f}): {ln}")
+            warn(f"ligne hors chip ({w_of(ln, size):.0f} > {w - 22:.0f}): {ln}")
     dash = ' stroke-dasharray="4 3"' if dashed else ""
-    o = [
-        f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="5"'
-        f' fill="{SURF}" stroke="{color}" stroke-opacity="0.55" stroke-width="1"{dash}/>',
-        f'<rect x="{x:.0f}" y="{y:.0f}" width="3" height="{h:.0f}" rx="1.5" fill="{color}"/>',
-        txt(x + 11, y + 19, title, 11.5, TEXT, 600, SANS),
-    ]
+    o = [f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="5" fill="{SURF}"'
+         f' stroke="{color}" stroke-opacity="0.55" stroke-width="1"{dash}/>',
+         f'<rect x="{x:.0f}" y="{y:.0f}" width="3" height="{h:.0f}" rx="1.5" fill="{color}"/>',
+         txt(x + 11, y + 19, title, 11.5, TEXT, 600, SANS)]
     yy = y + 34
     for ln in lines:
         o.append(txt(x + 11, yy, ln, size, MUT))
@@ -91,345 +62,269 @@ def chip_h(lines, size=9.5):
     return 34 + len(lines) * (size + 3.6) + 4
 
 
-def pane(x, y, w, h, color, label, role=None, legend=None, lab_w=190):
+def pane(x, y, w, h, color, label, sub=None, lab_w=None):
     if w_of(label, 13) > w - 36:
-        warn(f"pane title overflow: {label}")
-    if role:
-        for ln in (role if isinstance(role, list) else [role]):
-            if w_of(ln, 9.5) > lab_w - 26:
-                warn(f"pane role overflow ({w_of(ln, 9.5):.0f} > {lab_w - 26}): {ln}")
-    o = [
-        f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="8"'
-        f' fill="{color}" fill-opacity="0.06" stroke="{color}" stroke-width="1.2" stroke-opacity="0.75"/>',
-        txt(x + 18, y + 26, label, 13, color, 700, SANS),
-    ]
-    if role:
-        for i, ln in enumerate(role if isinstance(role, list) else [role]):
-            o.append(txt(x + 18, y + 44 + i * 12, ln, 9.5, MUT))
-    if legend:
-        o.append(txt(x + w - 18, y + 26, legend, 9, DIM, None, MONO, anchor="end"))
+        warn(f"titre de panneau trop large: {label}")
+    if sub and lab_w and w_of(sub, 9.5) > lab_w - 26:
+        warn(f"sous-titre de panneau trop large ({w_of(sub, 9.5):.0f}): {sub}")
+    o = [f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="8" fill="{color}"'
+         f' fill-opacity="0.06" stroke="{color}" stroke-width="1.2" stroke-opacity="0.75"/>',
+         txt(x + 18, y + 26, label, 13, color, 700, SANS)]
+    if sub:
+        o.append(txt(x + 18, y + 44, sub, 9.5, MUT))
     return "\n".join(o)
 
 
-def arrow(x1, y1, x2, y2, color=DIM, dash=False, curved=None):
-    d = f' stroke-dasharray="4 3"' if dash else ""
-    if curved:
-        path = f"M {x1:.1f} {y1:.1f} Q {curved[0]:.1f} {curved[1]:.1f} {x2:.1f} {y2:.1f}"
-        return (f'<path d="{path}" fill="none" stroke="{color}" stroke-width="1.3"{d}'
-                f' marker-end="url(#arw)"/>')
-    return (f'<path d="M {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f}" fill="none" stroke="{color}"'
-            f' stroke-width="1.3"{d} marker-end="url(#arw)"/>')
+def arrow(x1, y1, x2, y2, color=DIM, dash=False, label=None):
+    d = ' stroke-dasharray="4 3"' if dash else ""
+    out = (f'<path d="M {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f}" fill="none" stroke="{color}"'
+           f' stroke-width="1.3"{d} marker-end="url(#arw)"/>')
+    if label:
+        out += txt((x1 + x2) / 2, min(y1, y2) - 6, label, 9, DIM, anchor="middle")
+    return out
 
 
 def svg(w, h, label, body):
     w, h = int(round(w)), int(round(h))
-    defs = (
-        '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6"'
-        ' markerHeight="6" orient="auto-start-reverse">'
-        f'<path d="M 0 0 L 10 5 L 0 10 z" fill="{DIM}"/></marker>'
-        '<marker id="arwl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6"'
-        ' markerHeight="6" orient="auto-start-reverse">'
-        f'<path d="M 0 0 L 10 5 L 0 10 z" fill="{LAV}"/></marker></defs>'
-    )
-    for m in re.finditer(r'<text x="([0-9.]+)" y="[0-9.]+" font-size="([0-9.]+)"[^>]*>([^<]*)</text>', body):
-        x_, size_, content_ = float(m.group(1)), float(m.group(2)), m.group(3)
-        right = x_ + w_of(content_, size_)
-        if right > w - 10:
-            warn(f"text past the canvas (x={x_:.0f} right={right:.0f} > {w - 10}): {content_}")
+    for m in re.finditer(r'<text x="([0-9.]+)" y="([0-9.]+)" font-size="([0-9.]+)"[^>]*>([^<]*)</text>', body):
+        x_, y_, size_, c_ = float(m.group(1)), float(m.group(2)), float(m.group(3)), m.group(4)
+        if x_ + w_of(c_, size_) > w - 10:
+            warn(f"texte hors canevas a droite: {c_}")
+        if y_ > h - 4:
+            warn(f"texte sous le canevas: {c_}")
     for m in re.finditer(r'<rect x="([0-9.-]+)" y="([0-9.-]+)" width="([0-9.]+)" height="([0-9.]+)"', body):
         x_, y_, w_, h_ = (float(m.group(i)) for i in range(1, 5))
-        if y_ + h_ > h - 2:
-            warn(f"rect below the canvas (bottom={y_ + h_:.0f} > {h - 2}): y={y_:.0f} h={h_:.0f}")
-        if x_ + w_ > w - 2:
-            warn(f"rect past the canvas (right={x_ + w_:.0f} > {w - 2})")
-    for m in re.finditer(r'<text x="[0-9.]+" y="([0-9.]+)"', body):
-        if float(m.group(1)) > h - 4:
-            warn(f"text below the canvas (y={m.group(1)} > {h - 4})")
+        if x_ + w_ > w - 2 or y_ + h_ > h - 2:
+            warn(f"rect hors canevas (x={x_:.0f} y={y_:.0f} w={w_:.0f} h={h_:.0f})")
+    defs = ('<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6"'
+            ' markerHeight="6" orient="auto-start-reverse">'
+            f'<path d="M 0 0 L 10 5 L 0 10 z" fill="{DIM}"/></marker></defs>')
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}"'
             f' role="img" aria-label="{escape(label)}">\n{defs}\n'
-            f'<rect x="0" y="0" width="{w}" height="{h}" rx="10" fill="{BASE}"/>\n'
-            f'{body}\n</svg>\n')
+            f'<rect x="0" y="0" width="{w}" height="{h}" rx="10" fill="{BASE}"/>\n{body}\n</svg>\n')
 
 
-# ---------------------------------------------------------------- 1. planes
-def d_planes():
-    W = 1240
-    planes = [
-        ("Control plane", "no runtime configuration, ever", LAV, [
-            ("one flake", ["every machine and every input", "pinned by revision"]),
-            ("pure evaluation", ["no getEnv, no getFlake,", "no path outside the store"]),
-            ("gated rebuild", ["serialized by a lock,", "impure refused for all"]),
-            ("two speeds", ["structural change pays the", "evaluation, containers do not"]),
-        ]),
-        ("Identity plane", "checked before the app runs", TEAL, [
-            ("one OIDC provider", ["services that speak OIDC", "authenticate themselves"]),
-            ("proxy level SSO", ["apps without auth inherit", "it from the edge"]),
-            ("brokered privilege", ["PAM password or passkey,", "scoped and audited"]),
-            ("per machine keys", ["one age key per host:", "it decrypts only its own file"]),
-        ]),
-        ("Data plane", "lifecycle over storage", BLU, [
-            ("database per app", ["role and database declared", "in the flake"]),
-            ("object store", ["build artifacts and a", "mirror of phone photos"]),
-            ("ZFS datasets", ["snapshots, capped cache,", "compressed swap first"]),
-            ("backup tiers", ["daily, weekly, manual,", "encrypted post quantum"]),
-        ]),
-        ("Agent plane", "tools, not credentials", MAU, [
-            ("one gateway", ["several surfaces and", "profiles, one process"]),
-            ("one MCP host", ["all hand written servers,", "a single process"]),
-            ("plugins by Nix", ["linked at activation,", "not installed by hand"]),
-            ("one path to root", ["no sudo: the broker is", "the only door"]),
-        ]),
+def grid(items, x0, y0, w_total, h, gap=12, color=LAV, title_size=11.5):
+    """Range des chips sur une ligne, largeur repartie, retour du bloc + hauteur."""
+    n = len(items)
+    cw = (w_total - (n - 1) * gap) / n
+    out = []
+    for i, (t, lines) in enumerate(items):
+        out.append(chip(x0 + i * (cw + gap), y0, cw, h, t, lines, color))
+    return "\n".join(out)
+
+
+# --------------------------------------------------------------- la carte
+def d_map():
+    W, M = 1240, 24
+    out = [txt(M, 30, "the whole system on one page", 13, LAV, 700, SANS)]
+
+    out.append(chip(M, 46, 210, 26, "the internet", (), DIM))
+    out.append(txt(M + 222, 58, "one wildcard DNS record, both sides behind NAT", 9.5, MUT))
+    out.append(arrow(M + 105, 76, M + 105, 106, LAV, label="DNS"))
+
+    vy = 110
+    vps = [("Pangolin", ["TLS, the only", "open port"]),
+           ("Zitadel", ["login for every", "service"]),
+           ("headscale", ["tailnet control"]),
+           ("Stalwart", ["mail"]),
+           ("Vaultwarden", ["passwords"])]
+    out.append(pane(M, vy, W - 2 * M, 104, TEAL, "VPS", "the only public door"))
+    out.append(grid(vps, M + 20, vy + 52, W - 2 * M - 40, 44, 12, TEAL))
+
+    ty = vy + 104
+    out.append(arrow(W / 2 - 120, ty + 12, W / 2 - 120, ty + 58, BLU, label="newt tunnel"))
+    out.append(txt(W / 2 - 100, ty + 40, "tower dials out, nothing dials in", 9.5, MUT))
+
+    hy = ty + 70
+    services = [
+        ("files, photos", ["nextcloud", "immich", "syncthing", "garage S3"]),
+        ("code, docs", ["gitea", "wiki.js", "open-notebook", "anki sync"]),
+        ("media", ["jellyfin", "navidrome", "arr stack", "audiobookshelf"]),
+        ("talk", ["matrix + bridges", "gotify", "shlink", "stalwart client"]),
+        ("plumbing", ["postgres", "ZFS + attic", "windmill", "k3s / rancher"]),
     ]
-    top, gap, lab, pad = 24, 16, 214, 18
-    rows = []
-    for name, role, col, chips in planes:
-        ch_h = max(chip_h(c[1]) for c in chips)
-        rows.append((name, role, col, chips, ch_h))
-    h = top + sum(r[4] + 2 * pad for r in rows) + gap * (len(rows) - 1) + 24
-    out, y = [], top
-    for name, role, col, chips, ch_h in rows:
-        ph = ch_h + 2 * pad
-        out.append(pane(24, y, W - 48, ph, col, name, role, lab_w=lab))
-        cw = (W - 48 - lab - 30 - 3 * 12) / 4
-        x = 24 + lab
-        for i, (t, lines) in enumerate(chips):
-            out.append(chip(x, y + pad, cw, ch_h, t, lines, col))
-            x += cw + 12
-        y += ph + gap
-    return svg(W, h, "the four planes of the platform", "\n".join(out))
+    ch = 88
+    out.append(pane(M, hy, W - 2 * M, 20 + 52 + ch + 30, BLU, "tower",
+                    "the machine at home carries everything else"))
+    out.append(grid(services, M + 20, hy + 52, W - 2 * M - 40, ch, 12, BLU))
+    out.append(txt(M + 20, hy + 52 + ch + 22,
+                   "118 units running · 133 service modules · 36 public routes · one database per app",
+                   9.5, MUT))
+
+    oy = hy + 20 + 52 + ch + 30 + 14
+    others = [("laptop", ["the only GPU"]),
+              ("handheld", ["queue worker"]),
+              ("phone", ["tunnels to the LAN"]),
+              ("Mac", ["nix-darwin"])]
+    out.append(pane(M, oy, W - 2 * M, 96, MAU, "the same flake elsewhere",
+                    "same repo, same profiles, joined to the tailnet"))
+    out.append(grid(others, M + 20, oy + 52, W - 2 * M - 40, 30, 12, MAU))
+    return svg(W, oy + 96 + 18, "the whole system on one page", "\n".join(out))
 
 
-# ------------------------------------------------------- 2. service contract
-def d_contract():
-    W = 1240
-    steps = [
-        ("1 module", ["package, dedicated user,", "unit file"], LAV),
-        ("2 secret", ["sops file, materialized", "at activation"], TEAL),
-        ("3 database", ["role and database", "provisioned by the flake"], BLU),
-        ("4 route", ["hostname, target,", "protocol in Nix"], SKY),
-        ("5 auth", ["SSO required, or the app", "authenticates itself"], YEL),
-        ("6 URL", ["public under the wildcard,", "TLS at the edge only"], GRN),
+# --------------------------------------------------------------- inventaire
+def d_inventory():
+    W, M = 1240, 24
+    out = [txt(M, 30, "what actually runs, by job", 13, LAV, 700, SANS),
+           txt(M, 48, "every line is a service folder in services/", 9.5, MUT)]
+    groups = [
+        ("identity", TEAL, ["zitadel  login for everything", "vaultwarden  passwords",
+                            "hermes-broker  root access"]),
+        ("edge", SKY, ["pangolin  TLS and routing", "newt  tunnels from home",
+                       "headscale  tailnet", "adguard  DNS"]),
+        ("files and photos", BLU, ["nextcloud  files, calendar", "immich  23k photos",
+                                   "syncthing  device sync", "garage  S3 artifacts"]),
+        ("code and knowledge", LAV, ["gitea  git hosting", "wiki.js  documentation",
+                                     "open-notebook  research", "anki  flashcards"]),
+        ("media", PEACH, ["jellyfin  video", "navidrome + octo  music",
+                          "arr stack  acquisition", "audiobookshelf  audio"]),
+        ("talk", MAU, ["matrix + 5 bridges", "stalwart  mail",
+                       "gotify  notifications", "shlink  short links"]),
+        ("orchestration", YEL, ["windmill  job queue", "k3s + rancher  console",
+                                "jupyterhub  notebooks", "microvm  dev VMs"]),
+        ("data and backups", GRN, ["postgres  one db per app", "ZFS  datasets, snapshots",
+                                   "attic  binary cache", "pqbox  encrypted archives"]),
+        ("access and control", PINK, ["kasm, novnc  remote desktop", "rustguac  gateway",
+                                      "ttyd + zellij  terminal", "glances, zabbix, atop"]),
     ]
-    bw, bh, gap = 176, 116, 30
-    top = 56
-    out = [txt(24, 28, "the contract of a service: six declarations, no runtime surprises", 13, LAV, 700, SANS)]
-    x = 24
-    for i, (t, lines, col) in enumerate(steps):
-        out.append(chip(x, top, bw, bh, t, lines, col))
-        if i < len(steps) - 1:
-            xa, ya = x + bw + 6, top + bh / 2
-            out.append(arrow(xa, ya, xa + gap - 10, ya, LAV))
-        x += bw + gap
-    # bottom band: what the platform gives back
-    by = top + bh + 34
-    pn_w = W - 48
-    out.append(pane(24, by, pn_w, 92, MUT, "what this buys",
-                    "the same six declarations on every machine, human or agent", lab_w=pn_w - 40))
-    facts = [
-        "no port published to the internet anywhere",
-        "no certificate outside the edge",
-        "a new domain is a rebuild, not a click",
-        "a forgotten declaration fails at evaluation",
-    ]
-    fx = 40
-    for f in facts:
-        out.append(txt(fx, by + 70, "· " + f, 9.5, MUT))
-        fx += w_of("· " + f, 9.5) + 26
-    return svg(W, by + 92 + 24, "the contract of a service", "\n".join(out))
+    cols, gap, ch = 3, 16, 92
+    gw = (W - 2 * M - (cols - 1) * gap) / cols
+    y, n = 70, 0
+    for name, col, items in groups:
+        c = n % cols
+        x = M + c * (gw + gap)
+        out.append(chip(x, y, gw, ch, name, items, col))
+        n += 1
+        if n % cols == 0:
+            y += ch + gap
+    return svg(W, y + (0 if n % cols == 0 else ch) + 22, "what actually runs", "\n".join(out))
 
 
-# ---------------------------------------------------------- 3. request path
+# --------------------------------------------------------------- une requete
 def d_request():
-    W = 1240
-    top = 64
-    bh, gap = 108, 30
-    bw = (W - 48 - 5 * gap) / 6
-    boxes = [
-        ("visitor", ["a browser, no", "certificate, no VPN"], MUT),
-        ("wildcard DNS", ["every name resolves", "to the same edge"], SKY),
-        ("edge: TLS", ["one certificate,", "one listening port"], LAV),
-        ("identity check", ["session valid, or", "redirect to login"], TEAL),
-        ("outbound tunnel", ["the data host dials", "out, never the reverse"], BLU),
-        ("the app", ["HTTP on loopback,", "no public port"], GRN),
-    ]
-    out = [txt(24, 28, "one request, end to end", 13, LAV, 700, SANS),
-           txt(24, 46, "identity is decided before the application is reached", 9.5, MUT)]
-    x = 24
-    for i, (t, lines, col) in enumerate(boxes):
-        out.append(chip(x, top, bw, bh, t, lines, col))
-        if i < len(boxes) - 1:
-            xa, ya = x + bw + 6, top + bh / 2
-            out.append(arrow(xa, ya, xa + gap - 10, ya, DIM))
+    W, M = 1240, 24
+    out = [txt(M, 30, "opening cloud.marcpartensky.com", 13, LAV, 700, SANS),
+           txt(M, 48, "no certificate and no open port on the machine at home", 9.5, MUT)]
+    steps = [("browser", (), DIM, "you, anywhere"),
+             ("*.marcpartensky.com", (), SKY, "wildcard DNS"),
+             ("Pangolin", ("TLS",), TEAL, "on the VPS"),
+             ("Zitadel", ("session?",), TEAL, "login or passkey"),
+             ("newt", ("tunnel",), BLU, "tower dials out"),
+             ("nextcloud", (), GRN, "loopback only")]
+    gap, bh = 30, 66
+    bw = (W - 2 * M - 5 * gap) / 6
+    x, y = M, 80
+    for i, (t, lines, col, sub) in enumerate(steps):
+        out.append(chip(x, y, bw, bh, t, lines, col))
+        out.append(txt(x + 11, y + bh + 16, sub, 9, DIM))
+        if i < len(steps) - 1:
+            out.append(arrow(x + bw + 4, y + bh / 2, x + bw + gap - 6, y + bh / 2, DIM))
         x += bw + gap
-    # branch underneath
-    by = top + bh + 46
-    out.append(pane(24, by, W - 48, 96, YEL, "the branch that matters",
-                    "does the application speak OIDC", lab_w=W - 60))
-    half = (W - 48 - 60) / 2
-    out.append(chip(42, by + 24, half, 54, "yes: the app authenticates itself",
-                    ["it validates the session and keeps its own users"], YEL))
-    out.append(chip(42 + half + 24, by + 24, half, 54, "no: the proxy enforces SSO",
-                    ["the app never receives an unauthenticated request"], YEL))
-    return svg(W, by + 96 + 24, "one request end to end", "\n".join(out))
+    ay = y + bh + 42
+    out.append(pane(M, ay, W - 2 * M, 92, YEL, "same path, two ways to authenticate", None, lab_w=W))
+    half = (W - 2 * M - 60) / 2
+    out.append(chip(M + 20, ay + 22, half, 52, "the app speaks OIDC",
+                    ["Zitadel logs the user in"], YEL))
+    out.append(chip(M + 20 + half + 20, ay + 22, half, 52, "the app has no login",
+                    ["Pangolin checks the session first"], YEL))
+    return svg(W, ay + 92 + 18, "one request end to end", "\n".join(out))
 
 
-# --------------------------------------------------------------- 4. backups
+# --------------------------------------------------------------- sauvegardes
 def d_backup():
-    W = 1240
-    top = 56
+    W, M = 1240, 24
+    out = [txt(M, 30, "backups: the machine holding the data keeps no copy", 13, LAV, 700, SANS)]
+    top, cm = 52, 60
+    cw = (W - 2 * M - 2 * cm) / 3
     cols = [
-        ("data host", ["holds the state,", "runs the fallback"], LAV, [
-            ("databases", ["one dump per app,", "taken locally"], BLU),
-            ("agent state", ["config, sessions,", "skills, plugins"], MAU),
-            ("fallback at 05:00", ["same pipeline,", "skipped if a fresh", "archive exists"], YEL, True),
+        ("tower", "holds the state", BLU, [
+            ("postgres", ["nextcloud, gitea,", "zitadel, hermes"]),
+            ("agent state", ["config, sessions,", "skills, plugins"]),
+            ("fallback 05:00", ["skipped when a fresh", "archive exists"], YEL, True),
         ]),
-        ("producer machine", ["pulls, never pushed", "to, on its own timer"], TEAL, [
-            ("03:10 timer", ["its own schedule,", "not the server's"], TEAL),
-            ("local staging", ["dumps and archive", "written to its disk"], TEAL),
-            ("encrypt here", ["the key never", "touches the server"], GRN),
+        ("laptop", "pulls, at 03:10", TEAL, [
+            ("its own timer", ["not the server's"]),
+            ("stages locally", ["dumps and archive"]),
+            ("encrypts here", ["the key never", "touches tower"]),
         ]),
-        ("several machines", ["a copy is not", "on one box"], BLU, [
-            ("daily tier", ["yesterday, restorable", "in minutes"], GRN),
-            ("weekly tier", ["a month of history", "with a slow path"], GRN),
-            ("manual tier", ["before a risky", "change"], GRN),
+        ("archives", "three tiers", GRN, [
+            ("daily", ["yesterday, restorable", "in minutes"]),
+            ("weekly", ["a month of history"]),
+            ("manual", ["before a risky change"]),
         ]),
     ]
-    cw = (W - 48 - 2 * 40 - 2 * 36) / 3
-    out = [txt(24, 28, "backups where the producer is not the server", 13, LAV, 700, SANS),
-           txt(24, 46, "a backup the compromised machine can delete is not a backup", 9.5, MUT)]
-    x = 24
-    bottom = top
-    for name, role, col, chips in cols:
-        inner = sum(chip_h(c[1]) + 12 for c in chips)
-        ph = 62 + inner + 6
-        out.append(pane(x, top, cw, ph, col, name, role, lab_w=cw - 40))
-        y = top + 62
+    bottom, x = top, M
+    for name, sub, col, chips in cols:
+        ph = 58 + sum(chip_h(c[1]) + 10 for c in chips) + 8
+        out.append(pane(x, top, cw, ph, col, name, sub, lab_w=cw - 40))
+        y = top + 58
         for c in chips:
             hh = chip_h(c[1])
-            out.append(chip(x + 16, y, cw - 32, hh, c[0], c[1], c[2], dashed=len(c) > 3))
-            y += hh + 12
-        if x + cw + 66 <= W - 24:
-            out.append(arrow(x + cw + 10, top + ph / 2, x + cw + 66, top + ph / 2, LAV))
+            col_c = c[2] if len(c) > 2 else col
+            out.append(chip(x + 16, y, cw - 32, hh, c[0], c[1], col_c, dashed=len(c) > 3))
+            y += hh + 10
+        if x + cw + cm <= W - M:
+            out.append(arrow(x + cw + 8, top + 62, x + cw + cm - 6, top + 62, LAV))
         bottom = max(bottom, top + ph)
-        x += cw + 40 + 36
-    return svg(W, int(bottom + 24), "backup pipeline", "\n".join(out))
+        x += cw + cm
+    out.append(txt(M, bottom + 22, "encrypted with a post-quantum KEM before leaving the laptop", 9.5, MUT))
+    return svg(W, bottom + 38, "backup pipeline", "\n".join(out))
 
 
-# ----------------------------------------------------------------- 5. agent
+# ------------------------------------------------------------------- agent
 def d_agent():
-    W = 1240
-    top = 56
-    out = [txt(24, 28, "the agent plane: one brain, many surfaces, one door to root", 13, LAV, 700, SANS),
-           txt(24, 46, "every surface is a client of the same gateway, tools are code", 9.5, MUT)]
-    # surfaces column
-    sw = 300
-    surf = [("Matrix", "rooms and DMs"), ("Discord bot", "via the API server"),
-            ("mobile app", "Pocket backend"), ("web UI", "isolated profile"),
-            ("desktop app", "same state dir")]
-    surv_h = 58 + len(surf) * 36 + 10
-    out.append(pane(24, top, sw, surv_h, TEAL, "surfaces", "clients, not deployments", lab_w=sw - 40))
-    for i, (t, d) in enumerate([
-        ("Matrix", "rooms and DMs"),
-        ("Discord bot", "via the API server"),
-        ("mobile app", "Pocket backend"),
-        ("web UI", "isolated profile"),
-        ("desktop app", "same state dir"),
-    ]):
-        out.append(chip(40, top + 58 + i * 36, sw - 32, 30, t, [], TEAL) .replace(
-            f'<text x="51" y="{top + 58 + i * 36 + 19:.1f}"', f'<text x="51" y="{top + 58 + i * 36 + 20:.1f}"'))
-        out.append(txt(40 + sw - 32 - 11, top + 58 + i * 36 + 20, d, 9, DIM, None, MONO, anchor="end"))
-    # gateway
-    gw_x, gw_w = 24 + sw + 44, 300
-    gw_y = top + 20
-    out.append(chip(gw_x, gw_y, gw_w, 74, "hermes-agent gateway",
-                    ["one process, several profiles", "state under /var/lib/hermes"], LAV))
-    gw_mid = gw_y + 37
-    out.append(arrow(24 + sw + 8, gw_mid, gw_x - 12, gw_mid, LAV))
-    # tools column
-    tx = gw_x + gw_w + 44
-    tw = W - 24 - tx
-    tools_def = [
-        ("MCP host", ["all hand written MCP servers in one process,", "restarted by the flake or hot reloaded"]),
-        ("plugins", ["Matrix reactions, Gotify bridge, pane reporting,", "packaged by Nix and linked at activation"]),
-        ("host tools", ["git, nix, browsers, mail, calendar, files"]),
-    ]
-    host_h = 58 + sum(chip_h(l) + 12 for _, l in tools_def)
-    out.append(pane(tx, top, tw, host_h, MAU, "host integration", "everything the agent can touch", lab_w=tw - 40))
-    y = top + 58
-    for t, lines in tools_def:
-        hh = chip_h(lines)
-        out.append(chip(tx + 16, y, tw - 32, hh, t, lines, MAU))
-        y += hh + 12
-    out.append(arrow(gw_x + gw_w + 8, gw_mid, tx - 12, gw_mid, LAV))
-    # broker row
-    by = top + max(surv_h, host_h) + 24
-    out.append(pane(24, by, W - 48, 74, RED, "the only path to root",
-                    "no ambient privilege, every request is a record", lab_w=W - 60))
-    out.append(chip(42, by + 20, 520, 34, "hermes-broker", [], RED))
-    out.append(txt(42 + 12 + w_of("hermes-broker", 11.5) + 16, by + 41,
-                   "PAM password or WebAuthn passkey, scoped, rate limited, audited", 9, MUT))
-    out.append(chip(W - 24 - 260, by + 20, 238, 34, "root on the host", [], RED))
-    return svg(W, by + 74 + 24, "the agent plane", "\n".join(out))
-
-
-# ---------------------------------------------------- 6. change / two speeds
-def d_change():
-    W = 1240
-    out = [txt(24, 28, "two deployment speeds, chosen per service", 13, LAV, 700, SANS),
-           txt(24, 46, "an image bump should not cost what a structural change costs", 9.5, MUT)]
-    # lane A
-    ay = 68
-    out.append(pane(24, ay, W - 48, 150, LAV, "structural change",
-                    "anything the flake has to know about", lab_w=W - 60))
-    steps = [("edit", "a module"), ("pure check", "linter"), ("evaluate", "derivation only"),
-             ("gate", "lock, no impure"), ("activate", "units, secrets"), ("cache", "build hook")]
-    bw, gap = 168, 26
-    x = 42
-    for i, (t, d) in enumerate(steps):
-        out.append(chip(x, ay + 62, bw, 40, t, [], LAV))
-        out.append(txt(x + 11, ay + 118, d, 9, DIM))
-        if i < len(steps) - 1:
-            out.append(arrow(x + bw + 4, ay + 82, x + bw + gap - 6, ay + 82, LAV))
-        x += bw + gap
-    # lane B
-    by = ay + 150 + 18
-    out.append(pane(24, by, W - 48, 120, GRN, "container change",
-                    "an image tag or an environment variable", lab_w=W - 60))
-    steps2 = [("edit containers.nix", "declarative, but outside the host config"),
-              ("render quadlet", "systemd unit generated"),
-              ("restart unit", "seconds, no evaluation")]
-    x = 42
-    for i, (t, d) in enumerate(steps2):
-        out.append(chip(x, by + 62, 300, 34, t, [], GRN))
-        out.append(txt(x + 11, by + 112, d, 9, DIM))
-        if i < len(steps2) - 1:
-            out.append(arrow(x + 304, by + 79, x + 304 + 22, by + 79, GRN))
-        x += 300 + 34
-    return svg(W, by + 120 + 24, "two deployment speeds", "\n".join(out))
+    W, M = 1240, 24
+    out = [txt(M, 30, "the agent: one gateway, real tools, one door to root", 13, LAV, 700, SANS)]
+    top = 54
+    sw = 240
+    surf = ["matrix", "discord bot", "mobile app", "web ui", "desktop app"]
+    out.append(pane(M, top, sw, 54 + len(surf) * 30 + 12, TEAL, "talks to you", None, lab_w=sw - 36))
+    for i, t in enumerate(surf):
+        out.append(chip(M + 16, top + 46 + i * 30, sw - 32, 24, t, (), TEAL))
+    gw_x, gw_w = M + sw + 52, 230
+    out.append(chip(gw_x, top + 60, gw_w, 54, "hermes-agent", ("one gateway,", "several profiles"), LAV))
+    gm = top + 60 + 27
+    out.append(arrow(M + sw + 4, gm, gw_x - 12, gm, LAV))
+    tx = gw_x + gw_w + 52
+    tw = W - M - tx
+    tools = ["nextcloud  files, calendar", "gitea, shlink, mail",
+             "browser with CDP", "anki, arr, media", "nix, git, ssh"]
+    out.append(pane(tx, top, tw, 54 + len(tools) * 30 + 12, MAU, "can touch", None, lab_w=tw - 36))
+    for i, t in enumerate(tools):
+        out.append(chip(tx + 16, top + 46 + i * 30, tw - 32, 24, t, (), MAU))
+    out.append(arrow(gw_x + gw_w + 4, gm, tx - 12, gm, LAV))
+    by = top + 54 + len(surf) * 30 + 12 + 16
+    out.append(pane(M, by, W - 2 * M, 76, RED, "root",
+                    "no sudo: a broker, a password or passkey, a record", lab_w=W - 60))
+    out.append(arrow(gw_x + gw_w / 2, by - 6, gw_x + gw_w / 2, by + 12, RED))
+    out.append(txt(M + 20, by + 64, "the agent edits the same repo that defines the host, so rebuilds are gated and serialized", 9.5, DIM))
+    return svg(W, by + 76 + 16, "the agent", "\n".join(out))
 
 
 def main():
-    out_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "svg")
+    here = os.path.dirname(os.path.abspath(__file__))
+    out_dir = os.path.join(here, "svg")
     os.makedirs(out_dir, exist_ok=True)
     docs = {
-        "planes": d_planes(),
-        "service-contract": d_contract(),
+        "map": d_map(),
+        "inventory": d_inventory(),
         "request-path": d_request(),
         "backups": d_backup(),
         "agent": d_agent(),
-        "change-flow": d_change(),
     }
     for name, content in docs.items():
         p = os.path.join(out_dir, name + ".svg")
         with open(p, "w") as f:
             f.write(content)
-        print(f"{name:18} {len(content):6} octets  {p}")
+        h = re.search(r'height="(\d+)"', content).group(1)
+        print(f"{name:14} {h:>4} px  {len(content):6} octets")
     if WARN:
-        print("\nDEFauts geometriques:")
-        for wmsg in WARN:
-            print("  -", wmsg)
+        print("\ndefauts geometriques:")
+        for m in WARN:
+            print("  -", m)
         raise SystemExit(1)
-    print("\ngeometrie: aucun debordement detecte")
+    print("\ngeometrie ok")
 
 
 if __name__ == "__main__":

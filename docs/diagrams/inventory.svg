@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 416" width="1240" height="416" role="img" aria-label="what actually runs">
+<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#6c7086"/></marker></defs>
+<rect x="0" y="0" width="1240" height="416" rx="10" fill="#1e1e2e"/>
+<text x="24.0" y="30.0" font-size="13" fill="#b4befe" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="700">what actually runs, by job</text>
+<text x="24.0" y="48.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">every line is a service folder in services/</text>
+<rect x="24" y="70" width="387" height="92" rx="5" fill="#313244" stroke="#94e2d5" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="24" y="70" width="3" height="92" rx="1.5" fill="#94e2d5"/>
+<text x="35.0" y="89.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">identity</text>
+<text x="35.0" y="104.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">zitadel  login for everything</text>
+<text x="35.0" y="117.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">vaultwarden  passwords</text>
+<text x="35.0" y="130.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">hermes-broker  root access</text>
+<rect x="427" y="70" width="387" height="92" rx="5" fill="#313244" stroke="#89dceb" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="427" y="70" width="3" height="92" rx="1.5" fill="#89dceb"/>
+<text x="437.7" y="89.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">edge</text>
+<text x="437.7" y="104.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">pangolin  TLS and routing</text>
+<text x="437.7" y="117.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">newt  tunnels from home</text>
+<text x="437.7" y="130.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">headscale  tailnet</text>
+<text x="437.7" y="143.3" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">adguard  DNS</text>
+<rect x="829" y="70" width="387" height="92" rx="5" fill="#313244" stroke="#89b4fa" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="829" y="70" width="3" height="92" rx="1.5" fill="#89b4fa"/>
+<text x="840.3" y="89.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">files and photos</text>
+<text x="840.3" y="104.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">nextcloud  files, calendar</text>
+<text x="840.3" y="117.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">immich  23k photos</text>
+<text x="840.3" y="130.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">syncthing  device sync</text>
+<text x="840.3" y="143.3" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">garage  S3 artifacts</text>
+<rect x="24" y="178" width="387" height="92" rx="5" fill="#313244" stroke="#b4befe" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="24" y="178" width="3" height="92" rx="1.5" fill="#b4befe"/>
+<text x="35.0" y="197.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">code and knowledge</text>
+<text x="35.0" y="212.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">gitea  git hosting</text>
+<text x="35.0" y="225.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">wiki.js  documentation</text>
+<text x="35.0" y="238.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">open-notebook  research</text>
+<text x="35.0" y="251.3" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">anki  flashcards</text>
+<rect x="427" y="178" width="387" height="92" rx="5" fill="#313244" stroke="#fab387" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="427" y="178" width="3" height="92" rx="1.5" fill="#fab387"/>
+<text x="437.7" y="197.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">media</text>
+<text x="437.7" y="212.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">jellyfin  video</text>
+<text x="437.7" y="225.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">navidrome + octo  music</text>
+<text x="437.7" y="238.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">arr stack  acquisition</text>
+<text x="437.7" y="251.3" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">audiobookshelf  audio</text>
+<rect x="829" y="178" width="387" height="92" rx="5" fill="#313244" stroke="#cba6f7" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="829" y="178" width="3" height="92" rx="1.5" fill="#cba6f7"/>
+<text x="840.3" y="197.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">talk</text>
+<text x="840.3" y="212.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">matrix + 5 bridges</text>
+<text x="840.3" y="225.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">stalwart  mail</text>
+<text x="840.3" y="238.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">gotify  notifications</text>
+<text x="840.3" y="251.3" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">shlink  short links</text>
+<rect x="24" y="286" width="387" height="92" rx="5" fill="#313244" stroke="#f9e2af" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="24" y="286" width="3" height="92" rx="1.5" fill="#f9e2af"/>
+<text x="35.0" y="305.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">orchestration</text>
+<text x="35.0" y="320.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">windmill  job queue</text>
+<text x="35.0" y="333.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">k3s + rancher  console</text>
+<text x="35.0" y="346.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">jupyterhub  notebooks</text>
+<text x="35.0" y="359.3" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">microvm  dev VMs</text>
+<rect x="427" y="286" width="387" height="92" rx="5" fill="#313244" stroke="#a6e3a1" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="427" y="286" width="3" height="92" rx="1.5" fill="#a6e3a1"/>
+<text x="437.7" y="305.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">data and backups</text>
+<text x="437.7" y="320.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">postgres  one db per app</text>
+<text x="437.7" y="333.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">ZFS  datasets, snapshots</text>
+<text x="437.7" y="346.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">attic  binary cache</text>
+<text x="437.7" y="359.3" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">pqbox  encrypted archives</text>
+<rect x="829" y="286" width="387" height="92" rx="5" fill="#313244" stroke="#f5c2e7" stroke-opacity="0.55" stroke-width="1"/>
+<rect x="829" y="286" width="3" height="92" rx="1.5" fill="#f5c2e7"/>
+<text x="840.3" y="305.0" font-size="11.5" fill="#cdd6f4" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-weight="600">access and control</text>
+<text x="840.3" y="320.0" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">kasm, novnc  remote desktop</text>
+<text x="840.3" y="333.1" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">rustguac  gateway</text>
+<text x="840.3" y="346.2" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">ttyd + zellij  terminal</text>
+<text x="840.3" y="359.3" font-size="9.5" fill="#9399b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">glances, zabbix, atop</text>
+</svg>
