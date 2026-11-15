@@ -17,7 +17,7 @@ I run a small private cloud: a server at home, one small VPS, a laptop, a handhe
 | Rebuild a machine | boot the installer, `just install`, no manual step |
 | Replaces | photos, files, git, mail, chat, VPN, password vault, media, CI cache, status pages |
 
-Two kinds of readers land here. If you are hiring: the map below, then the decisions I would defend. If you are evaluating whether this is a product: it is not, see "What this is not" at the end.
+Two kinds of readers land here. If you are hiring: the map below, then the decisions I would defend. If you are evaluating whether this is a product: it is not, see "What this is not" at the end. The AI layer has its own public write-up, readable without an account: <https://drop.marcpartensky.com/73a63cf5> (French: <https://drop.marcpartensky.com/82ef90ae>).
 
 ## What this proves, if you are evaluating it
 
@@ -65,6 +65,8 @@ Everything answers under one wildcard domain. Most surfaces return an SSO wall t
 | Media server | <https://jellyfin.marcpartensky.com> | app login |
 | Agent web UI | <https://hermes.marcpartensky.com> | app login |
 | File drops and share pages | <https://drop.marcpartensky.com> | public |
+| AI infrastructure: the harness, the models, the tools, the privilege | <https://drop.marcpartensky.com/73a63cf5> | public |
+| The same page in French | <https://drop.marcpartensky.com/82ef90ae> | public |
 
 ## The software layer
 
