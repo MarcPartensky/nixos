@@ -1,0 +1,74 @@
+# Theme btop : Catppuccin Mocha, accent Lavender (#b4befe).
+# Base : theme upstream catppuccin/btop, avec les accents bleus remplaces par
+# le lavender (accent choisi par marc) : title, hi_fg, selected_fg et la
+# bordure de la boite process. Le reste est la repartition catppuccin
+# habituelle (mauve pour le CPU, vert pour la memoire, maroon pour le reseau).
+# Format : "#RRGGBB" ou "#RRGGBBAA", 24 bits (truecolor = true dans btop.conf).
+
+# Fond et texte
+theme[main_bg]="#1e1e2e"
+theme[main_fg]="#cdd6f4"
+theme[title]="#b4befe"
+
+# Accent et selection
+theme[hi_fg]="#b4befe"
+theme[selected_bg]="#45475a"
+theme[selected_fg]="#b4befe"
+theme[inactive_fg]="#7f849c"
+
+# Chrome des boites
+theme[graph_text]="#6c7086"
+theme[meter_bg]="#45475a"
+theme[proc_misc]="#cba6f7"
+theme[cpu_box]="#cba6f7"
+theme[mem_box]="#a6e3a1"
+theme[net_box]="#eba0ac"
+theme[proc_box]="#b4befe"
+theme[div_line]="#313244"
+
+# Gradients
+theme[temp_start]="#a6e3a1"
+theme[temp_mid]="#f9e2af"
+theme[temp_end]="#f38ba8"
+
+theme[cpu_start]="#a6e3a1"
+theme[cpu_mid]="#f9e2af"
+theme[cpu_end]="#f38ba8"
+
+theme[free_start]="#585b70"
+theme[free_mid]="#6c7086"
+theme[free_end]="#7f849c"
+
+theme[cached_start]="#89dceb"
+theme[cached_mid]="#74c7ec"
+theme[cached_end]="#b4befe"
+
+theme[available_start]="#fab387"
+theme[available_mid]="#f9e2af"
+theme[available_end]="#f9e2af"
+
+theme[used_start]="#f38ba8"
+theme[used_mid]="#eba0ac"
+theme[used_end]="#fab387"
+
+theme[download_start]="#89b4fa"
+theme[download_mid]="#b4befe"
+theme[download_end]="#cba6f7"
+
+theme[upload_start]="#cba6f7"
+theme[upload_mid]="#b4befe"
+theme[upload_end]="#f5c2e7"
+
+theme[process_start]="#a6e3a1"
+theme[process_mid]="#f9e2af"
+theme[process_end]="#f38ba8"
+
+# Cles ajoutees par btop 1.4 (bandeau de la table process, process suivi en
+# pause). Sans elles btop retombe sur ses propres defauts, qui cassent le
+# mocha.
+theme[proc_banner_fg]="#1e1e2e"
+theme[proc_banner_bg]="#b4befe"
+theme[proc_pause_bg]="#45475a"
+theme[proc_follow_bg]="#45475a"
+theme[followed_fg]="#1e1e2e"
+theme[followed_bg]="#45475a"

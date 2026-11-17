@@ -1,0 +1,21 @@
+[Unit]
+# Winnie dev server (Vite + HMR) sur 127.0.0.1:8080, cible de la ressource
+# Pangolin `winnie-dev` (dev.winnie.marcpartensky.com) et URL de l'APK debug.
+#
+# Il sert la SOURCE, donc pas de build : un changement Svelte est visible au
+# reload, sans restart. `allowedHosts` (vite.config.ts) liste les deux domaines
+# publics, sinon Vite 6+ repond 403 sur un Host inconnu.
+#
+# HORS CONF HOTE depuis le 13/11/2026 (cf. winnie-backend.service du meme
+# dossier). Node = celui du profil hermes, pas une version congelee.
+[Unit]
+Description=Winnie dev server (Svelte/Vite HMR) sur 127.0.0.1:8080
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/marc/git/winnie/app
+ExecStart=/etc/profiles/per-user/hermes/bin/node /home/marc/git/winnie/app/node_modules/vite/bin/vite.js
+Restart=always
+RestartSec=3

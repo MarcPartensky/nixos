@@ -145,6 +145,13 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  # Cle du compte Meta Model API (muse-ember-1.0, muse-spark-1.3, muse-wonder).
+  # Consommee par le provider INTEGRE meta-ai de hermes (env MODEL_API_KEY), en
+  # mode Standard seulement : pas d'entrainement sur le contenu.
+  - path_regex: secrets/meta\.yml$
+    key_groups:
+      - age:
+          - *tower
   # Dashboard d'usage LLM (services/usage-dashboard) : cle management OpenRouter
   # (lecture seule, analytics) + cle d'inference (usage temps reel) + cle
   # Moonshot (solde du provider kimi direct).
@@ -202,6 +209,20 @@ creation_rules:
   # (keystore JKS en base64) + son mot de passe. La perdre oblige les clients a
   # re-ajouter le depot (nouvelle empreinte), d'ou le stockage chiffre en git.
   - path_regex: secrets/fdroid\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Cle d'API Termix (compte technique "hermes-agent" cree dans le panel).
+  # Consommee par services/termix-mcp (MCP du mcp-host). Tower seulement : le
+  # panel n'existe que sur tower et la cle ne vaut que pour lui.
+  - path_regex: secrets/termix\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Gate de la Webapp Hermes (front Desktop servi sur hermes.marcpartensky.com,
+  # services/hermes-webapp) : identifiant + mot de passe + cle de signature des
+  # sessions. Tower seulement : le gateway qui sert la Webapp n'existe que la.
+  - path_regex: secrets/hermes-webapp\.yml$
     key_groups:
       - age:
           - *tower

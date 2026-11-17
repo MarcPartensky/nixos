@@ -17,6 +17,11 @@ in {
     advertiseRoutes = [ "192.168.1.0/24" ];
   };
 
+  # AdGuard ne peut PAS écouter sur 0.0.0.0 (aardvark-dns des réseaux podman
+  # tient déjà le 53 des passerelles 10.88/10.89) : on donne l'adresse du mesh
+  # en plus de la loopback, sinon le résolveur reste mort pour tout le tailnet.
+  services.dnsFilter.bindHosts = [ "127.0.0.1" "100.64.0.3" ];
+
   imports = [
     # Serveur MCP unique : un seul processus pour tous les serveurs maison, sur
     # une URL loopback. Mesure : 8 serveurs reels, 90 outils, 85 Mo de RSS,
@@ -30,6 +35,10 @@ in {
     ../../modules/nixos/herdr
     # MCP Stalwart (JMAP vers le VPS) : tower uniquement, hermes y tourne.
     ../../services/stalwart-mcp
+    # Bot Discord (bridge vers l'API server Hermes) : tower uniquement, son
+    # secret vit dans secrets/tower.yml. Sorti de services/default.nix, ou il
+    # cassait le build de tout hote importé ./services sans ce secret.
+    ../../services/discord-bot
     ../../services/monero-miner
     # Cache binaire Nix locale (atticd, stockage disque) : evite de recompiler
     # les paquets maison apres un GC ou un flake update, et alimente la cache
@@ -40,9 +49,13 @@ in {
     # Immich (immich.marcpartensky.com, 2283) : interface photos/videos de
     # l'arbre /home/marc/media/photos en bibliotheque externe read-only.
     ../../services/immich
-    # PhotoPrism (photos.marcpartensky.com, 2342) : comparatif d'interface sur
-    # le meme arbre, en lecture seule. A eteindre quand marc a choisi.
-    ../../services/photoprism
+    # k8s sur tower : k3s mono-noeud + Rancher 2.15.3 (chart epingle),
+    # expose par Pangolin sur rancher.marcpartensky.com (SSO Zitadel), cible
+    # ClusterIP fixe 10.43.99.10:80. Voir services/k3s pour la procedure.
+    ../../services/k3s
+    # PhotoPrism a ete RETIRE (choix de marc, 14/11/2026) : Immich reste.
+    # Le module services/photoprism existe toujours mais n'est plus importe ;
+    # son storage /var/lib/photoprism peut etre supprime.
     # Comparatif de dashboards homelab (homer, homepage, glance, homarr) :
     # chaque candidat en boucle locale, relayé par newt via une ressource
     # Pangolin avec SSO. Voir services/dashboards.
@@ -78,12 +91,29 @@ in {
     # Depot F-Droid personnel (fdroid.marcpartensky.com) : les APK release des
     # applis de marc, ajoutable dans Droidify. Voir services/fdroid-repo.
     ../../services/fdroid-repo
+    # Atlas 3D de l'infra (atlas.marcpartensky.com) : projet separe sous
+    # /var/lib/hermes/workspace/infra-atlas, importe par l'INPUT `infra-atlas`
+    # du flake (verrouille dans flake.lock), plus par un builtins.getFlake :
+    # le getFlake rendait l'evaluation de tower impure. Bump du projet atlas
+    # = `nix flake update infra-atlas`.
+    inputs.infra-atlas.nixosModules.default
   ];
 
   # Sauvegardes chiffrées pqbox en trois étages (coeur quotidien, volume
   # hebdomadaire, mortes à la main). Clé publique dans services/backup-pqbox,
   # clé privée scellée chez marc uniquement. Cf. le module pour le détail.
-  services.backup-pqbox.enable = true;
+  # Depuis le 14/11/2026 le PRODUCTEUR est le portable (03:10) : ici on n'est
+  # que le filet de sécurité, on passe à 05:00 et on ne fait rien si une archive
+  # de moins de 4 h existe déjà (portable allumé la nuit, ou pas).
+  services.backup-pqbox = {
+    enable = true;
+    coeurAt = "*-*-* 05:00:00";
+    skipIfFresh = 4;
+  };
+
+  # Atlas 3D interactif de l'infra (cluster, reseau, agent, MCP, taches, auth,
+  # backups) : atlas.marcpartensky.com derriere le SSO Pangolin, port loopback.
+  services.infraAtlas.enable = true;
 
   # Page de suivi des dépenses (finance.marcpartensky.com).
   services.financeDashboard.enable = true;
@@ -104,6 +134,15 @@ in {
   # l'existant ; ces ACL garantissent la traversee de /var/lib/hermes (2770) et
   # que les fichiers crees par marc restent lisibles par le service.
   # Pattern repris de services/firefox-mcp et amazon-mcp.
+  #
+  # NE PAS revenir a un bloc `Match User hermes` + `StrictModes no` pour
+  # contourner StrictModes (c'etait l'etat du 14/11/2026) : StrictModes n'est pas
+  # une directive autorisee dans un bloc Match, sshd rejette alors TOUTE sa
+  # configuration et le build du systeme echoue, pas seulement l'acces.
+  # Il n'y a de toute facon rien a contourner : les cles autorisees sont
+  # declaratives, sshd les lit dans /etc/ssh/authorized_keys.d/hermes et ne
+  # regarde donc pas le home. Verification faite : `ssh hermes@127.0.0.1` en
+  # cle publique repond avec le home en 2770.
   systemd.tmpfiles.rules = [
     "a /var/lib/hermes - - - - u:marc:--x,m::rwx"
     "a /var/lib/hermes/.hermes - - - - u:marc:rwx,d:u:marc:rwx,m::rwx,d:m::rwx"
@@ -149,6 +188,14 @@ in {
     enable = true;
     memoryPercent = 25;
     algorithm = "zstd";
+    # Priorite du swap compresse, pas seulement son activation. Defaut nixpkgs
+    # = 5, face au swap disque a 100 : le noyau prend TOUJOURS le plus haut,
+    # donc le NVMe etait consomme d'abord et le zram ne servait jamais
+    # (mesure 14/11/2026 : 13,5 Go sur 16 Go de swap disque occupes, 120 Ko sur
+    # 15,6 Go de zram). Les pages anonymes se compressent maintenant en RAM
+    # avant de toucher le disque, ce qui supprime les gels de plusieurs
+    # dizaines de secondes du backend desktop et de sshd.
+    priority = 110;
   };
 
   # Avec un cache plafonne et du zram, inutile de pousser les pages anonymes
@@ -176,7 +223,14 @@ in {
 
   users.users.hermes.openssh.authorizedKeys.keys = lib.mkAfter [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
+    # Portable (hermes@nixos), ajoutee le 14/11/2026 : c'est lui qui tire les
+    # sauvegardes pqbox par SSH (pg_dump + tar de l'etat Hermes en streaming).
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMTNk2eJYoD87QP/Ajg6iCX/EwYCjVVvoTfTAFqh2qnW hermes@laptop"
   ];
+
+  # Mode et ACL de /var/lib/hermes (exigence sshd StrictModes) : voir les regles
+  # tmpfiles plus haut dans ce fichier.
+
 
   # Clés autorisées pour marc, en plus de la clé RSA de users.nix :
   #   - root@anywhere : accès SSH du VPS par wg1 (10.100.0.3), sans dépendre
@@ -695,6 +749,19 @@ in {
   # `server`). Les trois faits main (arena-elo, username-recon, roku,
   # androidtv) n'en ont pas et restent en stdio tant qu'ils ne sont pas
   # convertis.
+  # Cle d'API Termix pour l'agent (MCP termix, monte par le mcp-host
+  # ci-dessous). Creee dans le panel : compte technique "hermes-agent",
+  # compte marc, admin, sans expiration. Ne donne AUCUN acces machine en plus
+  # de ce que Termix detient deja : l'API ne sait pas lire un mot de passe
+  # stocke via nos outils, et l'execution SSH passe par les identifiants du
+  # panel (l'hote "tower" y est en authType=key sans credential, donc
+  # SSH_AUTH_FAILED tant qu'aucune cle n'est deposee dans Termix).
+  sops.secrets."termix_api_key" = {
+    sopsFile = ../../secrets/termix.yml;
+    owner = "hermes";
+    mode = "0400";
+  };
+
   services.mcp-host = {
     enable = true;
     # Bascule Hermes ACTIVE : les sessions lisent l'URL unique au lieu de
@@ -720,6 +787,10 @@ in {
       PANGOLIN_API_KEY_FILE = config.sops.secrets."pangolin_api_key".path;
       # TV Roku de la chambre (ECP). Servie par le meme demon que les autres.
       ROKU_URL = "http://192.168.1.167:8060";
+      # Panel Termix (quadlet rootless hermes, loopback). La cle voyage par
+      # fichier sops : jamais dans un env du module, qui finit dans le store.
+      TERMIX_URL = "http://127.0.0.1:9160";
+      TERMIX_API_KEY_FILE = config.sops.secrets."termix_api_key".path;
     };
     servers = {
       shlink = ../../services/shlink-mcp/server.py;
@@ -730,6 +801,8 @@ in {
       ibkr = ../../services/ibkr-mcp/ibkr_flex.py;
       pangolin = ../../services/hermes/pangolin-mcp.py;
       roku = ../../services/roku-mcp.py;
+      # Inventaire, etat, audit et execution SSH a travers le panel Termix.
+      termix = ../../services/termix-mcp/termix_mcp.py;
     };
   };
 
@@ -741,24 +814,35 @@ in {
   # d'eval explicite, y compris pour une autre session qui switcherait tower
   # sans savoir ou en est la migration.
   #
-  # Elle se resout toute seule : `just deploy <nom> --takeover` (root) ecrit
-  # /etc/containers/systemd/<nom>.container, et l'eval repasse.
-  # A retirer quand les quatre quadlets seront geres par Nix (environment.etc)
-  # ou quand on assumera la migration comme acquise.
-  # Echappatoire pour un BUILD (nixos-rebuild build, aucune activation) :
-  #   SKIP_QUADLET_GUARD=1 nixos-rebuild build ...
-  # Ne jamais s'en servir pour un switch : le garde-fou existe justement pour
-  # empecher qu'un switch supprime un conteneur sans remplacant.
-  assertions = map (name: {
-    assertion = builtins.getEnv "SKIP_QUADLET_GUARD" != ""
-      || builtins.pathExists "/etc/containers/systemd/${name}.container";
-    message = ''
-      Le conteneur ${name} n'est plus declare dans la conf NixOS : son quadlet
-      doit exister avant ce switch. Lancer, en root, sur tower :
-        just deploy ${name} --takeover
-      (ou deploy/render.sh ${name} --takeover). Voir deploy/containers.nix.
-    '';
-  }) ["aonsoku" "arr-mcp" "nextcloud-mcp" "shlink-web-client"];
+  # POURQUOI PLUS DE builtins.pathExists : en evaluation PURE (politique
+  # pure-eval, et `just nixos` n'a plus --impure), pathExists sur un chemin
+  # hors store rend TOUJOURS false. Mesure le 14/11/2026 : la garde bloquait
+  # le switch indefiniment alors que les quatre quadlets existaient bien
+  # (nix eval --expr 'builtins.pathExists "/var/lib/.../aonsoku.container"'
+  # = false en pur, true en impur). Une garde qui ne peut pas lire le disque
+  # n'a que deux formes honnetes : etre fausse, ou lire le depot.
+  #
+  # Elle lit donc le depot : chaque nom doit avoir une entree `migrated = true`
+  # dans deploy/containers.nix, c'est-a-dire un quadlet ecrit et sa reprise
+  # faite au moment ou le bloc oci-containers a ete retire. Limite assumee : ca
+  # prouve que le remplacant est DECLARE dans le depot, pas qu'il est rendu sur
+  # la machine. La verification reelle est apres le switch :
+  #   systemctl --user is-active aonsoku arr-mcp nextcloud-mcp shlink-web-client
+  # (quadlets rootless hermes, generator podman + linger). A defaut, les rendre :
+  #   deploy/render.sh <nom>   puis  systemctl --user start <nom>
+  assertions = let
+    containers = import ../../deploy/containers.nix;
+  in
+    map (name: {
+      assertion = (containers ? ${name}) && (containers.${name}.migrated or false);
+      message = ''
+        Le conteneur ${name} n'est plus declare dans la conf NixOS (bloc
+        oci-containers retire) et deploy/containers.nix ne le marque pas
+        `migrated = true` : le switch supprimerait son unite sans remplacant.
+        Ecrire le quadlet (deploy/render.sh ${name}) et passer migrated a true
+        dans deploy/containers.nix AVANT ce switch.
+      '';
+    }) ["aonsoku" "arr-mcp" "nextcloud-mcp" "shlink-web-client"];
 
   # ========================================================================
 }

@@ -1,0 +1,114 @@
+/* Catppuccin Mocha + Lavender : AdGuard Home */
+
+/* Palette de base : accents et couleurs sémantiques (les deux thèmes) */
+:root {
+  --blue: #89b4fa;
+  --primary: #b4befe;
+  --indigo: #b4befe;
+  --purple: #cba6f7;
+  --pink: #f5c2e7;
+  --red: #f38ba8;
+  --danger: #f38ba8;
+  --orange: #fab387;
+  --yellow: #f9e2af;
+  --warning: #f9e2af;
+  --green: #a6e3a1;
+  --success: #a6e3a1;
+  --teal: #94e2d5;
+  --cyan: #89dceb;
+  --info: #89dceb;
+  --azure: #74c7ec;
+  --secondary: #9399b2;
+  --gray: #7f849c;
+  --gray-ac: #a6adc8;
+  --gray-dark: #45475a;
+  --green-74: #a6e3a1;
+  --green-86: #a6e3a1;
+  --lime: #a6e3a1;
+  --dark: #313244;
+  --light: #313244;
+  --btn-success-bgcolor: #a6e3a1;
+}
+
+/* Thème sombre = Mocha, appliqué quel que soit le réglage de thème du client
+   (:root = palette claire d'AdGuard, [data-theme='dark'] = palette sombre) */
+:root,
+html,
+body,
+[data-theme='dark'],
+body[data-theme='dark'],
+body[data-theme='light'] {
+  --black: #cdd6f4 !important;
+  --bgcolor: #1e1e2e !important;
+  --mcolor: #cdd6f4 !important;
+  --scolor: #a6adc8 !important;
+  --header-bgcolor: #181825 !important;
+  --border-color: #313244 !important;
+  --card-bgcolor: #181825 !important;
+  --card-border-color: #313244 !important;
+  --ctrl-bgcolor: #181825 !important;
+  --ctrl-select-bgcolor: #313244 !important;
+  --ctrl-dropdown-color: #cdd6f4 !important;
+  --ctrl-dropdown-bgcolor-focus: #11111b !important;
+  --ctrl-dropdown-color-focus: #cdd6f4 !important;
+  --btn-success-bgcolor: #a6e3a1 !important;
+  --form-disabled-bgcolor: #313244 !important;
+  --form-disabled-color: #6c7086 !important;
+  --logs__text-color: #cdd6f4 !important;
+  --rt-nodata-bgcolor: #181825 !important;
+  --rt-nodata-color: #cdd6f4 !important;
+  --modal-overlay-bgcolor: rgba(17, 17, 27, 0.75) !important;
+  --logs__table-bgcolor: #313244 !important;
+  --logs__row--blue-bgcolor: #89b4fa !important;
+  --logs__row--white-bgcolor: #181825 !important;
+  --detailed-info-color: #cdd6f4 !important;
+  --gray300: #cdd6f4 !important;
+  --loading-bg: #1e1e2e !important;
+  --alert-message-color: #cdd6f4 !important;
+  --alert-message-border: #45475a !important;
+  --alert-message-bg: #313244 !important;
+  --checkbox-bg: #6c7086 !important;
+  --radio-bg: #6c7086 !important;
+  --blue-bgcolor: #313244 !important;
+  --white-bgcolor: #181825 !important;
+  --white80: rgba(24, 24, 37, 0.8) !important;
+  --gray-216: #313244 !important;
+  --gray-3: #313244 !important;
+  --gray-4d: #45475a !important;
+  --gray-8: #585b70 !important;
+  --gray-a5: #6c7086 !important;
+  --gray-d8: #a6adc8 !important;
+  --gray-f3: #cdd6f4 !important;
+}
+
+/* Texte lisible sur les aplats d'accent (boutons pleins, badges) */
+.btn-success,
+.btn-success:hover,
+.btn-success:focus {
+  color: #11111b !important;
+}
+
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-info,
+.btn-warning {
+  color: #11111b !important;
+}
+
+/* Le vert par défaut d'AdGuard (barres, toggles actifs) devient Lavender */
+.spinner,
+.loading,
+.progress-bar {
+  background-color: var(--primary) !important;
+}
+
+a,
+a:hover {
+  color: var(--primary) !important;
+}
+
+::selection {
+  background: #585b70;
+  color: #cdd6f4;
+}

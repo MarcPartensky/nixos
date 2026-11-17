@@ -1,0 +1,46 @@
+[Unit]
+# Winnie backend (Rust/Axum) - porte d'entree de api.winnie.marcpartensky.com
+# (ressource Pangolin `winnie-backend` -> 127.0.0.1:8787, healthcheck /healthz).
+#
+# HORS CONF HOTE (decision marc du 13/11/2026) : le module NixOS de Winnie est
+# sorti de services/default.nix parce que son `builtins.getFlake` du flake projet
+# forcait Nix a hacher 16 Go a chaque evaluation (863 s) et rendait --impure
+# obligatoire. Ce service systemd UTILISATEUR (hermes, linger actif) remplace
+# l'unite root : `systemctl --user restart winnie-backend` suffit, aucun
+# nixos-rebuild.
+#
+# Les secrets vivent dans /var/lib/hermes/winnie (0600, hermes) et JAMAIS ici :
+#   jwt.env        JWT_SECRET (obligatoire, sinon le binaire signe avec un
+#                  defaut de dev public)
+#   s3.env         S3_ENDPOINT / S3_BUCKET / S3_ACCESS_KEY / S3_SECRET_KEY
+#                  (optionnel : sans lui les routes /media repondent une erreur)
+#   openrouter.env OPENROUTER_API_KEY (chat + ingest)
+#   oidc.env       OIDC_* (login Zitadel)
+#   stripe.env     STRIPE_* (paiement des commandes)
+#
+# Le binaire est celui construit par cargo DANS le depot : un changement Rust
+# n'existe en prod qu'apres `cargo build --release` puis un restart de cette
+# unite.
+[Unit]
+Description=Winnie backend (Rust/Axum) sur 127.0.0.1:8787
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/lib/hermes/winnie
+Environment=DATABASE_URL=postgresql://winnie@127.0.0.1/winnie
+Environment=SERVER_HOST=127.0.0.1
+Environment=SERVER_PORT=8787
+Environment=RUST_LOG=info
+Environment=RESTAURANTS_JSON=/home/marc/git/winnie/data/restaurants.json
+Environment=CHAT_BACKEND=openrouter
+Environment=NOMINATIM_USER_AGENT=winnie-app/1.0
+EnvironmentFile=/var/lib/hermes/winnie/jwt.env
+EnvironmentFile=-/var/lib/hermes/winnie/s3.env
+EnvironmentFile=-/var/lib/hermes/winnie/openrouter.env
+EnvironmentFile=-/var/lib/hermes/winnie/oidc.env
+EnvironmentFile=-/var/lib/hermes/winnie/stripe.env
+ExecStart=/home/marc/git/winnie/backend/target/release/winnie-backend
+Restart=always
+RestartSec=5

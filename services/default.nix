@@ -23,8 +23,20 @@
     # Sauvegardes chiffrées de tower (pqbox : ML-KEM-768) : trois étages,
     # timers coeur (quotidien) et volume (hebdomadaire). Détail dans le module.
     ./backup-pqbox
-    ./vaultwarden
+    # ./vaultwarden  # NON : le coffre ne vit plus sur tower ni sur le portable.
+    # Source de verite unique = l'instance du VPS anywhere (profil anywhere
+    # importe ../../services/vaultwarden), servie par vault.marcpartensky.com
+    # depuis le 14/11/2026 (cible Pangolin = site "rack", 127.0.0.1:8222).
+    # Ce module etant partage, il faisait tourner une instance par hote et un
+    # rebuild du portable recreait une troisieme base vide. tower garde le
+    # secret du compte technique de l'agent (services/hermes) pour vault-get.sh.
+    # Les bases locales tower sont conservees en lecture seule : vw_old_* sur le
+    # VPS et l'ancienne base de tower (a supprimer apres verification).
     ./newt
+    # thClaws : harness d'agent en Rust (webapp + CLI), paquet du flake projet
+    # /home/marc/git/thclaws, expose sur thclaws.marcpartensky.com via le
+    # blueprint newt ci-dessus (SSO Pangolin). Etat sur disque, pas de base.
+    ./thclaws
     ./readarr
     ./radarr
     ./sonarr
@@ -60,16 +72,27 @@
     ./arr-mcp
     ./tor
     # ./minio
-    ./jupyterhub
+    # ./jupyterhub  # HOTE UNIQUEMENT (tower) : declare
+    # jupyterhub/secret_token, absent de secrets/common.yml. Importe par
+    # profiles/tower, meme motif que ./gotify et ./discord-bot.
     ./hermes
     ./hermes-webui
+    # Front du desktop servi en navigateur (le VRAI renderer Hermes Desktop)
+    # sur hermes.marcpartensky.com. Voir services/hermes-webapp/default.nix :
+    # remplace le WebUI tiers sur ce domaine, qui reste joignable en loopback.
+    ./hermes-webapp
     ./hermes-dashboard
     ./hermes-mobile
     # Terminal web REEL sur terminal.marcpartensky.com (ttyd + session zellij
     # persistante, SSO Pangolin). C'est ce domaine qui servait avant le panneau
     # d'admin Hermes, deplace sur dash.marcpartensky.com.
     ./terminal
-    ./discord-bot
+    # ./discord-bot  # HOTE UNIQUEMENT (tower) : le module n'a pas d'option
+    # enable, donc l'importer ici l'activait sur TOUS les hotes qui importent
+    # ./services (laptop, laptop-iso). Or son secret discord_bot_env n'existe que
+    # dans secrets/tower.yml : le build du portable echouait en
+    # « sops-install-secrets: the key 'discord_bot_env' cannot be found ».
+    # Deplace dans profiles/tower/configuration.nix.
     # ./discord-hermes-bridge  # inutile : un seul gateway par hote, celui du
     # profil default sert deja le profil discord-bridge (l'unite faisait
     # crash-looper un second gateway, exit 75 « The host gateway already serves
@@ -83,7 +106,9 @@
     ./firefox-mcp
     # ./stalwart-mcp  # importé par profiles/tower uniquement (voir le commentaire
     # dans le module : sur anywhere la clé sops entre en conflit avec services/stalwart)
-    ./gotify
+    # ./gotify  # HOTE UNIQUEMENT (tower) : declare le secret
+    # gotify_admin_password, absent de secrets/common.yml (donc de laptop, deck
+    # et anywhere). Meme motif que ./discord-bot : importe par profiles/tower.
     # Pont Gotify <-> Matrix (salle « 🪽 Hermes ») : relais gotify-matrix-relay
     # + provisionnement des jetons Gotify. Le hook Matrix -> Gotify est lui
     # vendorise dans services/hermes/hooks. Voir le module pour les pieges E2EE.
@@ -144,6 +169,9 @@
     ./sherlock-mcp
     ./llm-steamdeck
     ./android-capture
+    # Seule porte vers root pour l'agent : mot de passe PAM ou passkey WebAuthn,
+    # premiere preuve valide gagne, tout est audite. Voir services/hermes-broker.
+    ./hermes-broker
     # ./kanidm
     # ./syncserver
     # ./newt # attendre maj flakes

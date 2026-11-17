@@ -29,6 +29,9 @@
   profileDir = "/var/lib/hermes/.hermes/profiles/pocket";
   backendPort = 9130;
   proxyPort = 9131;
+  # Proxy loopback de la Webapp officielle (services/hermes-webapp) : c'est lui
+  # que la ressource Pangolin de ce fichier cible depuis le 14/11/2026.
+  webappProxyPort = 9124;
   backendUrl = "http://127.0.0.1:${toString backendPort}";
   backendHost = "127.0.0.1:${toString backendPort}";
 in {
@@ -143,9 +146,11 @@ in {
   # NB : cle `proxy-resources` + `protocol` (schema attendu par le Pangolin du
   # VPS), cf. le commentaire detaille dans services/newt.
   #
-  # Domaine : le WebUI est l'interface principale, il vit donc sur
-  # hermes.marcpartensky.com. hermes-mobile.marcpartensky.com est reserve a
-  # l'appli mobile (backend du profil pocket), ne pas le reprendre ici.
+  # Domaine : ce domaine porte desormais la WEBAPP officielle (front du
+  # desktop, services/hermes-webapp, proxy 9124), pas le WebUI tiers : la
+  # ressource Pangolin est conservee ICI (meme nom de blueprint, donc mise a
+  # jour en place, sans risque de doublon de domaine) mais sa cible pointe le
+  # proxy de la Webapp. Le WebUI reste servi en loopback (9131) pour comparaison.
   # ATTENTION : une ressource Pangolin manuelle (id 22, nom "hermes") occupe
   # deja hermes.marcpartensky.com cote VPS (cible tower:10274, port mort).
   # Tant qu'elle existe, deux routers Traefik viseront le meme host.
@@ -153,18 +158,19 @@ in {
     name = "hermes-webui";
     protocol = "http";
     full-domain = "hermes.marcpartensky.com";
-    # SSO Pangolin désactivé au profit de l'OIDC applicative du WebUI
-    # (option a, 19/10/2026) : une seule couche d'auth, pas de double login.
+    # SSO Pangolin laisse desactive : la Webapp porte sa propre porte de
+    # connexion (mot de passe, engagee par webapp.public_url). Une seule
+    # couche d'auth, pas de double login.
     auth.sso-enabled = false;
     targets = [
       {
         hostname = "127.0.0.1";
-        port = proxyPort;
+        port = webappProxyPort;
         method = "http";
         healthcheck = {
           enabled = true;
           hostname = "127.0.0.1";
-          port = proxyPort;
+          port = webappProxyPort;
           path = "/";
           scheme = "http";
           mode = "http";

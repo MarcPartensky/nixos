@@ -1,0 +1,113 @@
+# Config htop (3.5+) orientee « je regarde le CPU : est-ce que je tue ce
+# process ? ». Partagee a l'identique par /etc/htoprc (root et tout
+# utilisateur sans htoprc personnel) et par ~/.config/htop/htoprc de marc.
+#
+# Les quatre ecrans se parcourent avec la touche Tab :
+#   CPU    trie par CPU% decroissant : PID USER CPU% NCPU% RES SWAP ELAPSED TIME+
+#   MEM    trie par SWAP decroissant : qui a ete pousse hors de la RAM
+#   IO     trie par debit disque
+#   ARBRE  arbre des process (familles : une session hermes et ses serveurs MCP)
+#
+# Qui lit quoi : htop lit d'abord HTOPRC, puis ~/.config/htop/htoprc, puis
+# ~/.htoprc, et seulement ensuite /etc/htoprc. Un htoprc personnel gagne donc
+# toujours sur ce fichier.
+#
+# Limite kernel a connaitre : les colonnes SWAP, PSS et IOD% viennent de
+# /proc/PID/smaps, lisible seulement pour ses propres process. Lance en marc,
+# htop affiche 0 pour les process root ou d'un autre utilisateur (hermes,
+# android-capture...) meme quand ils tiennent des Go de swap. `sudo htop` les
+# remplit. RES et TIME+, eux, sont toujours justes.
+#
+# htop reecrit son htoprc quand on change un reglage avec F2 : ici le fichier
+# est un lien en lecture seule vers le store, donc les changements faits dans
+# l'interface ne survivent pas a la sortie. Editer ce fichier (ou
+# users/marc/home.nix pour les reglages personnels).
+
+htop_version=3.5.1
+config_reader_min_version=3
+# 3200 threads sur tower : on ne garde que les process, sinon 500 lignes
+# utiles noyees dans 3200 lignes de threads. Le CPU% du process reste le
+# total de ses threads (le noyau l'agrege deja dans /proc/PID/stat).
+hide_userland_threads=1
+hide_kernel_threads=1
+hide_running_in_container=0
+# Pas de grise sur les process des autres utilisateurs : sur tower les gros
+# consommateurs sont souvent root ou hermes.
+shadow_other_users=0
+show_thread_names=0
+# Nom du binaire sans son chemin /nix/store/hash-... (le chemin des arguments
+# reste, mais son prefixe de hash est grise par
+# shadow_distribution_path_prefix).
+show_program_path=0
+shadow_distribution_path_prefix=1
+highlight_base_name=1
+highlight_deleted_exe=1
+highlight_megabytes=1
+highlight_threads=1
+# Marquer les process nouveaux ne sert pas ici : ca clignote pendant les
+# rafales de spawn.
+highlight_changes=0
+highlight_changes_delay_secs=5
+find_comm_in_cmdline=1
+strip_exe_from_cmdline=1
+# Commande sans le prefixe « comm| » : les threads sont masques, la cmdline
+# suffit et elle tient sur plus de place.
+show_merged_command=0
+update_process_names=1
+header_margin=1
+screen_tabs=1
+# La barre AllCPUs4 montre les 16 threads sur 4 lignes : saturation et
+# desequilibre visibles d'un coup d'oeil.
+show_cpu_usage=1
+show_cpu_frequency=0
+show_cpu_smt_labels=0
+detailed_cpu_time=0
+cpu_count_from_one=0
+show_cached_memory=1
+account_guest_in_cpu_meter=0
+color_scheme=0
+enable_mouse=1
+# 1,5 s : assez frais pour un pic, sans scanner 3200 threads trop souvent.
+delay=15
+hide_function_bar=0
+header_layout=two_50_50
+column_meters_0=AllCPUs4
+column_meter_modes_0=1
+column_meters_1=Tasks LoadAverage Uptime Memory Swap
+column_meter_modes_1=2 2 2 1 1
+
+screen:CPU=PID USER PERCENT_CPU PERCENT_NORM_CPU M_RESIDENT M_SWAP ELAPSED TIME Command
+.sort_key=PERCENT_CPU
+.tree_sort_key=PID
+.tree_view=0
+.tree_view_always_by_pid=0
+.sort_direction=-1
+.tree_sort_direction=1
+.all_branches_collapsed=0
+
+screen:MEM=PID USER M_SWAP M_RESIDENT PERCENT_MEM M_VIRT ELAPSED Command
+.sort_key=M_SWAP
+.tree_sort_key=PID
+.tree_view=0
+.tree_view_always_by_pid=0
+.sort_direction=-1
+.tree_sort_direction=1
+.all_branches_collapsed=0
+
+screen:IO=PID USER IO_RATE IO_READ_RATE IO_WRITE_RATE Command
+.sort_key=IO_RATE
+.tree_sort_key=PID
+.tree_view=0
+.tree_view_always_by_pid=0
+.sort_direction=-1
+.tree_sort_direction=1
+.all_branches_collapsed=0
+
+screen:ARBRE=PID USER PERCENT_CPU M_RESIDENT Command
+.sort_key=PERCENT_CPU
+.tree_sort_key=PID
+.tree_view=1
+.tree_view_always_by_pid=0
+.sort_direction=-1
+.tree_sort_direction=1
+.all_branches_collapsed=0

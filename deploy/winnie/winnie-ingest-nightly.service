@@ -1,0 +1,24 @@
+[Unit]
+# Winnie ingest nocturne (OSM/enrichissement LLM) - remplace l'unite SYSTEME
+# `winnie-ingest-nightly` supprimee le 13/11/2026 (module winnie sorti de la
+# conf hote, cf deploy/winnie/README.md). Redeployee en unite UTILISATEUR
+# hermes le 17/11/2026 (reparation de nuit) : le job tournait pour de vrai
+# chaque nuit avant le 13/11 et n'avait plus de systemd.timer depuis (le
+# timer vivait dans le MEME module nix que l'unite, retire avec elle).
+#
+# Secrets dans /var/lib/hermes/winnie/ (0700 hermes), meme emplacement que
+# winnie-backend : openrouter.env fournit OPENROUTER_API_KEY.
+Description=Winnie nightly ingest (config-driven 01:00-08:00 window)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+WorkingDirectory=/var/lib/hermes/winnie
+Environment=DATABASE_URL=postgresql://winnie@127.0.0.1/winnie
+Environment=RUST_LOG=winnie_ingest=info
+Environment=PATH=/nix/store/qypjskdxs8kh5zd5i0zfsa1fam81kpi0-poppler-utils-25.10.0/bin:/run/current-system/sw/bin
+EnvironmentFile=-/var/lib/hermes/winnie/openrouter.env
+ExecStart=/home/marc/git/winnie/ingest/target/release/winnie-ingest nightly
+RuntimeMaxSec=27000
+TimeoutStartSec=infinity

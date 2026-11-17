@@ -1,0 +1,26 @@
+[Unit]
+# Winnie front statique (build `npm run build` : app/dist) sur 127.0.0.1:8888,
+# cible de la ressource Pangolin `winnie-frontend` (winnie.marcpartensky.com).
+#
+# HORS CONF HOTE depuis le 13/11/2026 (cf. winnie-backend.service du meme
+# dossier). static-web-server est epingle par un lien GC-safe :
+#   nix build nixpkgs#static-web-server --out-link /var/lib/hermes/winnie/sws
+#
+# Le dist est celui du depot : apres un changement Svelte, `npm run build` puis
+# `systemctl --user restart winnie-frontend`. Le domaine dev, lui, sert la
+# SOURCE par Vite (winnie-dev.service), sans build.
+[Unit]
+Description=Winnie front (Svelte 5 statique) sur 127.0.0.1:8888
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/var/lib/hermes/winnie/sws/bin/static-web-server \
+  --host 127.0.0.1 \
+  --port 8888 \
+  --root /home/marc/git/winnie/app/dist \
+  --page-fallback /home/marc/git/winnie/app/dist/index.html \
+  --health
+Restart=always
+RestartSec=5

@@ -1,0 +1,214 @@
+/* Catppuccin Mocha + Lavender : Rancher Dashboard (2.15 / @rancher/shell)
+   Le thème Rancher doit être réglé sur sombre dans l'UI (Preferences > Theme).
+   Toutes les déclarations portent !important : les palettes amont sont
+   appliquées sur `.theme-dark,BODY` avec une spécificité variable. */
+
+.theme-dark,
+body.theme-dark,
+.theme-light,
+body.theme-light,
+body {
+  /* fonds */
+  --body-bg: #1e1e2e !important;
+  --body-text: #cdd6f4 !important;
+  --body-text-hover: #cdd6f4 !important;
+  --body-border: #313244 !important;
+  --border: #313244 !important;
+  --subtle-border: #313244 !important;
+  --nav-bg: #181825 !important;
+  --nav-border: #313244 !important;
+  --nav-active: #313244 !important;
+  --nav-hover: #313244 !important;
+  --nav-hover-top-level: #313244 !important;
+  --topmenu-bg: #181825 !important;
+  --topmenu-text: #cdd6f4 !important;
+  --topmost-border: #313244 !important;
+  --topmost-light-hover: #313244 !important;
+  --header-bg: #181825 !important;
+  --header-border: #313244 !important;
+  --header-btn-bg: transparent !important;
+  --header-btn-text: #cdd6f4 !important;
+  --header-btn-text-hover: #b4befe !important;
+  --header-input-text: #cdd6f4 !important;
+  --box-bg: #181825 !important;
+  --bubble-bg: #181825 !important;
+  --drawer-body-bg: #181825 !important;
+  --popover-bg: #181825 !important;
+  --popover-border: #313244 !important;
+  --popover-text: #cdd6f4 !important;
+  --simple-box-bg: #181825 !important;
+  --simple-box-border: #313244 !important;
+  --simple-box-divider: #45475a !important;
+  --sortable-table-bg: #181825 !important;
+  --sortable-table-header-bg: #181825 !important;
+  --sortable-table-group-label: #a6adc8 !important;
+  --sortable-table-row-bg: #1e1e2e !important;
+  --sortable-table-hover-bg: #313244 !important;
+  --sortable-table-selected-bg: #45475a !important;
+  --sortable-table-top-divider: #313244 !important;
+  --tabbed-container-bg: #181825 !important;
+  --tabbed-sidebar-bg: #181825 !important;
+  --tabbed-border: #45475a !important;
+  --wm-body-bg: #11111b !important;
+  --wm-tabs-bg: #181825 !important;
+  --wm-tab-bg: #11111b !important;
+  --wm-tab-active-bg: #1e1e2e !important;
+  --wm-title-bg: #181825 !important;
+  --wm-title-border: #45475a !important;
+  --wm-closer-hover-bg: #45475a !important;
+  --wm-border: #313244 !important;
+  --yaml-editor-bg: #11111b !important;
+  --logs-bg: #11111b !important;
+  --logs-highlight: #11111b !important;
+  --logs-text: #cdd6f4 !important;
+  --terminal-bg: #11111b !important;
+  --terminal-text: #cdd6f4 !important;
+  --terminal-cursor: #f9e2af !important;
+  --terminal-selection: rgba(180, 190, 254, 0.25) !important;
+  --modal-bg: #1e1e2e !important;
+  --modal-border: #313244 !important;
+  --overlay-bg: rgba(17, 17, 27, 0.75) !important;
+  --shadow: rgba(17, 17, 27, 0.9) !important;
+  --subtle-overlay-bg: rgba(17, 17, 27, 0.75) !important;
+  --diff-empty-placeholder: #181825 !important;
+
+  /* accent Lavender */
+  --primary: #b4befe !important;
+  --primary-text: #11111b !important;
+  --primary-hover-bg: #c7c9ff !important;
+  --primary-hover-text: #11111b !important;
+  --primary-border: #b4befe !important;
+  --primary-banner-bg: rgba(180, 190, 254, 0.15) !important;
+  --primary-light-bg: rgba(180, 190, 254, 0.07) !important;
+  --accent-btn: #b4befe !important;
+  --accent-btn-hover: #c7c9ff !important;
+  --accent-btn-hover-text: #11111b !important;
+  --link: #b4befe !important;
+  --active: #b4befe !important;
+  --active-hover: #c7c9ff !important;
+  --active-nav: #b4befe !important;
+  --on-active: #11111b !important;
+  --on-secondary: #b4befe !important;
+  --secondary-border: #b4befe !important;
+  --non-primary-hover: #313244 !important;
+  --secondary-hover: #313244 !important;
+  --tertiary-hover: #313244 !important;
+  --tertiary-header-hover: #313244 !important;
+  --category-active: #45475a !important;
+  --category-active-hover: #313244 !important;
+  --checkbox-ticked-bg: #b4befe !important;
+  --checkbox-border: #585b70 !important;
+  --checkbox-tick: #11111b !important;
+  --toggle-on-bg: #b4befe !important;
+  --toggle-on-color: #11111b !important;
+  --toggle-off-bg: #313244 !important;
+  --toggle-off-color: #a6adc8 !important;
+  --notification-unread-bg: rgba(180, 190, 254, 0.15) !important;
+
+  /* états sémantiques */
+  --success: #a6e3a1 !important;
+  --success-text: #11111b !important;
+  --success-hover-bg: #b7e8b3 !important;
+  --success-hover-text: #11111b !important;
+  --error: #f38ba8 !important;
+  --error-text: #11111b !important;
+  --error-hover-bg: #f6a3ba !important;
+  --error-hover-text: #11111b !important;
+  --warning: #f9e2af !important;
+  --warning-text: #11111b !important;
+  --warning-hover-bg: #fbe9c4 !important;
+  --warning-hover-text: #11111b !important;
+  --info: #89b4fa !important;
+  --info-text: #11111b !important;
+  --info-hover-bg: #a3c5fb !important;
+  --info-hover-text: #11111b !important;
+  --error-text-on-banner: #11111b !important;
+  --on-success-banner: #a6e3a1 !important;
+  --on-warning-banner: #11111b !important;
+  --on-error-banner: #11111b !important;
+  --on-info-banner: #11111b !important;
+  --error-banner-bg: #30202a !important;
+  --error-banner-text: #f38ba8 !important;
+  --warning-banner-text: #f9e2af !important;
+  --banner-text-color: #cdd6f4 !important;
+  --click-badge-error-bg: #f38ba8 !important;
+  --click-badge-error: #11111b !important;
+  --click-badge-error-border: #f6a3ba !important;
+  --click-badge-info-bg: #89b4fa !important;
+  --click-badge-info: #11111b !important;
+  --click-badge-info-border: #a3c5fb !important;
+  --click-badge-warning-bg: #f9e2af !important;
+  --click-badge-warning: #11111b !important;
+  --click-badge-warning-border: #fbe9c4 !important;
+  --click-badge-success-bg: #a6e3a1 !important;
+  --click-badge-success: #11111b !important;
+  --click-badge-success-border: #b7e8b3 !important;
+
+  /* formulaires */
+  --input-bg: #181825 !important;
+  --input-text: #cdd6f4 !important;
+  --input-border: #45475a !important;
+  --input-label: #a6adc8 !important;
+  --input-placeholder: #6c7086 !important;
+  --input-focus-bg: #1e1e2e !important;
+  --input-hover-bg: #1e1e2e !important;
+  --input-addon-bg: #11111b !important;
+  --input-bg-accent: #313244 !important;
+  --input-disabled-bg: #181825 !important;
+  --input-disabled-border: #313244 !important;
+  --input-disabled-label: #585b70 !important;
+  --input-disabled-placeholder: #45475a !important;
+  --input-disabled-text: #585b70 !important;
+  --dropdown-bg: #181825 !important;
+  --dropdown-text: #cdd6f4 !important;
+  --dropdown-border: #45475a !important;
+  --dropdown-hover-bg: #313244 !important;
+  --dropdown-hover-text: #cdd6f4 !important;
+  --dropdown-active-bg: #45475a !important;
+  --dropdown-active-text: #cdd6f4 !important;
+  --dropdown-disabled-bg: #181825 !important;
+  --dropdown-disabled-text: #585b70 !important;
+  --dropdown-divider: #313244 !important;
+  --dropdown-group-text: #a6adc8 !important;
+  --dropdown-highlight-text: #b4befe !important;
+  --checkbox-disabled-bg: #313244 !important;
+  --checkbox-tick-disabled: #45475a !important;
+
+  /* divers */
+  --muted: #7f849c !important;
+  --deemphasized: #a6adc8 !important;
+  --side-menu-desc: #cdd6f4 !important;
+  --scrollbar-thumb: #45475a !important;
+  --scrollbar-thumb-dropdown: #45475a !important;
+  --tag-bg: #313244 !important;
+  --tag-primary: #cdd6f4 !important;
+  --tooltip-bg: #313244 !important;
+  --tooltip-border: #cdd6f4 !important;
+  --tooltip-text: #cdd6f4 !important;
+  --tooltip-text-warning: #cdd6f4 !important;
+  --progress-bg: #313244 !important;
+  --progress-divider: #cdd6f4 !important;
+  --glance-divider: #45475a !important;
+  --disabled-bg: #313244 !important;
+  --disabled-text: #6c7086 !important;
+  --default: #1e1e2e !important;
+  --default-border: #313244 !important;
+  --default-hover-bg: #313244 !important;
+  --default-hover-text: #cdd6f4 !important;
+  --default-text: #cdd6f4 !important;
+  --default-active-bg: #45475a !important;
+  --default-active-text: #cdd6f4 !important;
+  --default-banner-bg: rgba(49, 50, 68, 0.4) !important;
+  --default-light-bg: rgba(49, 50, 68, 0.2) !important;
+  --badge-state-disabled-bg: #313244 !important;
+  --badge-state-disabled-border: #45475a !important;
+  --badge-state-disabled-text: #a6adc8 !important;
+  --slate: #313244 !important;
+  --product-icon: #a6adc8 !important;
+  --product-icon-active: #cdd6f4 !important;
+}
+
+::selection {
+  background: #585b70 !important;
+  color: #cdd6f4 !important;
+}

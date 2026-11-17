@@ -53,6 +53,10 @@ in {
     description = "Lancer le gateway hermes-agent (chat) sur cet hôte.";
   };
 
+  # hermes n'a plus d'acces direct a nixos-rebuild : uniquement le wrapper
+  # gated (refus de --impure + verrou de serialisation), cf le module.
+  imports = [ ../../modules/nixos/nixos-rebuild-gated ];
+
   config = lib.mkMerge [
     {
     # --- utilisateur hermes (accès SSH remote + sudo nixos-rebuild) ---
@@ -93,8 +97,9 @@ in {
     # agir/builder directement sur la machine, sans copier-coller par marc.
     # Même clé que celle déjà posée pour root sur anywhere (25/09/2026).
     security.sudo.extraRules = [
+      # marc : acces direct conserve (c'est lui le proprietaire de la machine).
       {
-        users = ["marc" "hermes"];
+        users = ["marc"];
         commands = [
           {
             command = "/run/current-system/sw/bin/nixos-rebuild";
@@ -102,6 +107,14 @@ in {
           }
           {
             command = "/nix/store/*-nixos-rebuild/bin/nixos-rebuild";
+            options = ["NOPASSWD"];
+          }
+          {
+            command = "/run/current-system/sw/bin/nixos-rebuild-gated";
+            options = ["NOPASSWD"];
+          }
+          {
+            command = "/nix/store/*-nixos-rebuild-gated/bin/nixos-rebuild-gated";
             options = ["NOPASSWD"];
           }
         ];
@@ -145,7 +158,14 @@ in {
         # DEEPSEEK_API_KEY (compte direct), consommée par le provider custom
         # provider deepseek : sans ce fichier le provider existe mais l'appel part
         # sans jeton et rend 401.
-        ++ [ config.sops.secrets."hermes_deepseek_env".path ];
+        ++ [
+          config.sops.secrets."hermes_deepseek_env".path
+          # MODEL_API_KEY (compte Meta Model API, provider INTÉGRÉ meta-ai).
+          # Même mécanisme, contenu dotenv. La valeur est un PLACEHOLDER inerte
+          # (« MODEL_API_KEY=replace-me ») tant que marc n'a pas posé sa clé :
+          # le provider se résout, mais les appels rendraient 401.
+          config.sops.secrets."hermes_meta_env".path
+        ];
       addToSystemPackages = true;
 
       # venv nix scellé -> deps mem0 (mem0ai) installées au runtime dans une cible durable
@@ -404,6 +424,16 @@ in {
           # le 26/09/2026. Fichier de palette : skins/catppuccin-dark-lavender.yaml
           # sous /var/lib/hermes/.hermes/skins/ (pas géré par nix, écrit au runtime).
           skin = "catppuccin-dark-lavender";
+        };
+
+        # Thème du DASHBOARD web (dash.marcpartensky.com) : même palette que le
+        # skin ci-dessus. Le dashboard n'utilise PAS display.skin (c'est le CLI/TUI
+        # et le desktop) : il lit `dashboard.theme`, qui doit nommer un thème
+        # utilisateur découvert dans $HERMES_HOME/dashboard-themes/*.yaml.
+        # Ce YAML est posé déclarativement par tmpfiles (voir plus bas), d'où le
+        # nom identique des deux côtés : le renommer aux deux endroits.
+        dashboard = {
+          theme = "catppuccin-mocha-lavender";
         };
 
         # --- Approbations de commandes : plus aucune validation humaine ---
@@ -787,6 +817,16 @@ in {
       sopsFile = ../../secrets/deepseek.yml;
     };
 
+    # Clé du compte Meta Model API (provider intégré meta-ai, env MODEL_API_KEY).
+    # Contenu dotenv, comme la clé DeepSeek. Mode Standard uniquement côté Meta
+    # (pas de Contributor pour Ember) : le contenu n'est pas utilisé pour
+    # entraîner. Rotation / pose de la valeur : sops set, jamais le fichier à la
+    # main.
+    sops.secrets."hermes_meta_env" = {
+      key = "hermes_meta_env";
+      sopsFile = ../../secrets/meta.yml;
+    };
+
     # Clé du listener API Server du profil default (clé "hermes_api_server_env"
     # du fichier sops, valeur = contenu dotenv "API_SERVER_KEY=..."). Même valeur
     # que HERMES_BRIDGE_API_KEY côté services/discord-bot, qui l'envoie en Bearer :
@@ -820,6 +860,22 @@ in {
       mode = "0400";
     };
 
+    # Mot de passe maitre du compte technique Vaultwarden de l'agent
+    # (hermes@marcpartensky.com), lu par ~/.hermes/scripts/vault-get.sh.
+    # Il vivait dans services/vaultwarden/default.nix tant que ce module etait
+    # importe par services/default.nix (donc tower ET le portable). Depuis le
+    # 14/11/2026 le coffre Vaultwarden ne tourne plus que sur le VPS (profil
+    # anywhere, source de verite unique) : le module n'est plus importe ici, mais
+    # l'agent a toujours besoin du secret sur tower pour ouvrir son coffre a
+    # distance. Fichier chiffre vers la seule cle age de tower.
+    sops.secrets."vaultwarden/agent_password" = lib.mkIf config.services.hermes.enableAgent {
+      key = "vaultwarden_agent_password";
+      sopsFile = ../../secrets/vaultwarden-agent.yml;
+      owner = "hermes";
+      group = "hermes";
+      mode = "0400";
+    };
+
     # Token Matrix du bot (@hermes) — clé "hermes_matrix_env" du fichier sops,
     # valeur = contenu dotenv (MATRIX_ACCESS_TOKEN=...) fusionné dans .env.
     # Déclaré uniquement là où l'option est active : les destinataires du fichier
@@ -841,8 +897,9 @@ in {
     # ce module (laptop, anywhere) : défini en haut de `config` (utilisateur
     # hermes + clé + sudo), commun à tous les hôtes.
     security.sudo.extraRules = [
+      # marc : acces direct conserve (c'est lui le proprietaire de la machine).
       {
-        users = ["marc" "hermes"];
+        users = ["marc"];
         commands = [
           {
             command = "/run/current-system/sw/bin/nixos-rebuild";
@@ -850,6 +907,14 @@ in {
           }
           {
             command = "/nix/store/*-nixos-rebuild/bin/nixos-rebuild";
+            options = ["NOPASSWD"];
+          }
+          {
+            command = "/run/current-system/sw/bin/nixos-rebuild-gated";
+            options = ["NOPASSWD"];
+          }
+          {
+            command = "/nix/store/*-nixos-rebuild-gated/bin/nixos-rebuild-gated";
             options = ["NOPASSWD"];
           }
         ];
@@ -972,6 +1037,12 @@ in {
     systemd.tmpfiles.rules = [
       "d /var/lib/hermes/.hermes/desktop-plugins 0755 hermes hermes -"
       "d /var/lib/hermes/.hermes/desktop-plugins/vim-bindings 0755 hermes hermes -"
+      # Thème Catppuccin du dashboard web : le fichier vit dans ce repo et arrive
+      # dans le home Hermes par symlink store (le dashboard ne lit que, donc le
+      # 0444 du store suffit). Le nom du fichier ET le `name:` du YAML doivent
+      # rester égaux, sinon _discover_user_themes() l'ignore en silence.
+      "d /var/lib/hermes/.hermes/dashboard-themes 0755 hermes hermes -"
+      "L+ /var/lib/hermes/.hermes/dashboard-themes/catppuccin-mocha-lavender.yaml - hermes hermes - ${./dashboard-themes/catppuccin-mocha-lavender.yaml}"
       "a /home/marc - - - - u:hermes:--x,m::--x"
       "a /home/marc/git - - - - u:hermes:--x,m::r-x"
     ];
