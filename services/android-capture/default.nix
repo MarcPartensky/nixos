@@ -225,6 +225,14 @@ in
         description = "Emulateur Android (AVD) alimentant la cible de capture avd";
         wantedBy = [ "multi-user.target" ];
         after = [ "network.target" ];
+        # Le runner vient d'une flake SEPAREE (hinge-re) et son chemin dans le
+        # store est epingle ci-dessus : quand cette flake n'est plus dans le GC
+        # roots, le chemin disparait et l'unite bouclait toutes les 20 s
+        # (releve 17/11/2026 : 342 redemarrages, ~1,4 s de CPU par tour, sans
+        # jamais lancer qemu). ConditionPathExists fait SAUTER l'unite
+        # proprement au lieu de la faire echouer en boucle ; il suffit de
+        # reconstruire la flake pour que le service reparte au boot suivant.
+        unitConfig.ConditionPathExists = emulatorRunner;
         # PATH n'est pas herite d'une session interactive : sans jdk explicite,
         # avdmanager (Java) sort en « JAVA_HOME is not set » et l'AVD n'est jamais
         # cree. Sans procps ni coreutils, les `seq` et `pgrep` du script sont
@@ -249,6 +257,10 @@ in
       # suite et que le systeme n'attende pas un boot Android.
       android-avd-install = {
         description = "Installation des APK de travail dans l'AVD";
+        # Sans emulateur il n'y a aucun device a servir : cette oneshot
+        # attendait adb 5 min puis se faisait tuer par TimeoutStartSec=900
+        # (releve 16/11/2026). Meme condition que android-emulator.
+        unitConfig.ConditionPathExists = emulatorRunner;
         # Pas de wantedBy : une oneshot tiree par multi-user.target retient toute
         # l'activation, donc le demarrage du systeme, pendant le boot Android.
         # C'est un timer qui la declenche, et un timer ne retient rien.

@@ -21,4 +21,14 @@
     # suivant, et le downtime disparait du total.
     timer.enable = true;
   };
+
+  # PIEGE (releve le 17/11/2026, deux boots de suite) : au demarrage,
+  # tuptime.service (oneshot de boot) et tuptime-sync.service (timer 5 min)
+  # peuvent partir dans la MEME seconde. SQLite pose alors un verrou, le
+  # oneshot sort en « database is locked » / status=1, et comme il est
+  # RemainAfterExit sans Restart, l'evenement de boot de ce demarrage-la est
+  # PERDU (le downtime est compte faux). `after=` ne suffit pas : il faut que
+  # tuptime.service soit TERMINE avant que le timer ne declenche le sync.
+  systemd.services.tuptime.before = [ "tuptime-sync.service" ];
+  systemd.services.tuptime-sync.after = [ "tuptime.service" ];
 }

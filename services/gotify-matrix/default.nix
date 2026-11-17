@@ -71,6 +71,17 @@
       exit 1
     fi
 
+    # Attente de disponibilite de l'API : After=/Requires= sur gotify-server.service
+    # garantit seulement que le PROCESS a demarre, pas que le port ecoute deja
+    # (panne reelle du 16/11 : provision lancee 23s avant que gotify-server ne
+    # reponde, curl echoue en exit 7/connection refused sous `set -e`, pont
+    # INACTIF jusqu'au reboot suivant). On attend activement le port avant de
+    # continuer, borne a 60s.
+    for _ in $(seq 1 30); do
+      curl -fsS -o /dev/null "$API/health" 2>/dev/null && break
+      sleep 2
+    done
+
     # Le compte local Gotify a ete renomme marc@marcpartensky.com (rattachement
     # OIDC, cf services/gotify). L'API rend le MEME 401 pour un nom inconnu et
     # pour un mot de passe faux : on demande donc les noms a la base (lecture

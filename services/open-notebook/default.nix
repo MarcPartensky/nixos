@@ -11,11 +11,19 @@
 #     par un autre service et n'a pas besoin de l'être, l'app le rejoint par DNS
 #     interne (ws://open-notebook-surreal:8000/rpc) ;
 #   - l'UI (8502) et l'API (5055) du conteneur sont publiées en loopback sur
-#     8555 et 9601 (8502 et 8000 sont pris sur tower) ;
+#     8556 et 9601 (8502 et 8000 sont pris sur tower) ;
 #   - exposition publique uniquement via Pangolin/newt, derrière le SSO Zitadel.
+#
+# PORT UI DEPLACE DE 8555 A 8556 LE 17/11/2026 (reparation de nuit) : 8555 est
+# occupe en continu par un process non declare dans ce flake (ni l'emulateur
+# Android -- confirme en crash-loop avant meme de lancer qemu, cf.
+# services/android-capture -- ni un conteneur podman connu). Le bind 8555
+# echouait a chaque tentative (`listen tcp4 127.0.0.1:8555: bind: address
+# already in use`), d'ou le start-limit-hit permanent. Deplacer le port est le
+# correctif sur, sans dependre de l'identite du squatteur.
 { config, lib, pkgs, ... }:
 let
-  portUi  = 8555;   # hôte -> 8502 (UI)
+  portUi  = 8556;   # hôte -> 8502 (UI)
   portApi = 9601;   # hôte -> 5055 (REST API, loopback uniquement, outillage Hermes)
 in
 {

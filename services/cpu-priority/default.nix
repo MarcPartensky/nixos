@@ -34,6 +34,97 @@
     };
   };
 
+  # Ce que le gestionnaire utilisateur de hermes lance vit ICI : conteneurs
+  # podman rootless, scopes `systemd-run --user`, jobs d'agents. Mesure du
+  # 14/11/2026 : `immich_probe_ml` + `immich_probe_server` prenaient 5,1 + 3,6
+  # = 8,8 coeurs au poids 100, soit exactement le poids du scope de session qui
+  # porte l'event loop du backend desktop (0,38 coeur). Les deux se partageaient
+  # donc les memes 14 threads a egalite : 294 gels d'event loop (max 114 s) et
+  # 1461 `Timed out connecting to Hermes backend` cote client. Le gestionnaire
+  # utilisateur descend a 10, et lui seul : la session interactive posee juste
+  # au-dessus garde son poids, donc un index qui tourne ne peut plus passer
+  # devant l'event loop qui sert la conversation.
+  # `asDropin` : user@.service est un template systemd, un fichier complet le
+  # remplacerait au lieu de le completer.
+  systemd.services."user@988" = {
+    overrideStrategy = "asDropin";
+    # Ne JAMAIS redemarrer le gestionnaire utilisateur : il tuerait tout ce qui
+    # vit sous lui (conteneurs rootless, scopes transitoires). Le poids
+    # s'applique a sa prochaine creation, donc en pratique a la fin de toutes
+    # les sessions ou au reboot.
+    restartIfChanged = false;
+    serviceConfig = {
+      CPUWeight = 10;
+      IOWeight = 10;
+    };
+  };
+
+  # Indexeurs medias : batch par nature, jamais prioritaires sur l'interactif.
+  # Le module nixpkgs place deja immich-server et immich-machine-learning dans
+  # system-immich.slice, on ne fait que charger cette slice au lieu d'aller
+  # chercher ses unites (evite un conflit de valeur sur `Slice`).
+  # Plafond DUR de 6 coeurs sur 16, IO de fond, et plafond memoire SOUPLE :
+  # `MemoryHigh` throttlee, `MemoryMax` aurait tue l'index en cours de scan,
+  # c'est-a-dire exactement ce qu'on veut eviter.
+  systemd.slices.system-immich.sliceConfig = {
+    CPUQuota = "600%";
+    CPUWeight = 20;
+    IOWeight = 20;
+    MemoryHigh = "12G";
+  };
+
+  # Memes plafonds poses AUSSI sur les deux unites, et pas seulement sur la
+  # slice : une propriete de slice deja creee ne s'applique qu'a sa prochaine
+  # creation, donc le plafond collectif n'aurait mordu qu'a un redemarrage
+  # d'immich. Une propriete d'UNITE, elle, s'applique au switch (l'unite est
+  # redemarree parce que son fichier a change). 300 % chacune = les 600 % de la
+  # slice, mais effectifs dans la minute.
+  systemd.services.immich-server.serviceConfig = {
+    CPUQuota = "300%";
+    IOWeight = 20;
+    MemoryHigh = "6G";
+  };
+  systemd.services.immich-machine-learning.serviceConfig = {
+    CPUQuota = "300%";
+    IOWeight = 20;
+    MemoryHigh = "6G";
+  };
+
+  # Second indexeur photo (hors immich), meme profil, plafond plus petit.
+  systemd.slices.media-index = {
+    description = "Indexeurs medias hors immich (photoprism)";
+    sliceConfig = {
+      CPUQuota = "400%";
+      CPUWeight = 20;
+      IOWeight = 20;
+      MemoryHigh = "8G";
+    };
+  };
+  systemd.services.photoprism.serviceConfig.Slice = "media-index.slice";
+
+  # Porte d'entree SSH : le maillon sans lequel aucun autre n'existe. Elle
+  # vivait dans system.slice au poids 100, sans plancher memoire, avec la limite
+  # de redemarrage par defaut (5 echecs en 10 s puis `failed` DEFINITIF, meme
+  # avec Restart=always). Honnetete : `sshd-session`, le process qui chiffre
+  # reellement le tunnel, reste dans le scope de session (logind), donc cette
+  # protection couvre l'accept et la survie du listener, pas le debit du tunnel.
+  systemd.slices.interactive = {
+    description = "Portes d'entree interactives (sshd)";
+    sliceConfig = {
+      CPUWeight = 1500;
+      IOWeight = 1000;
+      MemoryMin = "256M";
+    };
+  };
+  systemd.services.sshd = {
+    unitConfig.StartLimitIntervalSec = 0;
+    serviceConfig = {
+      Slice = "interactive.slice";
+      OOMScoreAdjust = -900;
+      MemoryMin = "128M";
+    };
+  };
+
   systemd.slices.background = {
     description = "Charges de fond (poids CPU/IO bas)";
     sliceConfig = {
@@ -74,49 +165,24 @@
   # Tout build lancé par un client nix passe par le démon.
   systemd.services.nix-daemon.serviceConfig.Slice = "background.slice";
 
-  # Batches winnie : jamais prioritaires sur l'interactif, et plafonnés.
-  # 400 % = 4 coeurs au pire ; le gouverneur élargit à 12 quand marc ne
-  # travaille pas. Les unités transitoires winnie-job-* sont traitées pareil
-  # par le gouverneur (400 -> 1200 %).
-  systemd.services.winnie-calories.serviceConfig = {
-    Slice = "background.slice";
-    CPUQuota = "400%";
-  };
-
-  # Jobs navigateur (chromium/renderer : gmaps, ingest nightly, hours refresh).
-  # Plafond DUR de 30 % du CPU total (480 % de 1600 % : 4,8 coeurs sur 16
-  # threads, demande marc du 25/10/2026) : le gouverneur ne les élargit jamais
-  # (HARD_CAP dans governor.py, qui rattrape aussi un override --runtime
-  # périmé). Slice dédiée -> plafond COLLECTIF quand deux batchs se chevauchent
-  # (nuit : nightly + gmaps). restartIfChanged=false : un switch ne tue pas un
-  # batch navigateur en cours, la config s'applique au prochain démarrage.
+  # Batches winnie : ORPHELINS depuis la sortie de Winnie de la conf hote
+  # (13/11/2026, cf services/default.nix et deploy/winnie/README.md). Ces
+  # quatre `systemd.services.winnie-*` ne portaient QUE des overrides
+  # (Slice/CPUQuota), sans ExecStart : NixOS generait des unites systeme
+  # invalides (`LoadError=BadUnitSetting`, invisibles de `systemctl --failed`,
+  # cf. nixos-service-troubleshooting), et winnie-ingest-nightly ne tournait
+  # plus du tout (son timer vivait dans le module winnie retire). Supprimes le
+  # 17/11/2026 (reparation de nuit) : winnie-ingest-nightly est redeploye en
+  # unite UTILISATEUR hermes (deploy/winnie/winnie-ingest-nightly.service,
+  # meme pattern que backend/frontend/dev). winnie-calories, winnie-gmaps-scrape
+  # et winnie-hours-refresh restent a reprendre pareil le jour ou ils seront
+  # utiles (non fait ici : aucun binaire pret cote deploy/winnie pour eux).
   systemd.slices.winnie-browser = {
-    description = "Jobs navigateur winnie (plafond 30 % du CPU total)";
+    description = "Jobs navigateur winnie (plafond 30 % du CPU total) — INUTILISEE depuis le 17/11/2026, winnie tourne hors conf hote";
     sliceConfig = {
       CPUQuota = "480%";
       CPUWeight = 20;
       IOWeight = 20;
-    };
-  };
-  systemd.services.winnie-gmaps-scrape = {
-    restartIfChanged = false;
-    serviceConfig = {
-      Slice = "winnie-browser.slice";
-      CPUQuota = "480%";
-    };
-  };
-  systemd.services.winnie-ingest-nightly = {
-    restartIfChanged = false;
-    serviceConfig = {
-      Slice = "winnie-browser.slice";
-      CPUQuota = "480%";
-    };
-  };
-  systemd.services.winnie-hours-refresh = {
-    restartIfChanged = false;
-    serviceConfig = {
-      Slice = "winnie-browser.slice";
-      CPUQuota = "480%";
     };
   };
 
