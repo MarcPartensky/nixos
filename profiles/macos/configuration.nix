@@ -44,9 +44,6 @@ in {
     # LAN. La clé du Mac est déjà autorisée pour root@rack.
     ../../modules/home-mac/autossh
 
-    # Firefox quotidien lancé avec Marionette/BiDi en loopback : piloté par
-    # le MCP firefox-mac de tower (services/firefox-mac-mcp).
-    ../../modules/home-mac/firefox-hermes
   ];
 
   environment.systemPackages = [

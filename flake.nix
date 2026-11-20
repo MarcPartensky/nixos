@@ -148,13 +148,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    firefox-devtools-mcp = {
-      # Officiel Mozilla, MCP browser automation via WebDriver BiDi. Pin sur le
-      # commit de la release v0.10.4 (2026-09-22) ; flake=false, source brute.
-      url = "github:mozilla/firefox-devtools-mcp/bdb377af9ce3a3596e8c196786014ecee50fe178";
-      flake = false;
-    };
-
     stalwart-mcp = {
       # Rust MCP server for Stalwart Mail Server (webpatser/stalwart-mcp).
       # JMAP access: read, search, real-time notifications via EventSource.
@@ -175,6 +168,16 @@
       url = "github:different-name/steam-config-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Atlas 3D de l'infra (atlas.marcpartensky.com) : projet separe sous
+    # /var/lib/hermes/workspace/infra-atlas. Input `path:` VERROUILLE dans
+    # flake.lock au lieu d'un `builtins.getFlake` dans le profil tower : c'est
+    # ce getFlake qui rendait TOUTE l'evaluation de tower impure (politique
+    # pure-eval, cf. skill nixos-pure-eval). Le flake atlas n'a aucun input,
+    # donc rien a faire suivre. Consequences a connaitre : une modification du
+    # projet atlas n'entre dans la conf qu'apres `nix flake update infra-atlas`
+    # (le module evalue reste celui du lock, pas celui du working tree).
+    infra-atlas.url = "path:/var/lib/hermes/workspace/infra-atlas";
   };
   outputs = {
     self,
@@ -262,6 +265,12 @@
       import ./mcp {pkgs = nixpkgs.legacyPackages.x86_64-linux;}
       // {
         dev = self.nixosConfigurations.dev.config.microvm.declaredRunner;
+      }
+      // {
+        # Environnement python du serveur MCP unique, pour `just mcp-host-run`.
+        # Expose comme paquet : ca remplace le `nix build --impure --expr` qui
+        # faisait un getFlake du flake courant.
+        mcp-host-env = nixpkgs.legacyPackages.x86_64-linux.python3.withPackages (ps: [ps.fastmcp]);
       };
 
     # Conteneurs SORTIS de la conf hote (deploy/containers.nix), lus par

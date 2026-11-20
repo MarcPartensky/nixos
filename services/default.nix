@@ -103,7 +103,6 @@
     ./mcp-lan-access
     ./amazon-mcp
     ./hinge-auto
-    ./firefox-mcp
     # ./stalwart-mcp  # importé par profiles/tower uniquement (voir le commentaire
     # dans le module : sur anywhere la clé sops entre en conflit avec services/stalwart)
     # ./gotify  # HOTE UNIQUEMENT (tower) : declare le secret
