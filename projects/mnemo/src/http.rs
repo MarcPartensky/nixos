@@ -31,6 +31,8 @@ pub fn router(app: Arc<App>) -> Router {
         .route("/healthz", get(healthz))
         .route("/", get(index))
         .route("/api/stats", get(api_stats))
+        .route("/api/sessions", get(api_sessions))
+        .route("/api/score-system", get(api_score_system))
         .route("/api/backlog", get(api_backlog))
         .route("/api/brief", get(api_brief))
         .route("/api/gaps", get(api_gaps))
@@ -201,6 +203,55 @@ async fn api_scan(
     }
 }
 
+fn now_epoch() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
+}
+
+/// The ranking of a window: every scored conversation, most important first.
+/// `days=30` is the default window, `since` overrides it.
+async fn api_sessions(
+    State(app): State<Arc<App>>,
+    headers: HeaderMap,
+    Query(q): Query<HashMap<String, String>>,
+) -> Response {
+    if !allowed(&app, &headers) {
+        return unauthorized();
+    }
+    let days = q
+        .get("days")
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(30)
+        .clamp(0, 3650);
+    let since = q
+        .get("since")
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or_else(|| now_epoch() - days as f64 * 86400.0);
+    let min = q
+        .get("min_priority")
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(0.0);
+    match app.store.ranked(since, min, limit_of(&q, "limit", 100)).await {
+        Ok(items) => Json(json!({
+            "days": days, "since": since, "min_priority": min,
+            "count": items.len(), "items": items,
+        }))
+        .into_response(),
+        Err(e) => failed(e),
+    }
+}
+
+/// How the deterministic score is built: the weights, and the fact that it
+/// calls no model at all.
+async fn api_score_system(State(app): State<Arc<App>>, headers: HeaderMap) -> Response {
+    if !allowed(&app, &headers) {
+        return unauthorized();
+    }
+    Json(crate::score_det::explain()).into_response()
+}
+
 async fn mcp_get() -> Response {
     (
         StatusCode::METHOD_NOT_ALLOWED,
@@ -252,6 +303,14 @@ fn tools() -> Vec<Value> {
                 "limit": {"type": "integer", "description": "default 50"}}}
         }),
         json!({
+            "name": "mnemo_rank",
+            "description": "The ranking of Marc's conversations over a window, most important first, with the axes and the position. Deterministic: this one calls no model.",
+            "inputSchema": {"type": "object", "properties": {
+                "days": {"type": "integer", "description": "default 30"},
+                "min_priority": {"type": "number", "description": "default 0"},
+                "limit": {"type": "integer", "description": "default 100"}}}
+        }),
+        json!({
             "name": "mnemo_brief",
             "description": "The explanation sheet for one conversation: what he did not understand and the corrected model, in French markdown.",
             "inputSchema": {"type": "object", "properties": {
@@ -292,6 +351,18 @@ async fn call_tool(app: &App, params: &Value) -> Result<Value, String> {
                 .await
                 .map(|items| json!({"items": items}))
                 .map_err(|e| e.to_string())?
+        }
+        "mnemo_rank" => {
+            let days = args["days"].as_i64().unwrap_or(30).clamp(0, 3650);
+            let since = now_epoch() - days as f64 * 86400.0;
+            let min = args["min_priority"].as_f64().unwrap_or(0.0);
+            let limit = args["limit"].as_i64().unwrap_or(100);
+            let items = app
+                .store
+                .ranked(since, min, limit)
+                .await
+                .map_err(|e| e.to_string())?;
+            json!({"days": days, "count": items.len(), "items": items})
         }
         "mnemo_brief" => {
             let id = args["session_id"].as_str().unwrap_or_default();

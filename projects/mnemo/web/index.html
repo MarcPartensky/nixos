@@ -15,54 +15,76 @@
   body { margin: 0; background: var(--base); color: var(--text);
          font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   header { position: sticky; top: 0; z-index: 2; background: var(--mantle);
-           border-bottom: 1px solid var(--surface0); padding: 14px 20px;
-           display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+           border-bottom: 1px solid var(--surface0); padding: 12px 20px;
+           display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
   h1 span { color: var(--lavender); }
   .muted { color: var(--overlay1); font-size: 13px; }
-  main { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 0; min-height: calc(100vh - 56px); }
+  main { display: grid; grid-template-columns: minmax(320px, 430px) 1fr; min-height: calc(100vh - 56px); }
   @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
   #list { border-right: 1px solid var(--surface0); overflow-y: auto; max-height: calc(100vh - 56px); }
-  .row { padding: 12px 16px; border-bottom: 1px solid var(--surface0); cursor: pointer; }
+  .row { padding: 10px 16px; border-bottom: 1px solid var(--surface0); cursor: pointer; }
   .row:hover { background: var(--surface0); }
   .row.active { background: var(--surface0); box-shadow: inset 3px 0 0 var(--lavender); }
-  .row .t { font-weight: 600; }
-  .row .d { color: var(--subtext); font-size: 13px; margin-top: 2px; }
+  .row .t { font-weight: 600; padding-right: 44px; }
+  .row .d { color: var(--subtext); font-size: 12px; margin-top: 2px; }
+  .rank { color: var(--overlay1); font-variant-numeric: tabular-nums; font-size: 12px; }
   .axes { display: flex; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--overlay1); flex-wrap: wrap; }
   .axes b { color: var(--teal); font-weight: 600; }
   .prio { float: right; color: var(--peach); font-variant-numeric: tabular-nums; }
+  .tag { font-size: 11px; border: 1px solid var(--surface1); border-radius: 999px;
+         padding: 0 7px; color: var(--overlay1); }
+  .tag.ai { border-color: var(--mauve); color: var(--mauve); }
+  .tag.det { border-color: var(--teal); color: var(--teal); }
   #pane { padding: 22px 26px; overflow-y: auto; max-height: calc(100vh - 56px); }
   #pane h2 { color: var(--lavender); font-size: 20px; margin: 0 0 4px; }
   #pane h3 { color: var(--mauve); font-size: 15px; margin: 22px 0 6px; }
   #pane p, #pane li { color: var(--text); }
   #pane code { background: var(--surface0); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  #pane pre { background: var(--mantle); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
   #gaps { margin: 14px 0 0; padding: 12px 14px; background: var(--mantle);
           border-left: 3px solid var(--peach); border-radius: 6px; }
   #gaps li { margin-bottom: 6px; }
   #gaps .q { color: var(--overlay1); font-style: italic; }
   .empty { color: var(--overlay1); }
+  .card { background: var(--mantle); border: 1px solid var(--surface0); border-radius: 8px;
+          padding: 12px 14px; margin: 14px 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .grid div { background: var(--surface0); border-radius: 6px; padding: 8px 10px; }
+  .grid .k { color: var(--overlay1); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  .grid .v { font-size: 20px; color: var(--text); font-variant-numeric: tabular-nums; }
   button { background: var(--surface0); color: var(--text); border: 1px solid var(--surface1);
            border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
   button:hover { border-color: var(--lavender); color: var(--lavender); }
-  input { background: var(--crust); color: var(--text); border: 1px solid var(--surface1);
+  input, select { background: var(--crust); color: var(--text); border: 1px solid var(--surface1);
           border-radius: 6px; padding: 6px 10px; font-size: 13px; }
 </style>
 </head>
 <body>
 <header>
   <h1>mnemo<span>.</span></h1>
-  <span class="muted" id="stats">chargement…</span>
+  <span class="muted" id="stats">loading…</span>
   <span style="flex:1"></span>
-  <input id="token" type="password" placeholder="X-Mnemo-Token" style="width:220px">
-  <button id="reload">Recharger</button>
-  <button id="scan">Scanner</button>
+  <select id="days" title="window">
+    <option value="7">7 days</option>
+    <option value="30" selected>30 days</option>
+    <option value="90">90 days</option>
+    <option value="365">1 year</option>
+  </select>
+  <input id="minp" type="number" step="1" value="0" style="width:70px" title="minimum priority">
+  <input id="token" type="password" placeholder="X-Mnemo-Token" style="width:200px">
+  <button id="reload">Reload</button>
+  <button id="bareme">Score scale</button>
+  <button id="scan">AI brief</button>
 </header>
 <main>
   <div id="list"></div>
-  <div id="pane"><p class="empty">Choisis une conversation à gauche.</p></div>
+  <div id="pane"><p class="empty">Pick a conversation on the left.</p></div>
 </main>
 <script>
 const token = () => document.getElementById('token').value.trim();
+const days = () => document.getElementById('days').value;
+const minp = () => document.getElementById('minp').value || 0;
 async function api(path, options = {}) {
   const headers = Object.assign({'Content-Type': 'application/json'}, options.headers || {});
   if (token()) headers['X-Mnemo-Token'] = token();
@@ -94,72 +116,106 @@ function md(text) {
   return html;
 }
 
+const date = ts => ts ? new Date(ts * 1000).toLocaleDateString('fr-FR', {day: '2-digit', month: '2-digit'}) : '?';
 let items = [];
 function render() {
   const list = document.getElementById('list');
-  list.innerHTML = items.length ? '' : '<div class="row empty">rien au-dessus du seuil</div>';
+  list.innerHTML = items.length ? '' : '<div class="row empty">nothing in this window</div>';
   items.forEach(item => {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.id = item.id;
+    const ai = (item.model && item.model !== 'det');
     row.innerHTML =
       '<span class="prio">' + (item.priorite ?? 0).toFixed(1) + '</span>' +
       '<div class="t">' + (item.sujet || item.title || item.id.slice(0, 12)) + '</div>' +
-      '<div class="d">' + (item.domaine || '') + (item.reading_minutes ? ' · ' + item.reading_minutes + ' min' : '') + '</div>' +
-      '<div class="axes"><span>matiere <b>' + (item.matiere ?? '-') + '</b></span>' +
+      '<div class="d"><span class="rank">#' + item.rang + '</span> · ' + date(item.started_at) +
+        ' · ' + (item.source || '') + ' ' +
+        '<span class="tag ' + (ai ? 'ai' : 'det') + '">' + (ai ? 'AI' : 'det') + '</span>' +
+        (item.has_brief ? ' <span class="tag">brief</span>' : '') +
+        (item.domaine ? ' · ' + item.domaine : '') + '</div>' +
+      '<div class="axes"><span>subject <b>' + (item.matiere ?? '-') + '</b></span>' +
       '<span>points <b>' + (item.points ?? '-') + '</b></span>' +
+      '<span>ignorance <b>' + (item.ignorance ?? '-') + '</b></span>' +
       '<span>importance <b>' + (item.importance ?? '-') + '</b></span>' +
       (item.focus ? '<span style="color:var(--red)">focus</span>' : '') + '</div>';
-    row.onclick = () => open(item.id, row);
+    row.onclick = () => open(item, row);
     list.appendChild(row);
   });
 }
 
-async function open(id, row) {
+function axes(item) {
+  return '<div class="grid">' +
+    '<div><div class="k">rank</div><div class="v">#' + item.rang + '</div></div>' +
+    '<div><div class="k">priority</div><div class="v">' + (item.priorite ?? 0).toFixed(1) + '</div></div>' +
+    '<div><div class="k">subject</div><div class="v">' + (item.matiere ?? '-') + '</div></div>' +
+    '<div><div class="k">points</div><div class="v">' + (item.points ?? '-') + '</div></div>' +
+    '<div><div class="k">ignorance</div><div class="v">' + (item.ignorance ?? '-') + '</div></div>' +
+    '<div><div class="k">importance</div><div class="v">' + (item.importance ?? '-') + '</div></div>' +
+    '</div>';
+}
+
+async function open(item, row) {
   document.querySelectorAll('.row').forEach(r => r.classList.remove('active'));
   if (row) row.classList.add('active');
   const pane = document.getElementById('pane');
-  pane.innerHTML = '<p class="empty">chargement…</p>';
+  pane.innerHTML = '<p class="empty">loading…</p>';
+  let html = '<h2>' + (item.sujet || item.title || item.id) + '</h2>' +
+    '<p class="muted">' + date(item.started_at) + ' · ' + (item.source || '') + ' · ' +
+    (item.model === 'det' ? 'deterministic scoring (no model)' : 'scoring ' + item.model) + '</p>' +
+    axes(item);
+  if (item.objectif) html += '<p><b>First question:</b> ' + item.objectif + '</p>';
+  if (item.points_liste) {
+    html += '<div class="card"><b>Points noted</b><ul>' +
+      item.points_liste.split(' | ').map(p => '<li>' + p + '</li>').join('') + '</ul></div>';
+  }
   try {
-    const data = await api('/api/brief?session_id=' + encodeURIComponent(id));
+    const data = await api('/api/brief?session_id=' + encodeURIComponent(item.id));
     const brief = data.brief || {};
-    let html = '<h2>' + (brief.title || id) + '</h2>';
-    html += '<p class="muted">' + (brief.sujet || '') + ' · ' + (brief.reading_minutes || '?') +
-            ' min · priorité ' + (brief.priorite ?? '?') + '</p>';
-    if (brief.objectif) html += '<p><b>Ce qu\'il cherchait :</b> ' + brief.objectif + '</p>';
-    html += md(brief.body);
+    html += '<h3>' + (brief.title || '') + '</h3>' + md(brief.body);
     if (data.gaps && data.gaps.length) {
-      html += '<div id="gaps"><b>Points non compris</b><ul>' + data.gaps.map(g =>
+      html += '<div id="gaps"><b>Points not understood</b><ul>' + data.gaps.map(g =>
         '<li>' + g.point + (g.quote ? ' <span class="q">« ' + g.quote + ' »</span>' : '') + '</li>'
       ).join('') + '</ul></div>';
     }
-    pane.innerHTML = html;
   } catch (err) {
-    pane.innerHTML = '<p class="empty">pas de fiche pour cette conversation (' + err.message + ')</p>';
+    html += '<p class="empty">no AI brief for this conversation: the ranking is ' +
+      'deterministic, the brief needs a model ("AI brief" button).</p>';
   }
+  pane.innerHTML = html;
 }
 
 async function load() {
   try {
     const stats = await api('/api/stats');
-    document.getElementById('stats').textContent =
-      stats.stats.scored + ' notées · ' + stats.stats.briefs + ' fiches · ' +
-      stats.stats.important + ' importantes · modèle ' + stats.model;
-    const data = await api('/api/backlog?min_priority=0&limit=200');
+    const data = await api('/api/sessions?days=' + days() + '&min_priority=' + minp() + '&limit=500');
     items = data.items || [];
+    document.getElementById('stats').textContent =
+      items.length + ' ranked over ' + data.days + ' d · ' + stats.stats.scored + ' in the database · ' +
+      stats.stats.briefs + ' briefs';
     render();
   } catch (err) {
-    document.getElementById('stats').textContent = 'auth requise: ' + err.message;
+    document.getElementById('stats').textContent = 'auth required: ' + err.message;
   }
 }
 
 document.getElementById('reload').onclick = load;
+document.getElementById('days').onchange = load;
+document.getElementById('minp').onchange = load;
+document.getElementById('bareme').onclick = async () => {
+  const pane = document.getElementById('pane');
+  try {
+    const s = await api('/api/score-system');
+    pane.innerHTML = '<h2>Score scale</h2><p class="muted">' + s.ai + '</p><pre>' +
+      JSON.stringify(s, null, 2) + '</pre>';
+  } catch (err) { pane.innerHTML = '<p class="empty">' + err.message + '</p>'; }
+};
 document.getElementById('scan').onclick = async () => {
   const button = document.getElementById('scan');
-  button.textContent = 'scan…';
-  try { await api('/api/scan', {method: 'POST', body: JSON.stringify({limit: 20, briefs: true})}); }
+  button.textContent = 'brief…';
+  try { await api('/api/scan', {method: 'POST', body: JSON.stringify({limit: 5, briefs: true})}); }
   catch (err) { alert(err.message); }
-  button.textContent = 'Scanner';
+  button.textContent = 'AI brief';
   load();
 };
 load();

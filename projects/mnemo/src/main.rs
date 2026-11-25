@@ -1,10 +1,14 @@
 //! mnemo: the retention engine.
 //!
-//! It reads Marc's Hermes conversations, scores them on the three axes the
-//! podcast queue already uses (matiere, points, importance), extracts the
-//! points he did not understand, and writes an explanation sheet that is at
+//! It reads Marc's Hermes conversations, scores them on the axes the podcast
+//! queue already uses (matiere, points, ignorance, importance, focus), extracts
+//! the points he did not understand, and writes an explanation sheet that is at
 //! once a page on his site, a source for the podcast pipeline and a typing
 //! drill on typer.marcpartensky.com.
+//!
+//! Two ways to score: `score` is deterministic and free (no model call at all,
+//! the ranking of a whole month in seconds), `scan` uses the model to read what
+//! a keyword count cannot see and to write the sheets.
 
 mod analyze;
 mod config;
@@ -13,6 +17,7 @@ mod llm;
 mod model;
 mod publish;
 mod scan;
+mod score_det;
 mod sessions;
 mod store;
 
@@ -55,6 +60,24 @@ enum Cmd {
         #[arg(long, default_value_t = false)]
         publish: bool,
     },
+    /// Rank every conversation of a window with NO model call at all.
+    Score {
+        /// Window in days (30 = the last month).
+        #[arg(long, default_value_t = 30)]
+        days: i64,
+        /// Only this many conversations, oldest first (0 = the whole window).
+        #[arg(long, default_value_t = 0)]
+        limit: usize,
+        /// Rescore the conversations a model already scored.
+        #[arg(long, default_value_t = false)]
+        force: bool,
+        /// Score and report, write nothing.
+        #[arg(long, default_value_t = false)]
+        dry: bool,
+        /// Priority floor of the ranking printed at the end.
+        #[arg(long, default_value_t = 0.0)]
+        min_priority: f64,
+    },
     /// The scored conversations, most important first.
     Backlog {
         #[arg(long, default_value_t = 0.0)]
@@ -79,6 +102,8 @@ enum Cmd {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
+    /// How the deterministic score is computed.
+    ScoreSystem,
 }
 
 fn ensure_token(path: &Path) -> R<String> {
@@ -101,6 +126,13 @@ fn ensure_token(path: &Path) -> R<String> {
         let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
     }
     Ok(token)
+}
+
+fn now_epoch() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or(0.0)
 }
 
 async fn build(cfg: &Config) -> R<App> {
@@ -146,6 +178,118 @@ async fn main() -> R<()> {
             let app = build(&cfg).await?;
             let report = scan::run(&app, since, limit, !no_briefs, publish).await?;
             println!("{}", serde_json::to_string_pretty(&report)?);
+        }
+        Cmd::Score {
+            days,
+            limit,
+            force,
+            dry,
+            min_priority,
+        } => {
+            let app = build(&cfg).await?;
+            let since = now_epoch() - days as f64 * 86400.0;
+            // A reading that cost a model call is never replaced by a keyword
+            // count unless the caller insists.
+            let skip: std::collections::HashSet<String> = if force {
+                Default::default()
+            } else {
+                app.store.model_scored_ids().await?.into_iter().collect()
+            };
+            let metas = sessions::metas(&cfg, since, 0, 0)?;
+            let seen = metas.len();
+            let (mut scored, mut skipped) = (0usize, 0usize);
+            // The report is built here rather than read back from the database,
+            // so the pass can be run and checked without a database at all.
+            let mut top: Vec<serde_json::Value> = Vec::new();
+            // Distribution by priority floor: how many conversations would the
+            // briefing pipeline actually pick up.
+            let mut buckets = [0usize; 7];
+            let mut focused = 0usize;
+            for (i, meta) in metas.iter().enumerate() {
+                if limit > 0 && i >= limit {
+                    break;
+                }
+                if skip.contains(&meta.id) {
+                    skipped += 1;
+                    continue;
+                }
+                let text = sessions::his_words(&cfg, &meta.id)?;
+                if text.trim().is_empty() {
+                    skipped += 1;
+                    continue;
+                }
+                let score = score_det::score(meta, &text);
+                if score.focus {
+                    focused += 1;
+                }
+                buckets[if score.priorite >= 16.0 {
+                    0
+                } else if score.priorite >= 14.0 {
+                    1
+                } else if score.priorite >= 12.0 {
+                    2
+                } else if score.priorite >= 10.0 {
+                    3
+                } else if score.priorite >= 8.0 {
+                    4
+                } else if score.priorite >= 6.0 {
+                    5
+                } else {
+                    6
+                }] += 1;
+                if score.priorite >= min_priority {
+                    top.push(serde_json::json!({
+                        "priorite": score.priorite,
+                        "matiere": score.matiere,
+                        "points": score.points,
+                        "ignorance": score.ignorance,
+                        "importance": score.importance,
+                        "focus": score.focus,
+                        "source": score.source,
+                        "started_at": score.started_at,
+                        "sujet": score.sujet,
+                        "points_liste": score.points_liste,
+                        "id": score.id,
+                    }));
+                }
+                if !dry {
+                    app.store.put_score(&score).await?;
+                }
+                scored += 1;
+            }
+            top.sort_by(|a, b| {
+                b["priorite"]
+                    .as_f64()
+                    .partial_cmp(&a["priorite"].as_f64())
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+            top.truncate(20);
+            // What the site will actually serve, read back from the database.
+            let served = app.store.ranked(since, min_priority, 5).await.unwrap_or_default();
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "model": "det",
+                    "ai_calls": 0,
+                    "window_days": days,
+                    "seen": seen,
+                    "scored": scored,
+                    "skipped": skipped,
+                    "dry": dry,
+                    "focus": focused,
+                    "distribution": {
+                        ">=16": buckets[0],
+                        "14-16": buckets[1],
+                        "12-14": buckets[2],
+                        "10-12": buckets[3],
+                        "8-10": buckets[4],
+                        "6-8": buckets[5],
+                        "<6": buckets[6],
+                    },
+                    "served": served,
+                    "top": top,
+                }))?
+            );
         }
         Cmd::Backlog {
             min_priority,
@@ -236,6 +380,9 @@ async fn main() -> R<()> {
                     }
                 );
             }
+        }
+        Cmd::ScoreSystem => {
+            println!("{}", serde_json::to_string_pretty(&score_det::explain())?);
         }
     }
     Ok(())

@@ -241,6 +241,70 @@ impl Store {
             .map(|row| (row.get::<_, String>(0), row.get::<_, i64>(1)))
             .collect())
     }
+
+    /// The ranking the site shows: every scored conversation of a window, most
+    /// important first, each with its position in the whole window.
+    pub async fn ranked(
+        &self,
+        since: f64,
+        min_priority: f64,
+        limit: i64,
+    ) -> R<Vec<serde_json::Value>> {
+        let Store::Pg(pg) = self else {
+            return Ok(Vec::new());
+        };
+        let rows = pg
+            .query(
+                "select row_number() over (order by s.priorite desc, s.started_at desc) as rang, \
+                 s.id, s.source, s.title, s.sujet, s.objectif, s.domaine, s.matiere, s.points, \
+                 s.ignorance, s.importance, s.focus, s.priorite, s.points_liste, s.started_at, \
+                 coalesce(s.model,''), (b.session_id is not null) as has_brief \
+                 from session_score s left join brief b on b.session_id = s.id \
+                 where s.started_at > $1 and s.priorite >= $2 \
+                 order by s.priorite desc, s.started_at desc limit $3",
+                &[&since, &min_priority, &limit],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| {
+                serde_json::json!({
+                    "rang": row.get::<_, i64>(0),
+                    "id": row.get::<_, String>(1),
+                    "source": row.get::<_, Option<String>>(2),
+                    "title": row.get::<_, Option<String>>(3),
+                    "sujet": row.get::<_, Option<String>>(4),
+                    "objectif": row.get::<_, Option<String>>(5),
+                    "domaine": row.get::<_, Option<String>>(6),
+                    "matiere": row.get::<_, Option<i32>>(7),
+                    "points": row.get::<_, Option<i32>>(8),
+                    "ignorance": row.get::<_, Option<i32>>(9),
+                    "importance": row.get::<_, Option<i32>>(10),
+                    "focus": row.get::<_, Option<bool>>(11),
+                    "priorite": row.get::<_, Option<f64>>(12),
+                    "points_liste": row.get::<_, Option<String>>(13),
+                    "started_at": row.get::<_, Option<f64>>(14),
+                    "model": row.get::<_, String>(15),
+                    "has_brief": row.get::<_, bool>(16),
+                })
+            })
+            .collect())
+    }
+
+    /// The ids a model already scored. The deterministic pass leaves them alone:
+    /// a reading that cost a model call is never replaced by a keyword count.
+    pub async fn model_scored_ids(&self) -> R<Vec<String>> {
+        let Store::Pg(pg) = self else {
+            return Ok(Vec::new());
+        };
+        let rows = pg
+            .query(
+                "select id from session_score where coalesce(model,'') <> 'det'",
+                &[],
+            )
+            .await?;
+        Ok(rows.iter().map(|row| row.get::<_, String>(0)).collect())
+    }
 }
 
 pub struct Pg {
@@ -278,52 +342,69 @@ impl Pg {
         Ok(())
     }
 
-    async fn handle(&self) -> R<Client> {
-        self.ensure().await?;
-        let guard = self.client.lock().await;
-        match guard.as_ref() {
-            Some(client) => Ok(client.clone()),
-            None => Err("postgres client unavailable".into()),
-        }
-    }
-
     async fn drop_handle(&self) {
         *self.client.lock().await = None;
     }
 
+    // Each operation holds the client lock for the duration of the query, then
+    // retries once on a fresh connection if the handle turned out to be dead.
+    // Postgres restarts at every NixOS switch, and the stale handle would
+    // otherwise answer "connection closed" to every query until the process
+    // itself is restarted.
     async fn exec_raw(&self, sql: &str) -> R<()> {
-        let client = self.handle().await?;
-        if client.batch_execute(sql).await.is_err() {
-            self.drop_handle().await;
-            let client = self.handle().await?;
-            client.batch_execute(sql).await?;
+        match self.try_raw(sql).await {
+            Ok(()) => Ok(()),
+            Err(_) => {
+                self.drop_handle().await;
+                self.try_raw(sql).await
+            }
         }
-        Ok(())
+    }
+
+    async fn try_raw(&self, sql: &str) -> R<()> {
+        self.ensure().await?;
+        let guard = self.client.lock().await;
+        match guard.as_ref() {
+            Some(client) => Ok(client.batch_execute(sql).await?),
+            None => Err("postgres client unavailable".into()),
+        }
     }
 
     async fn execute(&self, sql: &str, params: &[&(dyn ToSql + Sync)]) -> R<u64> {
-        let client = self.handle().await?;
-        match client.execute(sql, params).await {
+        match self.try_execute(sql, params).await {
             Ok(n) => Ok(n),
-            // Likely a handle left dead by a Postgres restart: drop it and try
-            // once on a fresh connection instead of failing the request.
             Err(_) => {
                 self.drop_handle().await;
-                let client = self.handle().await?;
-                Ok(client.execute(sql, params).await?)
+                self.try_execute(sql, params).await
             }
+        }
+    }
+
+    async fn try_execute(&self, sql: &str, params: &[&(dyn ToSql + Sync)]) -> R<u64> {
+        self.ensure().await?;
+        let guard = self.client.lock().await;
+        match guard.as_ref() {
+            Some(client) => Ok(client.execute(sql, params).await?),
+            None => Err("postgres client unavailable".into()),
         }
     }
 
     async fn query(&self, sql: &str, params: &[&(dyn ToSql + Sync)]) -> R<Vec<tokio_postgres::Row>> {
-        let client = self.handle().await?;
-        match client.query(sql, params).await {
+        match self.try_query(sql, params).await {
             Ok(rows) => Ok(rows),
             Err(_) => {
                 self.drop_handle().await;
-                let client = self.handle().await?;
-                Ok(client.query(sql, params).await?)
+                self.try_query(sql, params).await
             }
+        }
+    }
+
+    async fn try_query(&self, sql: &str, params: &[&(dyn ToSql + Sync)]) -> R<Vec<tokio_postgres::Row>> {
+        self.ensure().await?;
+        let guard = self.client.lock().await;
+        match guard.as_ref() {
+            Some(client) => Ok(client.query(sql, params).await?),
+            None => Err("postgres client unavailable".into()),
         }
     }
 }

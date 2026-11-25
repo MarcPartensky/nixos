@@ -35,6 +35,16 @@ const MAX_USER_CHARS: usize = 6000;
 const MAX_SOURCE_CHARS: usize = 60000;
 const MAX_TURN_CHARS: usize = 6000;
 
+/// Truncate on a character boundary. Slicing a `&str` by byte index panics when
+/// the cut lands inside a multi-byte character, and Marc writes French: an
+/// accent at the wrong offset would take the whole engine down.
+fn take_chars(s: &str, max_chars: usize) -> &str {
+    match s.char_indices().nth(max_chars) {
+        Some((i, _)) => &s[..i],
+        None => s,
+    }
+}
+
 fn open(cfg: &Config) -> R<Connection> {
     let conn = Connection::open_with_flags(
         &cfg.sessions_db,
@@ -73,6 +83,93 @@ pub fn load(cfg: &Config, since: f64, limit: usize) -> R<Vec<Session>> {
         }
     }
     Ok(out)
+}
+
+/// One conversation's metadata, without its messages. Enough for the
+/// deterministic pass, which reads the text one conversation at a time and
+/// never needs the whole window in memory.
+pub struct Meta {
+    pub id: String,
+    pub source: String,
+    pub title: String,
+    pub started_at: f64,
+    pub message_count: i64,
+    pub tool_call_count: i64,
+    pub tokens: i64,
+    pub cwd: String,
+    pub model: String,
+}
+
+/// Every conversation started after `since`, oldest first, metadata only.
+/// `limit = 0` means no limit; `offset` pages through the window.
+pub fn metas(cfg: &Config, since: f64, limit: usize, offset: usize) -> R<Vec<Meta>> {
+    let conn = open(cfg)?;
+    let mut stmt = conn.prepare(
+        "select id, source, title, started_at, message_count, tool_call_count, \
+         coalesce(input_tokens,0) + coalesce(output_tokens,0), coalesce(cwd,''), \
+         coalesce(model,'') from sessions \
+         where source not in ('cron','subagent','oneshot') and started_at > ? \
+         order by started_at asc limit ? offset ?",
+    )?;
+    let lim = if limit == 0 { -1i64 } else { limit as i64 };
+    let rows = stmt
+        .query_map(rusqlite::params![since, lim, offset as i64], |row| {
+            Ok(Meta {
+                id: row.get(0)?,
+                source: row.get(1)?,
+                title: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+                started_at: row.get(3)?,
+                message_count: row.get::<_, Option<i64>>(4)?.unwrap_or(0),
+                tool_call_count: row.get::<_, Option<i64>>(5)?.unwrap_or(0),
+                tokens: row.get::<_, Option<i64>>(6)?.unwrap_or(0),
+                cwd: row.get(7)?,
+                model: row.get(8)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows)
+}
+
+/// Marc's own turns of one conversation, bounded and with the injected context
+/// dropped: the text the deterministic scorer reads. Same rules as `build`, so
+/// both passes describe the same words.
+pub fn his_words(cfg: &Config, id: &str) -> R<String> {
+    let conn = open(cfg)?;
+    let mut stmt = conn.prepare(
+        "select content from messages where session_id = ? and role = 'user' \
+         and active = 1 order by id",
+    )?;
+    let msgs = stmt
+        .query_map(rusqlite::params![id], |row| {
+            Ok(row.get::<_, Option<String>>(0)?.unwrap_or_default())
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut user_text = String::new();
+    let mut summary_text = String::new();
+    for content in &msgs {
+        let text = content.trim();
+        if text.is_empty() {
+            continue;
+        }
+        if text.starts_with(COMPACTED) {
+            let room = MAX_USER_CHARS.saturating_sub(summary_text.chars().count());
+            if room > 0 {
+                summary_text.push_str(take_chars(text, room));
+                summary_text.push('\n');
+            }
+        } else if !is_injected(text) {
+            let room = MAX_USER_CHARS.saturating_sub(user_text.chars().count());
+            if room > 0 {
+                user_text.push_str(take_chars(text, room));
+                user_text.push('\n');
+            }
+        }
+    }
+    if user_text.trim().is_empty() {
+        user_text = summary_text;
+    }
+    Ok(user_text.trim().to_string())
 }
 
 pub fn load_one(cfg: &Config, id: &str) -> R<Option<Session>> {
@@ -129,16 +226,15 @@ fn build(
         }
         if role == "user" {
             if text.starts_with(COMPACTED) {
-                if summary_text.len() < MAX_USER_CHARS {
-                    let room = MAX_USER_CHARS - summary_text.len();
-                    summary_text.push_str(&text[..text.len().min(room)]);
+                let room = MAX_USER_CHARS.saturating_sub(summary_text.chars().count());
+                if room > 0 {
+                    summary_text.push_str(take_chars(text, room));
                     summary_text.push('\n');
                 }
             } else if !is_injected(text) {
-                if user_text.len() < MAX_USER_CHARS {
-                    let room = MAX_USER_CHARS - user_text.len();
-                    let chunk = &text[..text.len().min(room)];
-                    user_text.push_str(chunk);
+                let room = MAX_USER_CHARS.saturating_sub(user_text.chars().count());
+                if room > 0 {
+                    user_text.push_str(take_chars(text, room));
                     user_text.push('\n');
                 }
             } else {
@@ -148,7 +244,7 @@ fn build(
         if transcript.len() >= MAX_SOURCE_CHARS {
             break;
         }
-        let trimmed = &text[..text.len().min(MAX_TURN_CHARS)];
+        let trimmed = take_chars(text, MAX_TURN_CHARS);
         let label = if role == "user" {
             if text.starts_with(COMPACTED) {
                 "RESUME DE LA CONVERSATION"
