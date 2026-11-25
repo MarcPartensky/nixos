@@ -83,6 +83,19 @@ creation_rules:
           - *tower
           - *deck
           - *deck-host
+  # Windmill fleet (services/windmill): password of the Postgres role
+  # `windmill`, shared by the server (tower) and the workers (deck, anywhere).
+  # Recovered from the laptop checkout on 25/11/2026: the file was encrypted
+  # there, so only that checkout carried the creation rule (the 5 recipients
+  # below are exactly the ones written in the file's sops metadata).
+  - path_regex: secrets/windmill\.yml$
+    key_groups:
+      - age:
+          - *anywhere
+          - *tower
+          - *deck
+          - *deck-host
+          - *laptop
   # headscale mesh (services/headscale + services/tailscale): pre-authentication
   # key shared by the tailnet nodes, created on the VPS.
   - path_regex: secrets/headscale\.yml$
