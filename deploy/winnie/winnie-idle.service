@@ -1,0 +1,9 @@
+[Unit]
+# Stops the socket-activated winnie servers once nobody has been connected for
+# 15 min (see winnie-idle.sh). They come back on the first request: the sockets
+# in winnie-frontend.socket / winnie-dev.socket stay listening.
+Description=Stop the winnie servers when nobody is connected
+
+[Service]
+Type=oneshot
+ExecStart=/home/marc/git/nixos/deploy/winnie/winnie-idle.sh

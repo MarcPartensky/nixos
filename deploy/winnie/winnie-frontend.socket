@@ -1,0 +1,19 @@
+[Unit]
+# Winnie front, socket-activated (on-demand): systemd owns the listening
+# socket on 127.0.0.1:8888 and starts the server only when a connection
+# arrives. Combined with winnie-idle.timer (which stops the server once nobody
+# has been connected for 15 min), this is the native equivalent of Sablier:
+# nobody connected => no process at all, first request => server starts.
+#
+# The socket unit must be enabled (sockets.target), the SERVICE must NOT be:
+# if it were, it would bind the port itself and the socket unit could not.
+#
+# Target of the Pangolin resource `winnie-frontend` (winnie.marcpartensky.com).
+# That resource declares NO healthcheck, which is required here: a healthcheck
+# probes the port every 30 s and would wake the server forever.
+[Socket]
+ListenStream=127.0.0.1:8888
+Accept=no
+
+[Install]
+WantedBy=sockets.target

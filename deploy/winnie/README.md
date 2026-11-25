@@ -62,7 +62,9 @@ Ces secrets viennent des anciens fichiers `/var/lib/winnie/*.env` (uid/gid
 - Backend : `cargo build --release` dans `/home/marc/git/winnie/backend` puis
   `systemctl --user restart winnie-backend`.
 - Ingest nocturne : `winnie-ingest-nightly.service` + `.timer` vivent
-  desormais ICI (ajoutes le 17/11/2026). Le timer declenche a 01:00 et le
+  desormais ICI (ajoutes le 17/11/2026). Le timer declenche a 03:00 (avance
+  depuis 01:00 le 25/11/2026 : 01:00 entrait en collision avec le travail
+  Hermes de marc sur tower) et le
   binaire sort seul hors fenetre. Redeployer un binaire d'ingest =
   `cd /home/marc/git/winnie/ingest && cargo build --release` puis
   `systemctl --user restart winnie-ingest-nightly.timer` (le timer n'a pas

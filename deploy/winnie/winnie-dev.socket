@@ -1,0 +1,20 @@
+[Unit]
+# Winnie dev server (Vite), socket-activated (on-demand). Same pattern as
+# winnie-frontend.socket: systemd holds 8080 and starts Vite only on a
+# connection. This one matters most: Vite is the fattest of the three
+# (~150 MB RSS, Node), and it serves the debug APK
+# (dev.winnie.marcpartensky.com) plus the phone browser.
+#
+# Vite itself cannot inherit a socket, so winnie-dev-proxy.service puts
+# systemd-socket-proxyd in front of it: the proxy is the socket-activated unit
+# and forwards to Vite on 127.0.0.1:8081 (see winnie-dev.service).
+#
+# Target of the Pangolin resource `winnie-dev`: no healthcheck declared there
+# either, which is what makes sleeping possible.
+[Socket]
+ListenStream=8080
+Accept=no
+Service=winnie-dev-proxy.service
+
+[Install]
+WantedBy=sockets.target

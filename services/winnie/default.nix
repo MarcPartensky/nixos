@@ -1,52 +1,52 @@
 # services/winnie/default.nix
 #
-# Activation de Winnie sur tower. La source de verite est le flake du PROJET
-# (/home/marc/git/winnie) : son `nixosModules.default` declare l'infrastructure
-# (utilisateur/groupe winnie, base PostgreSQL + schema, secret JWT, bucket S3
-# Garage) et l'unite du backend. Ce module-ci ne porte que l'activation, les
-# secrets sops et les unites qui ne peuvent pas vivre dans le flake projet : le
-# front statique (app/dist, construit par npm HORS sandbox), le serveur de dev
-# Vite et l'ingest nocturne.
+# Activation of Winnie on tower. The source of truth is the PROJECT's flake
+# (/home/marc/git/winnie): its `nixosModules.default` declares the infrastructure
+# (winnie user/group, PostgreSQL database + schema, JWT secret, Garage S3
+# bucket) and the backend unit. This module only carries the activation, the
+# sops secrets and the units that cannot live in the project flake: the
+# static front (app/dist, built by npm OUTSIDE the sandbox), the Vite dev
+# server and the nightly ingest.
 #
-# POURQUOI getFlake ET PAS UN INPUT : le flake systeme reste propre (skill
-# flake-separation) et l'evaluation impure est deja celle de `nixos-rebuild
-# --impure`. Ne JAMAIS retirer l'import ci-dessous sans qu'un autre chemin
-# fournisse le meme module : un import retire supprime les unites au switch
-# suivant (vecu le 12/11 : module supprime du flake systeme le 10/11, switch du
-# 12/11 -> winnie-backend, winnie-frontend et winnie-dev disparus, api et front
-# en 502/503).
+# WHY getFlake AND NOT AN INPUT: the system flake stays clean (skill
+# flake-separation) and the impure evaluation is already that of `nixos-rebuild
+# --impure`. NEVER remove the import below without another path
+# providing the same module: a removed import deletes the units at the next
+# switch (experienced on 12/11: module removed from the system flake on 10/11, switch of
+# 12/11 -> winnie-backend, winnie-frontend and winnie-dev gone, api and front
+# in 502/503).
 #
-# ECART ASSUME, a retirer quand le working tree sera committe : le package
-# `backend` du flake se construit depuis l'arbre GIT, or les modules non
-# trackes du working tree (handlers/agent.rs, mcp.rs, api_tokens.rs) n'y sont
-# pas, donc ce package ne compile pas. On epingle les binaires compiles par
-# cargo dans le repo ; Nix les copie dans le store, ce qui les protege du GC.
-# Consequences : un changement Rust n'existe en prod qu'apres `cargo build
-# --release` DANS le repo puis un switch. Idem pour le front : `npm run build`
-# puis switch (builtins.path est impur, la copie date de l'evaluation).
+# ACCEPTED DEVIATION, to remove when the working tree is committed: the `backend`
+# package of the flake builds from the GIT tree, yet the untracked
+# modules of the working tree (handlers/agent.rs, mcp.rs, api_tokens.rs) are not
+# there, so this package does not compile. We pin the binaries compiled by
+# cargo in the repo; Nix copies them into the store, which protects them from GC.
+# Consequences: a Rust change exists in prod only after `cargo build
+# --release` IN the repo then a switch. Same for the front: `npm run build`
+# then switch (builtins.path is impure, the copy dates from evaluation).
 {
   config,
   pkgs,
   lib,
   ...
 }: let
-  # `path:` et non `git+file://` : la forme git passe par libgit2, qui refuse un
-  # dépôt appartenant à un autre utilisateur ("not owned by current user") — or
-  # tout nixos-rebuild tourne sous root via sudo, donc git+file casse chaque
+  # `path:` and not `git+file://`: the git form goes through libgit2, which refuses a
+  # repository owned by another user ("not owned by current user") - yet
+  # every nixos-rebuild runs as root via sudo, so git+file breaks each
   # switch.
   #
-  # COUT MESURE (13/11) : l'arbre winnie fait 16 Go, dont 11,5 Go de `*/target/`,
-  # sur 72 570 fichiers. Un `path:` oblige Nix a relire tout ca a CHAQUE
-  # evaluation (`nix hash path /home/marc/git/winnie` ne finit pas en 280 s,
-  # contre 1,3 s pour le depot nixos qui pese 6 Mo) : c'est la cause premiere
-  # des evals de 14 minutes sur tower.
+  # MEASURED COST (13/11): the winnie tree is 16 GB, of which 11.5 GB of `*/target/`,
+  # across 72 570 files. A `path:` forces Nix to re-read all of it on EVERY
+  # evaluation (`nix hash path /home/marc/git/winnie` does not finish in 280 s,
+  # versus 1.3 s for the nixos repo that weighs 6 MB): this is the primary cause
+  # of the 14-minute evals on tower.
   #
-  # PIEGE VERIFIE : on ne peut pas filtrer la source. `builtins.getFlake`
-  # refuse un chemin du store ("the string '/nix/store/...-winnie-src-filtre'
-  # is not allowed to refer to a store path"), or `builtins.path {filter=...}`
-  # rend justement un chemin du store. Les seules sorties sont de reduire
-  # l'arbre lui-meme (CARGO_TARGET_DIR hors du depot) ou de ne plus passer par
-  # getFlake du tout (importer les fichiers du module par chemin).
+  # VERIFIED PITFALL: the source cannot be filtered. `builtins.getFlake`
+  # refuses a store path ("the string '/nix/store/...-winnie-src-filtre'
+  # is not allowed to refer to a store path"), yet `builtins.path {filter=...}`
+  # returns exactly a store path. The only ways out are to shrink
+  # the tree itself (CARGO_TARGET_DIR outside the repo) or to no longer go through
+  # getFlake at all (import the module's files by path).
   winnieFlake = builtins.getFlake (toString /home/marc/git/winnie);
 
   pin = name: binary:
@@ -66,21 +66,21 @@
     name = "winnie-ui-index";
   };
 
-  # Le backend et l'ingest lisent OPENROUTER_API_KEY : la cle vit dans le .env
-  # de hermes (source unique, deja utilisee par l'agent). L'unite ci-dessous en
-  # extrait la seule affectation utile dans un fichier 0640 lisible par le
-  # groupe winnie, parce que systemd refuse un EnvironmentFile qui n'est pas un
-  # fichier de variables.
+  # The backend and the ingest read OPENROUTER_API_KEY: the key lives in hermes's
+  # .env (single source, already used by the agent). The unit below
+  # extracts the single useful assignment into a 0640 file readable by the
+  # winnie group, because systemd refuses an EnvironmentFile that is not a
+  # variables file.
   openrouterEnv = "/var/lib/winnie/openrouter.env";
 in {
   imports = [
-    # Infra + unité winnie-backend (options services.winnie.backend.*).
+    # Infra + winnie-backend unit (services.winnie.backend.* options).
     winnieFlake.nixosModules.default
   ];
 
-  # Garage est deja en place pour tower (services/garage, buckets artifacts et
-  # photos-*) : le module projet ne doit pas le redeclarer. Il ne fait alors que
-  # provisionner le bucket winnie-media et sa cle, via winnie-bucket.
+  # Garage is already in place for tower (services/garage, artifacts and
+  # photos-* buckets): the project module must not redeclare it. It then only
+  # provisions the winnie-media bucket and its key, via winnie-bucket.
   services.winnie.manageGarage = false;
 
   services.winnie.backend = {
@@ -119,18 +119,28 @@ in {
     after = ["winnie-ingest-env.service"];
     wants = ["winnie-bucket.service"];
     serviceConfig.ExecStart = lib.mkForce "${backendBin}/bin/winnie-backend";
-    # Stripe (checkout des commandes) : la cle vit dans /var/lib/winnie/stripe.env
-    # depuis le 10/11, hors sops (secrets d'ETAT generes sur la machine). Optionnel
-    # ("-") : sans le fichier, /payments/config repond « disabled » et le reste de
-    # l'API marche.
-    serviceConfig.EnvironmentFile = ["-/var/lib/winnie/stripe.env"];
+    # Stripe (order checkout): the key lives in /var/lib/winnie/stripe.env
+    # since 10/11, outside sops (STATE secrets generated on the machine). Optional
+    # ("-"): without the file, /payments/config answers "disabled" and the rest of
+    # the API works.
+    #
+    # OIDC app "winnie": it lives in its OWN Zitadel project (role
+    # "winnie", projectRoleCheck), so its client_id changed. The client_id
+    # is not a secret: a generated file is enough. The whole block is set
+    # AFTER the project module's (mkAfter) and the client-id is LAST,
+    # so it overrides the sops oidc_env value (systemd: last file
+    # wins) without having to rewrite secrets/winnie.yml.
+    serviceConfig.EnvironmentFile = lib.mkAfter [
+      "-/var/lib/winnie/stripe.env"
+      (pkgs.writeText "winnie-oidc-client-id.env" "OIDC_CLIENT_ID=400636688415654188")
+    ];
   };
 
-  # Front Svelte 5 (build statique) : c'est la cible de la ressource Pangolin
-  # winnie-frontend (winnie.marcpartensky.com, port 8888). Le port ici DOIT
-  # rester celui de services/newt.
+  # Svelte 5 front (static build): it is the target of the Pangolin resource
+  # winnie-frontend (winnie.marcpartensky.com, port 8888). The port here MUST
+  # stay the one from services/newt.
   systemd.services.winnie-frontend = {
-    description = "Winnie front (Svelte 5 statique)";
+    description = "Winnie front (Svelte 5 static)";
     wantedBy = ["multi-user.target"];
     after = ["network.target"];
     serviceConfig = {
@@ -148,12 +158,12 @@ in {
     };
   };
 
-  # Serveur de dev Vite sur 8080 : cible de la ressource Pangolin winnie-dev
-  # (dev.winnie.marcpartensky.com) et URL de l'APK debug. Il sert la SOURCE
-  # (HMR), donc il tourne en tant que marc sur son working tree, pas depuis le
+  # Vite dev server on 8080: target of the Pangolin resource winnie-dev
+  # (dev.winnie.marcpartensky.com) and URL of the debug APK. It serves the SOURCE
+  # (HMR), so it runs as marc on his working tree, not from the
   # store.
   systemd.services.winnie-dev = {
-    description = "Winnie dev server (Svelte/Vite HMR) sur 127.0.0.1:8080";
+    description = "Winnie dev server (Svelte/Vite HMR) on 127.0.0.1:8080";
     wantedBy = ["multi-user.target"];
     after = ["network.target"];
     serviceConfig = {
@@ -166,8 +176,8 @@ in {
     };
   };
 
-  # Ingest nocturne : lit sa fenetre, son modele et ses zones dans Postgres
-  # (`ingest_config`, edite depuis l'ecran Settings de l'app).
+  # Nightly ingest: reads its window, its model and its zones from Postgres
+  # (`ingest_config`, edited from the app's Settings screen).
   systemd.services.winnie-ingest-nightly = {
     description = "Winnie nightly ingest (config-driven 01:00-08:00 window)";
     after = [
@@ -180,8 +190,8 @@ in {
     requires = ["postgresql.service" "winnie-ingest-env.service"];
     path = [pkgs."poppler-utils"];
     serviceConfig = {
-      # `exec` (et non `oneshot`) pour que RuntimeMaxSec s'applique : le batch
-      # est un processus long, pas une tache d'activation.
+      # `exec` (and not `oneshot`) so that RuntimeMaxSec applies: the batch
+      # is a long process, not an activation task.
       Type = "exec";
       User = "hermes";
       WorkingDirectory = "/var/lib/winnie";

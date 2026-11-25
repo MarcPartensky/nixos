@@ -10,17 +10,35 @@
 # `systemctl --user restart winnie-frontend`. Le domaine dev, lui, sert la
 # SOURCE par Vite (winnie-dev.service), sans build.
 [Unit]
-Description=Winnie front (Svelte 5 statique) sur 127.0.0.1:8888
-After=network-online.target
+Description=Winnie front (Svelte 5 statique), socket-active sur 127.0.0.1:8888
+Wants=winnie-frontend.socket
+After=winnie-frontend.socket network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
+# Socket activation: sws inherits the listening socket owned by
+# winnie-frontend.socket (upstream pattern: --fd 0 + StandardInput=fd:<unit>).
+# --host/--port must NOT be passed together with --fd.
 ExecStart=/var/lib/hermes/winnie/sws/bin/static-web-server \
-  --host 127.0.0.1 \
-  --port 8888 \
+  --fd 0 \
   --root /home/marc/git/winnie/app/dist \
   --page-fallback /home/marc/git/winnie/app/dist/index.html \
   --health
-Restart=always
+StandardInput=fd:winnie-frontend.socket
+Restart=on-failure
 RestartSec=5
+# Sandbox: the dist is only read.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

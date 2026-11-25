@@ -1,0 +1,28 @@
+[Unit]
+# Socket-activated shim in front of the Vite dev server, which cannot inherit
+# a listening socket itself. Started by winnie-dev.socket on the first
+# connection; Requires= pulls winnie-dev.service up in the same movement and
+# the proxy waits for 127.0.0.1:8081 to accept before forwarding.
+#
+# --exit-idle-time: the proxy goes away 60 s after the last connection, so the
+# only thing left to stop is Vite itself (winnie-idle.timer).
+Description=Winnie dev socket proxy (systemd-socket-proxyd -> 127.0.0.1:8090)
+Requires=winnie-dev.service
+After=winnie-dev.service
+
+[Service]
+Type=simple
+ExecStart=/run/current-system/systemd/lib/systemd/systemd-socket-proxyd --exit-idle-time=60s 127.0.0.1:8090
+Restart=no
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+SystemCallArchitectures=native

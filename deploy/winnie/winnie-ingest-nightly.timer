@@ -1,8 +1,10 @@
+# Start moved from 01:00 to 03:00 on 25/11/2026 (marc: 01:00 was colliding with
+# his own late-evening Hermes work on tower; 03:00 is a safer slot).
 [Unit]
 Description=Nightly Winnie ingest window (unite utilisateur, cf winnie-ingest-nightly.service)
 
 [Timer]
-OnCalendar=*-*-* 01:00:00
+OnCalendar=*-*-* 03:00:00
 Persistent=true
 Unit=winnie-ingest-nightly.service
 

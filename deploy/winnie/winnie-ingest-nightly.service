@@ -8,7 +8,7 @@
 #
 # Secrets dans /var/lib/hermes/winnie/ (0700 hermes), meme emplacement que
 # winnie-backend : openrouter.env fournit OPENROUTER_API_KEY.
-Description=Winnie nightly ingest (config-driven 01:00-08:00 window)
+Description=Winnie nightly ingest (config-driven 03:00-08:00 window)
 After=network-online.target
 Wants=network-online.target
 
@@ -19,6 +19,12 @@ Environment=DATABASE_URL=postgresql://winnie@127.0.0.1/winnie
 Environment=RUST_LOG=winnie_ingest=info
 Environment=PATH=/nix/store/qypjskdxs8kh5zd5i0zfsa1fam81kpi0-poppler-utils-25.10.0/bin:/run/current-system/sw/bin
 EnvironmentFile=-/var/lib/hermes/winnie/openrouter.env
+# Yield to interactive work: the batch only gets full CPU when nobody else
+# wants it. Replaces what winnie-cpu-governor used to do for this unit (the
+# governor only knows how to cap SYSTEM units, and this one moved to user
+# scope on 17/11/2026, so its 480% ceiling never applied).
+CPUWeight=20
+IOWeight=50
 ExecStart=/home/marc/git/winnie/ingest/target/release/winnie-ingest nightly
 RuntimeMaxSec=27000
 TimeoutStartSec=infinity

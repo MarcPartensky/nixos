@@ -9,13 +9,35 @@
 # HORS CONF HOTE depuis le 13/11/2026 (cf. winnie-backend.service du meme
 # dossier). Node = celui du profil hermes, pas une version congelee.
 [Unit]
-Description=Winnie dev server (Svelte/Vite HMR) sur 127.0.0.1:8080
+Description=Winnie dev server (Svelte/Vite HMR), socket-active sur 8080 -> Vite 127.0.0.1:8081
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 WorkingDirectory=/home/marc/git/winnie/app
-ExecStart=/etc/profiles/per-user/hermes/bin/node /home/marc/git/winnie/app/node_modules/vite/bin/vite.js
-Restart=always
+# Port 8090: the public 8080 is held by winnie-dev.socket and reached through
+# winnie-dev-proxy.service (systemd-socket-proxyd), because Vite cannot inherit
+# a listening socket. 8081/8082 are taken by the k3s server on this host, hence
+# 8090. --strictPort: fail loudly rather than drift to 8091.
+ExecStart=/etc/profiles/per-user/hermes/bin/node /home/marc/git/winnie/app/node_modules/vite/bin/vite.js --host 127.0.0.1 --port 8090 --strictPort
+Restart=on-failure
 RestartSec=3
+# Vite exits 143 (SIGTERM) without a handler: a stop from winnie-idle.sh must
+# not leave the unit in `failed`.
+SuccessExitStatus=143
+# Sandbox. ProtectHome is left off on purpose: Vite writes its dep cache under
+# node_modules/.vite in the repo. AF_NETLINK is needed by Node's interface
+# enumeration (the LAN URLs Vite prints at startup).
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
