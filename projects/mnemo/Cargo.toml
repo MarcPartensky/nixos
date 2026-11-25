@@ -1,0 +1,23 @@
+[package]
+name = "mnemo"
+version = "0.1.0"
+edition = "2021"
+description = "Retention engine: score Hermes conversations, explain the gaps, feed the podcast and typer"
+license = "MIT"
+
+[[bin]]
+name = "mnemo"
+path = "src/main.rs"
+
+[dependencies]
+axum = { version = "0.8", features = ["json"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "time", "sync"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+tokio-postgres = "0.7"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+clap = { version = "4", features = ["derive"] }
+
+[profile.release]
+opt-level = 2

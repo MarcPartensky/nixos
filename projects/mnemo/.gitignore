@@ -1,0 +1,8 @@
+target/
+result
+result-*
+*.log
+.env
+# local scratch: a reduced copy of the Hermes state database and the sheets
+# generated from it while testing on the laptop. Never tracked.
+demo/

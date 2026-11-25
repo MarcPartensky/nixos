@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mnemo</title>
+<style>
+  :root {
+    --base: #1e1e2e; --mantle: #181825; --crust: #11111b;
+    --surface0: #313244; --surface1: #45475a; --overlay1: #7f849c;
+    --text: #cdd6f4; --subtext: #a6adc8; --lavender: #b4befe; --mauve: #cba6f7;
+    --green: #a6e3a1; --peach: #fab387; --red: #f38ba8; --teal: #94e2d5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--base); color: var(--text);
+         font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--mantle);
+           border-bottom: 1px solid var(--surface0); padding: 14px 20px;
+           display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+  h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
+  h1 span { color: var(--lavender); }
+  .muted { color: var(--overlay1); font-size: 13px; }
+  main { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 0; min-height: calc(100vh - 56px); }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  #list { border-right: 1px solid var(--surface0); overflow-y: auto; max-height: calc(100vh - 56px); }
+  .row { padding: 12px 16px; border-bottom: 1px solid var(--surface0); cursor: pointer; }
+  .row:hover { background: var(--surface0); }
+  .row.active { background: var(--surface0); box-shadow: inset 3px 0 0 var(--lavender); }
+  .row .t { font-weight: 600; }
+  .row .d { color: var(--subtext); font-size: 13px; margin-top: 2px; }
+  .axes { display: flex; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--overlay1); flex-wrap: wrap; }
+  .axes b { color: var(--teal); font-weight: 600; }
+  .prio { float: right; color: var(--peach); font-variant-numeric: tabular-nums; }
+  #pane { padding: 22px 26px; overflow-y: auto; max-height: calc(100vh - 56px); }
+  #pane h2 { color: var(--lavender); font-size: 20px; margin: 0 0 4px; }
+  #pane h3 { color: var(--mauve); font-size: 15px; margin: 22px 0 6px; }
+  #pane p, #pane li { color: var(--text); }
+  #pane code { background: var(--surface0); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  #gaps { margin: 14px 0 0; padding: 12px 14px; background: var(--mantle);
+          border-left: 3px solid var(--peach); border-radius: 6px; }
+  #gaps li { margin-bottom: 6px; }
+  #gaps .q { color: var(--overlay1); font-style: italic; }
+  .empty { color: var(--overlay1); }
+  button { background: var(--surface0); color: var(--text); border: 1px solid var(--surface1);
+           border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  button:hover { border-color: var(--lavender); color: var(--lavender); }
+  input { background: var(--crust); color: var(--text); border: 1px solid var(--surface1);
+          border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>mnemo<span>.</span></h1>
+  <span class="muted" id="stats">chargement…</span>
+  <span style="flex:1"></span>
+  <input id="token" type="password" placeholder="X-Mnemo-Token" style="width:220px">
+  <button id="reload">Recharger</button>
+  <button id="scan">Scanner</button>
+</header>
+<main>
+  <div id="list"></div>
+  <div id="pane"><p class="empty">Choisis une conversation à gauche.</p></div>
+</main>
+<script>
+const token = () => document.getElementById('token').value.trim();
+async function api(path, options = {}) {
+  const headers = Object.assign({'Content-Type': 'application/json'}, options.headers || {});
+  if (token()) headers['X-Mnemo-Token'] = token();
+  const resp = await fetch(path, Object.assign({}, options, {headers}));
+  if (!resp.ok) throw new Error(resp.status + ' ' + (await resp.text()).slice(0, 200));
+  const type = resp.headers.get('content-type') || '';
+  return type.includes('json') ? resp.json() : resp.text();
+}
+
+function md(text) {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const lines = esc(text || '').split('\n');
+  let html = '', list = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (line.startsWith('### ')) { if (list) { html += '</ul>'; list = false; }
+      html += '<h3>' + line.slice(4) + '</h3>'; }
+    else if (line.startsWith('## ')) { if (list) { html += '</ul>'; list = false; }
+      html += '<h3>' + line.slice(3) + '</h3>'; }
+    else if (line.startsWith('# ')) { if (list) { html += '</ul>'; list = false; }
+      html += '<h2>' + line.slice(2) + '</h2>'; }
+    else if (/^[-*] /.test(line)) { if (!list) { html += '<ul>'; list = true; }
+      html += '<li>' + line.slice(2).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + '</li>'; }
+    else if (line === '') { if (list) { html += '</ul>'; list = false; } }
+    else { if (list) { html += '</ul>'; list = false; }
+      html += '<p>' + line.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>') + '</p>'; }
+  }
+  if (list) html += '</ul>';
+  return html;
+}
+
+let items = [];
+function render() {
+  const list = document.getElementById('list');
+  list.innerHTML = items.length ? '' : '<div class="row empty">rien au-dessus du seuil</div>';
+  items.forEach(item => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.dataset.id = item.id;
+    row.innerHTML =
+      '<span class="prio">' + (item.priorite ?? 0).toFixed(1) + '</span>' +
+      '<div class="t">' + (item.sujet || item.title || item.id.slice(0, 12)) + '</div>' +
+      '<div class="d">' + (item.domaine || '') + (item.reading_minutes ? ' · ' + item.reading_minutes + ' min' : '') + '</div>' +
+      '<div class="axes"><span>matiere <b>' + (item.matiere ?? '-') + '</b></span>' +
+      '<span>points <b>' + (item.points ?? '-') + '</b></span>' +
+      '<span>importance <b>' + (item.importance ?? '-') + '</b></span>' +
+      (item.focus ? '<span style="color:var(--red)">focus</span>' : '') + '</div>';
+    row.onclick = () => open(item.id, row);
+    list.appendChild(row);
+  });
+}
+
+async function open(id, row) {
+  document.querySelectorAll('.row').forEach(r => r.classList.remove('active'));
+  if (row) row.classList.add('active');
+  const pane = document.getElementById('pane');
+  pane.innerHTML = '<p class="empty">chargement…</p>';
+  try {
+    const data = await api('/api/brief?session_id=' + encodeURIComponent(id));
+    const brief = data.brief || {};
+    let html = '<h2>' + (brief.title || id) + '</h2>';
+    html += '<p class="muted">' + (brief.sujet || '') + ' · ' + (brief.reading_minutes || '?') +
+            ' min · priorité ' + (brief.priorite ?? '?') + '</p>';
+    if (brief.objectif) html += '<p><b>Ce qu\'il cherchait :</b> ' + brief.objectif + '</p>';
+    html += md(brief.body);
+    if (data.gaps && data.gaps.length) {
+      html += '<div id="gaps"><b>Points non compris</b><ul>' + data.gaps.map(g =>
+        '<li>' + g.point + (g.quote ? ' <span class="q">« ' + g.quote + ' »</span>' : '') + '</li>'
+      ).join('') + '</ul></div>';
+    }
+    pane.innerHTML = html;
+  } catch (err) {
+    pane.innerHTML = '<p class="empty">pas de fiche pour cette conversation (' + err.message + ')</p>';
+  }
+}
+
+async function load() {
+  try {
+    const stats = await api('/api/stats');
+    document.getElementById('stats').textContent =
+      stats.stats.scored + ' notées · ' + stats.stats.briefs + ' fiches · ' +
+      stats.stats.important + ' importantes · modèle ' + stats.model;
+    const data = await api('/api/backlog?min_priority=0&limit=200');
+    items = data.items || [];
+    render();
+  } catch (err) {
+    document.getElementById('stats').textContent = 'auth requise: ' + err.message;
+  }
+}
+
+document.getElementById('reload').onclick = load;
+document.getElementById('scan').onclick = async () => {
+  const button = document.getElementById('scan');
+  button.textContent = 'scan…';
+  try { await api('/api/scan', {method: 'POST', body: JSON.stringify({limit: 20, briefs: true})}); }
+  catch (err) { alert(err.message); }
+  button.textContent = 'Scanner';
+  load();
+};
+load();
+</script>
+</body>
+</html>

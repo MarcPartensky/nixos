@@ -1,0 +1,43 @@
+# mnemo: build on the laptop, run as a pod on tower.
+#
+# The Rust compile belongs to the laptop; tower only ever imports the finished
+# tarball into containerd.
+set shell := ["bash", "-c"]
+
+tower := "tower"
+laptop := "laptop"
+remote := "~/git/mnemo"
+image := "/var/lib/hermes/mnemo/mnemo-oci.tar"
+
+# local checks, no LLM call
+check:
+    cargo check --all-targets
+
+fmt:
+    cargo fmt
+
+# fast build, for a local run against a copy of the state database
+build:
+    cargo build --release
+
+# the binary that ships: built on the laptop, in the nix sandbox
+image-build:
+    ssh {{laptop}} 'cd {{remote}} && nix build .#image --print-out-paths'
+
+# build on the laptop and put the tarball where the module expects it
+ship:
+    rsync -a --exclude target --exclude .git ./ {{laptop}}:{{remote}}/
+    ssh {{laptop}} 'cd {{remote}} && nix build .#image --print-out-paths' > /tmp/mnemo-image-path
+    rsync -a {{laptop}}:$(cat /tmp/mnemo-image-path) {{image}}
+    sha256sum {{image}}
+
+# the pod: applied by k3s from services.k3s.manifests, this is only for a nudge
+pods:
+    KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get pods -n mnemo -o wide
+
+logs:
+    KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl logs -n mnemo deploy/mnemo --tail=50
+
+# one conversation end to end, through the pod
+scan-one id:
+    KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl exec -n mnemo deploy/mnemo -- mnemo publish {{id}}
