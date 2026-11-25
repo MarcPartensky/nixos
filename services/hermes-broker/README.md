@@ -1,73 +1,74 @@
 # hermes-broker
 
-La seule porte vers root pour l'agent Hermes. L'agent n'a aucun privilege : il
-peut seulement **demander**, et le broker n'execute que ce qu'une preuve humaine
-a autorise.
+The only door to root for the Hermes agent. The agent has no privilege: it can
+only **ask**, and the broker executes only what a human proof authorized.
 
-## Pourquoi
+## Why
 
-`nixos-rebuild` est deja en NOPASSWD scopé, mais tout le reste (redemarrer une
-unite, lire un fichier root, reparer un chemin) obligeait a demander un mot de
-passe dans le chat. Le broker remplace cette saisie par un choix de preuves, sans
-elargir les droits de l'agent d'un pouce.
+`nixos-rebuild` is already scoped NOPASSWD, but everything else (restarting a
+unit, reading a root file, repairing a path) forced asking for a password in the
+chat. The broker replaces that typing with a choice of proofs, without widening
+the agent's rights by an inch.
 
-## Flux
+## Flow
 
-1. L'agent (utilisateur `hermes`) ecrit `{argv, cwd, reason}` sur
-   `/run/hermes-broker/broker.sock`. Le noyau attribue l'appel a son uid via
-   `SO_PEERCRED`, il n'y a aucun secret a voler cote agent.
-2. Le broker (root) rend un jeton a usage unique valable `BROKER_TTL` (300 s) et
-   publie la commande exacte sur `https://broker.marcpartensky.com/r/<jeton>`.
-3. Marc prouve son identite par le canal qu'il veut : mot de passe systeme
-   (PAM) ou passkey WebAuthn (Touch ID du Mac, empreinte du telephone,
-   Bitwarden, cle materielle). Tous les canaux sont armes en meme temps et la
-   **premiere** preuve valide consomme la demande.
-4. Le broker execute la commande en root, journalise l'appel dans
-   `/var/lib/hermes-broker/audit.jsonl`, et rend stdout/stderr/rc a l'agent.
+1. The agent (user `hermes`) writes `{argv, cwd, reason}` to
+   `/run/hermes-broker/broker.sock`. The kernel attributes the call to its uid
+   through `SO_PEERCRED`, so there is no secret to steal on the agent side.
+2. The broker (root) returns a single-use token valid for `BROKER_TTL` (300 s)
+   and publishes the exact command on
+   `https://broker.marcpartensky.com/r/<token>`.
+3. Marc proves his identity through whichever channel he wants: system password
+   (PAM) or WebAuthn passkey (Touch ID on the Mac, phone fingerprint,
+   Bitwarden, hardware key). All channels are armed at the same time and the
+   **first** valid proof consumes the request.
+4. The broker executes the command as root, logs the call into
+   `/var/lib/hermes-broker/audit.jsonl`, and returns stdout/stderr/rc to the
+   agent.
 
-## Utilisation cote agent
+## Agent-side usage
 
 ```
-hermes-request --reason "redemarrer nginx apres changement de vhost" -- \
+hermes-request --reason "restart nginx after a vhost change" -- \
   systemctl restart nginx
 ```
 
-Le client affiche l'URL d'approbation sur stderr des que la demande est en
-attente, puis les sorties de la commande.
+The client prints the approval URL on stderr as soon as the request is pending,
+then the command's output.
 
-## Enrolement d'une passkey
+## Enrolling a passkey
 
 ```
 https://broker.marcpartensky.com/enroll
 ```
 
-Le mot de passe systeme autorise l'enrolement (une fois), puis
-`navigator.credentials.create()` enregistre la passkey. La verification exige le
-flag `user-verification`, donc un geste biometrie ou un PIN a chaque assertion.
-Plusieurs passkeys peuvent coexister (Mac, telephone, Bitwarden) ; `creds.json`
-ne contient que des cles **publiques**.
+The system password authorizes the enrollment (once), then
+`navigator.credentials.create()` registers the passkey. Verification requires
+the `user-verification` flag, hence a biometric gesture or a PIN on every
+assertion. Several passkeys can coexist (Mac, phone, Bitwarden); `creds.json`
+holds only **public** keys.
 
-## Etat
+## State
 
-- `/var/lib/hermes-broker/creds.json` : passkeys enregistrees (cles publiques)
-- `/var/lib/hermes-broker/audit.jsonl` : une ligne par approbation, refus,
-  expiration et execution
-- journal : `journalctl -u hermes-broker`
+- `/var/lib/hermes-broker/creds.json`: registered passkeys (public keys)
+- `/var/lib/hermes-broker/audit.jsonl`: one line per approval, refusal,
+  expiration and execution
+- log: `journalctl -u hermes-broker`
 
-## Ce qui a ete abandonne
+## What was abandoned
 
-Un binaire maison utilisant une cle du Secure Enclave avec ACL
-`biometryCurrentSet` aurait donne un dialogue natif Touch ID sans navigateur.
-macOS refuse : il faut l'entitlement `keychain-access-groups`, qui exige une
-identite Apple Developer. En signature ad-hoc l'ajout de la cle echoue en
-`-34018` (missing entitlement), et poser l'entitlement sur un binaire ad-hoc fait
-tuer le processus par le noyau (SIGKILL). WebAuthn dans Chrome, signe par Apple,
-donne la meme cle materielle sans certificat ; le prix est que la page
-d'approbation doit etre ouverte.
+A home-made binary using a Secure Enclave key with the `biometryCurrentSet` ACL
+would have given a native Touch ID dialog without a browser. macOS refuses: it
+needs the `keychain-access-groups` entitlement, which requires an Apple
+Developer identity. With an ad-hoc signature, adding the key fails with
+`-34018` (missing entitlement), and setting the entitlement on an ad-hoc binary
+gets the process killed by the kernel (SIGKILL). WebAuthn in Chrome, signed by
+Apple, gives the same hardware key without a certificate; the price is that the
+approval page has to be open.
 
 ## Tests
 
-`python3 test_broker.py` (hors NixOS, dans le dossier source) verifie le cycle
-complet sans materiel : page, options WebAuthn, verification ES256, refus d'une
-signature alteree, mauvais rpId, absence de verification utilisateur, expiration,
-execution reelle et audit.
+`python3 test_broker.py` (outside NixOS, in the source folder) verifies the full
+cycle without hardware: page, WebAuthn options, ES256 verification, refusal of a
+tampered signature, wrong rpId, missing user verification, expiration, real
+execution and audit.

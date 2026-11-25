@@ -1,21 +1,21 @@
-# Winnie hors conf hote (deploy/winnie)
+# Winnie out of the host config (deploy/winnie)
 
-Winnie n'est plus dans la conf NixOS de tower depuis le 13/11/2026 : le module
-lisait le flake du projet avec `builtins.getFlake`, ce qui forcait Nix a hacher
-les 16 Go de l'arbre de travail a chaque evaluation (863 s) et rendait `--impure`
-obligatoire. Le declencheur de la sortie est documente dans
-`services/default.nix` (import `./winnie` commente).
+Winnie has not been in tower's NixOS config since 13/11/2026: the module read
+the project flake with `builtins.getFlake`, which forced Nix to hash the 16 GB
+working tree on every evaluation (863 s) and made `--impure` mandatory. The
+trigger of the exit is documented in `services/default.nix` (import `./winnie`
+commented out).
 
-Ces trois unites remplacent les unites root supprimees :
+These three units replace the removed root units:
 
-| unite | role | port | domaine public (newt/Pangolin) |
+| unit | role | port | public domain (newt/Pangolin) |
 | --- | --- | --- | --- |
-| `winnie-backend.service` | backend Rust/Axum | 127.0.0.1:8787 | api.winnie.marcpartensky.com |
-| `winnie-frontend.service` | front statique (`app/dist`) | 127.0.0.1:8888 | winnie.marcpartensky.com |
-| `winnie-dev.service` | Vite + HMR sur la source | 0.0.0.0:8080 | dev.winnie.marcpartensky.com |
+| `winnie-backend.service` | Rust/Axum backend | 127.0.0.1:8787 | api.winnie.marcpartensky.com |
+| `winnie-frontend.service` | static front (`app/dist`) | 127.0.0.1:8888 | winnie.marcpartensky.com |
+| `winnie-dev.service` | Vite + HMR on the source | 0.0.0.0:8080 | dev.winnie.marcpartensky.com |
 
-Elles tournent dans le **systemd utilisateur de `hermes`** (linger actif), pas
-dans systemd systeme : pas de root, pas de `nixos-rebuild`. Installation :
+They run in **`hermes`'s user systemd** (linger active), not in the system
+systemd: no root, no `nixos-rebuild`. Installation:
 
 ```sh
 mkdir -p ~/.config/systemd/user/default.target.wants
@@ -28,54 +28,53 @@ systemctl --user daemon-reload
 systemctl --user start winnie-backend winnie-frontend winnie-dev
 ```
 
-## Secrets et etat
+## Secrets and state
 
-`/var/lib/hermes/winnie/` (0700 hermes) porte les fichiers d'environnement, tous
-optionnels sauf le premier :
+`/var/lib/hermes/winnie/` (0700 hermes) carries the environment files, all
+optional except the first:
 
-- `jwt.env` : `JWT_SECRET` (obligatoire ; sans lui le binaire signe avec un
-  defaut de dev public)
-- `s3.env` : `S3_ENDPOINT`, `S3_BUCKET=winnie-media`, `S3_ACCESS_KEY`,
-  `S3_SECRET_KEY`, `S3_REGION`, `S3_FORCE_PATH_STYLE` (sans lui `/media/*`
-  repond 503 et les photos du feed sont absentes)
-- `oidc.env` : `OIDC_*` (login Zitadel ; sans lui `/auth/methods` annonce
+- `jwt.env`: `JWT_SECRET` (mandatory; without it the binary signs with a public
+  dev default)
+- `s3.env`: `S3_ENDPOINT`, `S3_BUCKET=winnie-media`, `S3_ACCESS_KEY`,
+  `S3_SECRET_KEY`, `S3_REGION`, `S3_FORCE_PATH_STYLE` (without it `/media/*`
+  answers 503 and the feed's photos are missing)
+- `oidc.env`: `OIDC_*` (Zitadel login; without it `/auth/methods` reports
   `zitadel: false`)
-- `openrouter.env` : `OPENROUTER_API_KEY` (chat + ingest)
-- `stripe.env` : `STRIPE_*` (checkout)
+- `openrouter.env`: `OPENROUTER_API_KEY` (chat + ingest)
+- `stripe.env`: `STRIPE_*` (checkout)
 
-`sws/` est un lien GC-safe vers `static-web-server`
-(`nix build nixpkgs#static-web-server --out-link .../winnie/sws`), `sops/` de
-meme pour le binaire sops qui a servi a restaurer `oidc.env` (cle d'hote
-ed25519, root).
+`sws/` is a GC-safe link to `static-web-server`
+(`nix build nixpkgs#static-web-server --out-link .../winnie/sws`), `sops/`
+likewise for the sops binary that was used to restore `oidc.env` (ed25519 host
+key, root).
 
-Ces secrets viennent des anciens fichiers `/var/lib/winnie/*.env` (uid/gid
-`winnie` orphelins depuis le 13/11, 0750) et du secret sops `oidc_env` de
-`secrets/winnie.yml`, copies une fois par
-`/var/lib/hermes/winnie/restore-secrets.sh` execute en root via
-`hermes-request` ; journal : `/var/lib/hermes/winnie/restore-secrets.log`.
+These secrets come from the old `/var/lib/winnie/*.env` files (uid/gid `winnie`
+orphaned since 13/11, 0750) and from the sops secret `oidc_env` of
+`secrets/winnie.yml`, copied once by
+`/var/lib/hermes/winnie/restore-secrets.sh` run as root through
+`hermes-request`; log: `/var/lib/hermes/winnie/restore-secrets.log`.
 
-## Redeployer
+## Redeploying
 
-- Front statique : `cd /home/marc/git/winnie/app && npm run build` puis
-  `systemctl --user restart winnie-frontend` (le domaine prod sert `dist`).
-- Dev : rien a faire, Vite sert la source (`dev.winnie...`), HMR actif.
-- Backend : `cargo build --release` dans `/home/marc/git/winnie/backend` puis
+- Static front: `cd /home/marc/git/winnie/app && npm run build` then
+  `systemctl --user restart winnie-frontend` (the prod domain serves `dist`).
+- Dev: nothing to do, Vite serves the source (`dev.winnie...`), HMR active.
+- Backend: `cargo build --release` in `/home/marc/git/winnie/backend` then
   `systemctl --user restart winnie-backend`.
-- Ingest nocturne : `winnie-ingest-nightly.service` + `.timer` vivent
-  desormais ICI (ajoutes le 17/11/2026). Le timer declenche a 03:00 (avance
-  depuis 01:00 le 25/11/2026 : 01:00 entrait en collision avec le travail
-  Hermes de marc sur tower) et le
-  binaire sort seul hors fenetre. Redeployer un binaire d'ingest =
-  `cd /home/marc/git/winnie/ingest && cargo build --release` puis
-  `systemctl --user restart winnie-ingest-nightly.timer` (le timer n'a pas
-  besoin d'etre arrete : le binaire est relu a chaque declenchement).
+- Nightly ingest: `winnie-ingest-nightly.service` + `.timer` now live HERE
+  (added 17/11/2026). The timer fires at 03:00 (moved up from 01:00 on
+  25/11/2026: 01:00 collided with marc's Hermes work on tower) and the binary
+  moves itself out of the window. Redeploying an ingest binary =
+  `cd /home/marc/git/winnie/ingest && cargo build --release` then
+  `systemctl --user restart winnie-ingest-nightly.timer` (the timer does not
+  need to be stopped: the binary is re-read on every trigger).
 
-## Non migre
+## Not migrated
 
-`winnie-calories`, `winnie-hours-refresh` et `winnie-gmaps-scrape` ne sont PAS
-repris ici : leurs unites systeme ont ete supprimees le 17/11/2026 parce
-qu'elles ne portaient plus que des overrides CPU sans ExecStart (le module
-NixOS qui les definissait avait ete retire). Elles ne tournent plus du tout ;
-les reprendre ici (meme forme que l'ingest nocturne) le jour ou leurs binaires
-seront reconstruits. Le provisioning Postgres/schema n'est pas non plus repris :
-la base `winnie` et son schema existent toujours.
+`winnie-calories`, `winnie-hours-refresh` and `winnie-gmaps-scrape` are NOT
+taken over here: their system units were removed on 17/11/2026 because they only
+carried CPU overrides without ExecStart (the NixOS module that defined them had
+been removed). They no longer run at all; take them over here (same shape as the
+nightly ingest) the day their binaries are rebuilt. The Postgres/schema
+provisioning is not taken over either: the `winnie` database and its schema
+still exist.
