@@ -5,8 +5,8 @@
 #
 # Measured on tower (21/11/2026): 28 stdio servers declared, 26 start, 516
 # tools, 1 host process at rest, children spawned on demand and reaped after
-# `idleTimeout`. Two servers stay out on purpose (vaultwarden: missing
-# client_id, codeberg: python-dotenv absent from its venv), see `exclude`.
+# `idleTimeout`. One server stays out on purpose (vaultwarden: missing
+# client_id), see `exclude`.
 #
 # The binary is compiled on the laptop (never on tower, see build.sh in
 # /var/lib/hermes/workspace/mcp-rust) and vendored here as a prebuilt file.
@@ -83,7 +83,7 @@ in
 
     exclude = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [ "vaultwarden" "codeberg" ];
+      default = [ "vaultwarden" ];
       description = "Servers kept on stdio (broken before the migration).";
     };
   };
