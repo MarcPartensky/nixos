@@ -19,31 +19,34 @@ check:
       n=$((n + 1))
       nix-instantiate --parse "$f" > /dev/null || { echo "KO  $f"; fail=1; }
     done < <(git ls-files '*.nix')
-    if [ "$fail" -ne 0 ]; then echo "$n fichiers, au moins un KO"; exit 1; fi
-    echo "syntaxe OK ($n fichiers)"
+    if [ "$fail" -ne 0 ]; then echo "$n files, at least one KO"; exit 1; fi
+    echo "syntax OK ($n files)"
 
 # Build a SINGLE flake output (a package, a dev shell), never the NixOS
 # toplevel: `just build presence` compiles one derivation. Use `just nixos`
 # only to activate a configuration, which necessarily evaluates it whole.
-# Les jobs de build partent sur le builder le moins charge (nix-builders-pick :
-# laptop ou deck, jamais tower). Sans builder joignable on refuse (rc 96) au lieu
-# de compiler sur le CPU de marc ; NIXOS_ALLOW_LOCAL_BUILD=1 force un repli
-# local borne a 1 job / 1 coeur.
+# The build jobs go to the least loaded builder (nix-builders-pick:
+# laptop or deck, never tower). Without a reachable builder we refuse (rc 96) instead
+# of compiling on marc's CPU; NIXOS_ALLOW_LOCAL_BUILD=1 forces a bounded
+# local fallback of 1 job / 1 core.
 build name:
     #!/usr/bin/env bash
     set -euo pipefail
     args=()
     if [ -n "${NIXOS_ALLOW_LOCAL_BUILD:-}" ]; then
-      echo "just build: repli local borne (1 job, 1 coeur)" >&2
+      echo "just build: bounded local fallback (1 job, 1 core)" >&2
       args+=(--max-jobs 1 --cores 1)
     elif command -v nix-builders-pick >/dev/null; then
       spec="$(nix-builders-pick || true)"
       if [ -z "$spec" ]; then
-        echo "REFUS: aucun builder (laptop, deck) joignable : tower ne compile pas (politique marc, 25/11/2026)." >&2
-        echo "Reessaie quand un builder repond, ou NIXOS_ALLOW_LOCAL_BUILD=1 just build {{name}}" >&2
+        echo "REFUSED: no reachable builder (laptop, deck): tower does not compile (marc policy, 25/11/2026)." >&2
+        echo "Retry when a builder answers, or NIXOS_ALLOW_LOCAL_BUILD=1 just build {{name}}" >&2
         exit 96
       fi
       args+=(--builders "$spec")
+      # No --max-jobs 0 here: in Nix 2.34 it also disables remote builds
+      # ("local builds are disabled (max-jobs = 0)"). The picker's reachability
+      # check above (rc 96) is what keeps tower from compiling.
     fi
     exec nix build --no-link --print-out-paths "${args[@]}" .#{{name}}
 
@@ -51,32 +54,32 @@ home:
 	home-manager switch --flake .#{{env('HM')}}
 
 nixos:
-    # Jamais --impure : la conf de tower s'evalue en PUR depuis que
-    # l'infra-atlas est un input verrouille (politique pure-eval).
-    # nixos-rebuild-gated (module modules/nixos/nixos-rebuild-gated) refuse
-    # --impure ET serialise les rebuilds : il prend flock sur
-    # /var/lib/hermes/.hermes/state/nixos-rebuild.lock lui-meme.
-    # NE PAS remettre un `flock` ici : ce serait le MEME fichier, donc le
-    # wrapper attendrait un verrou que le shell parent tient deja et le switch
-    # ne demarrerait jamais (constate le 14/11/2026, deux switches bloques
-    # 8 minutes a `flock -w 3600 9`).
+    # Never --impure: tower's conf evaluates in PURE mode since
+    # infra-atlas is a locked input (pure-eval policy).
+    # nixos-rebuild-gated (module modules/nixos/nixos-rebuild-gated) refuses
+    # --impure AND serializes the rebuilds: it takes flock on
+    # /var/lib/hermes/.hermes/state/nixos-rebuild.lock itself.
+    # Do NOT put a `flock` back here: it would be the SAME file, so the
+    # wrapper would wait for a lock the parent shell already holds and the switch
+    # would never start (observed on 14/11/2026, two switches blocked
+    # 8 minutes at `flock -w 3600 9`).
     sudo nixos-rebuild-gated switch --flake .#{{env('HOST')}}
 
-# Deploie un conteneur sorti de la conf hote (deploy/containers.nix) : rend le
-# quadlet podman dans /etc/containers/systemd et redemarre l'unite.
-# Aucun nixos-rebuild, aucun eval de la conf NixOS.
+# Deploys a container taken out of the host conf (deploy/containers.nix): renders the
+# podman quadlet into /etc/containers/systemd and restarts the unit.
+# No nixos-rebuild, no eval of the NixOS conf.
 deploy name:
     sudo {{justfile_directory()}}/deploy/render.sh {{name}} --system
 
-# Reprise d'un conteneur encore declare dans la conf hote : arrete l'unite
-# podman-<nom> de NixOS, puis demarre le quadlet avec le meme nom de conteneur.
-# A lancer AVANT de retirer le bloc oci-containers du module.
+# Takeover of a container still declared in the host conf: stops the NixOS
+# podman-<name> unit, then starts the quadlet with the same container name.
+# Run BEFORE removing the oci-containers block from the module.
 deploy-takeover name:
     sudo {{justfile_directory()}}/deploy/render.sh {{name}} --takeover
 
-# Lance le serveur MCP unique en avant-plan, pour tester un module sans
-# toucher au demon systemd. Le manifeste par defaut est vide : seuls les
-# modules a chaud du depot sont servis.
+# Runs the single MCP server in the foreground, to test a module without
+# touching the systemd daemon. The default manifest is empty: only the
+# repo's hot modules are served.
 mcp-host-run port="4781" manifest="/dev/null":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -87,8 +90,8 @@ mcp-host-run port="4781" manifest="/dev/null":
     MCP_HOST_PORT={{port}} \
       exec "$env/bin/python" mcp/main.py
 
-# Deploie les modules MCP a chaud : copie mcp/modules vers le dossier du demon
-# et redemarre l'unite. Aucun nixos-rebuild, aucun eval.
+# Deploys the MCP modules hot: copies mcp/modules to the daemon folder
+# and restarts the unit. No nixos-rebuild, no eval.
 mcp-deploy:
     sudo install -d -o hermes -g hermes -m 0755 /var/lib/mcp/modules
     sudo rsync -a --delete {{justfile_directory()}}/mcp/modules/ /var/lib/mcp/modules/
@@ -96,21 +99,21 @@ mcp-deploy:
     sleep 1
     systemctl --no-pager --lines=0 status mcp-host.service || true
 
-# VM de dev microvm.nix : construit si besoin puis lance la VM dans le terminal
-# (console série, autologin marc). L'état (overlay du /nix/store, socket qmp)
-# vit dans ~/.local/state/microvms/<nom>/, supprimer ce dossier pour repartir
-# d'une VM vierge. Nom = clé de nixosConfigurations (vms/<nom>.nix), défaut dev.
+# microvm.nix dev VM: builds if needed then launches the VM in the terminal
+# (serial console, marc autologin). The state (/nix/store overlay, qmp socket)
+# lives in ~/.local/state/microvms/<name>/, delete this folder to start over
+# from a blank VM. Name = key of nixosConfigurations (vms/<name>.nix), default dev.
 vm name="dev":
     #!/usr/bin/env bash
     set -euo pipefail
     state="${XDG_STATE_HOME:-$HOME/.local/state}/microvms/{{name}}"
     mkdir -p "$state"
     cd "$state"
-    # path: volontaire : marche même si vms/<nom>.nix n'est pas encore commité
+    # path: deliberate: works even if vms/<name>.nix is not yet committed
     exec nix run "path:{{justfile_directory()}}#{{name}}"
 
-# Construit le runner d'une VM sans la lancer (préchauffe, pratique pour voir
-# les erreurs de build sans VM au milieu)
+# Builds a VM's runner without launching it (prewarms, handy to see
+# the build errors without a VM in the middle)
 vm-build name="dev":
     nix build --no-link "path:{{justfile_directory()}}#{{name}}"
 
