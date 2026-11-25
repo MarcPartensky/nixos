@@ -1,57 +1,72 @@
-# Priorité CPU/IO des charges de fond, et plafonds des jobs winnie.
+# CPU/IO priority of background loads, and caps for winnie jobs.
 #
-# Deux étages :
-#  1. `background.slice` (poids CPU/IO bas) : les batches cèdent le pas au
-#     bureau et aux sessions Hermes sous concurrence, sans plafond quand la
-#     machine est libre.
-#  2. Plafonds CPUQuota déclaratifs sur les jobs winnie (la valeur sûre) +
-#     `winnie-cpu-governor` qui les élargit à 1200 % (sauf les jobs navigateur,
-#     plafonnés dur à 30 % du total) tant que la pression CPU
-#     de user.slice (sessions de marc + Hermes) reste quasi nulle pendant
-#     2 min, et les referme dès qu'une tâche interactive attend du CPU. Les
-#     overrides passent par `systemctl set-property --runtime` (rien dans
-#     /etc, un reboot ramène aux valeurs déclaratives, et si le gouverneur
-#     s'arrête on reste borné).
+# Two tiers:
+#  1. `background.slice` (low CPU/IO weight): batches yield to the
+#     desktop and Hermes sessions under contention, without a cap when the
+#     machine is free.
+#  2. Declarative CPUQuota caps on the winnie jobs (the safe value) +
+#     `winnie-cpu-governor` which widens them to 1200 % (except the browser jobs,
+#     hard-capped at 30 % of the total) as long as the CPU pressure
+#     of user.slice (marc's + Hermes sessions) stays nearly zero for
+#     2 min, and closes them as soon as an interactive task waits for CPU. The
+#     overrides go through `systemctl set-property --runtime` (nothing in
+#     /etc, a reboot returns to the declarative values, and if the governor
+#     stops we stay bounded).
 #
-# Mesuré le 25/10/2026 : un plat estimé par le modèle vision (qwen3-vl:4b,
-# service winnie-calories) prenait ~790 % de CPU, soit la moitié de la
-# 4800H, et Tctl montait à 100 °C.
+# Measured on 25/10/2026: a dish estimated by the vision model (qwen3-vl:4b,
+# winnie-calories service) took ~790 % of CPU, i.e. half of the
+# 4800H, and Tctl rose to 100 degC.
 { pkgs, ... }:
 {
-  # Sessions desktop Hermes (utilisateur hermes, uid 988) : elles ne peuvent pas
-  # entrer dans hermes.slice (cpuset root partition : une session logind ne
-  # franchit pas la frontière d'hiérarchie), donc elles tournent sur les 16
-  # threads au poids 100, à égalité avec le bureau de marc. Mesuré le
-  # 12/11/2026 : 199 % + 18 % d'un cœur sur deux sessions desktop, load 25-33.
-  # Un POIDS bas ne les bride pas machine libre ; sous concurrence le bureau de
-  # marc obtient 4/5 du CPU au lieu d'1/2. Idem IO (builds, scans de store).
-  # Le travail lourd des agents reste à router vers taskq ou un scope de fond.
+  # Hermes desktop sessions (user hermes, uid 988): they cannot
+  # enter hermes.slice (root partition cpuset: a logind session does not
+  # cross the hierarchy boundary), so they run on 12 threads
+  # at weight 25, on the same cpuset as marc's desktop. Measured on
+  # 12/11/2026: 199 % + 18 % of a core on two desktop sessions, load 25-33.
+  # A low WEIGHT does not throttle them when the machine is free; under contention marc's
+  # desktop gets 4/5 of the CPU instead of 1/2. Same for IO (builds, store scans).
+  # The heavy work of the agents must still be routed to taskq or a background scope.
+  #
+  # HARD cap added on 21/11/2026: a weight bounds NOTHING when the machine
+  # is free. Measured at 01:15 that day: 4 Hermes desktop sessions brought
+  # tower to 98 % (15,7 cores), Tctl 100 degC, load 27, while marc was asleep and
+  # nothing else was asking for CPU (the weight is only arbitrated under
+  # contention). 300 % = 3 cores for ALL Hermes sessions combined.
+  # Only covers THIS slice: neither hermes.slice (gateway, cpuset 12-15), nor
+  # background.slice (nix-daemon, builds) are affected; a build launched
+  # by the agent goes to the daemon and stays in the background.
   systemd.slices."user-988" = {
-    description = "Sessions Hermes (poids bas sous concurrence)";
+    description = "Hermes sessions (low weight + hard cap)";
     sliceConfig = {
       CPUWeight = 25;
       IOWeight = 25;
+      CPUQuota = "300%";
+      # `Nice=` does not exist on a slice: a slice carries no process to
+      # renice, and session scopes are forked by logind, not by the
+      # user manager (user@988), so nothing would inherit it.
+      # CPUWeight=25 is the cgroup equivalent of nice and it is already set;
+      # it is the quota above that actually bounds the peak.
     };
   };
 
-  # Ce que le gestionnaire utilisateur de hermes lance vit ICI : conteneurs
-  # podman rootless, scopes `systemd-run --user`, jobs d'agents. Mesure du
-  # 14/11/2026 : `immich_probe_ml` + `immich_probe_server` prenaient 5,1 + 3,6
-  # = 8,8 coeurs au poids 100, soit exactement le poids du scope de session qui
-  # porte l'event loop du backend desktop (0,38 coeur). Les deux se partageaient
-  # donc les memes 14 threads a egalite : 294 gels d'event loop (max 114 s) et
-  # 1461 `Timed out connecting to Hermes backend` cote client. Le gestionnaire
-  # utilisateur descend a 10, et lui seul : la session interactive posee juste
-  # au-dessus garde son poids, donc un index qui tourne ne peut plus passer
-  # devant l'event loop qui sert la conversation.
-  # `asDropin` : user@.service est un template systemd, un fichier complet le
-  # remplacerait au lieu de le completer.
+  # What hermes's user manager launches lives HERE: rootless
+  # podman containers, `systemd-run --user` scopes, agent jobs. Measurement on
+  # 14/11/2026: `immich_probe_ml` + `immich_probe_server` took 5,1 + 3,6
+  # = 8,8 cores at weight 100, exactly the weight of the session scope that
+  # carries the desktop backend event loop (0,38 core). The two shared
+  # the same 14 threads equally: 294 event loop freezes (max 114 s) and
+  # 1461 `Timed out connecting to Hermes backend` on the client side. The user
+  # manager drops to 10, and it alone: the interactive session placed just
+  # above keeps its weight, so a running index can no longer get
+  # ahead of the event loop serving the conversation.
+  # `asDropin`: user@.service is a systemd template, a full file would
+  # replace it instead of completing it.
   systemd.services."user@988" = {
     overrideStrategy = "asDropin";
-    # Ne JAMAIS redemarrer le gestionnaire utilisateur : il tuerait tout ce qui
-    # vit sous lui (conteneurs rootless, scopes transitoires). Le poids
-    # s'applique a sa prochaine creation, donc en pratique a la fin de toutes
-    # les sessions ou au reboot.
+    # NEVER restart the user manager: it would kill everything that
+    # lives under it (rootless containers, transient scopes). The weight
+    # applies at its next creation, so in practice at the end of all
+    # sessions or at reboot.
     restartIfChanged = false;
     serviceConfig = {
       CPUWeight = 10;
@@ -59,13 +74,13 @@
     };
   };
 
-  # Indexeurs medias : batch par nature, jamais prioritaires sur l'interactif.
-  # Le module nixpkgs place deja immich-server et immich-machine-learning dans
-  # system-immich.slice, on ne fait que charger cette slice au lieu d'aller
-  # chercher ses unites (evite un conflit de valeur sur `Slice`).
-  # Plafond DUR de 6 coeurs sur 16, IO de fond, et plafond memoire SOUPLE :
-  # `MemoryHigh` throttlee, `MemoryMax` aurait tue l'index en cours de scan,
-  # c'est-a-dire exactement ce qu'on veut eviter.
+  # Media indexers: batch by nature, never prioritized over interactive.
+  # The nixpkgs module already places immich-server and immich-machine-learning in
+  # system-immich.slice, we only load that slice instead of going
+  # to fetch its units (avoids a value conflict on `Slice`).
+  # HARD cap of 6 cores out of 16, background IO, and SOFT memory cap:
+  # `MemoryHigh` throttles, `MemoryMax` would have killed the index mid-scan,
+  # which is exactly what we want to avoid.
   systemd.slices.system-immich.sliceConfig = {
     CPUQuota = "600%";
     CPUWeight = 20;
@@ -73,12 +88,12 @@
     MemoryHigh = "12G";
   };
 
-  # Memes plafonds poses AUSSI sur les deux unites, et pas seulement sur la
-  # slice : une propriete de slice deja creee ne s'applique qu'a sa prochaine
-  # creation, donc le plafond collectif n'aurait mordu qu'a un redemarrage
-  # d'immich. Une propriete d'UNITE, elle, s'applique au switch (l'unite est
-  # redemarree parce que son fichier a change). 300 % chacune = les 600 % de la
-  # slice, mais effectifs dans la minute.
+  # Same caps ALSO placed on both units, and not only on the
+  # slice: a property of an already-created slice only applies at its next
+  # creation, so the collective cap would only have bitten at a restart
+  # of immich. A UNIT property, however, applies at switch (the unit is
+  # restarted because its file changed). 300 % each = the 600 % of the
+  # slice, but effective within the minute.
   systemd.services.immich-server.serviceConfig = {
     CPUQuota = "300%";
     IOWeight = 20;
@@ -90,9 +105,9 @@
     MemoryHigh = "6G";
   };
 
-  # Second indexeur photo (hors immich), meme profil, plafond plus petit.
+  # Second photo indexer (outside immich), same profile, smaller cap.
   systemd.slices.media-index = {
-    description = "Indexeurs medias hors immich (photoprism)";
+    description = "Media indexers outside immich (photoprism)";
     sliceConfig = {
       CPUQuota = "400%";
       CPUWeight = 20;
@@ -102,14 +117,14 @@
   };
   systemd.services.photoprism.serviceConfig.Slice = "media-index.slice";
 
-  # Porte d'entree SSH : le maillon sans lequel aucun autre n'existe. Elle
-  # vivait dans system.slice au poids 100, sans plancher memoire, avec la limite
-  # de redemarrage par defaut (5 echecs en 10 s puis `failed` DEFINITIF, meme
-  # avec Restart=always). Honnetete : `sshd-session`, le process qui chiffre
-  # reellement le tunnel, reste dans le scope de session (logind), donc cette
-  # protection couvre l'accept et la survie du listener, pas le debit du tunnel.
+  # SSH entry point: the link without which no other exists. It
+  # lived in system.slice at weight 100, with no memory floor, with the default
+  # restart limit (5 failures in 10 s then DEFINITIVE `failed`, even
+  # with Restart=always). Honesty: `sshd-session`, the process that actually
+  # encrypts the tunnel, stays in the session scope (logind), so this
+  # protection covers the accept and the survival of the listener, not the tunnel throughput.
   systemd.slices.interactive = {
-    description = "Portes d'entree interactives (sshd)";
+    description = "Interactive entry points (sshd)";
     sliceConfig = {
       CPUWeight = 1500;
       IOWeight = 1000;
@@ -126,59 +141,59 @@
   };
 
   systemd.slices.background = {
-    description = "Charges de fond (poids CPU/IO bas)";
+    description = "Background loads (low CPU/IO weight)";
     sliceConfig = {
       CPUWeight = 20;
       IOWeight = 20;
-      # Réservation matérielle pour l'interactif : les deux threads du cœur
-      # physique 6 (cpu12 et cpu13) sont réservés à hermes.slice. Un build,
-      # même à 14 threads, ne peut pas les toucher : c'est un plancher, pas
-      # un partage. Le poids ci-dessus arbitre le reste.
-      AllowedCPUs = "0-11,14-15";
+      # Hardware reservation for interactive: the threads of physical
+      # cores 6 and 7 (cpu12 to cpu15) are reserved for hermes.slice. A build,
+      # even at 12 threads, cannot touch them: it is a floor, not
+      # a share. The weight above arbitrates the rest.
+      AllowedCPUs = "0-11";
     };
   };
 
-  # Émulateur Android (capture) : le plus gros consommateur unitaire mesuré
-  # (124 % d'un cœur), et il vivait dans system.slice au poids 100, à égalité
-  # avec le gateway. Il descend en fond avec un plafond dur.
+  # Android emulator (capture): the biggest single consumer measured
+  # (124 % of a core), and it lived in system.slice at weight 100, on par
+  # with the gateway. It drops to the background with a hard cap.
   systemd.services.android-emulator.serviceConfig = {
     Slice = "background.slice";
     CPUQuota = "400%";
   };
 
-  # Modèle vision local (qwen3-vl:4b) + embeddings mem0.
+  # Local vision model (qwen3-vl:4b) + mem0 embeddings.
   systemd.services.ollama = {
     serviceConfig = {
       Slice = "background.slice";
-      # Plafond sûr : 6 coeurs sur 16. Le gouverneur le monte à 12 quand
-      # personne n'attend du CPU.
+      # Safe cap: 6 cores out of 16. The governor raises it to 12 when
+      # nobody is waiting for CPU.
       CPUQuota = "600%";
       Nice = 10;
     };
     environment = {
-      # 8 threads max (8c/16t) : au-delà le modèle se dispute la L3.
+      # 8 threads max (8c/16t): beyond that the model fights over L3.
       OLLAMA_NUM_THREADS = "8";
       OLLAMA_KEEP_ALIVE = "5m";
     };
   };
 
-  # Tout build lancé par un client nix passe par le démon.
+  # Any build launched by a nix client goes through the daemon.
   systemd.services.nix-daemon.serviceConfig.Slice = "background.slice";
 
-  # Batches winnie : ORPHELINS depuis la sortie de Winnie de la conf hote
-  # (13/11/2026, cf services/default.nix et deploy/winnie/README.md). Ces
-  # quatre `systemd.services.winnie-*` ne portaient QUE des overrides
-  # (Slice/CPUQuota), sans ExecStart : NixOS generait des unites systeme
-  # invalides (`LoadError=BadUnitSetting`, invisibles de `systemctl --failed`,
-  # cf. nixos-service-troubleshooting), et winnie-ingest-nightly ne tournait
-  # plus du tout (son timer vivait dans le module winnie retire). Supprimes le
-  # 17/11/2026 (reparation de nuit) : winnie-ingest-nightly est redeploye en
-  # unite UTILISATEUR hermes (deploy/winnie/winnie-ingest-nightly.service,
-  # meme pattern que backend/frontend/dev). winnie-calories, winnie-gmaps-scrape
-  # et winnie-hours-refresh restent a reprendre pareil le jour ou ils seront
-  # utiles (non fait ici : aucun binaire pret cote deploy/winnie pour eux).
+  # winnie batches: ORPHANS since Winnie left the host config
+  # (13/11/2026, cf services/default.nix and deploy/winnie/README.md). These
+  # four `systemd.services.winnie-*` carried ONLY overrides
+  # (Slice/CPUQuota), with no ExecStart: NixOS generated invalid system
+  # units (`LoadError=BadUnitSetting`, invisible to `systemctl --failed`,
+  # cf. nixos-service-troubleshooting), and winnie-ingest-nightly no longer ran
+  # at all (its timer lived in the removed winnie module). Removed on
+  # 17/11/2026 (night repair): winnie-ingest-nightly is redeployed as a
+  # hermes USER unit (deploy/winnie/winnie-ingest-nightly.service,
+  # same pattern as backend/frontend/dev). winnie-calories, winnie-gmaps-scrape
+  # and winnie-hours-refresh remain to be reworked the same way the day they become
+  # useful (not done here: no ready binary in deploy/winnie for them).
   systemd.slices.winnie-browser = {
-    description = "Jobs navigateur winnie (plafond 30 % du CPU total) — INUTILISEE depuis le 17/11/2026, winnie tourne hors conf hote";
+    description = "winnie browser jobs (cap 30 % of total CPU) - UNUSED since 17/11/2026, winnie runs outside the host config";
     sliceConfig = {
       CPUQuota = "480%";
       CPUWeight = 20;
@@ -186,12 +201,12 @@
     };
   };
 
-  # Gouverneur : élargit les plafonds quand les sessions de marc ne font pas
-  # la queue pour du CPU, les restaure dès qu'elles en ont besoin. L'état vit
-  # dans /run (le script crée le dossier) : reboot = retour aux plafonds
-  # déclaratifs.
+  # Governor: widens the caps when marc's sessions are not
+  # queuing for CPU, restores them as soon as they need it. The state lives
+  # in /run (the script creates the directory): reboot = return to the declarative
+  # caps.
   systemd.services.winnie-cpu-governor = {
-    description = "Gouverneur CPU des jobs winnie (capped/wide selon la pression de user.slice)";
+    description = "CPU governor for winnie jobs (capped/wide depending on user.slice pressure)";
     serviceConfig = {
       Type = "oneshot";
       ExecStart = "${pkgs.python3}/bin/python3 ${./governor.py}";
@@ -199,7 +214,7 @@
   };
 
   systemd.timers.winnie-cpu-governor = {
-    description = "Tick du gouverneur CPU winnie (15 s)";
+    description = "Tick of the winnie CPU governor (15 s)";
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnBootSec = "90s";

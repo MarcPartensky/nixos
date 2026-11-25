@@ -60,6 +60,15 @@ PROVIDERS: dict[str, dict] = {
         "color": "#a6e3a1",
         "note": "compte API OpenAI",
     },
+    # Google AI Studio : facture au token comme les autres, mais AUCUN endpoint
+    # de solde n'existe (l'API ne expose que le quota, pas le credit restant).
+    # Le dashboard y met donc une sonde de sante a la place du solde.
+    "gemini": {
+        "label": "Google Gemini",
+        "kind": "cash",
+        "color": "#74c7ec",
+        "note": "Google AI Studio, pas d'endpoint de solde (sonde de sante)",
+    },
     "local": {
         "label": "Local (GPU maison)",
         "kind": "local",
@@ -127,6 +136,10 @@ def normalize(provider: str, base_url: str) -> str:
         return "anthropic"
     if "openai.com" in hay:
         return "openai"
+    # Provider integre gemini de Hermes (Google AI Studio) : le nom de provider
+    # et l'URL de base pointent tous les deux vers Google.
+    if "gemini" in hay or "generativelanguage" in hay:
+        return "gemini"
     # Modeles servis sur une machine du reseau (laptop-llama, laptop-abl) :
     # le cout est nul, on ne cherche donc pas de solde.
     if "100.64.0.4" in hay or "127.0.0.1" in hay or "localhost" in hay:

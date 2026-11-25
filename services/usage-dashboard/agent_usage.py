@@ -13,6 +13,9 @@ autre utilisateur et ne doit donc pas lire state.db lui-meme :
   - series : cout / tokens / appels par jour et par provider (axe du graphe) ;
   - windows : totaux par modele, par surface et par tache pour 1, 7, 30 et N
     jours ;
+  - sessions : une entree par session (titre, surface, modeles, et le meme
+    decoupage quotidien que l'axe du graphe) pour que la page agrege la
+    fenetre choisie cote navigateur, sans nouvelle collecte ;
   - meta : age de la collecte, bases lues, volume.
 
 Attribution quotidienne : une ligne de session_model_usage est un agregat de
@@ -20,7 +23,9 @@ session, pas un evenement date (elle ne porte que first_seen et last_seen). On
 la repartit donc sur les jours de la fenetre au prorata des messages de la
 session ce jour-la, et a defaut sur le jour de derniere activite. Le total de
 la session est conserve au token pres, seule la repartition dans le temps est
-approchee : c'est dit explicitement dans le pied de page de la page web.
+approchee : c'est dit explicitement dans le pied de page de la page web. La
+somme des lignes d'une session redonne exactement le total de la fenetre, donc
+la vue par session ne peut pas diverger des totaux par modele.
 """
 
 from __future__ import annotations
@@ -43,7 +48,7 @@ SELECT u.session_id, u.model, u.billing_provider, u.billing_base_url, u.task,
        u.api_call_count, u.input_tokens, u.output_tokens, u.cache_read_tokens,
        u.cache_write_tokens, u.reasoning_tokens,
        u.estimated_cost_usd, u.actual_cost_usd, u.cost_status, u.cost_source,
-       u.first_seen, u.last_seen, s.source AS source
+       u.first_seen, u.last_seen, s.source AS source, s.title AS title
 FROM session_model_usage u
 LEFT JOIN sessions s ON s.id = u.session_id
 WHERE COALESCE(u.last_seen, u.first_seen) >= ?
@@ -168,6 +173,11 @@ def main() -> None:
     # task_daily[(tache, date)] = [cout, tokens, appels]
     task_daily: dict[tuple[str, str], list] = defaultdict(lambda: [0.0, 0.0, 0.0])
     total_daily: dict[str, list] = defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])
+    # session_daily[session][date] = [cout, tokens, appels] : la vue par session
+    # est decoupee sur le meme axe que le graphe, donc le navigateur peut
+    # recalculer n'importe quelle fenetre sans nouvelle collecte.
+    session_daily: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0]))
+    session_meta: dict[str, dict] = {}
 
     homes: list[dict] = []
     for profile, path in databases(HOME):
@@ -200,6 +210,18 @@ def main() -> None:
             cache_write = _num(row["cache_write_tokens"])
             tokens = tokens_in + tokens_out + cache_read + cache_write
             aux_cost = cost if task else 0.0
+
+            # Fiche de session : le titre vient de la table sessions (pose par
+            # la generation de titre), la surface est la meme que celle de la
+            # vue « Par surface ». Aucune date ici : le decoupage quotidien
+            # porte deja les jours d'activite, la page en deduit le premier et
+            # le dernier jour de la fenetre choisie.
+            sid = row["session_id"]
+            smeta = session_meta.setdefault(sid, {"title": "", "source": surface, "models": {}})
+            title = (row["title"] or "").strip()
+            if title and not smeta["title"]:
+                smeta["title"] = title
+            smeta["models"][model] = smeta["models"].get(model, 0.0) + cost
 
             meta = model_meta.setdefault(
                 (pid, model),
@@ -246,6 +268,11 @@ def main() -> None:
                     kslot[0] += cost * frac
                     kslot[1] += tokens * frac
                     kslot[2] += _num(row["api_call_count"]) * frac
+
+                session_slot = session_daily[sid][day]
+                session_slot[0] += cost * frac
+                session_slot[1] += tokens * frac
+                session_slot[2] += _num(row["api_call_count"]) * frac
 
     # Axe continu : tous les jours de la fenetre, meme vides.
     days: list[str] = []
@@ -369,12 +396,48 @@ def main() -> None:
             },
         }
 
+    # Vue par session : une entree par session, avec le meme decoupage
+    # quotidien que l'axe du graphe. Le navigateur somme les jours de la
+    # fenetre choisie, donc changer de fenetre (24 h, 7, 30, 90 j) ne demande
+    # aucune nouvelle collecte. Les sessions sans cout ni token (lignes
+    # anciennes sans tarif connu) sont ecartees : elles n'apprendraient rien.
+    sessions_out: list[dict] = []
+    for sid, per_day in session_daily.items():
+        cost = sum(v[0] for v in per_day.values())
+        tokens = sum(v[1] for v in per_day.values())
+        if cost <= 0 and tokens <= 0:
+            continue
+        smeta = session_meta.get(sid) or {}
+        models = sorted(
+            (smeta.get("models") or {}).items(), key=lambda item: item[1], reverse=True
+        )
+        sessions_out.append(
+            {
+                "id": sid,
+                "title": smeta.get("title") or "",
+                "source": smeta.get("source") or "inconnu",
+                "models": [[name, round(value, 6)] for name, value in models],
+                "days": {
+                    day: [round(v[0], 6), int(round(v[1])), int(round(v[2]))]
+                    for day, v in sorted(per_day.items())
+                },
+            }
+        )
+    sessions_out.sort(
+        key=lambda s: (
+            sum(v[0] for v in s["days"].values()),
+            sum(v[1] for v in s["days"].values()),
+        ),
+        reverse=True,
+    )
+
     payload = {
         "generated_at": _iso(now),
         "window_days": WINDOW_DAYS,
         "homes": homes,
         "series": series_out,
         "series_model": series_model,
+        "sessions": sessions_out,
         "windows": windows,
     }
 
@@ -386,6 +449,7 @@ def main() -> None:
     os.replace(tmp, OUT)
     print(
         f"[agent-usage] {len(days)} jours, {len(windows[str(WINDOW_DAYS)]['models'])} modeles, "
+        f"{len(sessions_out)} sessions, "
         f"cout {WINDOW_DAYS} j = ${windows[str(WINDOW_DAYS)]['totals']['cost']:.2f} -> {OUT}",
         flush=True,
     )

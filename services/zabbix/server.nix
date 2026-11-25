@@ -1,31 +1,44 @@
-# services/zabbix/server.nix : serveur Zabbix + frontal web, heberges sur le VPS.
+# services/zabbix/server.nix: Zabbix server + web frontend, hosted on the VPS.
 #
-# Pourquoi ici et pas sur tower : le serveur de supervision doit survivre a ce
-# qu'il surveille. tower redemarre environ une fois par jour et son trafic
-# sortant depend du tunnel newt ; le VPS tient un seul boot depuis des mois et
-# c'est deja le plan de controle de tous les domaines. Frontal et base restent
-# donc sur le VPS, les agents (services/zabbix/agent.nix) vont sur les machines.
+# Why here and not on tower: the monitoring server must survive what
+# it monitors. tower reboots about once a day and its outgoing
+# traffic depends on the newt tunnel; the VPS has held a single boot for months and
+# it is already the control plane for all domains. Frontend and database stay
+# therefore on the VPS, the agents (services/zabbix/agent.nix) go on the machines.
 #
-# Empreinte : c'est la brique la plus lourde des trois (serveur C + frontal PHP
-# + Postgres deja present), on l'assume sur le VPS (4 vCPU, charge < 1) et on ne
-# la met jamais sur tower. Les agents, eux, sont negligeables (~15 Mo, < 0,1%).
+# Footprint: it is the heaviest brick of the three (C server + PHP frontend
+# + already-present Postgres), we accept it on the VPS (4 vCPU, load < 1) and we
+# never put it on tower. The agents, for their part, are negligible (~15 MB, < 0.1%).
 #
-# Base : Postgres locale au VPS, utilisateur et base `zabbix`, crees par
-# ensureUsers/ensureDatabases. Auth : connexion par 127.0.0.1, ou la regle
-# `host all all 127.0.0.1/32 trust` (services/postgres) s'applique en premier,
-# donc AUCUN mot de passe a porter dans sops. C'est deja le regime des autres
-# bases de tower (tout est en trust en local), et le port 5432 n'est joignable
-# que depuis la loopback et le tailnet.
+# Database: Postgres local to the VPS, user and database `zabbix`, created by
+# ensureUsers/ensureDatabases. Auth: connection via 127.0.0.1, where the rule
+# `host all all 127.0.0.1/32 trust` (services/postgres) applies first,
+# so NO password to carry in sops. This is already the regime of the other
+# tower databases (everything is in trust locally), and port 5432 is reachable
+# only from loopback and the tailnet.
 #
-# Le frontal ecoute en LOOPBACK sur 9600 : 80/443 appartiennent a traefik
-# (Pangolin), donc nginx ne doit surtout pas prendre le port. L'acces public
-# passe par une ressource Pangolin `zabbix.marcpartensky.com` en cible locale du
-# site rack (creee par l'API d'integration : le blueprint newt ne sert que les
-# cibles d'un site newt, pas l'hote du plan de controle).
-{ config, lib, ... }:
+# The frontend listens on LOOPBACK on 9600: 80/443 belong to traefik
+# (Pangolin), so nginx must definitely not take the port. Public access
+# goes through a Pangolin resource `zabbix.marcpartensky.com` as a local target of the
+# rack site (created by the integration API: the newt blueprint only serves
+# targets of a newt site, not the control plane host).
+# The package is NOT the nixpkgs default (`pkgs.zabbix` = 6.0 LTS): see
+# the header of the `let` block for the why of 7.4 LTS.
+{ config, lib, pkgs, ... }:
 let
   port = 9600;
   domain = "zabbix.marcpartensky.com";
+
+  # 7.4 LTS and not the nixpkgs default 6.0. Three reasons measured on
+  # 15/11/2026: the 6.0 frontend runs PHP 8.4 (the one from 26.05)
+  # which emits E_DEPRECATED on every page (`session_set_save_handler` with
+  # individual callbacks), which Zabbix's error handler displays
+  # plainly in the middle of the interface; 6.0 is officially supported only
+  # up to PostgreSQL 15 while the VPS runs 17.11; and 7.4 is the
+  # current LTS (redesigned UI, PHP 8.4/8.5 supported). The database migration is
+  # direct from 6.0.x (Zabbix doc "Upgrade procedure"). A dump of the
+  # 6.0 database is kept in /root on the VPS before any move to 7.4.
+  zabbix = pkgs.zabbix74;
 in
 {
   services.postgresql = {
@@ -40,6 +53,7 @@ in
 
   services.zabbixServer = {
     enable = true;
+    package = zabbix.server;
 
     database = {
       type = "pgsql";
@@ -48,20 +62,21 @@ in
       user = "zabbix";
     };
 
-    # Joignable depuis le tailnet par les agents (trappers). Le pare-feu du VPS
-    # n'ouvre rien : tailscale0 est de confiance (services/tailscale).
+    # Reachable from the tailnet by the agents (trappers). The VPS firewall
+    # opens nothing: tailscale0 is trusted (services/tailscale).
     listen.ip = "0.0.0.0";
     listen.port = 10051;
     openFirewall = false;
 
-    # Pas de `settings` pour l'instant : les valeurs par defaut sont dimensionnees
-    # pour bien plus que six hotes, et une cle inconnue dans zabbix_server.conf
-    # fait sortir le serveur au demarrage. On reglera les pollers apres la
-    # premiere mesure de charge reelle.
+    # No `settings` for now: the default values are sized
+    # for far more than six hosts, and an unknown key in zabbix_server.conf
+    # makes the server exit at startup. We will tune the pollers after the
+    # first real load measurement.
   };
 
   services.zabbixWeb = {
     enable = true;
+    package = zabbix.web;
     frontend = "nginx";
     hostname = domain;
 
@@ -78,9 +93,9 @@ in
     };
 
     nginx.virtualHost = {
-      # Loopback uniquement, et surtout PAS le port 80 : traefik y sert tous les
-      # domaines du VPS. forceSSL/addSSL restent a false, c'est traefik qui
-      # termine le TLS.
+      # Loopback only, and especially NOT port 80: traefik serves all the
+      # VPS domains there. forceSSL/addSSL stay false, it is traefik that
+      # terminates TLS.
       listen = [
         {
           addr = "127.0.0.1";
@@ -92,8 +107,8 @@ in
     };
   };
 
-  # Ceinture et bretelles : si un vhost venait a ne pas declarer son `listen`, il
-  # tomberait sur ce defaut au lieu du port 80.
+  # Belt and suspenders: if a vhost were to not declare its `listen`, it
+  # would fall back on this default instead of port 80.
   services.nginx.defaultListen = [
     {
       addr = "127.0.0.1";
@@ -101,21 +116,29 @@ in
     }
   ];
 
-  # L'agent local : le VPS se surveille lui meme (disque, RAM, services), ce qui
-  # couvre la panne qui a deja couche la pile entiere (disque plein le 10/11).
+  # The local agent: the VPS monitors itself (disk, RAM, services), which
+  # covers the outage that already took down the whole stack (full disk on 10/11).
   services.zabbixAgent = {
     enable = true;
-    server = "100.64.0.1";
+    # `package` comes from services/zabbix/agent.nix (same 7.4 series): defining it
+    # here too creates a conflict of definitions in the module.
+    # 127.0.0.1 in addition to the tailnet: the "Zabbix server" host of the
+    # database queries 127.0.0.1:10050 (local interface). With only 100.64.0.1, this
+    # agent refused the connection and the dashboard permanently showed
+    # "Zabbix agent is not available" on the server itself.
+    # mkForce: services/zabbix/agent.nix (imported right next to it by the profile)
+    # already sets `server`, two definitions of the same priority are a conflict.
+    server = lib.mkForce "100.64.0.1,127.0.0.1";
     settings = {
       ServerActive = "100.64.0.1:10051";
       Hostname = config.networking.hostName;
     };
   };
 
-  # Rappel volontaire : la base `zabbix` vit sur le VPS, dont AUCUNE base n'est
-  # sauvegardee aujourd'hui (pqbox dumpe les bases de tower). A ajouter a la
-  # chaine de sauvegarde, comme le coffre si celui ci revient ici.
+  # Deliberate reminder: the `zabbix` database lives on the VPS, of which NO database is
+  # backed up today (pqbox dumps tower's databases). To add to the
+  # backup chain, like the vault if it comes back here.
   warnings = [
-    "Zabbix : la base sur le VPS n'est pas couverte par pqbox (cf. services/backup-pqbox)."
+    "Zabbix: the database on the VPS is not covered by pqbox (cf. services/backup-pqbox)."
   ];
 }

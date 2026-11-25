@@ -1,66 +1,66 @@
-# Cache binaire Nix locale : atticd (serveur) avec stockage SUR DISQUE, et
-# push automatique de chaque build via le post-build-hook du démon Nix.
+# Local Nix binary cache: atticd (server) with storage ON DISK, and
+# automatic push of each build via the Nix daemon's post-build-hook.
 #
-# Le stockage est local (`type = "local"`, dossier /var/lib/atticd/storage) :
-# un cache binaire mono-machine n'a pas besoin d'un moteur S3. Le backend S3
-# vers rustfs a été retiré le 2026-11-11 : rustfs passait ~1 coeur en rafales de
-# walk_dir au repos (mesuré à l'atop) pour un cache que seul tower lit.
+# Storage is local (`type = "local"`, folder /var/lib/atticd/storage):
+# a single-machine binary cache does not need an S3 engine. The S3 backend
+# to rustfs was removed on 2026-11-11: rustfs used ~1 core in bursts of
+# walk_dir at rest (measured with atop) for a cache that only tower reads.
 #
-# Objectif : ne plus recompiler les paquets maison (kasmvnc, *-mcp, hermes…)
-# après un GC, un rollback ou un `nix flake update`, et servir de substituter
-# aux autres machines du mesh le jour où on l'expose. Les pushes sautent les
-# chemins déjà disponibles sur cache.nixos.org (upstream cache keys), donc la
-# cache ne contient que ce que seul tower produit.
+# Goal: no longer recompile the home-grown packages (kasmvnc, *-mcp, hermes...)
+# after a GC, a rollback or a `nix flake update`, and serve as a substituter
+# for the other machines of the mesh the day it is exposed. The pushes skip the
+# paths already available on cache.nixos.org (upstream cache keys), so the
+# cache contains only what tower alone produces.
 #
-# La clé de signature est gérée par le serveur (managed signing) : elle vit
-# dans la base atticd et change si la base est recréée ; `attic cache info
-# nixos` l'affiche, et elle est épinglée dans `nix.settings.trusted-public-keys`
-# (section phase 2 en bas du fichier). Un changement de clé impose de repeindre
-# cette ligne ET de reparcourir ce que la vieille clé avait signé.
+# The signing key is managed by the server (managed signing): it lives
+# in the atticd database and changes if the database is recreated; `attic cache info
+# nixos` displays it, and it is pinned in `nix.settings.trusted-public-keys`
+# (phase 2 section at the bottom of the file). A key change requires repainting
+# this line AND re-walking what the old key had signed.
 { pkgs, config, lib, ... }:
 let
   stateDir = "/var/lib/atticd";
   cacheName = "nixos";
 
-  # Même contenu que le config-file vérifié par le module nixpkgs, mais
-  # référençable ici pour atticadm (le module ne l'expose pas).
+  # Same content as the config-file checked by the nixpkgs module, but
+  # referenceable here for atticadm (the module does not expose it).
   serverConfig = (pkgs.formats.toml { }).generate "atticd-server.toml" config.services.atticd.settings;
 
-  # Droits du token de bootstrap : pile ce qu'il faut (pull pour lire, push
-  # pour le hook, create/configure pour le bootstrap). Pas de --destroy-cache.
+  # Bootstrap token rights: exactly what is needed (pull to read, push
+  # for the hook, create/configure for the bootstrap). No --destroy-cache.
   tokenClaims = "--pull '*' --push '*' --create-cache '*' --configure-cache '*' --configure-cache-retention '*'";
 in
 {
   services.atticd = {
     enable = true;
-    # Secret JWT (signature des tokens API), généré au premier switch dans
-    # /var/lib/atticd/jwt.env (root, 0600). Hors sops : hermes ne peut pas
-    # créer de secrets sops ; c'est de l'état local du service, comme la DB.
+    # JWT secret (signing of the API tokens), generated on the first switch in
+    # /var/lib/atticd/jwt.env (root, 0600). Outside sops: hermes cannot
+    # create sops secrets; it is local state of the service, like the DB.
     environmentFile = "${stateDir}/jwt.env";
     settings = {
-      # 8484 : port dédié. 8080 est déjà pris par le dev server winnie (Vite,
-      # bind wildcard) ; y binder la loopback échouait silencieusement et les
-      # clients attic tombaient sur Vite (SPA/404 au lieu de l'API attic).
+      # 8484: dedicated port. 8080 is already taken by the winnie dev server (Vite,
+      # wildcard bind); binding the loopback there failed silently and the
+      # attic clients fell onto Vite (SPA/404 instead of the attic API).
       listen = "127.0.0.1:8484";
       storage = {
-        # Stockage local : pas de backend S3, donc pas de service en plus a
-        # maintenir ni de scans d'objets. Chemin sous stateDir, le module
-        # nixpkgs cree le dossier et le rattache au service.
+        # Local storage: no S3 backend, hence no extra service to
+        # maintain nor object scans. Path under stateDir, the nixpkgs
+        # module creates the folder and attaches it to the service.
         type = "local";
         path = "${stateDir}/storage";
       };
     };
   };
 
-  # Un seul fichier d'env : le JWT généré plus haut. Plus de creds S3 (stockage
-  # local) et donc plus de dépendance à rustfs.
+  # A single env file: the JWT generated above. No more S3 creds (local
+  # storage) and therefore no more dependency on rustfs.
   systemd.services.atticd = {
     serviceConfig.EnvironmentFile = lib.mkForce [
       "${stateDir}/jwt.env"
     ];
   };
 
-  # Génère le secret JWT une seule fois (idempotent, survit aux switches).
+  # Generates the JWT secret only once (idempotent, survives switches).
   system.activationScripts.atticd-jwt = ''
     install -d -m 0700 ${stateDir}
     if [ ! -s ${stateDir}/jwt.env ]; then
@@ -69,11 +69,11 @@ in
     fi
   '';
 
-  # Bootstrap (idempotent, au boot et après switch) : token API, cache "nixos"
-  # publique en lecture, configs client (root pour le hook, hermes et marc
-  # pour l'usage manuel).
+  # Bootstrap (idempotent, at boot and after switch): API token, "nixos" cache
+  # public for reading, client configs (root for the hook, hermes and marc
+  # for manual use).
   systemd.services.atticd-bootstrap = {
-    description = "Bootstrap de la cache binaire attic (token, cache, configs client)";
+    description = "Bootstrap of the attic binary cache (token, cache, client configs)";
     after = [ "atticd.service" ];
     requires = [ "atticd.service" ];
     wantedBy = [ "multi-user.target" ];
@@ -85,9 +85,9 @@ in
     path = [ pkgs.attic-client pkgs.attic-server pkgs.coreutils pkgs.curl ];
     script = ''
       set -eu
-      # atticd atteint l'etat "active" AVANT d'avoir fini ses migrations et
-      # d'ecouter : le bootstrap qui suit immediatement tombait en
-      # « Connection refused » sur _api/v1/cache-config. Attendre la socket.
+      # atticd reaches the "active" state BEFORE finishing its migrations and
+      # listening: the bootstrap that immediately follows fell on
+      # "Connection refused" on _api/v1/cache-config. Wait for the socket.
       for i in $(seq 1 30); do
         if ${pkgs.curl}/bin/curl -fsS -o /dev/null http://127.0.0.1:8484/ 2>/dev/null \
            || ${pkgs.curl}/bin/curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8484/ 2>/dev/null | grep -qE '^[0-9]{3}$'; then
@@ -109,7 +109,7 @@ in
       chown marc:users /home/marc/.config/attic
 
       write_config() {
-        # $1 chemin, $2 user, $3 group
+        # $1 path, $2 user, $3 group
         printf 'default-server = "tower"\n\n[servers.tower]\nendpoint = "http://127.0.0.1:8484"\ntoken = "%s"\n' \
           "$(cat "$token_file")" > "$1"
         chmod 0600 "$1"
@@ -126,27 +126,27 @@ in
     '';
   };
 
-  # Pousse chaque sortie fraîchement buildée par le démon Nix. Un échec est
-  # ignoré : la cache est un accélérateur, pas une garantie de service.
+  # Pushes each output freshly built by the Nix daemon. A failure is
+  # ignored: the cache is an accelerator, not a service guarantee.
   nix.settings.post-build-hook = pkgs.writeShellScript "attic-post-build-hook" ''
     set -u
     if [ -z "''${OUT_PATHS:-}" ]; then exit 0; fi
     export XDG_CONFIG_HOME=${stateDir}
     if [ -s ${stateDir}/attic/config.toml ]; then
       ${pkgs.attic-client}/bin/attic push ${cacheName} $OUT_PATHS \
-        || echo "attic push a échoué (ignoré)" >&2
+        || echo "attic push failed (ignored)" >&2
     fi
   '';
 
   environment.systemPackages = [ pkgs.attic-client ];
 
-  # Phase 2 : substituer depuis la cache locale d'abord, puis cache.nixos.org.
-  # PIEGE : `nix.settings.substituters` REMPLACE la liste par defaut de nixpkgs,
-  # il ne la complete pas. Ne declarer que la cache locale ferait compiler en
-  # local tout chemin amont absent de la cache. Les deux doivent figurer ici.
-  # La cle publique vient de `attic cache info nixos` (managed signing) ; elle
-  # change si la base atticd est recreee, donc re-verifier apres une remise a
-  # zero du stateDir.
+  # Phase 2: substitute from the local cache first, then cache.nixos.org.
+  # PITFALL: `nix.settings.substituters` REPLACES the nixpkgs default list,
+  # it does not complete it. Declaring only the local cache would compile
+  # locally any upstream path missing from the cache. Both must appear here.
+  # The public key comes from `attic cache info nixos` (managed signing); it
+  # changes if the atticd database is recreated, so re-verify after a
+  # reset of stateDir.
   nix.settings.substituters = [
     "http://127.0.0.1:8484/${cacheName}"
     "https://cache.nixos.org/"

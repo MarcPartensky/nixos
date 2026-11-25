@@ -22,9 +22,9 @@
     -webkit-font-smoothing:antialiased;
   }
   a { color:var(--lavender); text-decoration:none; }
-  .wrap { max-width:1180px; margin:0 auto; }
+  .wrap { max-width:1240px; margin:0 auto; }
 
-  header { display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  header { display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
   h1 { font-size:20px; margin:0; letter-spacing:.2px; }
   h1 .accent { color:var(--lavender); }
   .sub { color:var(--subtext0); font-size:12.5px; }
@@ -34,6 +34,10 @@
     border-radius:8px; padding:6px 11px; font-size:12.5px; cursor:pointer; font-family:inherit;
   }
   button:hover { border-color:var(--lavender); color:var(--lavender); }
+  .seg { display:inline-flex; gap:0; border:1px solid var(--surface1); border-radius:8px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; background:transparent; padding:6px 10px; color:var(--subtext0); }
+  .seg button + button { border-left:1px solid var(--surface1); }
+  .seg button.on { background:var(--surface0); color:var(--lavender); }
 
   .banner {
     border:1px solid var(--surface1); border-left:3px solid var(--yellow);
@@ -41,22 +45,8 @@
     color:var(--subtext1); font-size:12.5px; display:none;
   }
   .banner.err { border-left-color:var(--red); }
-  .banner code { color:var(--peach); background:var(--crust); padding:1px 5px; border-radius:4px; }
 
-  .card {
-    background:var(--mantle); border:1px solid var(--surface0); border-radius:12px; padding:16px 18px;
-  }
-  .hero { display:flex; gap:26px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
-  .hero .balance { font-size:34px; font-weight:600; line-height:1.15; color:var(--green); }
-  .hero .balance.low { color:var(--yellow); }
-  .hero .balance.critical { color:var(--red); }
-  .hero .eur { color:var(--subtext0); font-size:14px; margin-top:2px; }
-  .meter { flex:1; min-width:240px; }
-  .meter .bar { height:10px; background:var(--crust); border-radius:99px; overflow:hidden; border:1px solid var(--surface0); }
-  .meter .bar > i { display:block; height:100%; background:linear-gradient(90deg,var(--lavender),var(--mauve)); }
-  .meter .legend { display:flex; justify-content:space-between; color:var(--subtext0); font-size:12px; margin-top:6px; }
-
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:22px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:8px; }
   .kpi { background:var(--mantle); border:1px solid var(--surface0); border-radius:12px; padding:13px 15px; }
   .kpi .label { color:var(--subtext0); font-size:11.5px; text-transform:uppercase; letter-spacing:.6px; }
   .kpi .value { font-size:22px; font-weight:600; margin-top:4px; }
@@ -65,45 +55,117 @@
   h2 { font-size:14px; margin:26px 0 10px; color:var(--subtext1); font-weight:600; letter-spacing:.3px; }
   h2 .hint { color:var(--overlay0); font-weight:400; font-size:12px; margin-left:8px; }
 
-  .fam-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:12px; }
-  .fam { background:var(--mantle); border:1px solid var(--surface0); border-radius:12px; padding:13px 15px; }
-  .fam .top { display:flex; align-items:center; gap:8px; }
+  .pgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; }
+  .prov { background:var(--mantle); border:1px solid var(--surface0); border-radius:12px; padding:14px 16px; }
+  .prov .top { display:flex; align-items:center; gap:8px; }
   .dot { width:9px; height:9px; border-radius:99px; flex:none; }
-  .fam .name { font-weight:600; }
-  .fam .share { margin-left:auto; color:var(--overlay0); font-size:11.5px; }
-  .fam .amount { font-size:19px; font-weight:600; margin-top:6px; }
-  .fam .amount small { font-weight:400; color:var(--subtext0); font-size:12px; margin-left:6px; }
-  .fam .bar { height:6px; background:var(--crust); border-radius:99px; overflow:hidden; margin-top:9px; }
-  .fam .bar > i { display:block; height:100%; }
-  .fam .foot { color:var(--overlay0); font-size:11.5px; margin-top:7px; }
+  .prov .name { font-weight:600; }
+  .prov .badge { margin-left:auto; font-size:10.5px; text-transform:uppercase; letter-spacing:.5px;
+                 padding:2px 7px; border-radius:99px; border:1px solid var(--surface1); color:var(--subtext0); }
+  .prov .big { font-size:26px; font-weight:600; line-height:1.2; margin-top:8px; }
+  .prov .big.warn { color:var(--yellow); }
+  .prov .big.bad { color:var(--red); }
+  .prov .big.muted { color:var(--subtext0); font-size:20px; }
+  .prov .bigsub { color:var(--subtext0); font-size:11.5px; min-height:17px; }
+  .prov .bar { height:5px; background:var(--crust); border-radius:99px; overflow:hidden; margin:10px 0 8px; }
+  .prov .bar > i { display:block; height:100%; }
+  .prov .rows { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:12.5px; }
+  .prov .rows div { display:flex; justify-content:space-between; gap:6px; }
+  .prov .rows span { color:var(--overlay0); }
+  .prov .rows b { font-weight:500; font-variant-numeric:tabular-nums; }
+  .prov .foot { color:var(--overlay0); font-size:11.5px; margin-top:8px; border-top:1px solid var(--surface0); padding-top:7px; }
+  .prov .spark { display:flex; align-items:stretch; gap:2px; height:28px; margin-top:8px; }
+  .prov .spark > i { flex:1; min-width:2px; border-radius:1px 1px 0 0; }
+
+  .recharge { margin-top:12px; display:grid; gap:8px; }
+  .recharge .row {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:var(--mantle); border:1px solid var(--surface0); border-left:3px solid var(--red);
+    border-radius:8px; padding:9px 12px; font-size:12.5px;
+  }
+  .recharge .row.warn { border-left-color:var(--yellow); }
+  .recharge .row b { font-weight:600; }
+
+  .card { background:var(--mantle); border:1px solid var(--surface0); border-radius:12px; padding:16px 18px; }
+  .chart-tools { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .chart-wrap { display:flex; gap:8px; align-items:flex-start; }
+  .yaxis { width:54px; height:170px; display:flex; flex-direction:column; justify-content:space-between;
+           text-align:right; font-size:10.5px; color:var(--overlay0); font-variant-numeric:tabular-nums; }
+  .chart { flex:1; display:flex; align-items:stretch; gap:2px; height:170px; }
+  .col { flex:1; display:flex; flex-direction:column; justify-content:flex-end; min-width:3px; }
+  .col > span { display:block; width:100%; min-height:0; }
+  .col:hover { outline:1px solid var(--surface2); outline-offset:1px; border-radius:2px; }
+  .chart { background-image:linear-gradient(to top, var(--surface0) 1px, transparent 1px),
+                               linear-gradient(to top, var(--surface0) 1px, transparent 1px);
+           background-size:100% 50%, 100% 25%; background-position:0 100%, 0 100%;
+           background-repeat:no-repeat; }
+  .axis { display:flex; justify-content:space-between; color:var(--overlay0); font-size:11px; margin-top:6px; padding-left:62px; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; color:var(--subtext0); font-size:12px; margin-top:10px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
 
   table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
   th, td { text-align:right; padding:7px 9px; border-bottom:1px solid var(--surface0); white-space:nowrap; }
   th { color:var(--subtext0); font-size:11.5px; font-weight:500; text-transform:uppercase; letter-spacing:.4px; }
   th:first-child, td:first-child { text-align:left; }
+  th.sortable { cursor:pointer; user-select:none; }
+  th.sortable:hover { color:var(--lavender); }
+  th.sorted { color:var(--lavender); }
   tbody tr:hover { background:var(--surface0); }
+  tr.hidden { display:none; }
   .model { color:var(--text); }
   .tag { display:inline-flex; align-items:center; gap:6px; color:var(--subtext0); font-size:12px; }
-  .mini { display:inline-block; height:6px; border-radius:99px; vertical-align:middle; }
+  .mini { display:inline-block; height:5px; border-radius:99px; vertical-align:middle; }
   .muted { color:var(--overlay0); }
   .scroll { overflow-x:auto; }
 
-  .chart { display:flex; align-items:flex-end; gap:3px; height:150px; margin-top:6px; }
-  .col { flex:1; display:flex; flex-direction:column; justify-content:flex-end; min-width:5px; }
-  .col > span { display:block; width:100%; }
-  .axis { display:flex; justify-content:space-between; color:var(--overlay0); font-size:11px; margin-top:6px; }
-  .legend { display:flex; gap:14px; flex-wrap:wrap; color:var(--subtext0); font-size:12px; margin-top:10px; }
-  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .two { display:grid; grid-template-columns:1fr 340px; gap:14px; align-items:start; }
+  @media (max-width:900px) { .two { grid-template-columns:1fr; } }
 
-  .other { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
-  .other .card .value { font-size:20px; font-weight:600; margin-top:4px; }
-  .other .card .note { color:var(--overlay0); font-size:11.5px; }
+  .chip { font-size:10.5px; padding:1px 6px; border-radius:99px; border:1px solid var(--surface1); color:var(--subtext0); }
+  .chip.real { border-color:var(--green); color:var(--green); }
+  .chip.est { border-color:var(--blue); color:var(--blue); }
+  .chip.unk { border-color:var(--surface2); color:var(--overlay0); }
+  .chip.eq { border-color:var(--mauve); color:var(--mauve); }
 
+  .tasks .t { display:flex; align-items:center; gap:8px; font-size:12.5px; padding:5px 0; border-bottom:1px solid var(--surface0); }
+  .tasks .t:last-child { border-bottom:0; }
+  .tasks .t .n { flex:1; color:var(--subtext1); }
+  .tasks .t .v { font-variant-numeric:tabular-nums; }
+  .tasks .t .bar { width:70px; height:5px; background:var(--crust); border-radius:99px; overflow:hidden; }
+  .tasks .t .bar > i { display:block; height:100%; background:var(--mauve); }
+
+  select {
+    background:var(--surface0); color:var(--text); border:1px solid var(--surface1);
+    border-radius:8px; padding:5px 9px; font-size:12.5px; font-family:inherit;
+  }
+  input[type="search"] {
+    background:var(--surface0); color:var(--text); border:1px solid var(--surface1);
+    border-radius:8px; padding:5px 9px; font-size:12.5px; font-family:inherit; min-width:210px;
+  }
+  input[type="search"]:focus { outline:none; border-color:var(--lavender); }
+  .table-tools { display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+
+  /* Vue par session : le titre est long et porte l'information, il est donc
+     tronque visuellement mais lisible en entier au survol. */
+  #sessions td .st, #sessions td .sid { display:block; max-width:430px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #sessions td .sid { color:var(--overlay0); font-size:11px; font-variant-numeric:tabular-nums; }
+
+  .plan { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px 22px; }
+  .plan .lim .head { display:flex; justify-content:space-between; gap:8px; font-size:13px; }
+  .plan .lim .head b { font-weight:600; }
+  .plan .lim .pc { font-variant-numeric:tabular-nums; font-weight:600; }
+  .plan .lim .bar { height:8px; background:var(--crust); border-radius:99px; overflow:hidden; margin:6px 0 4px; }
+  .plan .lim .bar > i { display:block; height:100%; background:var(--lavender); }
+  .plan .lim .bar > i.warn { background:var(--yellow); }
+  .plan .lim .bar > i.bad { background:var(--red); }
+  .plan .lim .sub2 { color:var(--overlay0); font-size:11.5px; }
+  .plan .brk { color:var(--subtext0); font-size:12px; margin-top:12px; border-top:1px solid var(--surface0); padding-top:8px; }
   footer { margin-top:28px; border-top:1px solid var(--surface0); padding-top:12px; color:var(--overlay0); font-size:11.5px; }
-  footer .src { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
+  footer .src { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:8px; }
   footer .src b { font-weight:500; color:var(--subtext0); }
+  footer p { margin:4px 0; }
   .ok { color:var(--green); } .warn { color:var(--yellow); } .bad { color:var(--red); }
-  @media (max-width:640px) { body { padding:14px 12px 30px; } .hero .balance { font-size:28px; } }
+  @media (max-width:640px) { body { padding:14px 12px 30px; } .prov .big { font-size:22px; } }
 </style>
 </head>
 <body>
@@ -111,330 +173,830 @@
   <header>
     <div>
       <h1>Usage <span class="accent">LLM</span></h1>
-      <div class="sub">tower · OpenRouter + providers directs · argent par modele</div>
+      <div class="sub">tower · Hermes · tous les providers · coût par modèle</div>
     </div>
     <div class="spacer"></div>
-    <div class="sub" id="freshness">chargement...</div>
-    <button id="reload" title="Rafraichir maintenant">rafraichir</button>
+    <div class="seg" id="spans">
+      <button data-span="1">24 h</button>
+      <button data-span="7">7 j</button>
+      <button data-span="30" class="on">30 j</button>
+      <button data-span="90">90 j</button>
+    </div>
+    <div class="sub" id="freshness">chargement…</div>
+    <button id="reload" title="Rafraîchir maintenant">rafraîchir</button>
   </header>
 
   <div class="banner" id="banner"></div>
 
-  <div class="card hero">
-    <div>
-      <div class="sub">Solde restant OpenRouter</div>
-      <div class="balance" id="balance">·</div>
-      <div class="eur" id="balance-eur"></div>
-    </div>
-    <div class="meter">
-      <div class="bar"><i id="used-bar" style="width:0%"></i></div>
-      <div class="legend">
-        <span id="used-text">·</span>
-        <span id="total-text">·</span>
-      </div>
-    </div>
-  </div>
-
   <div class="kpis" id="kpis"></div>
 
-  <h2>Par famille de modeles <span class="hint" id="window-hint"></span></h2>
-  <div class="fam-grid" id="families"></div>
-
-  <h2>Par modele <span class="hint">depense reelle facturee, tokens et taux effectif</span></h2>
-  <div class="card scroll"><table id="models">
-    <thead><tr>
-      <th>Modele</th><th>Depense</th><th>Part</th><th>Tokens</th>
-      <th>Requetes</th><th>$/Mtok</th><th>Cache</th>
-    </tr></thead>
-    <tbody></tbody>
-  </table></div>
-
-  <h2>Depense quotidienne <span class="hint">empilee par famille</span></h2>
-  <div class="card">
-    <div class="chart" id="daily"></div>
-    <div class="axis" id="daily-axis"></div>
-    <div class="legend" id="daily-legend"></div>
+  <div id="claude-plan-block" style="display:none">
+    <h2>Forfait Claude <span class="hint" id="claude-plan-hint"></span></h2>
+    <div class="card" id="claude-plan"></div>
   </div>
 
-  <h2>Par cle d'API <span class="hint">quel pipeline consomme</span></h2>
-  <div class="card scroll"><table id="keys">
-    <thead><tr><th>Cle</th><th>Depense</th><th>Tokens</th><th>Requetes</th></tr></thead>
-    <tbody></tbody>
-  </table></div>
+  <h2>Providers <span class="hint" id="providers-hint"></span></h2>
+  <div class="pgrid" id="providers"></div>
+  <div class="recharge" id="recharge"></div>
 
-  <h2>Hors OpenRouter <span class="hint">abonnements et soldes directs, non factures au token par OpenRouter</span></h2>
-  <div class="other" id="other"></div>
+  <h2>Dépense quotidienne <span class="hint">une barre par jour, empilée ; survolez pour le détail</span></h2>
+  <div class="card">
+    <div class="chart-tools">
+      <div class="seg" id="stack-by">
+        <button data-by="provider" class="on">par provider</button>
+        <button data-by="model">par modèle</button>
+      </div>
+      <div class="seg" id="unit">
+        <button data-unit="cost" class="on">coût</button>
+        <button data-unit="tokens">tokens</button>
+      </div>
+      <span class="muted" id="chart-scale" style="align-self:center;font-size:11.5px"></span>
+    </div>
+    <div class="chart-wrap">
+      <div class="yaxis" id="chart-y"></div>
+      <div class="chart" id="chart"></div>
+    </div>
+    <div class="axis" id="chart-axis"></div>
+    <div class="legend" id="chart-legend"></div>
+  </div>
+
+  <h2>Par modèle <span class="hint" id="models-hint"></span></h2>
+  <div class="card">
+    <div class="table-tools">
+      <select id="model-filter"></select>
+      <span class="muted" id="models-count"></span>
+    </div>
+    <div class="scroll">
+      <table id="models">
+        <thead><tr>
+          <th class="sortable" data-sort="model">Modèle</th>
+          <th class="sortable" data-sort="provider">Provider</th>
+          <th class="sortable sorted" data-sort="cost">Coût</th>
+          <th>Part</th>
+          <th class="sortable" data-sort="tokens">Tokens</th>
+          <th class="sortable" data-sort="calls">Appels</th>
+          <th>$/Mtok</th>
+          <th>Coût</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="two">
+    <div>
+      <h2>Par surface <span class="hint">quelle interface appelle Hermes</span></h2>
+      <div class="card scroll">
+        <table id="surfaces">
+          <thead><tr><th>Surface</th><th>Coût</th><th>Part</th><th>Tokens</th><th>Appels</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <h2>Hors conversation <span class="hint">tâches annexes</span></h2>
+      <div class="card tasks" id="tasks"></div>
+    </div>
+  </div>
+
+  <h2>Par session <span class="hint" id="sessions-hint"></span></h2>
+  <div class="card">
+    <div class="table-tools">
+      <select id="session-surface"></select>
+      <input id="session-search" type="search" placeholder="titre ou id de session…">
+      <select id="session-limit">
+        <option value="25">25 premières</option>
+        <option value="50">50 premières</option>
+        <option value="100">100 premières</option>
+        <option value="0">toutes</option>
+      </select>
+      <span class="muted" id="sessions-count"></span>
+    </div>
+    <div class="scroll">
+      <table id="sessions">
+        <thead><tr>
+          <th class="sortable" data-sort="title">Session</th>
+          <th class="sortable" data-sort="source">Surface</th>
+          <th class="sortable" data-sort="model">Modèle</th>
+          <th class="sortable sorted" data-sort="cost">Coût</th>
+          <th>Part</th>
+          <th class="sortable" data-sort="tokens">Tokens</th>
+          <th class="sortable" data-sort="calls">Appels</th>
+          <th class="sortable" data-sort="last">Dernière activité</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
 
   <footer>
     <div class="src" id="sources"></div>
+    <div id="method"></div>
     <div id="stamp"></div>
   </footer>
 </div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const PALETTE = ["#b4befe","#89b4fa","#94e2d5","#f9e2af","#fab387","#f5c2e7","#eba0ac","#74c7ec","#a6e3a1","#cba6f7"];
+const PALETTE = ["#cba6f7","#89b4fa","#94e2d5","#fab387","#a6e3a1","#f5c2e7","#f9e2af","#74c7ec","#eba0ac","#b4befe","#89dceb","#f2cdcd"];
+
+const state = { span: "30", by: "provider", unit: "cost", sort: "cost", desc: true, filter: "all", payload: null, age: null,
+                sSort: "cost", sDesc: true, sSurface: "all", sQuery: "", sLimit: 25 };
+
+// L'URL porte la vue (partageable, rechargeable) : #span=7&by=model&unit=tokens
+function readHash() {
+  const p = new URLSearchParams(location.hash.replace(/^#/, ""));
+  if (["1", "7", "30", "90"].includes(p.get("span"))) state.span = p.get("span");
+  if (["provider", "model"].includes(p.get("by"))) state.by = p.get("by");
+  if (["cost", "tokens"].includes(p.get("unit"))) state.unit = p.get("unit");
+  if (p.get("provider")) state.filter = p.get("provider");
+  if (p.get("ssurf")) state.sSurface = p.get("ssurf");
+}
+function writeHash() {
+  const p = new URLSearchParams({ span: state.span, by: state.by, unit: state.unit });
+  if (state.filter && state.filter !== "all") p.set("provider", state.filter);
+  if (state.sSurface && state.sSurface !== "all") p.set("ssurf", state.sSurface);
+  history.replaceState(null, "", "#" + p.toString());
+}
+function syncControls() {
+  [...$("spans").children].forEach((c) => c.classList.toggle("on", c.dataset.span === state.span));
+  [...$("stack-by").children].forEach((c) => c.classList.toggle("on", c.dataset.by === state.by));
+  [...$("unit").children].forEach((c) => c.classList.toggle("on", c.dataset.unit === state.unit));
+}
+const LABELS = { "1": "24 h", "7": "7 derniers jours", "30": "30 derniers jours", "90": "90 derniers jours" };
+const SURFACES = { desktop: "desktop", cron: "cron", matrix: "matrix", oneshot: "oneshot", cli: "cli",
+                   tui: "tui", local: "local", subagent: "subagent", api_server: "api", inconnu: "inconnu" };
+const TASKS = { background_review: "revue arrière-plan", compression: "compression de contexte",
+                title_generation: "titres de session", vision: "vision", approval: "approbations" };
 
 function usd(v, digits) {
   if (v === null || v === undefined || isNaN(v)) return "·";
-  const d = digits !== undefined ? digits : (Math.abs(v) < 10 ? 2 : 2);
-  return "$" + Number(v).toFixed(d);
+  const n = Number(v);
+  if (Math.abs(n) < 0.005) return "$0.00";
+  if (n > 0 && n < 0.01) return "<$0.01";
+  return "$" + n.toFixed(digits === undefined ? 2 : digits);
 }
 function usd4(v) { return v === null || v === undefined ? "·" : "$" + Number(v).toFixed(4); }
-function money(v, currency) {
-  if (v === null || v === undefined || isNaN(v)) return "·";
-  if (currency === "CNY") return "¥" + Number(v).toFixed(2);
-  if (currency === "EUR") return Number(v).toFixed(2).replace(".", ",") + " €";
-  return usd(v);
-}
-// fx est l'OBJET {usd_eur, usd_cny} : ne pas le confondre avec eur(v, taux).
-function eurAny(v, currency, fx) {
+function eur(v, fx) {
   if (!fx || v === null || v === undefined || isNaN(v)) return "";
-  const rate = fx.usd_eur;
-  if (!rate) return "";
-  if (currency === "CNY") {
-    if (!fx.usd_cny) return "";
-    return "≈ " + ((v * rate) / fx.usd_cny).toFixed(2).replace(".", ",") + " €";
-  }
-  if (currency === "EUR") return "";
-  return "≈ " + (v * rate).toFixed(2).replace(".", ",") + " €";
+  return "≈ " + (v * fx).toFixed(2).replace(".", ",") + " €";
 }
-function eur(v, fx) { return fx ? "≈ " + (v * fx).toFixed(2).replace(".", ",") + " €" : ""; }
 function compact(v) {
   if (!v) return "0";
-  if (v >= 1e9) return (v / 1e9).toFixed(2) + " G";
-  if (v >= 1e6) return (v / 1e6).toFixed(2) + " M";
-  if (v >= 1e3) return (v / 1e3).toFixed(1) + " k";
+  if (v >= 1e9) return (v / 1e9).toFixed(2).replace(".", ",") + " G";
+  if (v >= 1e6) return (v / 1e6).toFixed(2).replace(".", ",") + " M";
+  if (v >= 1e3) return Math.round(v / 1e3) + " k";
   return String(Math.round(v));
 }
 function pct(v) { return (100 * v).toFixed(1).replace(".", ",") + " %"; }
-
-function render(payload, ageSeconds) {
-  const fxData = (payload && payload.fx) || null;
-  const fx = fxData ? fxData.usd_eur : null;
-  const acc = (payload && payload.account) || null;
-  const rt = (payload && payload.realtime) || null;
-  const windows = (payload && payload.windows) || {};
-  const families = (payload && payload.by_family) || [];
-  const models = (payload && payload.by_model) || [];
-  const daily = (payload && payload.daily) || [];
-  const keys = (payload && payload.by_key) || [];
-  const others = (payload && payload.other_providers) || [];
-  const subs = (payload && payload.subscriptions) || [];
-  const days = (payload && payload.window_days) || 30;
-
-  // --- bandeau d'etat -----------------------------------------------------
-  const errors = (payload && payload.errors) || [];
-  const banner = $("banner");
-  if (errors.length) {
-    banner.style.display = "block";
-    banner.className = "banner" + (errors.some(e => /HTTP 4|HTTP 5|Error|error/.test(e)) ? " err" : "");
-    banner.innerHTML = errors.map(e => escapeHtml(e)).join("<br>");
-  } else {
-    banner.style.display = "none";
-  }
-
-  // --- solde --------------------------------------------------------------
-  if (acc) {
-    $("balance").textContent = usd(acc.remaining);
-    $("balance-eur").textContent = eur(acc.remaining, fx) || "taux EUR indisponible";
-    const cls = acc.used_pct > 95 ? "balance critical" : (acc.used_pct > 85 ? "balance low" : "balance");
-    $("balance").className = cls;
-    $("used-bar").style.width = Math.min(100, acc.used_pct) + "%";
-    $("used-text").textContent = usd(acc.total_usage) + " consommes (" + acc.used_pct.toFixed(1).replace(".", ",") + " %)";
-    $("total-text").textContent = usd(acc.total_credits) + " achetes";
-  } else {
-    $("balance").textContent = "·";
-    $("balance-eur").textContent = "solde indisponible";
-  }
-
-  // --- KPI ----------------------------------------------------------------
-  const kpis = [];
-  const w = (name) => windows[name] || null;
-  const today = w("today");
-  kpis.push({
-    label: "Aujourd'hui (UTC)",
-    value: today ? usd(today.usage) : "en attente",
-    note: today ? eur(today.usage, fx) + " · " + compact(today.requests) + " req · " + compact(today.tokens) + " tok" : "cle management OpenRouter requise"
-  });
-  const week = w("week");
-  kpis.push({
-    label: "7 derniers jours",
-    value: week ? usd(week.usage) : "en attente",
-    note: week ? eur(week.usage, fx) + " · " + compact(week.requests) + " req" : "cle management OpenRouter requise"
-  });
-  const month = w("month");
-  kpis.push({
-    label: days + " derniers jours",
-    value: month ? usd(month.usage) : "en attente",
-    note: month ? eur(month.usage, fx) + " · " + compact(month.tokens) + " tok" : "cle management OpenRouter requise"
-  });
-  if (rt) {
-    kpis.push({
-      label: "Cle d'inference, temps reel",
-      value: usd(rt.usage_monthly),
-      note: "30 j · jour " + usd(rt.usage_daily) + " · semaine " + usd(rt.usage_weekly) +
-            (rt.expires_at ? " · expire le " + rt.expires_at.slice(0, 10) : "")
-    });
-  }
-  if (month && month.tokens > 0) {
-    kpis.push({
-      label: "Taux effectif moyen",
-      value: usd4(month.usage / month.tokens * 1e6) + "/Mtok",
-      note: "toutes familles confondues"
-    });
-  }
-  $("kpis").innerHTML = kpis.map(k => `
-    <div class="kpi">
-      <div class="label">${escapeHtml(k.label)}</div>
-      <div class="value">${escapeHtml(k.value)}</div>
-      <div class="note">${escapeHtml(k.note || "")}</div>
-    </div>`).join("");
-
-  // --- familles -----------------------------------------------------------
-  $("window-hint").textContent = "· " + days + " derniers jours";
-  const totalFam = families.reduce((s, f) => s + f.usage, 0);
-  const maxFam = families.reduce((s, f) => Math.max(s, f.usage), 0) || 1;
-  $("families").innerHTML = families.length ? families.map(f => `
-    <div class="fam">
-      <div class="top">
-        <span class="dot" style="background:${f.color}"></span>
-        <span class="name">${escapeHtml(f.label)}</span>
-        <span class="share">${totalFam ? ((100 * f.usage) / totalFam).toFixed(1).replace(".", ",") + " %" : ""}</span>
-      </div>
-      <div class="amount">${usd(f.usage)}<small>${escapeHtml(eur(f.usage, fx))}</small></div>
-      <div class="bar"><i style="width:${(100 * f.usage) / maxFam}%;background:${f.color}"></i></div>
-      <div class="foot">${f.models} modele${f.models > 1 ? "s" : ""} · ${compact(f.tokens)} tok · ${compact(f.requests)} req</div>
-    </div>`).join("") : `<div class="card muted">Aucune donnee par famille (cle management OpenRouter requise).</div>`;
-
-  // --- modeles ------------------------------------------------------------
-  const maxModel = models.reduce((s, m) => Math.max(s, m.usage), 0) || 1;
-  $("models").querySelector("tbody").innerHTML = models.length ? models.map(m => `
-    <tr>
-      <td>
-        <div class="model">${escapeHtml(m.model)}</div>
-        <div class="tag"><span class="dot" style="background:${m.color};width:7px;height:7px"></span>${escapeHtml(m.family_label)}</div>
-      </td>
-      <td>${usd(m.usage)}<div class="muted" style="font-size:11.5px">${escapeHtml(eur(m.usage, fx))}</div></td>
-      <td>
-        <div>${((100 * m.usage) / totalFam).toFixed(1).replace(".", ",")} %</div>
-        <div class="mini" style="width:${(100 * m.usage) / maxModel}%;max-width:70px;background:${m.color}"></div>
-      </td>
-      <td>${compact(m.tokens)}<div class="muted" style="font-size:11.5px">${compact(m.tokens_prompt)} in / ${compact(m.tokens_completion)} out</div></td>
-      <td>${compact(m.requests)}</td>
-      <td>${m.usd_per_mtok === null ? "·" : usd4(m.usd_per_mtok)}</td>
-      <td>${m.cache_hit_rate ? pct(m.cache_hit_rate) : "·"}</td>
-    </tr>`).join("") : `<tr><td colspan="7" class="muted">Aucun modele facture sur la periode (ou cle management absente).</td></tr>`;
-
-  // --- serie quotidienne --------------------------------------------------
-  const dailyEl = $("daily"), axisEl = $("daily-axis"), legendEl = $("daily-legend");
-  const maxDay = daily.reduce((s, d) => Math.max(s, d.usage), 0) || 1;
-  const famKeys = {};
-  daily.forEach(d => Object.keys(d.families || {}).forEach(k => { famKeys[k] = d.families[k]; }));
-  const orderedFams = Object.values(famKeys).sort((a, b) => b.usage - a.usage);
-  const colors = {};
-  orderedFams.forEach((f, i) => { colors[f.label] = f.color || PALETTE[i % PALETTE.length]; });
-  if (daily.length) {
-    dailyEl.innerHTML = daily.map(d => {
-      const parts = Object.values(d.families || {});
-      const title = d.date + " · " + usd(d.usage) + " · " + compact(d.requests) + " req" +
-        (parts.length ? "\n" + parts.sort((a, b) => b.usage - a.usage).map(f => f.label + " " + usd(f.usage)).join("\n") : "");
-      const segs = (parts.length ? parts : [{ label: "total", usage: d.usage, color: "#b4befe" }]).map(f => {
-        const h = (100 * f.usage) / maxDay;
-        return `<span style="height:${h}%;background:${f.color || colors[f.label] || "#b4befe"}" title="${escapeAttr(f.label + " " + usd(f.usage))}"></span>`;
-      }).join("");
-      return `<div class="col" title="${escapeAttr(title)}">${segs}</div>`;
-    }).join("");
-    axisEl.innerHTML = `<span>${daily[0].date}</span><span>${daily[Math.floor(daily.length / 2)].date}</span><span>${daily[daily.length - 1].date}</span>`;
-    legendEl.innerHTML = orderedFams.map(f =>
-      `<span><i class="dot" style="background:${colors[f.label]}"></i>${escapeHtml(f.label)} ${usd(f.usage)}</span>`).join("");
-  } else {
-    dailyEl.innerHTML = "";
-    axisEl.innerHTML = `<span class="muted">Aucune serie quotidienne disponible.</span>`;
-    legendEl.innerHTML = "";
-  }
-
-  // --- cles d'API ---------------------------------------------------------
-  $("keys").querySelector("tbody").innerHTML = keys.length ? keys.map(k => `
-    <tr><td>${escapeHtml(k.key)}</td><td>${usd(k.usage)}<div class="muted" style="font-size:11.5px">${escapeHtml(eur(k.usage, fx))}</div></td>
-    <td>${compact(k.tokens)}</td><td>${compact(k.requests)}</td></tr>`).join("")
-    : `<tr><td colspan="4" class="muted">Aucune repartition par cle (cle management absente).</td></tr>`;
-
-  // --- hors OpenRouter ----------------------------------------------------
-  const other = [];
-  others.forEach(p => {
-    const cur = p.currency || "USD";
-    const notes = [];
-    if (p.voucher !== undefined || p.cash !== undefined) {
-      notes.push("solde disponible · vouchers " + money(p.voucher, cur) + " · cash " + money(p.cash, cur));
-    }
-    if (p.granted !== undefined || p.topped_up !== undefined) {
-      notes.push("offert " + money(p.granted, cur) + " · recharge " + money(p.topped_up, cur));
-      if (p.usable === false) notes.push("solde insuffisant pour appeler l'API");
-    }
-    const conv = eurAny(p.available, cur, fxData);
-    if (conv) notes.push(conv);
-    other.push({
-      title: p.name,
-      value: money(p.available, cur),
-      note: notes.join(" · ")
-    });
-  });
-  subs.forEach(s => {
-    other.push({
-      title: s.name,
-      value: (s.monthly === null || s.monthly === undefined) ? "abonnement" : usd(s.monthly) + " / mois",
-      note: s.note || "abonnement hors OpenRouter"
-    });
-  });
-  if (!other.length) {
-    other.push({
-      title: "Claude (abonnement MAX)",
-      value: "hors OpenRouter",
-      note: "le provider claude-subscription-directsdk-experimental ne passe pas par OpenRouter : aucun cout au token a afficher"
-    });
-  }
-  $("other").innerHTML = other.map(o => `
-    <div class="card">
-      <div class="sub">${escapeHtml(o.title)}</div>
-      <div class="value">${escapeHtml(o.value)}</div>
-      <div class="note">${escapeHtml(o.note)}</div>
-    </div>`).join("");
-
-  // --- sources ------------------------------------------------------------
-  const status = (payload && payload.status) || {};
-  const labels = {
-    "openrouter/credits": "solde",
-    "openrouter/key": "temps reel",
-    "openrouter/analytics/meta": "schema analytics",
-    "openrouter/analytics/today": "aujourd'hui",
-    "openrouter/analytics/week": "7 j",
-    "openrouter/analytics/month": "30 j",
-    "openrouter/analytics/by_model": "par modele",
-    "openrouter/analytics/daily": "quotidien",
-    "openrouter/analytics/daily_family": "quotidien/famille",
-    "openrouter/analytics/by_key": "par cle",
-    "openrouter/analytics": "analytics",
-    "moonshot": "moonshot",
-    "deepseek": "deepseek",
-    "frankfurter": "taux EUR"
-  };
-  $("sources").innerHTML = Object.entries(status).map(([k, v]) => {
-    const cls = v.state === "ok" ? "ok" : (v.state === "missing" ? "warn" : "bad");
-    return `<span><b>${escapeHtml(labels[k] || k)}</b> <span class="${cls}">${escapeHtml(v.state)}</span></span>`;
-  }).join("");
-
-  const when = payload && payload.generated_at ? new Date(payload.generated_at) : null;
-  $("stamp").textContent = when
-    ? "collecte " + when.toLocaleString("fr-FR") + (ageSeconds !== null && ageSeconds !== undefined ? " (il y a " + Math.round(ageSeconds) + " s)" : "")
-    : "";
-}
-
+function nb(v) { return Number(v || 0).toLocaleString("fr-FR"); }
 function escapeHtml(s) {
   return String(s === null || s === undefined ? "" : s)
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 function escapeAttr(s) { return escapeHtml(s).replace(/\n/g, "&#10;"); }
+
+function providerMeta(pid) {
+  const meta = (state.payload && state.payload.provider_meta) || {};
+  return meta[pid] || { id: pid, label: pid, color: "#585b70", kind: "other", note: "" };
+}
+function window_(span) {
+  const w = (state.payload && state.payload.windows) || {};
+  return w[span] || { models: [], sources: [], tasks: [], totals: { cost: 0, tokens: 0, calls: 0, aux_cost: 0 } };
+}
+function providerWindow(prov, span) {
+  const w = (prov.windows || {})[span];
+  return w || { cost: 0, tokens: 0, calls: 0, aux_cost: 0, models: 0 };
+}
+function sliceSeries(span) {
+  const series = (state.payload && state.payload.series) || [];
+  const days = Number(span);
+  return series.slice(Math.max(0, series.length - days));
+}
+function sliceModelSeries(span) {
+  const series = (state.payload && state.payload.series_model) || [];
+  const days = Number(span);
+  return series.slice(Math.max(0, series.length - days));
+}
+
+// ------------------------------------------------ vue par session (dynamique)
+// L'axe du graphe et la vue par session partagent le meme decoupage quotidien :
+// la fenetre choisie (24 h, 7, 30, 90 j) est donc recalculee dans le navigateur,
+// sans nouvel appel a /api/data. Une session qui a deborde sur deux jours est
+// comptee au prorata de ses messages, comme les totaux par modele.
+function spanDays(span) {
+  const series = (state.payload && state.payload.series) || [];
+  const days = Number(span);
+  return new Set(series.slice(Math.max(0, series.length - days)).map((d) => d.date));
+}
+
+function sessionRows() {
+  const keep = spanDays(state.span);
+  const rows = [];
+  ((state.payload && state.payload.sessions) || []).forEach((s) => {
+    let cost = 0, tokens = 0, calls = 0, first = null, last = null;
+    Object.keys(s.days || {}).forEach((day) => {
+      if (!keep.has(day)) return;
+      const v = s.days[day];
+      cost += v[0] || 0;
+      tokens += v[1] || 0;
+      calls += v[2] || 0;
+      if (first === null || day < first) first = day;
+      if (last === null || day > last) last = day;
+    });
+    if (first === null) return;
+    const models = s.models || [];
+    rows.push({
+      id: s.id,
+      title: s.title || s.id,
+      hasTitle: !!s.title,
+      source: s.source || "inconnu",
+      model: models.length ? models[0][0] : "inconnu",
+      models: models,
+      cost: cost, tokens: tokens, calls: calls, first: first, last: last,
+    });
+  });
+  return rows;
+}
+
+// ---------------------------------------------------------------- rendu
+function render(payload, ageSeconds) {
+  state.payload = payload;
+  state.age = ageSeconds;
+  const fx = payload && payload.fx ? payload.fx.usd_eur : null;
+  const win = window_(state.span);
+
+  // bandeau d'état
+  const errors = (payload && payload.errors) || [];
+  const banner = $("banner");
+  if (errors.length) {
+    banner.style.display = "block";
+    banner.className = "banner err";
+    banner.innerHTML = errors.map(escapeHtml).join("<br>");
+  } else {
+    banner.style.display = "none";
+  }
+
+  renderKpis(win, fx);
+  renderClaudePlan(payload);
+  renderProviders(payload, fx);
+  renderChart(payload);
+  renderModels(payload, forex(win));
+  renderSurfaces(win, fx);
+  renderTasks(win, fx);
+  renderSessions(payload, forex(win));
+  renderFooter(payload);
+}
+
+function forex(win) {
+  const w = (state.payload && state.payload.fx) || null;
+  return (w && w.usd_eur) || null;
+}
+
+function renderKpis(win, fx) {
+  const providers = (state.payload && state.payload.providers) || [];
+  let cash = 0, sub = 0, tokens = 0, cache = 0, calls = 0;
+  providers.forEach((p) => {
+    const w = providerWindow(p, state.span);
+    if (p.kind === "subscription") sub += w.cost; else if (p.kind !== "local") cash += w.cost;
+  });
+  ((win.models) || []).forEach((m) => { tokens += m.tokens || 0; cache += m.cache_read || 0; calls += m.calls || 0; });
+  const aux = (win.totals && win.totals.aux_cost) || 0;
+  const total = cash + sub;
+  const sess = sessionRows();
+  const sessCost = sess.reduce((s, r) => s + r.cost, 0);
+  const kpis = [
+    { label: "Crédits consommés", value: usd(cash),
+      note: "estimé · " + (eur(cash, fx) || "taux indisponible") + " · " + LABELS[state.span] },
+    { label: "Équivalent abonnement", value: usd(sub),
+      note: sub ? "Claude : au tarif API, non facturé au token" : "aucun usage d'abonnement" },
+    { label: "Tokens facturables", value: compact(tokens),
+      note: tokens ? "dont " + pct(cache / tokens) + " servis par le cache" : "aucun token" },
+    { label: "Appels API", value: nb(calls),
+      note: total ? usd(total / calls, 4) + " par appel en moyenne" : "—" },
+    { label: "Sessions", value: nb(sess.length),
+      note: sess.length ? usd(sessCost / sess.length) + " par session en moyenne" : "aucune session" },
+    { label: "Hors conversation", value: usd(aux),
+      note: total ? pct(aux / total) + " du coût (titres, compressions, revue)" : "—" },
+  ];
+  $("kpis").innerHTML = kpis.map((k) => `
+    <div class="kpi">
+      <div class="label">${escapeHtml(k.label)}</div>
+      <div class="value">${escapeHtml(k.value)}</div>
+      <div class="note">${escapeHtml(k.note || "")}</div>
+    </div>`).join("");
+}
+
+function renderProviders(payload, fx) {
+  const providers = (payload.providers || []).filter((p) =>
+    providerWindow(p, state.span).cost > 0 || p.balance || p.kind === "subscription" || p.kind === "local");
+  $("providers-hint").textContent = "· " + LABELS[state.span] + " · solde, consommation et reste à courir";
+  if (!providers.length) {
+    $("providers").innerHTML = `<div class="card muted">Aucun provider actif sur la période.</div>`;
+    $("recharge").innerHTML = "";
+    return;
+  }
+  const total = providers.reduce((s, p) => s + (providerWindow(p, state.span).cost || 0), 0) || 1;
+  const maxCost = providers.reduce((s, p) => Math.max(s, providerWindow(p, state.span).cost || 0), 0) || 1;
+
+  $("providers").innerHTML = providers.map((p) => {
+    const w = providerWindow(p, state.span);
+    const share = (w.cost || 0) / total;
+    const b = p.balance;
+    const kindLabel = { cash: "crédits", subscription: "abonnement", local: "local", other: "?" }[p.kind] || p.kind;
+
+    let big, bigSub, bigCls = "big";
+    const h = (payload.health || {})[p.id];
+    if (p.kind === "subscription") {
+      big = p.monthly_usd ? usd(p.monthly_usd) + " / mois" : "abonnement";
+      bigSub = "équivalent API " + usd(w.cost) + " sur la période, non facturé au token";
+      bigCls += " muted";
+    } else if (p.kind === "local") {
+      big = "gratuit";
+      bigSub = "GPU maison, coût marginal nul";
+      bigCls += " muted";
+    } else if (b) {
+      big = usd(b.amount);
+      bigSub = (b.detail || []).join(" · ");
+      if (b.amount <= 0) bigCls += " bad";
+      else if (p.runway_days !== null && p.runway_days !== undefined && p.runway_days < 14) bigCls += " warn";
+    } else if (h) {
+      // Provider sans endpoint de solde (Google) : la carte porte la sonde de
+      // sante a la place du montant, sinon elle n'afficherait rien d'utile.
+      big = !h.key_ok ? "clé refusée" : (h.state === "ok" ? "clé OK" : "génération KO");
+      bigSub = (h.detail || []).slice(0, 2).join(" · ");
+      if (!h.key_ok) bigCls += " bad";
+      else if (h.state !== "ok") bigCls += " warn";
+      else bigCls += " muted";
+    } else {
+      big = "pas de solde";
+      bigSub = "aucun endpoint de solde chez ce provider";
+      bigCls += " muted";
+    }
+
+    let foot;
+    if (p.kind === "cash") {
+      if (b && p.runway_days !== null && p.runway_days !== undefined) {
+        const src = p.burn_30 && p.burn_30.source === "history" ? "réel" : "estimé";
+        foot = b.amount <= 0
+          ? `crédit épuisé · ${usd(p.burn_30.per_day)}/j (${src})`
+          : `≈ ${Math.round(p.runway_days)} j de crédit à ${usd(p.burn_30.per_day)}/j (${src})`;
+      } else if (b) {
+        foot = "historique de solde trop court pour projeter : premier relevé " +
+               (p.history_since ? "le " + p.history_since.slice(0, 10) : "à venir");
+      } else if (h) {
+        const g = h.gen || {};
+        const when = g.checked_at ? new Date(g.checked_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+        foot = g.state === "ok"
+          ? `sonde ${g.model} : OK en ${g.latency_ms} ms${when ? " (test " + when + ")" : ""}`
+          : `sonde ${g.model || "gemini"} : ${g.state === "timeout" ? "pas de réponse" : (g.message || "en échec")}${when ? " (test " + when + ")" : ""}`;
+      } else {
+        foot = "coût estimé aux tarifs Hermes uniquement";
+      }
+    } else if (p.kind === "subscription") {
+      foot = p.monthly_usd ? "abonnement déclaré, hors facturation au token" : "abonnement : pas de coût au token";
+    } else if (p.kind === "local") {
+      foot = "modèle servi sur le laptop, pas de facturation";
+    } else {
+      foot = p.note || "";
+    }
+    // Pour OpenRouter, le seul chiffre REELLEMENT facture disponible sans cle
+    // management est l'usage de la cle d'inference : le montrer a cote de
+    // l'estime evite de prendre l'estimation pour une facture.
+    if (p.id === "openrouter" && payload.openrouter && payload.openrouter.key) {
+      const key = payload.openrouter.key;
+      foot += " · clé : " + usd(key.usage_monthly) + " facturés sur 30 j";
+    }
+
+    // Echelle propre a chaque provider : une sparkline relative au plus gros
+    // provider ne montrerait rien pour les petits.
+    const daily = sliceSeries(state.span).map((day) => ({ v: (day.p[p.id] || [0, 0, 0])[0] }));
+    const ownMax = daily.reduce((s, d) => Math.max(s, d.v), 0) || 1;
+    const spark = daily.map((d) => ({ v: d.v, h: Math.round(100 * d.v / ownMax) }));
+
+    return `
+    <div class="prov">
+      <div class="top">
+        <span class="dot" style="background:${p.color}"></span>
+        <span class="name">${escapeHtml(p.label)}</span>
+        <span class="badge">${escapeHtml(kindLabel)}</span>
+      </div>
+      <div class="${bigCls}">${escapeHtml(big)}</div>
+      <div class="bigsub">${escapeHtml(bigSub || "")}</div>
+      <div class="bar"><i style="width:${Math.min(100, 100 * share)}%;background:${p.color}"></i></div>
+      <div class="rows">
+        <div><span>${LABELS[state.span]}</span><b>${usd(w.cost)}</b></div>
+        <div><span>tokens</span><b>${compact(w.tokens)}</b></div>
+        <div><span>appels</span><b>${nb(w.calls)}</b></div>
+        <div><span>part coût</span><b>${pct(share)}</b></div>
+      </div>
+      <div class="spark">${spark.map((s) => `<i style="height:${Math.max(3, s.h)}%;background:${p.color}aa" title="${usd(s.v)}"></i>`).join("")}</div>
+      <div class="foot">${escapeHtml(foot)}</div>
+    </div>`;
+  }).join("");
+
+  // Rechargements à prévoir : uniquement les providers à crédits dont le solde
+  // ne couvre pas un mois au rythme observé.
+  const rows = providers.filter((p) => p.kind === "cash" && p.balance && p.burn_30 &&
+    (p.runway_days === null || p.runway_days === undefined || p.runway_days < 30))
+    .sort((a, b) => (a.runway_days || 0) - (b.runway_days || 0));
+  $("recharge").innerHTML = rows.length ? rows.map((p) => {
+    const month = (p.burn_30.per_day || 0) * 30;
+    const urgent = (p.balance.amount || 0) <= 0 || (p.runway_days || 0) < 7;
+    return `<div class="row ${urgent ? "" : "warn"}">
+      <span class="dot" style="background:${p.color}"></span>
+      <b>${escapeHtml(p.label)}</b>
+      <span>${p.balance.amount <= 0 ? "crédit épuisé" : "reste " + usd(p.balance.amount) + (p.runway_days !== null ? " (≈ " + Math.round(p.runway_days) + " j)" : "")}</span>
+      <span class="muted">à ce rythme : ${usd(month)} par mois</span>
+      <span class="spacer"></span>
+      <span>recharge conseillée <b>${usd(Math.max(month, 10))}</b></span>
+    </div>`;
+  }).join("") : "";
+}
+
+function renderChart(payload) {
+  const el = $("chart"), axisEl = $("chart-axis"), legendEl = $("chart-legend");
+  const span = state.span;
+  const unitIndex = state.unit === "cost" ? 0 : 1;
+  const fmt = (v) => state.unit === "cost" ? usd(v, v < 1 ? 3 : 2) : compact(v) + " tok";
+
+  let days, keysOf, labelOf, colorOf;
+  if (state.by === "provider") {
+    days = sliceSeries(span).map((d) => ({ date: d.date, parts: d.p }));
+    keysOf = (parts) => Object.keys(parts);
+    labelOf = (k) => providerMeta(k).label;
+    colorOf = (k) => providerMeta(k).color;
+  } else {
+    days = sliceModelSeries(span).map((d) => ({ date: d.date, parts: d.m }));
+    // Couleurs par modèle : on colore les plus coûteux, le reste en gris.
+    const totals = new Map();
+    sliceModelSeries(span).forEach((d) => Object.entries(d.m).forEach(([k, v]) => {
+      const cur = totals.get(k) || [0, 0, ""];
+      cur[0] += v[0]; cur[1] += v[1]; cur[2] = k;
+      totals.set(k, cur);
+    }));
+    const ranked = [...totals.values()].sort((a, b) => b[unitIndex] - a[unitIndex]);
+    const colors = new Map();
+    ranked.forEach((row, i) => colors.set(row[2], i < 8 ? PALETTE[i % PALETTE.length] : "#585b70"));
+    keysOf = (parts) => Object.keys(parts);
+    labelOf = (k) => k.split("|").slice(1).join("|");
+    colorOf = (k) => colors.get(k) || "#585b70";
+  }
+
+  if (!days.length) {
+    el.innerHTML = ""; axisEl.innerHTML = `<span class="muted">Aucune donnée.</span>`; legendEl.innerHTML = "";
+    $("chart-scale").textContent = "";
+    $("chart-y").innerHTML = "";
+    return;
+  }
+
+  // Totaux par clé sur la fenêtre : sert à l'ordre d'empilement et à la légende.
+  const sums = new Map();
+  days.forEach((d) => Object.entries(d.parts || {}).forEach(([k, v]) => {
+    sums.set(k, (sums.get(k) || 0) + (v[unitIndex] || 0));
+  }));
+  const order = [...sums.entries()].filter(([, v]) => v > (state.unit === "cost" ? 0.0005 : 0))
+    .sort((a, b) => b[1] - a[1]).map((e) => e[0]);
+  const maxDay = days.reduce((s, d) => {
+    const v = Object.entries(d.parts || {}).reduce((t, [, val]) => t + (val[unitIndex] || 0), 0);
+    return Math.max(s, v);
+  }, 0) || 1;
+
+  el.innerHTML = days.map((d) => {
+    const parts = d.parts || {};
+    const total = Object.entries(parts).reduce((t, [, val]) => t + (val[unitIndex] || 0), 0);
+    const detail = order.filter((k) => parts[k]).map((k) => labelOf(k) + " " + fmt(parts[k][unitIndex])).join("\n");
+    const segs = order.filter((k) => parts[k]).map((k) => {
+      const h = 100 * (parts[k][unitIndex] || 0) / maxDay;
+      return `<span style="height:${h}%;background:${colorOf(k)}" title="${escapeAttr(labelOf(k) + " " + fmt(parts[k][unitIndex]))}"></span>`;
+    }).join("");
+    const title = d.date + " · " + fmt(total) + (detail ? "\n" + detail : "");
+    return `<div class="col" title="${escapeAttr(title)}">${segs}</div>`;
+  }).join("");
+
+  // Echelle verticale : trois reperes (0, moitie, max) alignes sur les
+  // lignes de grille de la carte.
+  const short = (v) => state.unit === "cost"
+    ? (v >= 10 ? "$" + Math.round(v) : v >= 1 ? "$" + v.toFixed(1) : v > 0 ? "<$1" : "$0")
+    : compact(v);
+  $("chart-y").innerHTML = `<span>${short(maxDay)}</span><span>${short(maxDay / 2)}</span><span>${short(0)}</span>`;
+
+  const shortDate = (d) => { const parts = d.split("-"); return parts[2] + "/" + parts[1]; };
+  const ticks = days.length >= 5 ? [0, 0.25, 0.5, 0.75, 1].map((f) =>
+    shortDate(days[Math.round(f * (days.length - 1))].date)) : [shortDate(days[0].date), shortDate(days[days.length - 1].date)];
+  axisEl.innerHTML = ticks.map((d) => `<span>${d}</span>`).join("");
+  const grand = order.reduce((s, k) => s + (sums.get(k) || 0), 0);
+  $("chart-scale").textContent = "max " + fmt(maxDay) + " par jour · total " + (state.unit === "cost" ? usd(grand) : compact(grand) + " tok");
+  const fmtTotal = (v) => state.unit === "cost" ? usd(v) : compact(v) + " tok";
+  legendEl.innerHTML = order.slice(0, 10).map((k) =>
+    `<span><i class="dot" style="background:${colorOf(k)}"></i>${escapeHtml(labelOf(k))} ${fmtTotal(sums.get(k) || 0)}</span>`).join("") +
+    (order.length > 10 ? `<span class="muted">+ ${order.length - 10} autres</span>` : "");
+}
+
+function renderModels(payload, fx) {
+  const win = window_(state.span);
+  const models = (win.models || []).slice();
+  const total = models.reduce((s, m) => s + (m.cost || 0), 0) || 1;
+  const maxCost = models.reduce((s, m) => Math.max(s, m.cost || 0), 0) || 1;
+
+  // Filtre par provider, reconstruit seulement si la liste a changé.
+  const select = $("model-filter");
+  const pids = [...new Set(((payload.windows && payload.windows[state.span] || {}).models || []).map((m) => m.provider))];
+  if (select.dataset.pids !== pids.join(",")) {
+    select.dataset.pids = pids.join(",");
+    select.innerHTML = `<option value="all">tous les providers</option>` + pids.map((pid) =>
+      `<option value="${escapeAttr(pid)}">${escapeHtml(providerMeta(pid).label)}</option>`).join("");
+    select.value = state.filter;
+    if (select.value !== state.filter) { state.filter = "all"; select.value = "all"; }
+  }
+
+  const key = state.sort;
+  models.sort((a, b) => {
+    const va = key === "model" ? a.model : key === "provider" ? (providerMeta(a.provider).label || "") : (a[key] || 0);
+    const vb = key === "model" ? b.model : key === "provider" ? (providerMeta(b.provider).label || "") : (b[key] || 0);
+    if (typeof va === "string" || typeof vb === "string") return state.desc ? String(vb).localeCompare(String(va)) : String(va).localeCompare(String(vb));
+    return state.desc ? vb - va : va - vb;
+  });
+
+  let shown = 0;
+  $("models").querySelector("tbody").innerHTML = models.map((m) => {
+    const meta = providerMeta(m.provider);
+    const hidden = state.filter !== "all" && m.provider !== state.filter;
+    if (!hidden) shown++;
+    const perMtok = m.tokens > 0 ? (m.cost / m.tokens) * 1e6 : null;
+    // Un abonnement n'est jamais facture au token : son montant est un
+    // equivalent, l'afficher comme une depense serait mensonger.
+    const status = meta.kind === "subscription"
+      ? `<span class="chip eq" title="usage valorise au tarif API, non facture">équiv.</span>`
+      : m.cost_status === "actual" ? `<span class="chip real">réel</span>`
+      : m.cost_status === "estimated" ? `<span class="chip est">estimé</span>`
+      : `<span class="chip unk">inconnu</span>`;
+    return `
+    <tr class="${hidden ? "hidden" : ""}">
+      <td><div class="model">${escapeHtml(m.model)}</div>
+          ${m.aux_cost > 0 ? `<div class="muted" style="font-size:11px">dont ${usd(m.aux_cost)} hors conversation</div>` : ""}</td>
+      <td><span class="tag"><span class="dot" style="background:${meta.color};width:7px;height:7px"></span>${escapeHtml(meta.label)}</span></td>
+      <td>${meta.kind === "subscription" ? "≈ " : ""}${usd(m.cost)}<div class="muted" style="font-size:11px">${escapeHtml(eur(m.cost, fx))}</div></td>
+      <td><div>${pct((m.cost || 0) / total)}</div>
+          <div class="mini" style="width:${Math.min(70, 100 * (m.cost || 0) / maxCost)}%;background:${meta.color}"></div></td>
+      <td>${compact(m.tokens)}<div class="muted" style="font-size:11px">${compact(m.tokens_in)} in / ${compact(m.tokens_out)} out / ${compact(m.cache_read)} cache</div></td>
+      <td>${nb(m.calls)}</td>
+      <td>${perMtok === null ? "·" : usd4(perMtok)}</td>
+      <td>${status}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="8" class="muted">Aucun usage sur la période.</td></tr>`;
+  $("models-count").textContent = shown + " modèle" + (shown > 1 ? "s" : "") + " · " + LABELS[state.span];
+  $("models-hint").textContent = "· estimé = tokens × tarifs Hermes · équiv. = abonnement valorisé au tarif API, jamais facturé · réel = facturé";
+  document.querySelectorAll("#models th.sortable").forEach((th) => {
+    th.classList.toggle("sorted", th.dataset.sort === state.sort);
+  });
+}
+
+function renderSurfaces(win, fx) {
+  const rows = (win.sources || []).filter((s) => s.cost > 0 || s.calls > 0);
+  const total = rows.reduce((s, r) => s + (r.cost || 0), 0) || 1;
+  $("surfaces").querySelector("tbody").innerHTML = rows.length ? rows.map((r) => `
+    <tr>
+      <td>${escapeHtml(SURFACES[r.surface] || r.surface)}</td>
+      <td>${usd(r.cost)}<div class="muted" style="font-size:11px">${escapeHtml(eur(r.cost, fx))}</div></td>
+      <td>${pct((r.cost || 0) / total)}</td>
+      <td>${compact(r.tokens)}</td>
+      <td>${nb(r.calls)}</td>
+    </tr>`).join("") : `<tr><td colspan="5" class="muted">Aucune donnée.</td></tr>`;
+}
+
+function renderTasks(win, fx) {
+  const rows = (win.tasks || []).filter((t) => t.calls > 0).sort((a, b) => b.cost - a.cost);
+  const total = rows.reduce((s, t) => s + (t.cost || 0), 0) || 1;
+  const globalCost = (win.totals && win.totals.cost) || 0;
+  if (!rows.length) {
+    $("tasks").innerHTML = `<div class="muted">Aucune tâche annexe sur la période.</div>`;
+    return;
+  }
+  $("tasks").innerHTML = rows.map((t) => `
+    <div class="t">
+      <span class="n">${escapeHtml(TASKS[t.task] || t.task)}</span>
+      <span class="bar"><i style="width:${Math.max(2, 100 * (t.cost || 0) / total)}%"></i></span>
+      <span class="v">${usd(t.cost)}</span>
+      <span class="muted" style="font-size:11px">${nb(t.calls)}</span>
+    </div>`).join("") +
+    `<div class="muted" style="margin-top:10px;font-size:11.5px">${usd(total)} au total, soit ${pct(globalCost ? total / globalCost : 0)} du coût de la période.</div>`;
+}
+
+function renderSessions(payload, fx) {
+  const rows = sessionRows();
+  const total = rows.reduce((s, r) => s + r.cost, 0) || 1;
+  const maxCost = rows.reduce((s, r) => Math.max(s, r.cost), 0) || 1;
+
+  // Filtre par surface, reconstruit seulement si la liste a change (sinon la
+  // selection saute a chaque rafraichissement de 60 s).
+  const sel = $("session-surface");
+  const sources = [...new Set(rows.map((r) => r.source))].sort();
+  if (sel.dataset.srcs !== sources.join(",")) {
+    sel.dataset.srcs = sources.join(",");
+    sel.innerHTML = `<option value="all">toutes les surfaces</option>` + sources.map((s) =>
+      `<option value="${escapeAttr(s)}">${escapeHtml(SURFACES[s] || s)}</option>`).join("");
+    sel.value = state.sSurface;
+    if (sel.value !== state.sSurface) { state.sSurface = "all"; sel.value = "all"; }
+  }
+
+  const q = (state.sQuery || "").trim().toLowerCase();
+  const list = rows.filter((r) =>
+    (state.sSurface === "all" || r.source === state.sSurface) &&
+    (!q || (r.title + " " + r.id).toLowerCase().includes(q)));
+
+  const key = state.sSort;
+  list.sort((a, b) => {
+    const va = key === "last" ? a.last : a[key];
+    const vb = key === "last" ? b.last : b[key];
+    if (typeof va === "string" || typeof vb === "string") {
+      const sa = String(va), sb = String(vb);
+      return state.sDesc ? sb.localeCompare(sa) : sa.localeCompare(sb);
+    }
+    return state.sDesc ? vb - va : va - vb;
+  });
+
+  const shown = state.sLimit ? list.slice(0, state.sLimit) : list;
+  const day = (d) => (d ? d.slice(8, 10) + "/" + d.slice(5, 7) : "·");
+  const dayTitle = (d) => (d ? new Date(d + "T00:00:00").toLocaleDateString("fr-FR") : "");
+  $("sessions").querySelector("tbody").innerHTML = shown.length ? shown.map((r) => {
+    const others = r.models.slice(1);
+    const extra = others.length
+      ? `<div class="muted" style="font-size:11px" title="${escapeAttr(r.models.map((m) => m[0] + " " + usd(m[1])).join("\n"))}">+${others.length} modèle${others.length > 1 ? "s" : ""}</div>`
+      : "";
+    return `
+    <tr>
+      <td><span class="st" title="${escapeAttr(r.title)}">${escapeHtml(r.title)}</span>
+          ${r.hasTitle ? `<div class="sid">${escapeHtml(r.id)}</div>` : ""}</td>
+      <td>${escapeHtml(SURFACES[r.source] || r.source)}</td>
+      <td><div class="model">${escapeHtml(r.model)}</div>${extra}</td>
+      <td>${usd(r.cost)}<div class="muted" style="font-size:11px">${escapeHtml(eur(r.cost, fx))}</div></td>
+      <td><div>${pct((r.cost || 0) / total)}</div>
+          <div class="mini" style="width:${Math.min(70, 100 * (r.cost || 0) / maxCost)}%;background:var(--mauve)"></div></td>
+      <td>${compact(r.tokens)}</td>
+      <td>${nb(r.calls)}</td>
+      <td title="${escapeAttr(dayTitle(r.first) + " → " + dayTitle(r.last))}">${day(r.last)}
+          ${r.first !== r.last ? `<div class="muted" style="font-size:11px">depuis ${day(r.first)}</div>` : ""}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="8" class="muted">Aucune session sur la période.</td></tr>`;
+
+  const filtered = list.length !== rows.length ? shown.length + " affichées sur " + list.length + " filtrées, " + rows.length + " au total" : shown.length + " session" + (shown.length > 1 ? "s" : "");
+  $("sessions-count").textContent = filtered + " · " + usd(rows.reduce((s, r) => s + r.cost, 0)) + " · " + LABELS[state.span];
+  // Hors reseau prive le service retire les titres : le dire, sinon la colonne
+  // ressemble a un bug d'affichage.
+  const masked = rows.length > 0 && !rows.some((r) => r.hasTitle);
+  $("sessions-hint").textContent = "· une ligne par session, agrégée sur la fenêtre choisie par le navigateur · coût = tous ses appels, tous modèles"
+    + (masked ? " · titres masqués hors réseau privé (accès tailnet)" : "");
+  document.querySelectorAll("#sessions th.sortable").forEach((th) => {
+    th.classList.toggle("sorted", th.dataset.sort === state.sSort);
+  });
+}
+
+function resetLabel(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const mins = Math.round((d - Date.now()) / 60000);
+  const rel = mins <= 0 ? "maintenant" : mins < 60 ? mins + " min" :
+    mins < 1440 ? Math.floor(mins / 60) + " h " + String(mins % 60).padStart(2, "0") : Math.floor(mins / 1440) + " j " + Math.floor((mins % 1440) / 60) + " h";
+  return "réinitialisation " + d.toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" }) + " (dans " + rel + ")";
+}
+function renderClaudePlan(payload) {
+  const plan = payload && payload.claude_plan;
+  const block = $("claude-plan-block");
+  if (!plan || !plan.data) { block.style.display = "none"; return; }
+  block.style.display = "block";
+  const d = plan.data;
+  const fetched = plan.fetched_at ? new Date(plan.fetched_at) : null;
+  const age = fetched ? Math.round((Date.now() - fetched) / 60000) : null;
+  $("claude-plan-hint").textContent = "· mêmes chiffres que /usage dans Claude Code · relevé il y a " +
+    (age === null ? "?" : age + " min") + (plan.state !== "ok" && plan.message ? " · " + plan.message : "");
+  const rows = [
+    ["Session actuelle (5 h)", d.session],
+    ["Cette semaine", d.weekly],
+    ["Semaine · Opus", d.weekly_opus],
+    ["Semaine · Sonnet", d.weekly_sonnet],
+  ].filter((r) => r[1]);
+  const lim = rows.map(([label, w]) => {
+    const p = Math.max(0, Math.min(100, Number(w.percent) || 0));
+    const cls = p >= 90 ? "bad" : p >= 70 ? "warn" : "";
+    return `<div class="lim">
+      <div class="head"><b>${escapeHtml(label)}</b><span class="pc">${Math.round(p)} %</span></div>
+      <div class="bar"><i class="${cls}" style="width:${p}%"></i></div>
+      <div class="sub2">${escapeHtml(resetLabel(w.resets_at))}</div>
+    </div>`;
+  }).join("");
+  const brk = (d.breakdown || []).filter((b) => b.share);
+  const brkHtml = brk.length ? `<div class="brk">Semaine par usage : ` +
+    brk.map((b) => `${escapeHtml(b.name)} ${b.share} % (${b.percent_of_limit} % de la limite)`).join(" · ") + `</div>` : "";
+  $("claude-plan").innerHTML = `<div class="plan">${lim}</div>${brkHtml}`;
+}
+
+function renderFooter(payload) {
+  const status = (payload && payload.status) || {};
+  const labels = {
+    "hermes/usage": "usage Hermes",
+    "openrouter/credits": "solde OpenRouter",
+    "openrouter/key": "clé d'inférence",
+    "openrouter/analytics": "analytics OpenRouter",
+    "moonshot": "solde Moonshot",
+    "deepseek": "solde DeepSeek",
+    "gemini/health": "santé Gemini",
+    "frankfurter": "taux EUR",
+    "claude/plan": "forfait Claude",
+  };
+  $("sources").innerHTML = Object.entries(status).map(([k, v]) => {
+    const cls = v.state === "ok" ? "ok" : (v.state === "missing" ? "warn" : "bad");
+    const title = v.message ? ` title="${escapeAttr(v.message)}"` : "";
+    return `<span${title}><b>${escapeHtml(labels[k] || k)}</b> <span class="${cls}">${escapeHtml(v.state)}</span></span>`;
+  }).join("");
+
+  const agent = (payload && payload.agent) || null;
+  const homes = agent && agent.homes ? agent.homes.filter((h) => !h.error) : [];
+  const bits = [];
+  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Coût estimé</b> : tokens enregistrés par Hermes × tarifs connus, cache inclus. <b style="color:var(--subtext0);font-weight:500">Coût réel</b> : baisse de solde relevée chez le provider, seule source non estimée, disponible au niveau du compte seulement.</p>`);
+  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Répartition quotidienne</b> : au prorata des messages de chaque session ce jour-là (les lignes d'usage sont des agrégats de session, pas des événements datés) ; le total reste exact au token près.</p>`);
+  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Vue par session</b> : une ligne par session Hermes (titre, surface, modèle dominant), coût de tous ses appels tous modèles confondus. Elle est agrégée dans le navigateur sur la fenêtre choisie, à partir du même découpage quotidien que le graphe : la somme des sessions d'une fenêtre égale donc exactement le total de cette fenêtre. Les sessions sans coût ni token connu sont écartées.</p>`);
+  if (agent) {
+    const age = agent.age_seconds === null || agent.age_seconds === undefined ? "?" : Math.round(agent.age_seconds / 60);
+    bits.push(`<p>Usage Hermes collecté il y a ${age} min · ${homes.length} base${homes.length > 1 ? "s" : ""} (${homes.map((h) => h.profile).join(", ")}) · ${homes.reduce((s, h) => s + (h.rows || 0), 0)} lignes d'usage.</p>`);
+  }
+  if (payload && payload.openrouter && payload.openrouter.key) {
+    const k = payload.openrouter.key;
+    bits.push(`<p>Clé d'inférence OpenRouter : ${usd(k.usage_monthly)} sur 30 j, ${usd(k.usage_weekly)} sur 7 j, total ${usd(k.usage)} (expire le ${(k.expires_at || "").slice(0, 10)}).</p>`);
+  }
+  $("method").innerHTML = bits.join("");
+
+  const when = payload && payload.generated_at ? new Date(payload.generated_at) : null;
+  $("stamp").textContent = when
+    ? "collecté " + when.toLocaleString("fr-FR") +
+      (state.age !== null && state.age !== undefined ? " (il y a " + Math.round(state.age) + " s)" : "")
+    : "";
+}
+
+// ---------------------------------------------------------------- pilotage
+$("spans").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (!b) return;
+  state.span = b.dataset.span;
+  syncControls();
+  writeHash();
+  if (state.payload) render(state.payload, state.age);
+});
+$("stack-by").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (!b) return;
+  state.by = b.dataset.by;
+  syncControls();
+  writeHash();
+  if (state.payload) renderChart(state.payload);
+});
+$("unit").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button");
+  if (!b) return;
+  state.unit = b.dataset.unit;
+  syncControls();
+  writeHash();
+  if (state.payload) renderChart(state.payload);
+});
+document.querySelectorAll("#models th.sortable").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.sort;
+    if (state.sort === key) state.desc = !state.desc;
+    else { state.sort = key; state.desc = key === "cost" || key === "tokens" || key === "calls"; }
+    if (state.payload) renderModels(state.payload, forex());
+  });
+});
+$("model-filter").addEventListener("change", (ev) => {
+  state.filter = ev.target.value;
+  writeHash();
+  if (state.payload) renderModels(state.payload, forex());
+});
+$("session-surface").addEventListener("change", (ev) => {
+  state.sSurface = ev.target.value;
+  writeHash();
+  if (state.payload) renderSessions(state.payload, forex());
+});
+$("session-limit").addEventListener("change", (ev) => {
+  state.sLimit = Number(ev.target.value) || 0;
+  if (state.payload) renderSessions(state.payload, forex());
+});
+$("session-search").addEventListener("input", (ev) => {
+  state.sQuery = ev.target.value;
+  if (state.payload) renderSessions(state.payload, forex());
+});
+document.querySelectorAll("#sessions th.sortable").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.sort;
+    if (state.sSort === key) state.sDesc = !state.sDesc;
+    else { state.sSort = key; state.sDesc = ["cost", "tokens", "calls", "last"].includes(key); }
+    if (state.payload) renderSessions(state.payload, forex());
+  });
+});
+window.addEventListener("hashchange", () => {
+  readHash();
+  syncControls();
+  if (state.payload) render(state.payload, state.age);
+});
 
 let lastFetch = 0;
 async function load() {
@@ -450,9 +1012,11 @@ async function load() {
 function tick() {
   if (!lastFetch) return;
   const s = (Date.now() - lastFetch) / 1000;
-  $("freshness").innerHTML = `donnees il y a <b>${Math.round(s)} s</b> · auto 60 s`;
+  $("freshness").innerHTML = `données il y a <b>${Math.round(s)} s</b> · auto 60 s`;
 }
 $("reload").addEventListener("click", load);
+readHash();
+syncControls();
 load();
 setInterval(load, 60000);
 setInterval(tick, 1000);

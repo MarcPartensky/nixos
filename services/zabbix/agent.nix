@@ -5,14 +5,19 @@
 # par l'exterieur : `networking.firewall.trustedInterfaces = [ "tailscale0" ]`
 # (services/tailscale) suffit, aucun port a ouvrir, et le trafic est deja
 # chiffre par WireGuard.
-{ config, ... }:
+{ config, pkgs, ... }:
 let
   # anywhere (le VPS), adresse tailnet. Le serveur ecoute sur 0.0.0.0:10051.
   server = "100.64.0.1";
+  # Meme serie que le serveur (7.4 LTS) : un agent plus vieux que le serveur
+  # fonctionne, un agent plus recent casse, donc on aligne les deux pour ne
+  # jamais avoir a y penser lors d'une montee de version.
+  package = pkgs.zabbix74.agent;
 in
 {
   services.zabbixAgent = {
     enable = true;
+    inherit package;
 
     # Checks passifs : c'est le serveur qui interroge l'agent, en revenant par le
     # tailnet. L'option `server` du module alimente la ligne `Server` du fichier

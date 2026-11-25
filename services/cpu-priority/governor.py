@@ -36,6 +36,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import time
 
 # unite -> (plafond % en etat capped, plafond % en etat wide)
 UNITS = {
@@ -53,6 +54,12 @@ HARD_CAP = {
 JOB_UNITS = (400, 1200)  # unites transitoires winnie-job-* trouvees a l'execution
 
 PRESSURE = pathlib.Path("/sys/fs/cgroup/user.slice/cpu.pressure")
+# Prevision du service presence (Rust, services/presence) : `reserve` = marc va
+# probablement avoir besoin de la machine dans les 30 min (habitude horaire ou
+# retour a la maison detecte). Dans ce cas on ne desserre PAS : on reste aux
+# plafonds declaratifs, pour que la machine soit deja libre quand il arrive.
+FORECAST = pathlib.Path("/var/lib/hermes/presence-dashboard/forecast.json")
+FORECAST_MAX_AGE = 600  # s : au-dela, la prevision est perimee, on l'ignore
 SYSTEM_SLICE = pathlib.Path("/sys/fs/cgroup/system.slice")
 HIGH = 10.0      # some avg10 (%) : des taches interactives font la queue
 LOW = 2.0        # some avg10 (%) : personne n'attend
@@ -71,6 +78,23 @@ def pressure_some_avg10():
     except OSError:
         return None
     return None
+
+
+def reserve_now():
+    """(reserve, raison) d'apres forecast.json ; (None, ...) si indisponible."""
+    try:
+        data = json.loads(FORECAST.read_text())
+    except (OSError, ValueError):
+        return None, "prevision indisponible"
+    try:
+        age = time.time() - float(data.get("at") or 0)
+    except (TypeError, ValueError):
+        return None, "prevision illisible"
+    if age > FORECAST_MAX_AGE:
+        return None, f"prevision perimee ({int(age)} s)"
+    if data.get("reserve"):
+        return True, str(data.get("why") or "reserve")
+    return False, str(data.get("why") or "calme")
 
 
 def transient_units():
@@ -98,8 +122,13 @@ def main():
     psi = pressure_some_avg10()
     state, quiet, applied = read_state()
 
+    reserve, reserve_why = reserve_now()
+
     if force in ("wide", "capped"):
         new_state, new_quiet = force, 0
+    elif reserve is True:
+        # marc arrive (ou est la) : on garde les plafonds, sans attendre la PSI
+        new_state, new_quiet = "capped", 0
     elif psi is None:
         new_state, new_quiet = "capped", 0
     elif state == "wide":
@@ -111,7 +140,8 @@ def main():
             new_quiet = 0
 
     shown = "illisible" if psi is None else f"{psi:.2f}%"
-    print(f"psi(user.slice) some avg10={shown} {state}({quiet}) -> {new_state}", flush=True)
+    print(f"psi(user.slice) some avg10={shown} {state}({quiet}) -> {new_state}"
+          f"  [reserve={reserve}: {reserve_why}]", flush=True)
 
     desired = {}
     for unit, (capped, wide) in UNITS.items():
