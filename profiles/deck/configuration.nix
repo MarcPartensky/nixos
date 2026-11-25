@@ -41,6 +41,7 @@
     # open here, no local state: the deck can sleep, the job is
     # replayed by Windmill on return.
     ../../services/windmill
+    ../../modules/nixos/panel-idle-off
     ./switch-emu.nix
   ];
 
@@ -177,6 +178,16 @@
     AllowHibernation = false; # also cuts hybrid-sleep and suspend-then-hibernate
   };
 
+  # The roommate's complaint: the panel stayed lit for days. Steam's own
+  # "Turn off screen after" only dims the backlight to ~3 % under gamescope, so
+  # the deck cuts the backlight itself after 5 min without input (keyboard or
+  # gamepad) and brings it back at the first input. No suspend: the machine keeps
+  # building and mining. Cf modules/nixos/panel-idle-off.
+  services.panelIdleOff = {
+    enable = true;
+    idleSeconds = 300;
+  };
+
   # ========================================================================
   # MATRIX CONDUIT (replaces Synapse on tower)
   # ========================================================================
@@ -239,7 +250,11 @@
   # single unit per argument, but several arguments are added): the
   # form "5h35m" failed with "invalid time interval" and the unit failed on
   # each trigger. 5h35m = 20100 s.
-  systemd.services.deck-wake-downloads.serviceConfig.ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=sleep:idle --why='Steam downloads' ${pkgs.coreutils}/bin/sleep 20100";
+  #
+  # Only the `sleep` inhibit is kept: the `idle` one asked logind to keep the
+  # DISPLAY awake, which contradicts the panel blanking below (a download does
+  # not need a lit screen). Downloads still get their five hours.
+  systemd.services.deck-wake-downloads.serviceConfig.ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=sleep --why='Steam downloads' ${pkgs.coreutils}/bin/sleep 20100";
 
   # home.file.${config.gtk.gtk2.configLocation}.force = true;
   # xdg.configFile = {
@@ -269,6 +284,29 @@
     calendar.passwordFile = config.sops.secrets."monero/nextcloud-password".path;
     calendar.calendars = [ "sg" ];
   };
+
+  # Local LLM/VLM inference on the RDNA2 GPU (Van Gogh, RADV). The deck is the
+  # only always-on machine with a GPU and it never suspends (services.panelIdleOff
+  # blanks the panel instead of sleeping), so it hosts the vision models: the
+  # winnie ingest points its OLLAMA_URL here.
+  # `ollama-vulkan` is the nixpkgs build with the Vulkan backend (no CUDA/ROCm),
+  # and `OLLAMA_IGPU_ENABLE` is mandatory: ollama drops integrated GPUs unless it
+  # is set, which is exactly what happened before this option existed (the server
+  # only ever listed the CPU as an inference device).
+  # Measured on qwen3-vl:4b (1043 image tokens, 183 generated): 86 tok/s prefill
+  # and 22 tok/s decode, against 4.7 and 3.3 tok/s on tower's CPU.
+  services.ollama = {
+    enable = true;
+    package = pkgs.ollama-vulkan;
+    host = "0.0.0.0";
+    port = 11434;
+    loadModels = [ "qwen3-vl:4b" ];
+    environmentVariables.OLLAMA_IGPU_ENABLE = "1";
+  };
+
+  # Ollama has no authentication: this port is open on the LAN and the tailnet
+  # only, which is how the other deck services are exposed.
+  networking.firewall.allowedTCPPorts = [ 11434 ];
 
   networking.hostName = "deck";
   system.stateVersion = "26.05";
