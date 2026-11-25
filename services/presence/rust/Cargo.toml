@@ -1,0 +1,28 @@
+[package]
+name = "presence"
+version = "0.1.0"
+edition = "2021"
+description = "Presence de marc (Mac / telephone / tower / Hermes) + prevision et reservation CPU"
+license = "MIT"
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "query", "json"] }
+tokio = { version = "1", default-features = false, features = ["rt", "net", "time", "macros", "sync"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+libc = "0.2"
+# IN-PROCESS read of state.db: the `sqlite3` binary failed under the
+# service's systemd sandbox (spawn refused), which emptied the model silently.
+# NO "bundled" feature: we link against nixpkgs' sqlite through pkg-config,
+# which avoids compiling the C amalgamation on every build.
+rusqlite = "0.32"
+# Presence log (one row per minute) and forecasts: tower's Postgres.
+postgres = { version = "0.19", default-features = false }
+
+[profile.release]
+opt-level = "z"      # a service that sleeps does not need raw speed
+lto = "fat"
+codegen-units = 1
+# pas de panic = "abort" : une erreur dans un handler doit rendre un 500, pas
+# tuer le service (vecu : une panique de connexion Postgres relancait l'unite)
+strip = true

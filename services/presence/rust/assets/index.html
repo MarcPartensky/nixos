@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--SNAP-->
+<title>Présence · Hermes</title>
+<style>
+  :root{
+    --base:#1e1e2e; --mantle:#181825; --crust:#11111b; --surface0:#313244;
+    --surface1:#45475a; --surface2:#585b70; --text:#cdd6f4; --subtext:#a6adc8;
+    --overlay:#7f849c; --lavender:#b4befe; --green:#a6e3a1; --peach:#fab387;
+    --blue:#89b4fa; --red:#f38ba8; --yellow:#f9e2af; --teal:#94e2d5; --mauve:#cba6f7;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--base); color:var(--text);
+    font:14px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Inter,Roboto,sans-serif;
+    padding:24px 20px 40px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  h1{font-size:17px;font-weight:600;letter-spacing:.2px;margin:0}
+  h1 span{color:var(--lavender)}
+  .meta{color:var(--overlay);font-size:12px;margin-left:auto;display:flex;gap:10px;align-items:center}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(166,227,161,.5);
+       animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(166,227,161,.45)}70%{box-shadow:0 0 0 7px rgba(166,227,161,0)}100%{box-shadow:0 0 0 0 rgba(166,227,161,0)}}
+  .card{background:var(--mantle);border:1px solid var(--surface0);border-radius:12px;padding:16px 18px}
+  .grid{display:grid;gap:14px}
+  .hero{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .badge{display:flex;align-items:center;gap:12px}
+  .badge .orb{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:24px;
+              background:var(--surface0);border:1px solid var(--surface1)}
+  .badge .label{font-size:21px;font-weight:600}
+  .badge .why{color:var(--subtext);font-size:13px;margin-top:2px;max-width:52ch}
+  .clock{margin-left:auto;text-align:right;color:var(--subtext);font-size:12px}
+  .clock b{display:block;color:var(--lavender);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+  .two{grid-template-columns:1.15fr .85fr}
+  @media(max-width:820px){.two{grid-template-columns:1fr}}
+  h2{font-size:11px;text-transform:uppercase;letter-spacing:1.1px;color:var(--overlay);margin:0 0 12px}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed rgba(69,71,90,.55);font-size:13px}
+  .row:last-child{border-bottom:0}
+  .row .k{color:var(--subtext)}
+  .row .v{text-align:right;font-variant-numeric:tabular-nums}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:11.5px;
+        background:var(--surface0);color:var(--subtext);border:1px solid var(--surface1)}
+  .pill.on{background:rgba(166,227,161,.14);color:var(--green);border-color:rgba(166,227,161,.4)}
+  .pill.off{background:rgba(243,139,168,.12);color:var(--red);border-color:rgba(243,139,168,.35)}
+  .pill.warn{background:rgba(250,179,135,.13);color:var(--peach);border-color:rgba(250,179,135,.35)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .devs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:760px){.devs{grid-template-columns:1fr}}
+  .dev{border:1px solid var(--surface0);border-radius:10px;padding:12px 14px;background:rgba(49,50,68,.35)}
+  .dev.act{border-color:rgba(166,227,161,.5);background:rgba(166,227,161,.07)}
+  .dev.on{border-color:rgba(180,190,254,.35)}
+  .dev .top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .dev .nm{font-weight:600;font-size:13.5px}
+  .dev.act .nm{color:var(--green)}
+  .dev .st{font-size:12px;color:var(--subtext);margin-top:6px;min-height:31px}
+  .dev .facts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .timeline{margin-top:14px}
+  .bar{display:flex;height:22px;border-radius:6px;overflow:hidden;background:var(--surface0)}
+  .bar div{height:100%}
+  .axis{display:flex;justify-content:space-between;color:var(--overlay);font-size:11px;margin-top:5px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--subtext);font-size:11.5px;margin-top:10px}
+  .legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+  ul.plain{list-style:none;margin:0;padding:0}
+  ul.plain li{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:12.5px;
+              border-bottom:1px dashed rgba(69,71,90,.55)}
+  ul.plain li:last-child{border-bottom:0}
+  .when{color:var(--overlay);font-variant-numeric:tabular-nums}
+  .err{background:rgba(243,139,168,.1);border:1px solid rgba(243,139,168,.35);color:var(--red);
+       border-radius:8px;padding:8px 10px;font-size:12px;margin-top:10px;display:none}
+  footer{margin-top:18px;color:var(--overlay);font-size:11px;line-height:1.7}
+  code{background:var(--crust);padding:1px 5px;border-radius:4px;color:var(--subtext);font-size:11px}
+  /* ---- 24 h graph (canvas) ---- */
+  .cwrap{position:relative;margin-top:10px}
+  .cwrap canvas{display:block;width:100%}
+  .tip{position:absolute;pointer-events:none;background:var(--crust);border:1px solid var(--surface1);
+       border-radius:8px;padding:7px 9px;font-size:11.5px;line-height:1.5;color:var(--text);
+       box-shadow:0 6px 18px rgba(0,0,0,.45);display:none;z-index:5;min-width:150px}
+  .tip b{color:var(--lavender);font-weight:600}
+  .tip .k{color:var(--overlay)}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+  .statbox{background:var(--crust);border:1px solid var(--surface0);border-radius:9px;padding:7px 10px;min-width:96px}
+  .statbox .lb{color:var(--overlay);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px}
+  .statbox .val{font-size:15px;font-variant-numeric:tabular-nums;margin-top:2px}
+  .statbox .sub{color:var(--subtext);font-size:11px;margin-top:1px}
+  .split{display:flex;height:7px;border-radius:4px;overflow:hidden;margin-top:6px;background:var(--surface0)}
+  .split div{height:100%}
+  .hint{color:var(--overlay);font-size:11px;font-weight:400;margin-left:auto}
+
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Présence <span>· Hermes</span></h1>
+    <div class="meta"><span class="dot" id="live"></span><span id="updated">chargement…</span></div>
+  </header>
+
+  <div class="card hero" style="margin-bottom:14px">
+    <div class="badge">
+      <div class="orb" id="orb">·</div>
+      <div>
+        <div class="label" id="state">…</div>
+        <div class="why" id="why">lecture des signaux</div>
+      </div>
+    </div>
+    <div class="clock">
+      <b id="clock">--:--:--</b>
+      <span id="window"></span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <h2>Appareils · qui a l'écran maintenant</h2>
+    <div class="devs" id="devs"><div class="dev"><div class="st">lecture des sondes…</div></div></div>
+  </div>
+
+  <div class="grid two">
+    <div class="card">
+      <h2>Connecté à Hermes</h2>
+      <div class="row"><span class="k">État</span><span class="v" id="h-state">…</span></div>
+      <div class="row"><span class="k">Raison</span><span class="v" id="h-why" style="max-width:34ch">…</span></div>
+      <div class="row"><span class="k">Sessions actives &lt; 15 min</span><span class="v" id="h-sessions">…</span></div>
+      <div class="row"><span class="k">Messages user 15 min / 1 h</span><span class="v" id="h-msgs">…</span></div>
+      <div class="row"><span class="k">POST web UI récent</span><span class="v" id="h-webui">…</span></div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="card">
+      <h2>Prochaines bornes</h2>
+      <ul class="plain" id="windows"><li><span class="when">…</span></li></ul>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>24 dernières heures <span class="hint" id="tl-hint">survol : détail minute par minute</span></h2>
+    <div class="stats" id="tl-stats"></div>
+    <div class="cwrap"><canvas id="tl"></canvas><div class="tip" id="tl-tip"></div></div>
+    <div class="legend" id="tl-legend">
+      <span><i style="background:#a6e3a1"></i>devant tower</span>
+      <span><i style="background:#cba6f7"></i>sur le Mac</span>
+      <span><i style="background:#94e2d5"></i>sur le téléphone</span>
+      <span><i style="background:#b4befe"></i>à la maison, inactif</span>
+      <span><i style="background:#fab387"></i>au bureau</span>
+      <span><i style="background:#f9e2af"></i>dehors</span>
+      <span><i style="background:#89b4fa"></i>dort</span>
+      <span><i style="background:#45475a"></i>pas de donnée</span>
+      <span><i style="background:#b4befe;opacity:.55"></i>jobs de fond (cœurs)</span>
+      <span><i style="background:#fab387;opacity:.8"></i>plus gros job</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Jobs automatiques <span class="hint">lancés pendant une absence · un run n'est jamais un signal de présence</span></h2>
+    <div class="hint" id="auto-counts" style="margin:6px 0 8px">…</div>
+    <ul class="plain" id="auto-list"><li><span class="when">…</span></li></ul>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>24 prochaines heures <span class="hint">prévision d'usage apprise sur l'historique · bandes vertes = créneaux calmes</span></h2>
+    <div class="cwrap"><canvas id="fc"></canvas><div class="tip" id="fc-tip"></div></div>
+    <div class="legend">
+      <span><i style="background:#b4befe;opacity:.5"></i>probabilité que tu utilises la machine</span>
+      <span><i style="background:#a6e3a1;opacity:.55"></i>créneau calme (≥ 1 h)</span>
+      <span><i style="background:#fab387"></i>seuil de réservation (45 %)</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Semaine type <span class="hint" id="heat-hint">probabilité d'usage par jour et par heure, apprise sur l'historique</span></h2>
+    <div class="cwrap"><canvas id="heat"></canvas><div class="tip" id="heat-tip"></div></div>
+    <div class="legend">
+      <span>calme <i style="background:rgba(203,166,247,.10);width:34px;height:8px"></i>
+            <i style="background:rgba(203,166,247,.45);width:34px;height:8px;margin-left:-14px"></i>
+            <i style="background:rgba(203,166,247,.95);width:34px;height:8px;margin-left:-14px"></i> tu es presque toujours là</span>
+      <span><i style="background:#a6e3a1"></i>case entourée = maintenant</span>
+      <span>au-dessus de 45 % : la machine te reste réservée, les jobs restent bridés</span>
+    </div>
+  </div>
+
+  <div class="grid two" style="margin-top:14px">
+    <div class="card">
+      <h2>Tower</h2>
+      <div class="row"><span class="k">CPU marc</span><span class="v" id="t-cpu">…</span></div>
+      <div class="row"><span class="k">Bureau Kasm</span><span class="v" id="t-kasm">…</span></div>
+      <div class="row"><span class="k">Shell de marc</span><span class="v" id="t-tty" style="max-width:34ch">…</span></div>
+      <div class="row"><span class="k">Modèle local</span><span class="v" id="t-model">…</span></div>
+      <div class="row"><span class="k">Load1 · RAM dispo</span><span class="v" id="t-load">…</span></div>
+    </div>
+    <div class="card">
+      <h2>Gateway Hermes</h2>
+      <div class="row"><span class="k">Process</span><span class="v" id="g-state">…</span></div>
+      <div class="row"><span class="k">Agents actifs</span><span class="v" id="g-agents">…</span></div>
+      <div class="row"><span class="k">Profils</span><span class="v" id="g-profiles">…</span></div>
+      <div class="chips" id="g-platforms"></div>
+    </div>
+  </div>
+
+  <div class="err" id="err"></div>
+
+  <footer>
+    Sondes : <code>HIDIdleTime</code> + assertion <code>powerd</code> (Mac, ssh LAN) ·
+    <code>debug.tracing.screen_state</code> (téléphone) · clients KasmVNC <code>:8443</code>
+    et idle des tty physiques (tower) · <code>state.db</code> (messages utilisateur seulement) ·
+    <code>gateway_state.json</code> · <code>psql taskq</code> (overrides).
+    Les tâches <code>cron</code>/<code>oneshot</code>/<code>subagent</code> ne comptent jamais
+    comme présence : l'agent peut travailler à 04:00 sans rendre marc « connecté ».
+  </footer>
+</div>
+
+<script>
+const COLORS = {at_tower:'#a6e3a1', at_mac:'#cba6f7', at_phone:'#94e2d5',
+                online_mac:'#b4befe', online_phone:'#b4befe', nearby:'#b4befe',
+                away_work:'#fab387', away_sleep:'#89b4fa', away_out:'#f9e2af',
+                home_idle:'#b4befe', unknown:'#45475a'};
+const LABELS = {at_tower:['Devant tower','🖥'], at_mac:['Sur le Mac','💻'],
+                at_phone:['Sur le téléphone','📱'], online_mac:['Mac joignable','💻'],
+                online_phone:['Téléphone joignable','📱'], nearby:['À proximité','🛋'],
+                away_work:['Au bureau','🏢'], away_sleep:['Dort','😴'], away_out:['Dehors','🚶'],
+                home_idle:['À la maison, inactif','🏠'], unknown:['Inconnu','?']};
+const SOURCE_NAMES = {desktop:'desktop', tui:'TUI', cli:'CLI', matrix:'Matrix',
+                      local:'local', api_server:'API/mobile', oneshot:'oneshot', cron:'cron'};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function ago(ts){
+  if(!ts) return 'jamais';
+  const d = Math.max(0, Date.now()/1000 - ts);
+  if(d < 60) return Math.round(d)+' s';
+  if(d < 3600) return Math.round(d/60)+' min';
+  if(d < 86400) return Math.round(d/3600)+' h';
+  return Math.round(d/86400)+' j';
+}
+function untilLabel(iso){
+  if(!iso) return '';
+  const d = new Date(iso).getTime() - Date.now();
+  if(d <= 0) return 'finie';
+  const m = Math.round(d/60000);
+  return m >= 60 ? `jusqu'à ${new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} (${Math.floor(m/60)} h ${m%60} min)` :
+                   `jusqu'à ${new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} (${m} min)`;
+}
+function pill(on, text, clsOn='on', clsOff='off'){
+  return `<span class="pill ${on?clsOn:clsOff}">${esc(text)}</span>`;
+}
+
+
+// ---------------------------------------------------------------- 24 h graph
+const DEVCOL = {mac:'#cba6f7', phone:'#94e2d5', tower:'#a6e3a1'};
+const DEVLAB = {mac:'Mac', phone:'téléphone', tower:'tower'};
+const LOCCOL = {home:'#a6e3a1', work:'#fab387', out:'#f9e2af', 'out?':'#e5c890', unknown:'#585b70'};
+const LOCLAB = {home:'maison', work:'bureau', out:'dehors', 'out?':'dehors ?', unknown:'lieu inconnu'};
+const MONO = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
+let TL = null, TL_HOVER = null, TL_HOVER_PT = null;
+
+function hidpi(cv, cssH){
+  const w = Math.max(320, cv.parentElement.clientWidth || cv.clientWidth);
+  const r = window.devicePixelRatio || 1;
+  cv.width = Math.round(w * r); cv.height = Math.round(cssH * r);
+  cv.style.height = cssH + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(r, 0, 0, r, 0, 0);
+  ctx.clearRect(0, 0, w, cssH);
+  ctx.font = MONO; ctx.textBaseline = 'middle';
+  return {ctx, w, h: cssH};
+}
+const hm = (t) => new Date(t * 1000).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+const hmd = (t) => new Date(t * 1000).toLocaleString('fr-FR', {weekday:'short', hour:'2-digit', minute:'2-digit'});
+function dur(min){
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h ? `${h} h ${String(m).padStart(2,'0')}` : `${m} min`;
+}
+function hexA(hex, a){
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+// coloured segments: one categorical value per minute
+function laneSeg(ctx, pts, pick, color, x0, x1, from, now, y, h){
+  const X = (t) => x0 + (t - from) / (now - from) * (x1 - x0);
+  let start = null, key = null;
+  const flush = (tEnd) => {
+    if (start == null) return;
+    const c = color(key);
+    if (c){ ctx.fillStyle = c; ctx.fillRect(X(start), y, Math.max(1, X(tEnd) - X(start)), h); }
+  };
+  for (const p of pts){
+    const k = pick(p);
+    if (k !== key){ flush(p[0]); start = p[0]; key = k; }
+  }
+  flush(now);
+}
+
+// night bands (23 h -> 11 h): visual marker, not data
+function nightBands(ctx, from, now, x0, x1, y, h){
+  const X = (t) => x0 + (t - from) / (now - from) * (x1 - x0);
+  let t = Math.ceil(from / 3600) * 3600;
+  ctx.fillStyle = 'rgba(17,17,27,.55)';
+  for (; t < now; t += 3600){
+    const hh = new Date(t * 1000).getHours();
+    if (hh === 11 || hh === 23) ctx.fillRect(X(t), y, 3600 / (now - from) * (x1 - x0), h);
+  }
+}
+
+function drawTimeline(){
+  const cv = $('tl');
+  if (!cv) return;
+  const H = 300;
+  const {ctx, w} = hidpi(cv, H);
+  const pts = (TL && TL.pts) || [];
+  const now = (TL && TL.now) || Date.now() / 1000;
+  const from = now - (TL ? TL.hours : 24) * 3600;
+  const x0 = 38, x1 = w - 10;
+  const X = (t) => x0 + (t - from) / (now - from) * (x1 - x0);
+  const dim = 'var(--overlay)';
+  ctx.fillStyle = '#7f849c';
+
+  if (!pts.length){
+    ctx.fillStyle = '#7f849c'; ctx.font = MONO;
+    ctx.fillText('pas encore d\'historique : le service doit tourner pour accumuler', 10, H / 2);
+    return;
+  }
+  nightBands(ctx, from, now, x0, x1, 14, H - 26);
+
+  // 1. presence (80 px)
+  laneSeg(ctx, pts, p => p[1], i => i < 0 ? null : COLORS[TL.states[i]] || COLORS.unknown, x0, x1, from, now, 14, 80);
+  // CPU reservation: thin line at the top of the band
+  ctx.fillStyle = 'rgba(166,227,161,.95)';
+  laneSeg(ctx, pts, p => p[4], v => v ? 'rgba(166,227,161,.95)' : null, x0, x1, from, now, 11, 3);
+
+  // 2. device (26 px)
+  laneSeg(ctx, pts, p => p[2], i => i < 0 ? null : hexA(DEVCOL[TL.devices[i]] || '#585b70', .85), x0, x1, from, now, 112, 26);
+  // 3. location (26 px)
+  laneSeg(ctx, pts, p => p[3], i => i < 0 ? null : hexA(LOCCOL[TL.locs[i]] || '#585b70', .85), x0, x1, from, now, 156, 26);
+
+  // 4. stacked background jobs (80 px)
+  const cpuTop = 272, cpuBot = 200;
+  const vals = pts.map(p => (p[5] ?? 0) + (p[6] ?? 0));
+  const maxV = Math.max(1, ...vals);
+  const scale = (v) => cpuBot - Math.min(v, maxV) / maxV * (cpuBot - 14 - 4);
+  const step = maxV > 8 ? 8 : maxV > 4 ? 4 : maxV > 2 ? 2 : 1;
+  for (let v = 0; v <= maxV; v += step){
+    const y = scale(v);
+    ctx.strokeStyle = 'rgba(69,71,90,.45)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    ctx.fillStyle = '#7f849c'; ctx.fillText(v === maxV ? `${v} c` : String(v), 4, y);
+  }
+  const area = (getBottom, getTop, fill) => {
+    let open = false;
+    ctx.beginPath();
+    for (const p of pts){
+      const b = getBottom(p), t = getTop(p);
+      if (b == null){ open = false; continue; }
+      const x = X(p[0]);
+      if (!open){ ctx.moveTo(x, scale(b)); open = true; } else ctx.lineTo(x, scale(b));
+    }
+    for (let i = pts.length - 1; i >= 0; i--){
+      const p = pts[i]; const b = getBottom(p), t = getTop(p);
+      if (b == null) continue;
+      ctx.lineTo(X(p[0]), scale(t));
+    }
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  };
+  if (!pts.some(p => p[5] != null)){
+    ctx.fillStyle = '#7f849c'; ctx.font = MONO;
+    ctx.fillText('pas encore de mesure de charge (journal démarré aujourd\'hui)', x0 + 8, cpuBot - 26);
+  }
+  area(p => p[5], p => p[5], 'rgba(180,190,254,.45)');                    // you + agent
+  area(p => p[5], p => p[5] + (p[6] || 0), 'rgba(250,179,135,.45)');     // biggest job
+
+  // hover cursor
+  if (TL_HOVER != null){
+    const x = X(TL_HOVER);
+    ctx.strokeStyle = 'rgba(205,214,244,.55)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, 8); ctx.lineTo(x, H - 24); ctx.stroke();
+    const p = TL_HOVER_PT;
+    if (p){
+      const y = 14 + 80 * (p[1] >= 0 ? 0.5 : 0.5);
+      ctx.fillStyle = '#cdd6f4';
+      ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 7); ctx.fill();
+    }
+  }
+
+  // lane labels
+  ctx.font = '600 10.5px ui-monospace, SFMono-Regular, Menlo, monospace';
+  ctx.fillStyle = '#a6adc8';
+  ctx.fillText('PRÉSENCE', x0 + 4, 6);
+  ctx.fillText('APPAREIL', x0 + 4, 104);
+  ctx.fillText('LIEU', x0 + 4, 148);
+  ctx.fillText('JOBS (cœurs)', x0 + 4, 192);
+
+  // time axis, ticks every 3 h aligned on local time
+  const H3 = 3 * 3600;
+  const tz = -new Date(from * 1000).getTimezoneOffset() * 60;   // local - UTC
+  const s0 = from + tz;
+  const t0 = from + (Math.ceil(s0 / H3) * H3 - s0);
+  for (let t = t0; t <= now; t += H3){
+    const x = X(t);
+    ctx.strokeStyle = 'rgba(69,71,90,.5)';
+    ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, H - 24); ctx.stroke();
+    ctx.fillStyle = '#7f849c';
+    const d = new Date(t * 1000);
+    const lab = d.getHours() === 0 ? d.toLocaleDateString('fr-FR',{weekday:'short'}) : String(d.getHours()).padStart(2,'0') + ' h';
+    const tw = ctx.measureText(lab).width;
+    ctx.fillText(lab, Math.min(Math.max(2, x - tw / 2), w - tw - 2), H - 12);
+  }
+
+  // marker of the present instant (right edge)
+  ctx.fillStyle = '#a6e3a1'; ctx.fillRect(x1 - 1.5, 8, 1.5, H - 34);
+  ctx.fillStyle = '#a6e3a1'; ctx.font = MONO;
+  ctx.fillText('maintenant', Math.min(x1 - 46, w - 60), H - 12);
+
+  // statistics
+  const st = TL.stats || {};
+  const tot = Math.max(1, st.points || 1);
+  const windowMin = (TL.hours || 24) * 60;
+  const counts = {};
+  for (const p of pts){ const s = p[1] >= 0 ? TL.states[p[1]] : 'unknown'; counts[s] = (counts[s] || 0) + 1; }
+  const order = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+  $('tl-stats').innerHTML = `
+    <div class="statbox"><div class="lb">présent</div><div class="val">${dur(st.present_minutes || 0)}</div>
+      <div class="sub">${Math.round((st.present_minutes || 0) / windowMin * 100)} % des ${TL.hours} h · ${tot} min observées</div></div>
+    <div class="statbox" style="flex:1;min-width:220px"><div class="lb">répartition</div>
+      <div class="split">${order.map(([s, n]) =>
+        `<div title="${esc((LABELS[s]||[s])[0])} ${Math.round(n/tot*100)} %" style="width:${n/tot*100}%;background:${COLORS[s]||COLORS.unknown}"></div>`).join('')}</div>
+      <div class="sub">${order.slice(0,4).map(([s,n]) => `${(LABELS[s]||[s])[0]} ${Math.round(n/tot*100)} %`).join(' · ')}${order.length > 4 ? ` · +${order.length-4}` : ''}</div></div>
+    <div class="statbox"><div class="lb">jobs quand tu es là</div><div class="val">${st.cpu_present_avg == null ? '—' : st.cpu_present_avg.toFixed(2)}</div><div class="sub">cœurs moyens</div></div>
+    <div class="statbox"><div class="lb">jobs quand tu es absent</div><div class="val">${st.cpu_absent_avg == null ? '—' : st.cpu_absent_avg.toFixed(2)}</div><div class="sub">cœurs moyens</div></div>`;
+}
+
+function drawForecast(){
+  const cv = $('fc');
+  if (!cv || !TL) return;
+  const H = 120;
+  const {ctx, w} = hidpi(cv, H);
+  const now = TL.now, to = now + 24 * 3600;
+  const x0 = 38, x1 = w - 10;
+  const X = (t) => x0 + (t - now) / (to - now) * (x1 - x0);
+  const Y = (p) => 96 - p * 80;
+  // grid
+  for (const p of [0, 0.25, 0.5, 0.75, 1]){
+    const y = Y(p);
+    ctx.strokeStyle = 'rgba(69,71,90,.45)';
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
+    ctx.fillStyle = '#7f849c'; ctx.font = MONO;
+    ctx.fillText(Math.round(p * 100) + '%', 8, y);
+  }
+  // calm slots
+  (TL.calm || []).forEach(c => {
+    const a = X(c.start), b = X(c.start + c.minutes * 60);
+    ctx.fillStyle = 'rgba(166,227,161,.16)';
+    ctx.fillRect(a, 16, Math.max(1, b - a), 80);
+    ctx.fillStyle = 'rgba(166,227,161,.85)';
+    ctx.fillRect(a, 96, Math.max(1, b - a), 4);
+    if (b - a > 42){
+      ctx.fillStyle = '#a6e3a1'; ctx.font = MONO;
+      ctx.fillText(Math.round(c.minutes / 60) + ' h', a + 3, 12);
+    }
+  });
+  // probability curve
+  const f = TL.forecast || [];
+  if (f.length){
+    ctx.beginPath();
+    f.forEach((p, i) => { const x = X(p[0]), y = Y(p[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.lineTo(X(f[f.length-1][0]), 96); ctx.lineTo(X(f[0][0]), 96); ctx.closePath();
+    ctx.fillStyle = 'rgba(180,190,254,.22)'; ctx.fill();
+    ctx.beginPath();
+    f.forEach((p, i) => { const x = X(p[0]), y = Y(p[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = '#b4befe'; ctx.lineWidth = 1.6; ctx.stroke();
+  }
+  // reservation threshold
+  const thr = 0.45, ty = Y(thr);
+  ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(250,179,135,.8)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, ty); ctx.lineTo(x1, ty); ctx.stroke(); ctx.setLineDash([]);
+  // now
+  ctx.fillStyle = '#a6e3a1'; ctx.fillRect(x0, 14, 1.5, 86);
+  ctx.fillStyle = '#7f849c'; ctx.font = MONO;
+  ctx.fillText('maintenant', x0 + 4, 106);
+  // axis
+  const tzF = -new Date(now * 1000).getTimezoneOffset() * 60;
+  const sF = now + tzF;
+  for (let t = now + (Math.ceil(sF / 10800) * 10800 - sF); t <= to; t += 10800){
+    const x = X(t); const d = new Date(t * 1000);
+    ctx.strokeStyle = 'rgba(69,71,90,.5)';
+    ctx.beginPath(); ctx.moveTo(x, 16); ctx.lineTo(x, 100); ctx.stroke();
+    ctx.fillStyle = '#7f849c';
+    const lab = d.getHours() === 0 ? d.toLocaleDateString('fr-FR',{weekday:'short'}) : String(d.getHours()).padStart(2,'0') + ' h';
+    const tw = ctx.measureText(lab).width;
+    ctx.fillText(lab, Math.min(Math.max(2, x - tw / 2), w - tw - 2), 112);
+  }
+}
+
+function tlHover(e){
+  const cv = $('tl'), tip = $('tl-tip');
+  if (!TL || !TL.pts || !TL.pts.length) return;
+  const rect = cv.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const x0 = 38, x1 = rect.width - 10;
+  if (x < x0 || x > x1) { tip.style.display = 'none'; TL_HOVER = null; drawTimeline(); return; }
+  const now = TL.now, from = now - TL.hours * 3600;
+  const t = from + (x - x0) / (x1 - x0) * (now - from);
+  let best = TL.pts[0], bd = 1e9;
+  for (const p of TL.pts){ const d = Math.abs(p[0] - t); if (d < bd){ bd = d; best = p; } }
+  TL_HOVER = best[0]; TL_HOVER_PT = best;
+  drawTimeline();
+  const st = best[1] >= 0 ? TL.states[best[1]] : 'unknown';
+  const dev = best[2] >= 0 ? TL.devices[best[2]] : '';
+  const loc = best[3] >= 0 ? TL.locs[best[3]] : '';
+  const cpu = best[5] == null ? '—' : `${best[5].toFixed(2)} c`;
+  const top = best[6] == null ? '' : `${best[7]} ${best[6].toFixed(2)} c`;
+  tip.innerHTML = `<b>${hmd(best[0])}</b><br>
+    <span class="k">état</span> ${esc((LABELS[st] || [st])[0])} ${(LABELS[st]||['',''])[1] || ''}<br>
+    ${dev ? `<span class="k">appareil</span> ${esc(DEVLAB[dev] || dev)}<br>` : ''}
+    ${loc ? `<span class="k">lieu</span> ${esc(LOCLAB[loc] || loc)}<br>` : ''}
+    <span class="k">jobs</span> ${cpu}${top ? ' · ' + esc(top) : ''}
+    ${best[4] ? '<br><span class="k">machine réservée</span> 🟢' : ''}`;
+  tip.style.display = 'block';
+  const tw = tip.offsetWidth;
+  tip.style.left = Math.min(Math.max(4, x - tw / 2), rect.width - tw - 4) + 'px';
+  tip.style.top = '18px';
+}
+
+
+// ---------------------------------------------------------------- heatmap
+const DAYS = ['lun','mar','mer','jeu','ven','sam','dim'];
+let HEAT_HOVER = null;
+
+function drawHeat(){
+  const cv = $('heat');
+  if (!cv || !TL || !TL.heat) return;
+  const rows = TL.heat, H = 22 + rows.length * 26 + 16;
+  const {ctx, w} = hidpi(cv, H);
+  const labW = 34, x0 = labW, x1 = w - 4;
+  const cw = (x1 - x0) / 24, ch = 22, top = 16;
+  const col = (p) => {
+    // lavender gradient (calm) -> mauve (sure you are there)
+    const a = 0.06 + Math.min(1, p) * 0.9;
+    return `rgba(203,166,247,${a.toFixed(3)})`;
+  };
+  rows.forEach((row, d) => {
+    const y = top + d * 26;
+    ctx.fillStyle = '#7f849c'; ctx.font = MONO;
+    ctx.fillText(DAYS[d], 4, y + ch / 2);
+    row.forEach((p, h) => {
+      ctx.fillStyle = col(p);
+      ctx.fillRect(x0 + h * cw, y, Math.max(1, cw - 1.5), ch);
+    });
+  });
+  // hours
+  ctx.fillStyle = '#7f849c';
+  for (let h = 0; h < 24; h += 3){
+    ctx.fillText(String(h).padStart(2, '0') + 'h', x0 + h * cw + 1, H - 8);
+  }
+  // current hour and day
+  const nowD = new Date();
+  const d = (nowD.getDay() + 6) % 7, h = nowD.getHours();
+  ctx.strokeStyle = '#a6e3a1'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(x0 + h * cw - 0.5, top + d * 26 - 0.5, Math.max(1, cw - 1.5), ch + 1);
+  if (HEAT_HOVER){
+    ctx.strokeStyle = 'rgba(205,214,244,.85)';
+    ctx.strokeRect(x0 + HEAT_HOVER[1] * cw - 0.5, top + HEAT_HOVER[0] * 26 - 0.5, Math.max(1, cw - 1.5), ch + 1);
+  }
+}
+
+function heatHover(e){
+  const cv = $('heat'), tip = $('heat-tip');
+  if (!TL || !TL.heat) return;
+  const rect = cv.getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  const labW = 34, cw = (rect.width - 4 - labW) / 24, ch = 22, top = 16;
+  const h = Math.floor((x - labW) / cw), d = Math.floor((y - top) / 26);
+  if (h < 0 || h > 23 || d < 0 || d > 6){ tip.style.display = 'none'; HEAT_HOVER = null; drawHeat(); return; }
+  HEAT_HOVER = [d, h];
+  drawHeat();
+  const p = TL.heat[d][h];
+  tip.innerHTML = `<b>${DAYS[d]} ${String(h).padStart(2,'0')} h</b><br>
+    <span class="k">probablement actif</span> ${Math.round(p * 100)} %<br>
+    <span class="k">créneau</span> ${p < 0.2 ? 'calme : bon pour un gros job' : p < 0.45 ? 'moyen' : 'tu es souvent là'}`;
+  tip.style.display = 'block';
+  const tw = tip.offsetWidth;
+  tip.style.left = Math.min(Math.max(4, x - tw / 2), rect.width - tw - 4) + 'px';
+  tip.style.top = Math.max(0, y - 62) + 'px';
+}
+
+async function loadTimeline(){
+  try{
+    const r = await fetch('/api/timeline?hours=24', {cache:'no-store'});
+    TL = await r.json();
+    drawTimeline(); drawForecast(); drawHeat();
+    const hb = TL.habit || {};
+    if (hb.weekend_ratio){
+      const x = Number(hb.weekend_ratio).toFixed(1).replace('.', ',');
+      $('heat-hint').textContent = `probabilité d'usage par jour et par heure · 8h-24h : `
+        + `${Math.round(hb.weekday * 100)} % en semaine, ${Math.round(hb.weekend * 100)} % le week-end (${x}×)`;
+    }
+    $('tl-hint').textContent = TL.pts?.length
+      ? `survol : détail minute par minute · ${TL.pts.length} points`
+      : 'aucune donnée sur 24 h';
+  }catch(e){
+    $('tl-hint').textContent = 'graphe indisponible';
+  }
+}
+window.addEventListener('resize', () => { drawTimeline(); drawForecast(); drawHeat(); });
+$('heat').addEventListener('mousemove', heatHover);
+$('heat').addEventListener('mouseleave', () => { $('heat-tip').style.display = 'none'; HEAT_HOVER = null; drawHeat(); });
+$('tl').addEventListener('mousemove', tlHover);
+$('tl').addEventListener('mouseleave', () => { $('tl-tip').style.display = 'none'; TL_HOVER = null; drawTimeline(); });
+
+async function tick(){
+  try{
+    const r = await fetch('/api/state', {cache:'no-store'});
+    render(await r.json());
+  }catch(e){
+    $('live').style.background = '#f38ba8';
+    $('err').style.display = 'block';
+    $('err').textContent = 'injoignable: ' + e.message;
+  }
+}
+
+function renderDevices(d){
+  const el = $('devs');
+  if(!d || (!d.mac && !d.phone && !d.tower)){
+    el.innerHTML = '<div class="dev"><div class="st">sondes indisponibles</div></div>';
+    return;
+  }
+  const mac = d.mac || {}, ph = d.phone || {}, tw = d.tower || {}, act = d.active_device;
+  const tile = (id, name, icon, dev, facts) => {
+    const cls = act === id ? 'dev act' : (dev.online ? 'dev on' : 'dev');
+    const word = dev.active ? 'actif' : (dev.online ? 'inactif' : 'hors ligne');
+    return `<div class="${cls}">
+      <div class="top"><span class="nm">${icon} ${name}</span>${pill(!!dev.active, word, 'on', '')}</div>
+      <div class="st">${esc(dev.why || dev.state || '—')}</div>
+      <div class="facts">${(facts || []).filter(Boolean).map(f => `<span class="pill">${esc(f)}</span>`).join('')}</div>
+    </div>`;
+  };
+  const macFacts = [];
+  if(mac.idle_s != null) macFacts.push('idle ' + mac.idle_s + ' s');
+  macFacts.push(mac.display_on ? 'écran allumé' : 'écran éteint');
+  if(mac.console_user && mac.console_user !== 'marc') macFacts.push('console ' + mac.console_user);
+  if(mac.host) macFacts.push(mac.host);
+  const phFacts = [];
+  phFacts.push('écran ' + (ph.screen_state === 1 ? 'allumé' : ph.screen_state === 0 ? 'éteint' : 'veille'));
+  if(ph.battery === '2') phFacts.push('en charge');
+  else if(ph.battery === '3') phFacts.push('sur batterie');
+  const twFacts = ['Kasm ' + (tw.kasm_clients || 0) + ' client' + ((tw.kasm_clients || 0) > 1 ? 's' : '')];
+  if(tw.kasm_tx_bps) twFacts.push('video ' + Math.round(tw.kasm_tx_bps / 1024) + ' Ko/s');
+  if(tw.console_idle_s != null) twFacts.push('console idle ' + tw.console_idle_s + ' s');
+  el.innerHTML = tile('mac', 'Mac', '💻', mac, macFacts)
+               + tile('phone', 'Téléphone', '📱', ph, phFacts)
+               + tile('tower', 'tower', '🖥', tw, twFacts);
+}
+
+// Automatic jobs: they are logged apart from presence (a cron
+// is never proof that someone is there). We only display here the ones
+// that started during an absence, with their relevance verdict.
+const AUTO_LABELS = {pertinent:['on','pertinent'], a_revoir:['warn','à revoir'], sans_objet:['off','sans objet']};
+const AUTO_WHY = {
+  pertinent: "a tourné au bon moment",
+  a_revoir: "créneau discutable (trop tôt, pendant la présence, ou en échec)",
+  sans_objet: "rien à gagner à l'avoir lancé à ce moment",
+};
+function renderAutomation(a){
+  a = a || {};
+  const c = a.counts || {};
+  $('auto-counts').textContent = (a.total || 0) + ' run(s) sur ' + (a.window_h || 24) + ' h · '
+    + (c.pertinent || 0) + ' pertinent(s) · ' + (c.a_revoir || 0) + ' à revoir · '
+    + (c.sans_objet || 0) + ' sans objet · affichés : ' + (a.during_absence || []).length
+    + ' (démarrés en absence, les autres ont tourné hors absence)';
+  const rows = (a.during_absence || []).map(r => {
+    const v = AUTO_LABELS[r.verdict] || ['off', r.verdict || '—'];
+    const d = new Date((r.started || 0) * 1000);
+    const when = isNaN(d) ? '—' : d.toLocaleDateString('fr-FR',{weekday:'short'}) + ' '
+      + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const tag = (r.class || '') + (r.needs_absence ? ' · exige absence' : '')
+      + (r.exit ? ' · exit ' + r.exit : '');
+    return '<li title="' + esc(AUTO_WHY[r.verdict] || '') + '"><span>'
+      + esc(r.job) + ' <span class="hint">' + esc(tag) + '</span></span>'
+      + '<span class="when">' + pill(true, v[1], v[0], v[0]) + ' ' + when + '</span></li>';
+  }).join('');
+  $('auto-list').innerHTML = rows || '<li><span class="hint">aucun job automatique lancé pendant une absence sur la fenêtre</span></li>';
+}
+
+function render(s){
+  try{
+    const p = s.presence || {}, t = s.tower || {}, h = s.hermes || {}, g = s.gateway || {};
+    const st = COLORS[p.state] ? p.state : 'unknown';
+    const [label, icon] = LABELS[st] || LABELS.unknown;
+    $('orb').textContent = icon;
+    $('orb').style.borderColor = COLORS[st];
+    $('orb').style.background = COLORS[st] + '22';
+    $('state').textContent = label;
+    $('state').style.color = COLORS[st];
+    $('why').textContent = p.why || '—';
+    $('window').textContent = p.window ? `${p.window} · ${untilLabel(p.until)}` : '';
+    $('clock').textContent = new Date(s.at).toLocaleTimeString('fr-FR');
+    $('updated').textContent = 'maj ' + new Date(s.at).toLocaleTimeString('fr-FR');
+
+    renderDevices(s.devices);
+    renderAutomation(s.automation);
+
+    $('h-state').innerHTML = pill(h.connected, h.connected ? 'oui' : 'non');
+    $('h-why').textContent = h.why || 'aucune interaction récente';
+    $('h-sessions').textContent = h.ok ? (h.sessions_15m ?? '—') : 'état illisible';
+    $('h-msgs').textContent = h.ok ? `${h.messages_15m ?? 0} / ${h.messages_60m ?? 0}` : '—';
+    $('h-webui').innerHTML = pill(!!h.webui_post, h.webui_post ? 'oui' : 'non');
+    $('chips').innerHTML = (h.channels || []).map(c =>
+      `<span class="pill">${esc(SOURCE_NAMES[c.source] || c.source)} · ${ago(c.at)}</span>`).join('') || '<span class="pill">aucune interaction</span>';
+
+    $('windows').innerHTML = (p.windows || []).map(w => {
+      const d = new Date(typeof w === 'string' ? w : w.at);
+      const lab = (w && w.label) ? w.label : 'borne';
+      return `<li><span>${esc(lab)}</span><span class="when">${isNaN(d) ? '—' : d.toLocaleDateString('fr-FR',{weekday:'short'}) + ' ' + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span></li>`;
+    }).join('') || '<li><span>aucune borne à venir</span></li>';
+
+    $('t-cpu').textContent = `${t.marc_cpu_pct ?? 0} % (lissé ${t.marc_cpu_smooth ?? 0} %) · info, pas un signe de présence`;
+    const dev = s.devices || {}, kasm = dev.tower || {};
+    $('t-kasm').innerHTML = pill(!!(kasm.kasm_clients > 0), `${kasm.kasm_clients || 0} client(s)` + (kasm.kasm_tx_bps ? ` · ${Math.round(kasm.kasm_tx_bps/1024)} Ko/s` : ''), 'on', '');
+    const tty = (t.ttys || []).map(x => `${x.tty}${x.from ? ' ← ' + x.from : ''} (idle ${x.idle})`).join(', ');
+    $('t-tty').textContent = tty || 'aucun shell';
+    $('t-model').innerHTML = pill(!!t.local_model, t.local_model ? 'chargé' : 'aucun', 'warn', '');
+    $('t-load').textContent = `${t.load1 ?? '—'} · ${t.mem_avail_mb ?? '—'}/${t.mem_total_mb ?? '—'} Mo · swap ${t.swap_used_mb ?? 0} Mo`;
+
+    $('g-state').innerHTML = pill(g.state === 'running', g.state || 'inconnu');
+    $('g-agents').textContent = g.active_agents ?? '—';
+    $('g-profiles').textContent = (g.profiles || []).join(', ') || '—';
+    $('g-platforms').innerHTML = Object.entries(g.platforms || {}).map(([n, v]) =>
+      pill(v.state === 'connected', `${n} · ${v.state || '?'}`)).join('') || '<span class="pill">aucune</span>';
+
+    loadTimeline();
+    const errs = [p.error && ('presence: ' + p.error), h.error && ('hermes: ' + h.error)].filter(Boolean);
+    $('err').style.display = errs.length ? 'block' : 'none';
+    $('err').textContent = errs.join(' · ');
+    $('live').style.background = '#a6e3a1';
+  }catch(e){
+    $('err').style.display = 'block';
+    $('err').textContent = 'rendu: ' + e.message;
+  }
+}
+loadTimeline();
+if(window.__SNAP__) { render(window.__SNAP__); }
+tick();
+setInterval(tick, 3000);
+setInterval(loadTimeline, 30000);
+</script>
+</body>
+</html>
