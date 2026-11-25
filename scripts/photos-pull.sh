@@ -1,41 +1,41 @@
 #!/usr/bin/env bash
 # scripts/photos-pull.sh
-# Rapatrie les photos du telephone de marc vers tower, source par source.
+# Pulls marc's phone photos to tower, source by source.
 #
-# DEUX TRANSPORTS, un seul point d'entree :
-#   - ssh : `ssh phone` + tar en flux. Aucun geste materiel, MAIS l'appli
-#     Nix-on-Droid doit avoir l'autorisation de stockage : sans elle, Android
-#     refuse la lecture de /storage/emulated/0 meme en ssh (permission d'OS,
-#     pas un identifiant qu'on pourrait obtenir depuis tower).
-#   - adb : `adb exec-out tar` (fallback `adb pull -a`). Marche sans cette
-#     permission, mais exige le cable USB ou le debogage sans fil.
+# TWO TRANSPORTS, a single entry point:
+#   - ssh: `ssh phone` + tar in a stream. No physical action, BUT the
+#     Nix-on-Droid app must have storage permission: without it, Android
+#     refuses to read /storage/emulated/0 even over ssh (OS permission,
+#     not a credential we could obtain from tower).
+#   - adb: `adb exec-out tar` (fallback `adb pull -a`). Works without this
+#     permission, but requires the USB cable or wireless debugging.
 #
-# POURQUOI le transfert part de tower dans les deux cas : le shell du tel ne
-# lit pas /storage/emulated/0 (scoped storage) et n'heberge aucun serveur de
-# fichiers. Rien ne peut donc etre pousse DEPUIS le tel vers tower.
+# WHY the transfer starts from tower in both cases: the phone shell does not
+# read /storage/emulated/0 (scoped storage) and hosts no file
+# server. Nothing can therefore be pushed FROM the phone to tower.
 #
-# Reprise : un marqueur par sous-dossier deja rapatrie ($ROOT/.pulled/<src>-<slug>).
-# Relancer la meme commande reprend ce qui manque sans refaire le reste, ce qui
-# compte derriere un relais (ordre de 0,2 Mo/s).
+# Resume: a marker per already-pulled subdirectory ($ROOT/.pulled/<src>-<slug>).
+# Rerunning the same command resumes what is missing without redoing the rest, which
+# matters behind a relay (around 0.2 MB/s).
 #
 # Usage:
-#   scripts/photos-pull.sh                    # tout, transport automatique
-#   scripts/photos-pull.sh camera             # une source
-#   scripts/photos-pull.sh --dry-run          # ce qui serait rapatrie
-#   scripts/photos-pull.sh --force whatsapp   # ignore les marqueurs
-#   scripts/photos-pull.sh --via adb          # force un transport (adb|ssh)
+#   scripts/photos-pull.sh                    # everything, automatic transport
+#   scripts/photos-pull.sh camera             # a single source
+#   scripts/photos-pull.sh --dry-run          # what would be pulled
+#   scripts/photos-pull.sh --force whatsapp   # ignore the markers
+#   scripts/photos-pull.sh --via adb          # force a transport (adb|ssh)
 set -euo pipefail
 
-# Arbre du groupe `photos` (marc + hermes, 2770 setgid) : une session hermes
-# ouverte avant la creation du groupe l'ignore -> re-execution via sg.
+# Tree of the `photos` group (marc + hermes, 2770 setgid): a hermes session
+# opened before the group creation ignores it -> re-execution via sg.
 if ! id -nG 2>/dev/null | tr ' ' '\n' | grep -qx photos; then
   exec sg photos -c "$(printf '%q ' "$0" "$@")"
 fi
 
 ROOT=${PHOTOS_ROOT:-/home/marc/media/photos}
 MARKERS="$ROOT/.pulled"
-# Nombre d'entrees par flux tar (une photo par flux = un handshake ssh par
-# photo). PHOTOS_BATCH=1 retrouve l'ancien comportement pour un diagnostic.
+# Number of entries per tar stream (one photo per stream = one ssh handshake per
+# photo). PHOTOS_BATCH=1 restores the old behavior for a diagnostic.
 BATCH=${PHOTOS_BATCH:-200}
 SSH_HOST=${SSH_HOST:-phone}
 STORAGE=/storage/emulated/0
@@ -50,10 +50,10 @@ declare -A REMOTE_PATHS=(
 DRY_RUN=0
 FORCE=0
 VIA=auto
-# ONLY=photos|videos|all : filtre par extension cote tel (utile pour DCIM/Camera
-# ou deux tiers du volume sont des videos). `all` fait du sous-dossier par
-# sous-dossier, `photos`/`videos` passent par une liste de fichiers
-# (find | tar -T -) : toybox tar sait lire une liste sur stdin, verifie.
+# ONLY=photos|videos|all: filter by extension on the phone side (useful for DCIM/Camera
+# where two thirds of the volume are videos). `all` does subdirectory by
+# subdirectory, `photos`/`videos` go through a file list
+# (find | tar -T -): toybox tar can read a list on stdin, verified.
 ONLY=${ONLY:-all}
 WANTED=()
 while [ $# -gt 0 ]; do
@@ -68,15 +68,15 @@ while [ $# -gt 0 ]; do
 done
 [ ${#WANTED[@]} -eq 0 ] && WANTED=(camera whatsapp messenger)
 
-# --- choix du transport -----------------------------------------------------
+# --- transport selection ----------------------------------------------------
 ssh_ok() { timeout 25 ssh -o BatchMode=yes -o ConnectTimeout=10 "$SSH_HOST" true >/dev/null 2>&1; }
 ssh_can_read() { timeout 40 ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; ls $STORAGE" >/dev/null 2>&1; }
 adb_serial() {
   [ -n "$ADB" ] && [ -x "$ADB" ] || return 1
   local s
   s=$("$ADB" devices 2>/dev/null | awk '$2 == "device" && $1 !~ /^emulator-/ {print $1; exit}')
-  # awk sort 0 meme sans resultat : sans ce test, un adb sans appareil passait
-  # pour un transport valide et le script parlait a un SERIAL vide.
+  # awk outputs 0 even with no result: without this test, an adb with no device passed
+  # as a valid transport and the script talked to an empty SERIAL.
   [ -n "$s" ] || return 1
   printf '%s\n' "$s"
 }
@@ -93,44 +93,44 @@ case "$VIA" in
       TRANSPORT=adb
     fi
     ;;
-  *) echo "transport inconnu : $VIA (adb, ssh ou auto)" >&2; exit 2 ;;
+  *) echo "unknown transport: $VIA (adb, ssh or auto)" >&2; exit 2 ;;
 esac
 
 if [ "$TRANSPORT" = none ]; then
-  reach="injoignable"
+  reach="unreachable"
   if ssh_ok; then
-    reach="joignable en ssh, mais /storage/emulated/0 est refuse (autorisation de stockage absente)"
+    reach="reachable over ssh, but /storage/emulated/0 is refused (storage permission missing)"
   fi
   cat >&2 <<EOF
-Aucun transport utilisable pour rapatrier les photos.
+No usable transport to pull the photos.
 
-  ssh $SSH_HOST : $reach
-  adb : $( [ -n "${SERIAL:-}" ] && echo "appareil $SERIAL" || echo "aucun appareil en etat 'device'" )
+  ssh $SSH_HOST: $reach
+  adb: $( [ -n "${SERIAL:-}" ] && echo "device $SERIAL" || echo "no device in 'device' state" )
 
-Le geste qui debloque le plus (aucun cable, aucun toggle par boot) :
-  telephone > Parametres > Applis > Nix-on-Droid > Autorisations >
-  Fichiers et medias > « Autoriser la gestion de tous les fichiers ».
-  Ensuite ce script bascule tout seul sur ssh, rien d'autre a faire.
+The action that unblocks the most (no cable, no toggle per boot):
+  phone > Settings > Apps > Nix-on-Droid > Permissions >
+  Files and media > "Allow management of all files".
+  Then this script switches to ssh on its own, nothing else to do.
 
-Autre voie : cable USB sur tower, ou Debogage sans fil (port affiche).
+Another way: USB cable on tower, or Wireless debugging (port shown).
 EOF
   exit 1
 fi
 
-echo "transport : $TRANSPORT$( [ "$TRANSPORT" = adb ] && echo " (appareil $SERIAL)" || echo " (ssh $SSH_HOST)" )"
+echo "transport: $TRANSPORT$( [ "$TRANSPORT" = adb ] && echo " (device $SERIAL)" || echo " (ssh $SSH_HOST)" )"
 
-# --- acces distant ----------------------------------------------------------
-# PATH /system/bin cote tel : toybox fournit tar, find, du, ls.
-remote_tar() { # $1=dossier distant  $2..=noms relatifs a ce dossier
-  # Le tar part du dossier lui-meme. L'ancienne version prenait dirname($1),
-  # donc pour /DCIM/Camera elle cherchait « Facebook » dans /DCIM : tout
-  # echouait en « tar: Facebook: No such file or directory » (bug invisible
-  # tant que l'autorisation de stockage manquait, le script sortait avant).
+# --- remote access ----------------------------------------------------------
+# PATH /system/bin on the phone side: toybox provides tar, find, du, ls.
+remote_tar() { # $1=remote dir  $2..=names relative to this dir
+  # The tar starts from the directory itself. The old version took dirname($1),
+  # so for /DCIM/Camera it looked for "Facebook" in /DCIM: everything
+  # failed with "tar: Facebook: No such file or directory" (bug invisible
+  # as long as the storage permission was missing, the script exited before).
   #
-  # `</dev/null` est OBLIGATOIRE : ssh lit son entree standard, qui est ici la
-  # boucle `while read` de pull_dir. Sans cette redirection, le premier appel
-  # avalait les lignes restantes de la liste et la passe s'arretait apres une
-  # seule entree, sans message d'erreur.
+  # `</dev/null` is MANDATORY: ssh reads its standard input, which here is the
+  # `while read` loop of pull_dir. Without this redirection, the first call
+  # swallowed the remaining lines of the list and the pass stopped after a
+  # single entry, without an error message.
   local dir="$1"
   shift
   local names=() quoted="" n
@@ -143,13 +143,13 @@ remote_tar() { # $1=dossier distant  $2..=noms relatifs a ce dossier
     ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; tar -C '$dir' -cf - $quoted" </dev/null ;;
   esac
 }
-remote_ls() { # $1=dossier
+remote_ls() { # $1=dir
   case "$TRANSPORT" in
     adb) "$ADB" -s "$SERIAL" shell "ls -1 '$1'" </dev/null ;;
     ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; ls -1 '$1'" </dev/null ;;
   esac
 }
-remote_du() { # $1=dossier
+remote_du() { # $1=dir
   case "$TRANSPORT" in
     adb) "$ADB" -s "$SERIAL" shell "du -sh '$1' 2>/dev/null | cut -f1" </dev/null ;;
     ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; du -sh '$1' 2>/dev/null | cut -f1" </dev/null ;;
@@ -162,61 +162,61 @@ remote_is_dir() {
   esac
 }
 
-# Extensions par mode. jpg/heic couvrent l'appareil photo de marc.
+# Extensions per mode. jpg/heic cover marc's camera.
 case "$ONLY" in
   photos) FIND_FILTER='\( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.heic" -o -iname "*.webp" -o -iname "*.gif" -o -iname "*.bmp" \)' ;;
   videos) FIND_FILTER='\( -iname "*.mp4" -o -iname "*.mov" -o -iname "*.3gp" -o -iname "*.mkv" -o -iname "*.webm" -o -iname "*.avi" \)' ;;
   all) FIND_FILTER='' ;;
-  *) echo "ONLY inconnu : $ONLY (photos, videos ou all)" >&2; exit 2 ;;
+  *) echo "unknown ONLY: $ONLY (photos, videos or all)" >&2; exit 2 ;;
 esac
 
-# Flux d'un ARBRE ENTIER filtre par extension, en un seul tar (la liste de
-# fichiers passe par stdin, toybox tar la lit avec -T -).
-remote_tar_filtered() { # $1=dossier distant
+# Stream of an ENTIRE TREE filtered by extension, in a single tar (the list of
+# files goes through stdin, toybox tar reads it with -T -).
+remote_tar_filtered() { # $1=remote dir
   case "$TRANSPORT" in
     adb) "$ADB" -s "$SERIAL" shell "cd '$1' && find . -type f $FIND_FILTER -print | tar -cf - -T -" ;;
     ssh) ssh -o BatchMode=yes "$SSH_HOST" "export PATH=/system/bin:\$PATH; cd '$1' && find . -type f $FIND_FILTER -print | tar -cf - -T -" ;;
   esac
 }
 
-command -v tar >/dev/null 2>&1 || { echo "tar manquant sur tower" >&2; exit 1; }
+command -v tar >/dev/null 2>&1 || { echo "tar missing on tower" >&2; exit 1; }
 mkdir -p "$MARKERS"
 
-pull_dir() { # $1=source  $2=dossier distant
+pull_dir() { # $1=source  $2=remote dir
   local source="$1" remote="$2" dest="$ROOT/$source"
   local parent sub slug marker n
   if ! remote_is_dir "$remote"; then
-    echo "  $remote : absent ou illisible, ignore"
+    echo "  $remote: absent or unreadable, ignored"
     return 0
   fi
   local subs
   subs=$(remote_ls "$remote" 2>/dev/null | tr -d '\r' | grep -v '^\.\{1,2\}$' || true)
-  [ -n "$subs" ] || { echo "  $remote : vide"; return 0; }
+  [ -n "$subs" ] || { echo "  $remote: empty"; return 0; }
 
   if [ $DRY_RUN -eq 1 ]; then
-    # Un `du` par entree couterait un aller-retour ssh PAR FICHIER (des heures
-    # sur une galerie plate de plusieurs milliers de fichiers) : une seule
-    # mesure du dossier suffit pour savoir ce qu'il reste a rapatrier.
-    echo "  $remote : $(printf '%s\n' "$subs" | wc -l) entrees, $(remote_du "$remote" | tr -d '\r' | tr -d '\r')"
+    # A `du` per entry would cost an ssh round-trip PER FILE (hours
+    # on a flat gallery of several thousand files): a single
+    # measurement of the directory is enough to know what is left to pull.
+    echo "  $remote: $(printf '%s\n' "$subs" | wc -l) entries, $(remote_du "$remote" | tr -d '\r' | tr -d '\r')"
     return 0
   fi
 
-  # Lot de N entrees par flux tar. Un flux par fichier (l'ancien
-  # comportement) ajoutait un handshake ssh par photo : sur une galerie plate
-  # de 7500 fichiers, l'overhead depassait le temps de transfert. Les marqueurs
-  # restent unitaires (un par entree), donc un lot interrompu ne fait perdre
-  # que ce lot, et une relance recalcule les lots a partir de ce qui manque.
+  # Batch of N entries per tar stream. One stream per file (the old
+  # behavior) added an ssh handshake per photo: on a flat gallery
+  # of 7500 files, the overhead exceeded the transfer time. The markers
+  # stay unitary (one per entry), so an interrupted batch only loses
+  # that batch, and a rerun recomputes the batches from what is missing.
   local batch=() names=()
   flush_batch() {
     [ ${#names[@]} -eq 0 ] && return 0
     mkdir -p "$dest"
-    echo "  -> $remote : ${#names[@]} entree(s) de ${names[0]} a ${names[-1]}"
+    echo "  -> $remote: ${#names[@]} entry(ies) from ${names[0]} to ${names[-1]}"
     if remote_tar "$remote" "${names[@]}" | tar -C "$dest" -xf -; then
       for n in "${batch[@]}"; do
         touch "$MARKERS/${source}-${n}"
       done
     else
-      echo "     lot interrompu : relancer la meme commande pour reprendre" >&2
+      echo "     interrupted batch: rerun the same command to resume" >&2
       batch=()
       names=()
       return 1
@@ -229,7 +229,7 @@ pull_dir() { # $1=source  $2=dossier distant
   while IFS= read -r sub; do
     [ -n "$sub" ] || continue
     case "$sub" in
-      *"'"*) echo "  $remote/$sub : apostrophe dans le nom, ignore" >&2 ; continue ;;
+      *"'"*) echo "  $remote/$sub: apostrophe in the name, ignored" >&2 ; continue ;;
     esac
     slug=$(printf '%s' "$remote/$sub" | tr '/ ' '__')
     marker="$MARKERS/${source}-${slug}"
@@ -254,20 +254,20 @@ for source in "${WANTED[@]}"; do
     if [ "$ONLY" = all ]; then
       pull_dir "$source" "$remote" || rc=1
     else
-      # Mode filtre : un seul flux par dossier distant, marqueur par (source,
-      # dossier, mode) pour que photos et videos soient repris independamment.
+      # Filtered mode: a single stream per remote directory, marker per (source,
+      # directory, mode) so that photos and videos are resumed independently.
       if ! remote_is_dir "$remote"; then
-        echo "  $remote : absent ou illisible, ignore"
+        echo "  $remote: absent or unreadable, ignored"
         continue
       fi
       slug=$(printf '%s' "$remote" | tr '/ ' '__')
       marker="$MARKERS/${source}-${slug}-${ONLY}"
       if [ $FORCE -eq 0 ] && [ -f "$marker" ]; then
-        echo "  $remote ($ONLY) : deja rapatrie"
+        echo "  $remote ($ONLY): already pulled"
         continue
       fi
       if [ $DRY_RUN -eq 1 ]; then
-        echo "  $remote ($ONLY) : filtre par extension, $(remote_du "$remote" | tr -d '\r') au total"
+        echo "  $remote ($ONLY): filtered by extension, $(remote_du "$remote" | tr -d '\r') total"
         continue
       fi
       mkdir -p "$ROOT/$source"
@@ -275,22 +275,22 @@ for source in "${WANTED[@]}"; do
       if remote_tar_filtered "$remote" | tar -C "$ROOT/$source" -xf -; then
         touch "$marker"
       else
-        echo "     interrompu : relancer la meme commande pour reprendre" >&2
+        echo "     interrupted: rerun the same command to resume" >&2
         rc=1
       fi
     fi
   done
   if [ $DRY_RUN -eq 0 ] && [ -d "$ROOT/$source" ]; then
-    echo "  local : $(find "$ROOT/$source" -type f | wc -l) fichiers, $(du -sh "$ROOT/$source" | cut -f1)"
+    echo "  local: $(find "$ROOT/$source" -type f | wc -l) files, $(du -sh "$ROOT/$source" | cut -f1)"
   fi
 done
 
 if [ $DRY_RUN -eq 0 ]; then
   cat <<'EOF'
 
-Rapatriement termine. Suite :
-  scripts/photos-mirror.sh     # pousse vers Garage maintenant (sinon timer horaire)
-  scripts/photos-status.sh     # compare l'arbre local et les buckets
+Pull complete. Next:
+  scripts/photos-mirror.sh     # push to Garage now (otherwise hourly timer)
+  scripts/photos-status.sh     # compare the local tree and the buckets
 EOF
 fi
 exit $rc

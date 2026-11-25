@@ -7,11 +7,60 @@ set dotenv-load
 run:
     just {{env('RUN')}}
 
+# Syntax check of every tracked .nix file. Milliseconds, no eval, no build:
+# catches a missing comma or paren without instantiating nixpkgs.
+check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd {{justfile_directory()}}
+    fail=0
+    n=0
+    while IFS= read -r f; do
+      n=$((n + 1))
+      nix-instantiate --parse "$f" > /dev/null || { echo "KO  $f"; fail=1; }
+    done < <(git ls-files '*.nix')
+    if [ "$fail" -ne 0 ]; then echo "$n fichiers, au moins un KO"; exit 1; fi
+    echo "syntaxe OK ($n fichiers)"
+
+# Build a SINGLE flake output (a package, a dev shell), never the NixOS
+# toplevel: `just build presence` compiles one derivation. Use `just nixos`
+# only to activate a configuration, which necessarily evaluates it whole.
+# Les jobs de build partent sur le builder le moins charge (nix-builders-pick :
+# laptop ou deck, jamais tower). Sans builder joignable on refuse (rc 96) au lieu
+# de compiler sur le CPU de marc ; NIXOS_ALLOW_LOCAL_BUILD=1 force un repli
+# local borne a 1 job / 1 coeur.
+build name:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    args=()
+    if [ -n "${NIXOS_ALLOW_LOCAL_BUILD:-}" ]; then
+      echo "just build: repli local borne (1 job, 1 coeur)" >&2
+      args+=(--max-jobs 1 --cores 1)
+    elif command -v nix-builders-pick >/dev/null; then
+      spec="$(nix-builders-pick || true)"
+      if [ -z "$spec" ]; then
+        echo "REFUS: aucun builder (laptop, deck) joignable : tower ne compile pas (politique marc, 25/11/2026)." >&2
+        echo "Reessaie quand un builder repond, ou NIXOS_ALLOW_LOCAL_BUILD=1 just build {{name}}" >&2
+        exit 96
+      fi
+      args+=(--builders "$spec")
+    fi
+    exec nix build --no-link --print-out-paths "${args[@]}" .#{{name}}
+
 home:
 	home-manager switch --flake .#{{env('HM')}}
 
 nixos:
-    sudo nixos-rebuild switch --impure --flake .#{{env('HOST')}}
+    # Jamais --impure : la conf de tower s'evalue en PUR depuis que
+    # l'infra-atlas est un input verrouille (politique pure-eval).
+    # nixos-rebuild-gated (module modules/nixos/nixos-rebuild-gated) refuse
+    # --impure ET serialise les rebuilds : il prend flock sur
+    # /var/lib/hermes/.hermes/state/nixos-rebuild.lock lui-meme.
+    # NE PAS remettre un `flock` ici : ce serait le MEME fichier, donc le
+    # wrapper attendrait un verrou que le shell parent tient deja et le switch
+    # ne demarrerait jamais (constate le 14/11/2026, deux switches bloques
+    # 8 minutes a `flock -w 3600 9`).
+    sudo nixos-rebuild-gated switch --flake .#{{env('HOST')}}
 
 # Deploie un conteneur sorti de la conf hote (deploy/containers.nix) : rend le
 # quadlet podman dans /etc/containers/systemd et redemarre l'unite.
@@ -32,9 +81,7 @@ mcp-host-run port="4781" manifest="/dev/null":
     #!/usr/bin/env bash
     set -euo pipefail
     cd {{justfile_directory()}}
-    env=$(nix build --impure --no-link --print-out-paths --expr '
-      with import (builtins.getFlake "path:{{justfile_directory()}}").inputs.nixpkgs { system = "x86_64-linux"; };
-      python3.withPackages (ps: [ ps.fastmcp ])')
+    env=$(nix build --no-link --print-out-paths .#mcp-host-env)
     MCP_HOST_MODULES=$PWD/mcp/modules \
     MCP_HOST_MANIFEST={{manifest}} \
     MCP_HOST_PORT={{port}} \

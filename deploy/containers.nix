@@ -70,6 +70,26 @@
     description = "Serveur MCP arr (Radarr, Sonarr, Jellyfin, Prowlarr)";
     image = "ghcr.io/bardesss/arr-mcp:latest";
     publish = ["127.0.0.1:6060:6060"];
+    # /config porte config.yaml (URL des services, hash du token, default_user
+    # Jellyfin) : la config applicative que le dashboard reecrit. Sans ce
+    # volume, config.yaml repart de zero a chaque recreation du conteneur, et
+    # l'ancienne version du quadlet n'en montait aucun.
+    volumes = ["/var/lib/hermes/arr-mcp:/config"];
+    # Cles API des quatre services, en placeholders ${RADARR_API_KEY} etc.
+    # dans config.yaml. Rendu par sops-nix (services/arr-mcp) : aucune cle
+    # dans ce depot ni dans le volume.
+    envFiles = ["/run/secrets/arr_mcp_env"];
+    env = {
+      ARR_MCP_PORT = "6060";
+    };
+    # L'image est une base node distroless+node : ni curl ni wget. Le check
+    # passe par `node -e fetch` (verifie le 23/11/2026).
+    health = {
+      cmd = "node -e \"fetch('http://127.0.0.1:6060/').then((r) => { if (!r.ok) process.exit(1); }).catch(() => process.exit(1));\"";
+      interval = "30s";
+      timeout = "10s";
+      retries = 3;
+    };
   };
 
   nextcloud-mcp = {

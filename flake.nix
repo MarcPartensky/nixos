@@ -60,28 +60,28 @@
       flake = false; # The repo isn't a flake; use as raw source
     };
 
-    # Pack de skins Hermes (26 palettes) : source brute, cf. modules/home-mac/hermes-skins.
+    # Hermes skins pack (26 palettes): raw source, cf. modules/home-mac/hermes-skins.
     hermes-menagerie = {
       url = "github:ZakiChair/hermes-catppuccin";
       flake = false; # The repo isn't a flake; use as raw source
     };
 
-    # On crée une entrée SPÉCIALE pour le téléphone
+    # A SPECIAL entry is created for the phone
     # nixpkgs-droid.url = "github:NixOS/nixpkgs/nixos-24.05";
 
     nix-on-droid = {
       url = "github:nix-community/nix-on-droid/master";
       # url = "github:nix-community/nix-on-droid/release-24.05";
 
-      # C'EST LA LIGNE CRUCIALE :
-      # On lui dit de suivre la version Droid, pas la version Laptop.
+      # THIS IS THE CRUCIAL LINE:
+      # It is told to follow the Droid version, not the Laptop version.
       # inputs.nixpkgs.follows = "nixpkgs-droid";
 
-      # On aligne aussi le home-manager interne de nix-on-droid
+      # The internal home-manager of nix-on-droid is aligned too
       # inputs.home-manager.follows = "home-manager-droid";
     };
 
-    # On définit aussi un home-manager compatible 24.05 pour le tel
+    # A home-manager compatible with 24.05 is also defined for the phone
     # home-manager-droid = {
     #   url = "github:nix-community/home-manager/release-24.05";
     #   inputs.nixpkgs.follows = "nixpkgs-droid";
@@ -113,8 +113,8 @@
     option-pricer.url = "github:marcpartensky/option-pricer";
     option-pricer.inputs.nixpkgs.follows = "nixpkgs";
 
-    # addon Anki MCP (ankimcp.ai) : pas de follows, ses deps python (mcp >= 1.27)
-    # doivent venir du même nixpkgs que l'Anki qui le charge
+    # Anki MCP addon (ankimcp.ai): no follows, its python deps (mcp >= 1.27)
+    # must come from the same nixpkgs as the Anki that loads it
     anki-mcp.url = "github:ankimcp/anki-mcp-server-addon";
 
     uv2nix.url = "github:pyproject-nix/uv2nix";
@@ -127,20 +127,41 @@
     hermes-agent.url = "github:NousResearch/hermes-agent";
     # hermes-agent.inputs.nixpkgs.follows = "github:NousResearch/hermes-agent";
 
-    # UI web de chat (parité CLI) pour hermes-agent. Projet communautaire
-    # (MIT), il publie son propre flake + module NixOS. follows nixpkgs pour
-    # ne pas évaluer un second nixpkgs : le paquet ne fait que python3 +
-    # pyyaml + cryptography, la 26.05 suffit.
+    # Web chat UI (CLI parity) for hermes-agent. Community project
+    # (MIT), it publishes its own flake + NixOS module. follows nixpkgs to
+    # avoid evaluating a second nixpkgs: the package only does python3 +
+    # pyyaml + cryptography, 26.05 is enough.
     hermes-webui = {
       url = "github:nesquena/hermes-webui";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Clients YouTube Music TUI (voir modules/home/{ytm-player,yututui,yt-collate,youtube-music-cli})
+    # typer: typing + race rooms (Rust server typer-server, terminal client
+    # typer-race). Standalone flake, vendored under projects/typer so
+    # that the input resolves on tower AND on macOS: a single absolute path
+    # cannot exist on both machines. follows nixpkgs to avoid
+    # evaluating a second nixpkgs; the package is built with the host's
+    # pkgs (see users/mac/home.nix, and the nixos module of the typer flake).
+    typer = {
+      url = "path:./projects/typer";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # mnemo: retention engine (scan of Hermes conversations, score,
+    # explanation cards, sources for the podcast and the typing). Standalone flake
+    # vendored under projects/mnemo; the k3s pod and its image come from its
+    # module. follows nixpkgs: the image is built on the laptop with the
+    # host's pkgs, and no second nixpkgs is evaluated.
+    mnemo = {
+      url = "path:./projects/mnemo";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # YouTube Music TUI clients (see modules/home/{ytm-player,yututui,yt-collate,youtube-music-cli})
     ytm-player = {
       url = "github:peternaame-boop/ytm-player";
-      # v2.1.0 exige dbus-fast >= 5.0.0, absent de 26.05 (4.0.4) :
-      # on suit unstable, la nixpkgs que le flake upstream teste.
+      # v2.1.0 requires dbus-fast >= 5.0.0, absent from 26.05 (4.0.4):
+      # unstable is followed, the nixpkgs the upstream flake tests against.
       inputs.nixpkgs.follows = "unstable";
     };
     yututui = {
@@ -151,7 +172,7 @@
     stalwart-mcp = {
       # Rust MCP server for Stalwart Mail Server (webpatser/stalwart-mcp).
       # JMAP access: read, search, real-time notifications via EventSource.
-      # Pin sur commit main (pas de release taggée).
+      # Pinned on main commit (no tagged release).
       url = "github:webpatser/stalwart-mcp/be2c16d5921f45395996a130a5a643c542ef2105";
       flake = false;
     };
@@ -169,14 +190,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Atlas 3D de l'infra (atlas.marcpartensky.com) : projet separe sous
-    # /var/lib/hermes/workspace/infra-atlas. Input `path:` VERROUILLE dans
-    # flake.lock au lieu d'un `builtins.getFlake` dans le profil tower : c'est
-    # ce getFlake qui rendait TOUTE l'evaluation de tower impure (politique
-    # pure-eval, cf. skill nixos-pure-eval). Le flake atlas n'a aucun input,
-    # donc rien a faire suivre. Consequences a connaitre : une modification du
-    # projet atlas n'entre dans la conf qu'apres `nix flake update infra-atlas`
-    # (le module evalue reste celui du lock, pas celui du working tree).
+    # 3D atlas of the infra (atlas.marcpartensky.com): separate project under
+    # /var/lib/hermes/workspace/infra-atlas. Input `path:` LOCKED in
+    # flake.lock instead of a `builtins.getFlake` in the tower profile: it was
+    # that getFlake that made the WHOLE tower evaluation impure (pure-eval
+    # policy, cf. skill nixos-pure-eval). The atlas flake has no input,
+    # so nothing to follow. Consequences to know: a modification of the
+    # atlas project only enters the conf after `nix flake update infra-atlas`
+    # (the module evaluated remains the one from the lock, not the working tree).
     infra-atlas.url = "path:/var/lib/hermes/workspace/infra-atlas";
   };
   outputs = {
@@ -191,7 +212,10 @@
         modules = [
           ./profiles/common
           ./profiles/laptop/configuration.nix
-          ./services
+          # ./services is tower's monolith: sops secrets of which the laptop
+          # is not a recipient, so build is impossible (cf. comment in
+          # services/laptop.nix). The laptop imports only what it uses.
+          ./services/laptop.nix
         ];
       };
 
@@ -246,8 +270,8 @@
         ];
       };
 
-      # VM de dev microvm.nix (input `microvm`, voir vms/) : `just vm` ou
-      # `nix run .#dev`. Dupliquer vms/dev.nix pour une 2e VM.
+      # microvm.nix dev VM (input `microvm`, see vms/): `just vm` or
+      # `nix run .#dev`. Duplicate vms/dev.nix for a 2nd VM.
       dev = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {inherit inputs self;};
@@ -258,29 +282,31 @@
       };
     };
 
-    # Runners des VM de dev, lançables directement : `nix run .#dev`.
-    # Plus les serveurs MCP maison (mcp/default.nix), constructibles sans
-    # evaluer la conf NixOS : `nix build .#shlink-mcp`.
+    # Dev VM runners, launchable directly: `nix run .#dev`.
+    # Plus the in-house MCP servers (mcp/default.nix), buildable without
+    # evaluating the NixOS conf: `nix build .#shlink-mcp`.
     packages.x86_64-linux =
       import ./mcp {pkgs = nixpkgs.legacyPackages.x86_64-linux;}
       // {
         dev = self.nixosConfigurations.dev.config.microvm.declaredRunner;
       }
       // {
-        # Environnement python du serveur MCP unique, pour `just mcp-host-run`.
-        # Expose comme paquet : ca remplace le `nix build --impure --expr` qui
-        # faisait un getFlake du flake courant.
+        # Python environment of the single MCP server, for `just mcp-host-run`.
+        # Exposed as a package: it replaces the `nix build --impure --expr` that
+        # did a getFlake of the current flake.
         mcp-host-env = nixpkgs.legacyPackages.x86_64-linux.python3.withPackages (ps: [ps.fastmcp]);
+        # Presence service (Rust): `nix build .#presence` without evaluating the NixOS conf.
+        presence = nixpkgs.legacyPackages.x86_64-linux.callPackage ./services/presence/package.nix {};
       };
 
-    # Conteneurs SORTIS de la conf hote (deploy/containers.nix), lus par
-    # `just deploy`. Jamais importes par nixosConfigurations : les modifier ne
-    # declenche aucun eval de la conf NixOS.
+    # Containers TAKEN OUT of the host conf (deploy/containers.nix), read by
+    # `just deploy`. Never imported by nixosConfigurations: modifying them
+    # triggers no eval of the NixOS conf.
     deploy.containers = import ./deploy/containers.nix;
 
-    # Appareils Nix-on-Droid. `default` = le tel (Xiaomi 13T Pro). Chaque
-    # appareil doit avoir SES ports sur la boucle locale du VPS, sinon les
-    # tunnels inverses se disputent les mêmes numéros (voir nod-access dans
+    # Nix-on-Droid devices. `default` = the phone (Xiaomi 13T Pro). Each
+    # device must have ITS OWN ports on the VPS loopback, otherwise the
+    # reverse tunnels fight over the same numbers (see nod-access in
     # profiles/nix-on-droid/hermes-access.nix).
     nixOnDroidConfigurations = let
       mkNod = extraModules:
@@ -307,7 +333,7 @@
         };
     in {
       default = mkNod [];
-      # Tablette : relais 2226, sshd publié par wstunnel 2227, proxys 1083/1084.
+      # Tablet: relay 2226, sshd published by wstunnel 2227, proxies 1083/1084.
       tablet = mkNod [
         {
           nod-access = {

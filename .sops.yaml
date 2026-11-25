@@ -4,9 +4,21 @@ keys:
   - &mac age1fwgg9h68zz8s6xa8qt4yn7gqcqp59s0mma8xdfq9hunksqv8fq4qd9yfaz
   - &deck age154uz4pavaj5qth25ytj0q8chsya4y65pgel04zcrm02je9w6uc9sug7dp2
   - &deck-host age1rhnaejc5nwcqcuq5qt45wzr2fncurlwqw0adhnavfraqsdzffatqh5yhl4
+  # age key of the LAPTOP (derived from its /etc/ssh/ssh_host_ed25519_key; verified
+  # on 20/11/2026: ssh-to-age of the host public key = this value). The
+  # laptop serves as the Hermes fallback and produces the pqbox backups, so it
+  # must be able to decrypt the agent's secrets.
+  - &laptop age1mxdsyddxl2p854hhulg9vwt7t36fy9z9jyudfdxujkacgfcp55uq9taurs
 
 creation_rules:
-  # Open Notebook (services/open-notebook) : clé de chiffrement applicative.
+  # arr-mcp (services/arr-mcp): Radarr/Sonarr/Prowlarr/Jellyfin API keys and
+  # MCP token. The container and hermes run on tower; no fallback
+  # host decrypts this file (do not import it elsewhere).
+  - path_regex: secrets/arr-mcp\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Open Notebook (services/open-notebook): application encryption key.
   - path_regex: secrets/open-notebook\.yml$
     key_groups:
       - age:
@@ -16,7 +28,7 @@ creation_rules:
       - age:
           - *tower
           - *deck-host
-  # Clés Switch (prod.keys) pour Eden sur le deck (posées dans le home de marc)
+  # Switch keys (prod.keys) for Eden on the deck (placed in marc's home)
   - path_regex: secrets/switch-keys\.yml$
     key_groups:
       - age:
@@ -35,8 +47,26 @@ creation_rules:
           - *mac
           - *deck
           - *deck-host
-  # Réseau ygg-mesh (services/ygg-mesh) : mot de passe commun aux machines
-  # membres du mesh. Mêmes destinataires que common.yml, sans le mac.
+  # tower's internal TLS proxy (Traefik, Cloudflare DNS-01 challenge): the
+  # Cloudflare token is only used by tower, no other host decrypts it.
+  - path_regex: secrets/traefik\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # tailnet internal CA (step): the ROOT key must never live on tower,
+  # only the offline backup holds it. The INTERMEDIATE key signs the
+  # service certificates on tower and exists only there.
+  - path_regex: secrets/intra-ca-root\.yml$
+    key_groups:
+      - age:
+          - *anywhere
+          - *mac
+  - path_regex: secrets/intra-ca\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # ygg-mesh network (services/ygg-mesh): password common to the machines
+  # that are members of the mesh. Same recipients as common.yml, without the mac.
   - path_regex: secrets/ygg-mesh\.yml$
     key_groups:
       - age:
@@ -44,8 +74,8 @@ creation_rules:
           - *tower
           - *deck
           - *deck-host
-  # Mesh headscale (services/headscale + services/tailscale) : clé de
-  # pré-authentification partagée par les nœuds du tailnet, créée sur le VPS.
+  # headscale mesh (services/headscale + services/tailscale): pre-authentication
+  # key shared by the tailnet nodes, created on the VPS.
   - path_regex: secrets/headscale\.yml$
     key_groups:
       - age:
@@ -73,10 +103,10 @@ creation_rules:
     key_groups:
       - age:
           - *tower
-  # Coffre Vaultwarden DEDIÉ À L'AGENT (compte hermes@marcpartensky.com) :
-  # mot de passe maître d'un coffre qui ne contient que des capacités
-  # révocables. Séparé du coffre de marc pour que le navigateur piloté ne
-  # touche jamais le principal. Voir services/vaultwarden-mcp.
+  # Vaultwarden vault DEDICATED TO THE AGENT (hermes@marcpartensky.com account):
+  # master password of a vault that contains only revocable
+  # capabilities. Separate from marc's vault so that the driven browser never
+  # touches the main one. See services/vaultwarden-mcp.
   - path_regex: secrets/vaultwarden-agent\.yml$
     key_groups:
       - age:
@@ -117,7 +147,7 @@ creation_rules:
     key_groups:
       - age:
           - *tower
-  # Shlink (services/shlink) : mot de passe Postgres + clé d'API initiale.
+  # Shlink (services/shlink): Postgres password + initial API key.
   - path_regex: secrets/shlink\.yml$
     key_groups:
       - age:
@@ -138,29 +168,38 @@ creation_rules:
     key_groups:
       - age:
           - *tower
-  # Cle API du compte DeepSeek direct, partagee par deux consommateurs : le
-  # dashboard d'usage (solde, lit deepseek_api_key) et l'agent hermes (provider
-  # custom deepseek-direct, lit hermes_deepseek_env, un contenu dotenv).
+  # API key of the direct DeepSeek account, shared by two consumers: the
+  # usage dashboard (balance, reads deepseek_api_key) and the hermes agent (custom
+  # provider deepseek-direct, reads hermes_deepseek_env, a dotenv content).
   - path_regex: secrets/deepseek\.yml$
     key_groups:
       - age:
           - *tower
-  # Cle du compte Meta Model API (muse-ember-1.0, muse-spark-1.3, muse-wonder).
-  # Consommee par le provider INTEGRE meta-ai de hermes (env MODEL_API_KEY), en
-  # mode Standard seulement : pas d'entrainement sur le contenu.
+  # Key of the Meta Model API account (muse-ember-1.0, muse-spark-1.3, muse-wonder).
+  # Consumed by hermes's BUILT-IN meta-ai provider (env MODEL_API_KEY), in
+  # Standard mode only: no training on the content.
   - path_regex: secrets/meta\.yml$
     key_groups:
       - age:
           - *tower
-  # Dashboard d'usage LLM (services/usage-dashboard) : cle management OpenRouter
-  # (lecture seule, analytics) + cle d'inference (usage temps reel) + cle
-  # Moonshot (solde du provider kimi direct).
+  # Gemini key via Google AI Studio, consumed by hermes's BUILT-IN gemini
+  # provider (env GOOGLE_API_KEY). Dotenv content, like deepseek/meta. Verified on
+  # 20/11/2026: HTTP 200 on /v1beta/models, 65 models (gemini-3.8-flash,
+  # gemini-4-argon, gemini-3.1-pro). Free tier = prompts used to improve
+  # Google products; paid tier to avoid training.
+  - path_regex: secrets/hermes-gemini\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # LLM usage dashboard (services/usage-dashboard): OpenRouter management key
+  # (read-only, analytics) + inference key (real-time usage) + Moonshot
+  # key (balance of the kimi direct provider).
   - path_regex: secrets/usage-dashboard\.yml$
     key_groups:
       - age:
           - *tower
-  # BeEF (services/beef) : mot de passe de la console d'operateur. Le reste du
-  # module n'a pas de secret (le nom du tunnel rapide est public par nature).
+  # BeEF (services/beef): operator console password. The rest of the
+  # module has no secret (the quick tunnel name is public by nature).
   - path_regex: secrets/beef\.yml$
     key_groups:
       - age:
@@ -189,10 +228,19 @@ creation_rules:
     key_groups:
       - age:
           - *tower
-  # Pont Gotify <-> Matrix (services/gotify-matrix) : mot de passe local du
-  # compte admin Gotify. L'unite gotify-pont-provision aligne le hash bcrypt en
-  # base sur cette valeur (le mot de passe historique n'etait plus connu), puis
-  # cree les jetons application + client du pont.
+  # Gotify server (services/gotify): moved to the VPS on 20/11/2026. The
+  # file is encrypted for BOTH hosts because the server runs on anywhere
+  # (creation password + postgres role) and the bridge consumers
+  # (gotify-pont-provision, API basic auth) run on tower.
+  - path_regex: secrets/gotify\.yml$
+    key_groups:
+      - age:
+          - *anywhere
+          - *tower
+  # Gotify <-> Matrix bridge (services/gotify-matrix): local password of the
+  # Gotify admin account. The gotify-pont-provision unit aligns the bcrypt hash in
+  # the database to this value (the historical password was no longer known), then
+  # creates the bridge's application + client tokens.
   - path_regex: secrets/gotify-matrix\.yml$
     key_groups:
       - age:
@@ -205,24 +253,105 @@ creation_rules:
     key_groups:
       - age:
           - *tower
-  # Depot F-Droid personnel (services/fdroid-repo) : cle de signature du depot
-  # (keystore JKS en base64) + son mot de passe. La perdre oblige les clients a
-  # re-ajouter le depot (nouvelle empreinte), d'ou le stockage chiffre en git.
+  # Personal F-Droid repo (services/fdroid-repo): repo signing key
+  # (JKS keystore in base64) + its password. Losing it forces clients to
+  # re-add the repo (new fingerprint), hence the encrypted storage in git.
   - path_regex: secrets/fdroid\.yml$
     key_groups:
       - age:
           - *tower
-  # Cle d'API Termix (compte technique "hermes-agent" cree dans le panel).
-  # Consommee par services/termix-mcp (MCP du mcp-host). Tower seulement : le
-  # panel n'existe que sur tower et la cle ne vaut que pour lui.
+  # Termix API key (technical account "hermes-agent" created in the panel).
+  # Consumed by services/termix-mcp (mcp-host MCP). Tower only: the
+  # panel exists only on tower and the key is valid only for it.
   - path_regex: secrets/termix\.yml$
     key_groups:
       - age:
           - *tower
-  # Gate de la Webapp Hermes (front Desktop servi sur hermes.marcpartensky.com,
-  # services/hermes-webapp) : identifiant + mot de passe + cle de signature des
-  # sessions. Tower seulement : le gateway qui sert la Webapp n'existe que la.
+  # Gate of the Hermes Webapp (Desktop front served on hermes.marcpartensky.com,
+  # services/hermes-webapp): identifier + password + session signing
+  # key. Tower only: the gateway that serves the Webapp exists only there.
   - path_regex: secrets/hermes-webapp\.yml$
+    key_groups:
+      - age:
+          - *tower
+
+  # Hermes AGENT secrets, mutualized: a single file for everything the
+  # gateway needs (dashboard env, LLM keys, Matrix token, Pangolin key,
+  # agent vault password). Meant to replace the copies
+  # scattered across tower.yml / anywhere.yml / common.yml / *-mcp.yml, which
+  # required a `sops updatekeys` per file for each new host.
+  # Recipients: the hosts able to run the gateway (tower,
+  # fallback laptop, VPS) plus marc's Mac to be able to edit.
+  - path_regex: secrets/hermes-agent\.yml$
+    key_groups:
+      - age:
+          - *tower
+          - *laptop
+          - *anywhere
+          - *mac
+  # OIDC secrets of the apps migrated to a DEDICATED ZITADEL PROJECT (one project per
+  # app, cf. services/*/default.nix): each app has its own Zitadel client,
+  # hence its own secret. tower hosts Gitea/Nextcloud/Immich, anywhere
+  # hosts Pangolin; the laptop is included for operational continuity.
+  - path_regex: secrets/zitadel-oidc-secrets\.yml$
+    key_groups:
+      - age:
+          - *tower
+          - *anywhere
+          - *laptop
+
+  # ---------------------------------------------------------------------------
+  # Rules recovered from the laptop checkout (2026-11-25). These secret files
+  # only ever lived on the laptop: the modules below were never imported by any
+  # profile, so the files were never needed on tower. The modules are now in the
+  # repo (inert until a profile imports them); these rules make their secrets
+  # editable on tower, which is the host that would run them.
+  # ---------------------------------------------------------------------------
+  # app-publish (services/app-publish-mcp): Google Play service account (JSON) +
+  # App Store Connect .p8 key and Key ID / Issuer ID. Placeholders until the
+  # developer accounts exist.
+  - path_regex: secrets/app-publish\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Enable Banking (services/enable-banking-mcp): app_id + RSA keys of the
+  # personal open-banking app (JSON, key "app").
+  - path_regex: secrets/enable-banking\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Direct DeepSeek API key of hermes (bypass OpenRouter): dotenv content read as
+  # an EnvironmentFile. Kept separate from tower.yml so the agent can edit it
+  # without the tower age key.
+  - path_regex: secrets/hermes-deepseek\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Nextcloud <-> Zitadel OIDC client secret (services/nextcloud): written into
+  # Nextcloud by occ (encrypted with the instance secret), not read by a unit.
+  - path_regex: secrets/nextcloud-oidc\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # OAuth clients (google...) used by the publishing/notification MCP servers.
+  - path_regex: secrets/oauth-clients\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # RustFS (services/rustfs): S3 credentials of the object store that Garage
+  # replaced on 11/11/2026. Kept for the module's archive.
+  - path_regex: secrets/rustfs\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # SimpleFIN Bridge (services/simplefin-mcp): access URL (Basic credentials)
+  # giving read access to the Chase accounts.
+  - path_regex: secrets/simplefin\.yml$
+    key_groups:
+      - age:
+          - *tower
+  # Stripe keys of Winnie (services/winnie).
+  - path_regex: secrets/winnie-stripe\.yml$
     key_groups:
       - age:
           - *tower

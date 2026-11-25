@@ -10,3 +10,6 @@ result*
 # Python bytecode (ex. services/hinge-auto/__pycache__/)
 __pycache__/
 *.pyc
+
+# artefacts de build du service presence (jamais versionnes)
+services/presence/rust/target/

@@ -645,6 +645,22 @@
         "type": "github"
       }
     },
+    "mnemo": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "path": "./projects/mnemo",
+        "type": "path"
+      },
+      "original": {
+        "path": "./projects/mnemo",
+        "type": "path"
+      },
+      "parent": []
+    },
     "niri": {
       "inputs": {
         "niri-stable": "niri-stable",
@@ -1553,6 +1569,7 @@
         "infra-atlas": "infra-atlas",
         "jovian": "jovian",
         "microvm": "microvm",
+        "mnemo": "mnemo",
         "niri": "niri",
         "nix-darwin": "nix-darwin",
         "nix-flatpak": "nix-flatpak",
@@ -1569,6 +1586,7 @@
         "spicetify": "spicetify",
         "stalwart-mcp": "stalwart-mcp",
         "steam-config-nix": "steam-config-nix",
+        "typer": "typer",
         "unstable": "unstable",
         "uv2nix": "uv2nix_8",
         "ytm-player": "ytm-player",
@@ -1895,6 +1913,22 @@
         "repo": "default",
         "type": "github"
       }
+    },
+    "typer": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "path": "./projects/typer",
+        "type": "path"
+      },
+      "original": {
+        "path": "./projects/typer",
+        "type": "path"
+      },
+      "parent": []
     },
     "unstable": {
       "locked": {
