@@ -18,6 +18,15 @@ creation_rules:
     key_groups:
       - age:
           - *tower
+  # Aonsoku (services/aonsoku): Subsonic password of the dedicated
+  # non-admin Navidrome account "aonsoku", injected into the web client by
+  # APP_USER/APP_PASSWORD so the SPA logs in alone. The value ends up in the JS
+  # served to the browser, hence the Pangolin SSO gate in front of it. Tower
+  # only: the container and the rendered file live there.
+  - path_regex: secrets/aonsoku\.yml$
+    key_groups:
+      - age:
+          - *tower
   # Open Notebook (services/open-notebook): application encryption key.
   - path_regex: secrets/open-notebook\.yml$
     key_groups:
