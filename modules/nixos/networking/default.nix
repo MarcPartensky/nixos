@@ -5,7 +5,7 @@
   ...
 }: let
   # ====================================================================
-  # LISTE SIMPLE
+  # SIMPLE LIST
   # ====================================================================
   wifiNetworksList = [
     "Wifi de Marc"
@@ -14,15 +14,15 @@
     "HKT"
   ];
 
-  # 1. Nettoyage : J'ai ajouté le point "." au remplacement car les variables
-  # d'environnement (.env) n'acceptent pas les points dans leurs noms.
+  # 1. Cleanup: I added the "." to the replacement because environment
+  # variables (.env) do not accept dots in their names.
   sanitize = str: lib.strings.toLower (builtins.replaceStrings [" " "-" "."] ["_" "_" "_"] str);
 
-  # 2. Règle Stricte
+  # 2. Strict Rule
   getSecretName = ssid: "wifi_${sanitize ssid}";
 in {
   # ====================================================================
-  # 1. GÉNÉRATION DES SECRETS SOPS
+  # 1. GENERATION OF SOPS SECRETS
   # ====================================================================
   sops.secrets = lib.listToAttrs (map (ssid: {
       name = getSecretName ssid;
@@ -31,9 +31,9 @@ in {
     wifiNetworksList);
 
   # ====================================================================
-  # 2. CRÉATION DU FICHIER D'ENVIRONNEMENT (Le template unique)
+  # 2. CREATION OF THE ENVIRONMENT FILE (The single template)
   # ====================================================================
-  # Cela va créer un fichier ressemblant à :
+  # This will create a file looking like:
   # wifi_de_marc_psk=motdepasse123
   # ap25g_psk=motdepasse456
   sops.templates."wifi-secrets.env".content = lib.concatStringsSep "\n" (
@@ -58,10 +58,10 @@ in {
       wifi.backend = "iwd";
 
       ensureProfiles = {
-        # Indique à NetworkManager où lire les variables d'environnement
+        # Tell NetworkManager where to read the environment variables
         environmentFiles = [config.sops.templates."wifi-secrets.env".path];
 
-        # Génération déclarative des profils
+        # Declarative generation of profiles
         profiles = lib.listToAttrs (map (ssid: {
             name = ssid;
             value = {
@@ -70,8 +70,8 @@ in {
                 type = "wifi";
                 interface-name = "wlan0";
                 autoconnect = true;
-                # Note: NetworkManager générera l'UUID automatiquement,
-                # plus besoin de ta fonction mkUuid !
+                # Note: NetworkManager will generate the UUID automatically,
+                # no need for your mkUuid function anymore!
               };
               wifi = {
                 mode = "infrastructure";
@@ -79,12 +79,26 @@ in {
               };
               wifi-security = {
                 key-mgmt = "wpa-psk";
-                # Le préfixe "$" dit à NetworkManager de lire la variable dans le .env
+                # The "$" prefix tells NetworkManager to read the variable from the .env
                 psk = "$${sanitize ssid}_psk";
               };
               ipv4 = {method = "auto";};
               ipv6 = {
-                method = "auto";
+                # This module declares `networking.enableIPv6 = false`, but the
+                # profile used to bring IPv6 back on wlan0 (method = "auto",
+                # which is also NetworkManager's own default), while nixpkgs
+                # writes NO IPv6 firewall table when the option is false (its
+                # ip6tables rules are tied to it). The result is a host with a
+                # PUBLIC IPv6 address and no filter at all on it: measured on
+                # the laptop 2026-11-25, llama-swap on *:8080 answered 200 over
+                # [2603:7000:...] from tower while the same port is dropped on
+                # the LAN, and sshd (AddressFamily inet, derived from the same
+                # option) refused TCP on every port of that address while the
+                # host answered pings in 21 ms -> read as "sshd is down".
+                # The option is the single source of truth: a host that really
+                # wants IPv6 forces it true (tower does, for yggdrasil) and
+                # keeps its IPv6; the others get none, instead of a half state.
+                method = if config.networking.enableIPv6 then "auto" else "disabled";
                 addr-gen-mode = "default";
               };
             };
