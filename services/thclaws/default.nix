@@ -1,40 +1,44 @@
 # services/thclaws/default.nix
 #
-# thClaws : harness d'agent en Rust (GUI + CLI + webapp depuis un seul binaire).
-# Le paquet vient du flake du projet /home/marc/git/thclaws (binaire prebuilt
-# repackage avec autoPatchelf) ; ici on ne declare que le service.
+# thClaws: agent harness in Rust (GUI + CLI + webapp from a single binary).
+# The package comes from the project flake /home/marc/git/thclaws (prebuilt binary
+# repackaged with autoPatchelf); here we only declare the service.
 #
-# EXPOSITION (skill selfhosted-remote-access) : thClaws n'a AUCUNE
-# authentification propre. Mesure du 13/11/2026 sur la 0.156.0 : `GET /` rend
-# 200 sans jeton, meme avec THCLAWS_SERVE_TOKEN pose dans l'environnement. L'UI
-# donne un acces bash complet, donc :
-#   - le port 8453 n'est PAS dans networking.firewall.allowedTCPPorts : le LAN
-#     (wlan0) est ferme, seules les interfaces trusted (tailscale0, ygg, lo)
-#     passent ;
-#   - l'acces public passe par Pangolin avec SSO (ressource `thclaws` dans
-#     services/newt) : c'est Pangolin qui porte l'OIDC Zitadel, pas thClaws ;
-#   - le tailnet est le chemin direct, sans auth applicative (identite
-#     WireGuard). C'est un choix assume : quiconque est sur le tailnet pilote
-#     l'agent.
+# EXPOSURE (selfhosted-remote-access skill): thClaws has NO
+# authentication of its own. Measurement on 13/11/2026 of 0.156.0: `GET /` returns
+# 200 without a token, even with THCLAWS_SERVE_TOKEN set in the environment. The UI
+# gives full bash access, so:
+#   - port 8453 is NOT in networking.firewall.allowedTCPPorts: the LAN
+#     (wlan0) is closed, only the trusted interfaces (tailscale0, ygg, lo)
+#     pass;
+#   - public access goes through Pangolin with SSO (resource `thclaws` in
+#     services/newt): it is Pangolin that carries the Zitadel OIDC, not thClaws;
+#   - the tailnet is the direct path, without application auth (WireGuard
+#     identity). This is a deliberate choice: whoever is on the tailnet drives
+#     the agent.
 #
-# Postgres : sans objet. thClaws n'a aucune base, son etat est sur disque
-# (.thclaws/ dans le repertoire racine : sessions JSONL, settings, KMS). Le
-# StateDirectory /var/lib/thclaws est donc la seule persistance a sauvegarder.
+# Postgres: not applicable. thClaws has no database, its state is on disk
+# (.thclaws/ in the root directory: JSONL sessions, settings, KMS). The
+# StateDirectory /var/lib/thclaws is therefore the only persistence to back up.
 {
   config,
   pkgs,
   lib,
   ...
 }: let
-  thclaws = pkgs.callPackage /home/marc/git/thclaws/package.nix { };
+  # PURE EVAL: the package must come from the repo, not from an absolute path outside the
+  # flake (a `callPackage /home/marc/git/thclaws/package.nix` breaks pure eval
+  # with "cannot access absolute path"). ./package.nix is a synchronized copy
+  # of the project flake, cf the header of this file.
+  thclaws = pkgs.callPackage ./package.nix { };
 
   envFile = "/run/thclaws/env";
   port = 8453;
 in {
-  # thClaws lit ses cles soit du keychain OS (absent en headless), soit de
-  # variables d'environnement. On extrait seulement les trois providers de
-  # marc depuis le .env de hermes (meme mecanisme que winnie-ingest-env) : rien
-  # de sensible ne part dans le store, et le fichier reste en 0640 sous /run.
+  # thClaws reads its keys either from the OS keychain (absent in headless), or from
+  # environment variables. We extract only marc's three providers from
+  # hermes's .env (same mechanism as winnie-ingest-env): nothing
+  # sensitive goes into the store, and the file stays at 0640 under /run.
   systemd.services.thclaws-env = {
     description = "Extract provider keys for thClaws";
     wantedBy = ["multi-user.target"];
@@ -63,8 +67,8 @@ in {
     wants = ["network-online.target" "thclaws-env.service"];
 
     environment = {
-      # Derriere le reverse proxy qui authentifie (Pangolin/badger) : c'est le
-      # mode prevu par upstream pour ce montage.
+      # Behind the authenticating reverse proxy (Pangolin/badger): this is the
+      # mode intended by upstream for this setup.
       THCLAWS_SERVE_BEHIND_PROXY = "1";
       THCLAWS_EXTERNAL_URL = "https://thclaws.marcpartensky.com";
     };
@@ -73,14 +77,14 @@ in {
       Type = "simple";
       User = "hermes";
       Group = "hermes";
-      # Racine du sandbox de fichiers de l'agent (ch.3 du manuel : tous les
-      # outils read/write/edit/bash sont confines a ce repertoire).
+      # Root of the agent's file sandbox (ch.3 of the manual: all the
+      # read/write/edit/bash tools are confined to this directory).
       StateDirectory = "thclaws";
       StateDirectoryMode = "0750";
       WorkingDirectory = "/var/lib/thclaws";
       EnvironmentFile = envFile;
-      # StateDirectory cree /var/lib/thclaws, mais systemd resout
-      # WorkingDirectory au moment du chdir : on le cree explicitement avant.
+      # StateDirectory creates /var/lib/thclaws, but systemd resolves
+      # WorkingDirectory at the moment of chdir: we create it explicitly beforehand.
       ExecStartPre = "+${pkgs.coreutils}/bin/mkdir -p /var/lib/thclaws";
       ExecStart = "${thclaws}/bin/thclaws --serve --port ${toString port} --bind 0.0.0.0";
       Restart = "always";
@@ -88,8 +92,8 @@ in {
       TimeoutStopSec = 20;
       KillMode = "mixed";
 
-      # L'agent doit pouvoir lancer les commandes systeme de marc (dont
-      # `sudo nixos-rebuild`, NOPASSWD cote hermes) : pas de NoNewPrivileges.
+      # The agent must be able to launch marc's system commands (including
+      # `sudo nixos-rebuild`, NOPASSWD on hermes side): no NoNewPrivileges.
       NoNewPrivileges = false;
       PrivateTmp = true;
       ProtectHome = false;

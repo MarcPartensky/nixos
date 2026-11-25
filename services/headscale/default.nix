@@ -1,85 +1,100 @@
 { pkgs, config, ... }:
+let
+  # Host names shared with the AdGuard instances (modules/mesh-hosts.nix).
+  meshHosts = import ../../modules/mesh-hosts.nix;
+in
 {
-  # Contrôleur du mesh headscale de marc (version DURCIE).
+  # marc's headscale mesh controller (HARDENED version).
   #
-  # Tourne sur le VPS `anywhere`, seul hôte à IP publique stable, et sert :
-  #   - la coordination des nœuds tailscale (tower, deck, anywhere, laptop...) ;
-  #   - un DERP embarqué : relais chiffré de secours quand le hole punching
-  #     échoue. Le trafic y circule en WireGuard, le relais ne déchiffre rien.
+  # Runs on the `anywhere` VPS, the only host with a stable public IP, and provides:
+  #   - coordination of the tailscale nodes (tower, deck, anywhere, laptop...);
+  #   - an embedded DERP: encrypted fallback relay when hole punching
+  #     fails. Traffic flows there in WireGuard, the relay decrypts nothing.
   #
-  # Durcissement (par rapport au tailscale.com public) :
-  #   - derp.urls = [] : la flotte DERP de Tailscale Inc est retirée de la carte
-  #     annoncée aux clients ; le seul relais est celui de ce VPS, qui fait
-  #     partie du réseau. Aucune machine extérieure ne voit les IP des nœuds.
-  #   - logtail.enabled = false : aucun log client n'est envoyé à Tailscale Inc.
+  # Hardening (compared to public tailscale.com):
+  #   - derp.urls = [] : the Tailscale Inc DERP fleet is removed from the map
+  #     announced to clients; the only relay is this VPS's, which is
+  #     part of the network. No external machine sees the nodes' IPs.
+  #   - logtail.enabled = false : no client log is sent to Tailscale Inc.
   #
-  # Côté clients : services/tailscale/default.nix, à importer sur chaque machine
-  # NixOS du flake.
+  # On the clients: services/tailscale/default.nix, to import on each NixOS
+  # machine of the flake.
   #
-  # Exposition : headscale.marcpartensky.com -> Traefik local (Pangolin) ->
-  # 127.0.0.1:8090 en HTTP ; la route est dans services/traefik/dynamic.toml.
-  # Le DERP embarqué passe par le MÊME endpoint HTTPS (/derp), donc par
-  # Traefik ; seul le STUN (UDP 3478) est exposé en direct, un reverse proxy
-  # ne portant pas l'UDP.
+  # Exposure: headscale.marcpartensky.com -> local Traefik (Pangolin) ->
+  # 127.0.0.1:8090 over HTTP; the route is in services/traefik/dynamic.toml.
+  # The embedded DERP goes through the SAME HTTPS endpoint (/derp), hence through
+  # Traefik; only STUN (UDP 3478) is exposed directly, since a reverse proxy
+  # does not carry UDP.
   #
-  # Bootstrap / rotation : voir en bas du fichier.
+  # Bootstrap / rotation: see at the bottom of the file.
   services.headscale = {
     enable = true;
     address = "127.0.0.1";
     port = 8090;
     settings = {
-      # URL publique que les clients utilisent pour rejoindre le tailnet.
+      # Public URL that clients use to join the tailnet.
       server_url = "https://headscale.marcpartensky.com";
-      # Traefik tourne en local sur ce VPS : honorer ses X-Forwarded-*.
+      # Traefik runs locally on this VPS: honor its X-Forwarded-*.
       trusted_proxies = [ "127.0.0.1/32" ];
 
       derp = {
-        # Aucune carte DERP extérieure : uniquement le DERP embarqué ci-dessous.
+        # No external DERP map: only the embedded DERP below.
         urls = [ ];
         paths = [ ];
         auto_update_enabled = false;
         server = {
           enabled = true;
-          region_id = 900; # hors plage des régions officielles (1-30)
+          region_id = 900; # outside the range of official regions (1-30)
           region_code = "vps";
           region_name = "VPS RackNerd";
-          # STUN : aide au hole punching, en UDP direct sur l'IP publique.
+          # STUN: helps hole punching, in direct UDP on the public IP.
           stun_listen_addr = "0.0.0.0:3478";
-          # La région du DERP embarqué est ajoutée à la carte automatiquement,
-          # annoncée sur server_url (port 443, via Traefik).
+          # The embedded DERP region is added to the map automatically,
+          # announced on server_url (port 443, via Traefik).
           automatically_add_embedded_derp_region = true;
-          # Seuls les nœuds du tailnet peuvent utiliser ce relais.
+          # Only the tailnet nodes can use this relay.
           verify_clients = true;
-          # private_key_path : défaut du module
-          # (/var/lib/headscale/derp_server_private.key, généré au premier boot)
+          # private_key_path : module default
+          # (/var/lib/headscale/derp_server_private.key, generated on first boot)
         };
       };
 
-      # ACL depuis un fichier HuJSON (mode "file").
+      # ACL from a HuJSON file (mode "file").
       policy = {
         mode = "file";
         path = ./policy.hujson;
       };
 
-      # Aucun log client vers Tailscale Inc (défaut de 0.28, explicité ici).
+      # No client log to Tailscale Inc (0.28 default, made explicit here).
       logtail.enabled = false;
 
       dns = {
         magic_dns = true;
         base_domain = "ts.marcpartensky.com";
-        # AdGuard est le résolveur de TOUT le tailnet : le filtrage s'applique
-        # donc aux appareils hors de la maison (téléphone, laptop, Mac), sans
-        # conf par appareil, puisque c'est le contrôleur qui pousse ces IP.
-        # Deux instances, dans cet ordre :
-        #  - 100.64.0.1 : le VPS, toujours allumé et colocalisé avec l'exit node
-        #    internet, donc le seul qui garantit le filtrage en déplacement ;
-        #  - 100.64.0.3 : tower, à un saut du LAN de la maison ;
-        #  - 1.1.1.1 : filet brut si les deux AdGuard sont morts (un domaine
-        #    bloqué est répondu 0.0.0.0, donc la bascule ne fuit rien de pire
-        #    qu'un domaine public).
+        # Internal-only host names, answered by MagicDNS on every node. They
+        # live in the tailnet DNS, not in the public Cloudflare zone: the
+        # daemon serves them from this record table and never forwards them
+        # upstream. The same list feeds the AdGuard rewrites, so a client that
+        # bypasses MagicDNS (macOS with a manual resolver) gets the same answer.
+        extra_records = map (h: {
+          name = "${h.name}.marcpartensky.com";
+          type = "A";
+          value = h.ip;
+        }) meshHosts;
+
+        # AdGuard is the resolver for the WHOLE tailnet: filtering therefore
+        # applies to devices away from home (phone, laptop, Mac), with no
+        # per-device conf, since the controller pushes these IPs.
+        # Two instances, in this order:
+        #  - 100.64.0.1 : the VPS, always on and colocated with the internet
+        #    exit node, hence the only one that guarantees filtering on the go;
+        #  - 100.64.0.3 : tower, one hop from the home LAN;
+        #  - 1.1.1.1 : raw safety net if both AdGuard are dead (a blocked
+        #    domain is answered 0.0.0.0, so the fallback leaks nothing worse
+        #    than a public domain).
         nameservers.global = [ "100.64.0.1" "100.64.0.3" "1.1.1.1" ];
-        # Sans ce flag headscale ne pousse RIEN (`tailscale dns status` affiche
-        # « no resolvers configured »), même avec nameservers.global rempli.
+        # Without this flag headscale pushes NOTHING (`tailscale dns status` shows
+        # "no resolvers configured"), even with nameservers.global filled.
         override_local_dns = true;
       };
     };
@@ -87,26 +102,26 @@
 
   environment.systemPackages = [ config.services.headscale.package ];
 
-  # STUN du DERP embarqué : UDP en direct, Traefik ne porte pas l'UDP.
+  # STUN of the embedded DERP: direct UDP, Traefik does not carry UDP.
   networking.firewall.allowedUDPPorts = [ 3478 ];
 }
 
 # ================================ BOOTSTRAP ================================
 #
-# Déjà en place (23/10/2026) :
-#   - utilisateur headscale `marc` (id 1) ;
-#   - clé de pré-authentification réutilisable (expiration 10 ans, id 2),
-#     chiffrée dans secrets/headscale.yml (clé `preauth_key`), consommée par
-#     services/tailscale sur chaque machine.
+# Already in place (23/10/2026):
+#   - headscale user `marc` (id 1);
+#   - reusable pre-authentication key (expiration 10 years, id 2),
+#     encrypted in secrets/headscale.yml (key `preauth_key`), consumed by
+#     services/tailscale on each machine.
 #
-# Rotation / nouvelle clé (après révocation par exemple) :
-#   sudo headscale users list                          # retrouver l'id de marc
+# Rotation / new key (after revocation for example):
+#   sudo headscale users list                          # find marc's id
 #   sudo headscale preauthkeys create -u <id> --reusable --expiration 0
-#   # remplacer preauth_key dans secrets/headscale.yml (sops), redéployer.
+#   # replace preauth_key in secrets/headscale.yml (sops), redeploy.
 #
-# Révocation d'un nœud : sudo headscale nodes delete -i <id> (ou nodes expire
-# pour forcer une réauthentification).
+# Revoking a node: sudo headscale nodes delete -i <id> (or nodes expire
+# to force a re-authentication).
 #
-# Les nœuds n'expirent pas (Expiration 0001-01-01 dans `nodes list`) ; en
-# poser une si voulu :
+# Nodes do not expire (Expiration 0001-01-01 in `nodes list`); to
+# set one if desired:
 #   sudo headscale nodes expire -i <id> -e 2036-01-01T00:00:00Z

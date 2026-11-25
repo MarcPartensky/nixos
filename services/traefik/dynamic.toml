@@ -1,7 +1,11 @@
 # --- SERVICES ---
-[http.services.vaultwarden.loadBalancer]
-  [[http.services.vaultwarden.loadBalancer.servers]]
-    url = "http://127.0.0.1:8222"
+# [http.services.vaultwarden.loadBalancer]  RETIRE le 14/11/2026.
+# vault.vps.marcpartensky.com etait la route statique historique vers le
+# vaultwarden LOCAL du VPS (127.0.0.1:8222), sans SSO Pangolin, et elle restait
+# servie apres la suppression de la ressource Pangolin homonyme : deux noms pour
+# un meme coffre. Le seul nom valide est vault.marcpartensky.com (ressource
+# Pangolin 9, middlewares badger + regles /api /identity /notifications /events
+# /icons /attachments). Le service ci-dessous ne servait que cette route.
 
 [http.services.nextcloud.loadBalancer]
   [[http.services.nextcloud.loadBalancer.servers]]
@@ -38,6 +42,13 @@
   [[http.services.headscale.loadBalancer.servers]]
     url = "http://127.0.0.1:8090"
 
+# wstunnel (services/wstunnel): the server speaks plain HTTP on 127.0.0.1:8444,
+# Traefik terminates TLS and speaks WebSocket. Clients target
+# wss://ws.marcpartensky.com (SSH and proxies of the phone tunnelled over wss).
+[http.services.wstunnel.loadBalancer]
+  [[http.services.wstunnel.loadBalancer.servers]]
+    url = "http://127.0.0.1:8444"
+
 # --- ROUTERS ---
 [http.routers.traefik]
   rule = "Host(`traefik.vps.marcpartensky.com`)"
@@ -45,11 +56,9 @@
   service = "api@internal"
   tls = { certResolver = "letsencrypt" }
 
-[http.routers.vaultwarden]
-  rule = "Host(`vault.vps.marcpartensky.com`)"
-  entryPoints = ["websecure"]
-  service = "vaultwarden"
-  tls = { certResolver = "letsencrypt" }
+# [http.routers.vaultwarden]  RETIRE le 14/11/2026 (voir l'entete SERVICES).
+# Le domaine vault.vps.marcpartensky.com n'existe plus : doublon non-SSO de
+# vault.marcpartensky.com pour le meme coffre.
 
 [http.routers.nextcloud]
   rule = "Host(`cloud.vps.marcpartensky.com`)"
@@ -93,4 +102,11 @@
   rule = "Host(`headscale.marcpartensky.com`)"
   entryPoints = ["websecure"]
   service = "headscale"
+  tls = { certResolver = "letsencrypt" }
+
+# WebSocket tunnel (SSH and proxies of the phone): see services/wstunnel.
+[http.routers.wstunnel]
+  rule = "Host(`ws.marcpartensky.com`)"
+  entryPoints = ["websecure"]
+  service = "wstunnel"
   tls = { certResolver = "letsencrypt" }

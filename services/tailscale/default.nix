@@ -27,6 +27,17 @@ in
   #   headscale nodes approve-routes --identifier <id> --routes 0.0.0.0/0,::/0,192.168.1.0/24
   options.meshTailscale = {
     advertiseExitNode = lib.mkEnableOption "annoncer ce nœud comme exit node du tailnet";
+
+    # Nœuds déjà enrôlés dans headscale (le portable, dont l'état vit dans
+    # /var/lib/tailscale) : la clé de pré-authentification n'est plus nécessaire,
+    # et surtout secrets/headscale.yml ne liste pas leur clé age, donc la
+    # déclarer fait échouer le manifeste sops de TOUT l'hôte.
+    enablePreauthKey = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Déclarer secrets/headscale.yml (clé de pré-authentification) sur cet hôte.";
+    };
+
     advertiseRoutes = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
@@ -40,7 +51,7 @@ in
     # Traefik en cours d'émission, route absente), il part en timeout et le nœud
     # reste non enrôlé. Une fois l'endpoint OK :
     #   sudo systemctl restart tailscaled-autoconnect.service   (ou un reboot)
-    sops.secrets."headscale/preauth_key" = {
+    sops.secrets."headscale/preauth_key" = lib.mkIf cfg.enablePreauthKey {
       sopsFile = ../../secrets/headscale.yml;
       key = "preauth_key";
       owner = "root";
@@ -56,7 +67,7 @@ in
       openFirewall = true;
       # "both" : ce nœud peut aussi annoncer des sous-réseaux / être exit node.
       useRoutingFeatures = "both";
-      authKeyFile = config.sops.secrets."headscale/preauth_key".path;
+      authKeyFile = lib.mkIf cfg.enablePreauthKey config.sops.secrets."headscale/preauth_key".path;
       extraUpFlags = [
         "--login-server=https://headscale.marcpartensky.com" # contrôleur auto-hébergé, pas Tailscale Inc
         "--accept-routes"

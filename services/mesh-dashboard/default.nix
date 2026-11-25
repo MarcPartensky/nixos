@@ -1,34 +1,34 @@
-# services/mesh-dashboard : page des nœuds du tailnet (headscale) de marc.
+# services/mesh-dashboard: page of marc's tailnet (headscale) nodes.
 #
-# Chaîne : Pangolin (mesh.marcpartensky.com, SSO) -> newt (site tower)
-#          -> 127.0.0.1:9140 (ce service).
-# Depuis le tailnet, l'URL directe est http://100.64.0.3:9140 (pas de SSO :
-# tailscale0 est déjà une interface de confiance, cf. services/tailscale).
+# Chain: Pangolin (mesh.marcpartensky.com, SSO) -> newt (site tower)
+#          -> 127.0.0.1:9140 (this service).
+# From the tailnet, the direct URL is http://100.64.0.3:9140 (no SSO:
+# tailscale0 is already a trusted interface, cf. services/tailscale).
 #
-# Source de vérité : `tailscale status --json` lu par le client de tower, plus
-# `tailscale ping` pour le chemin réel de chaque pair (direct vs DERP). Rien
-# n'est stocké : la page est un reflet de l'état courant du contrôleur.
+# Source of truth: `tailscale status --json` read by tower's client, plus
+# `tailscale ping` for the real path of each peer (direct vs DERP). Nothing
+# is stored: the page is a reflection of the controller's current state.
 #
-# Le service tourne en utilisateur système dédié, sans capacité et avec un
-# système de fichiers en lecture seule (seul /var/run/tailscale est monté en
-# écriture pour le socket du démon). Il ne fait que lire : aucune écriture
-# n'est nécessaire.
+# The service runs as a dedicated system user, without capability and with a
+# read-only filesystem (only /var/run/tailscale is mounted
+# read-write for the daemon socket). It only reads: no write
+# is needed.
 { config, lib, pkgs, ... }:
 let
   port = 9140;
 
-  # Jeton d'application Gotify pour les alertes de transition (nœud hors ligne
-  # / de retour). Le jeton vit dans son propre fichier sops, chiffré vers tower
-  # seulement, et il est OPTIONNEL : tant que le fichier n'existe pas, le module
-  # se déploie quand même (le dashboard mesure, mais ne notifie pas, et l'affiche
-  # dans l'en-tête « Gotify : jeton manquant »).
+# Gotify application token for transition alerts (node offline
+# / back). The token lives in its own sops file, encrypted toward tower
+# only, and it is OPTIONAL: as long as the file does not exist, the module
+# deploys anyway (the dashboard measures, but does not notify, and shows it
+  # in the header "Gotify: missing token").
   #
-  # Créer le jeton : Gotify (https://gotify.marcpartensky.com, connexion OIDC)
-  # -> Apps -> Create Application -> nom « mesh-dashboard », puis :
-  #   printf 'mesh_token: %s\n' '<jeton>' | sops --encrypt \
+# Create the token: Gotify (https://gotify.marcpartensky.com, OIDC login)
+# -> Apps -> Create Application -> name "mesh-dashboard", then:
+#   printf 'mesh_token: %s\n' '<token>' | sops --encrypt \
   #     --filename-override secrets/gotify-mesh.yml --input-type yaml \
   #     /dev/stdin > secrets/gotify-mesh.yml
-  # (règle `path_regex: secrets/gotify-mesh\.yml$` dans .sops.yaml)
+# (rule `path_regex: secrets/gotify-mesh\.yml$` in .sops.yaml)
   gotifySecretFile = ../../secrets/gotify-mesh.yml;
   gotifyTokenAvailable = builtins.pathExists gotifySecretFile;
   gotifyTokenPath = "/run/secrets/gotify/mesh_token";
@@ -37,7 +37,7 @@ in
   users.users.mesh-dash = {
     isSystemUser = true;
     group = "mesh-dash";
-    description = "Dashboard du tailnet (lecture de tailscaled)";
+    description = "Tailnet dashboard (reading tailscaled)";
   };
   users.groups.mesh-dash = { };
 
@@ -52,12 +52,12 @@ in
   };
 
   systemd.services.mesh-dashboard = {
-    description = "Dashboard des nœuds du tailnet (headscale)";
+    description = "Tailnet (headscale) node dashboard";
     wantedBy = [ "multi-user.target" ];
     wants = [ "tailscaled.service" ];
     after = [ "network.target" "tailscaled.service" ];
 
-    # `tailscale` doit être dans le PATH de l'unité : le script l'appelle en
+    # `tailscale` must be in the unit's PATH: the script calls it as a
     # subprocess (status + ping).
     path = [ pkgs.tailscale ];
 
@@ -69,25 +69,29 @@ in
         "MESH_DASHBOARD_HOST=0.0.0.0"
         "MESH_DASHBOARD_PORT=${toString port}"
         "MESH_DASHBOARD_STATE=/var/lib/mesh-dashboard/state.json"
-        # Gotify tourne sur tower en loopback : aucune sortie réseau nécessaire.
-        "MESH_DASHBOARD_GOTIFY_URL=http://127.0.0.1:8070"
-        # Appareils à enrôler dans le tailnet : affichés « en attente » tant
-        # qu'ils ne sont pas vus par le contrôleur. `phone` = Xiaomi de marc
-        # (app Tailscale Android, serveur alternatif headscale), `tablet` =
-        # tablette Nix-on-Droid à venir.
+        # Gotify runs on tower on loopback: no network egress needed.
+        "MESH_DASHBOARD_GOTIFY_URL=https://gotify.marcpartensky.com"
+        # Devices to enroll in the tailnet: shown as "pending" as long
+        # as they are not seen by the controller. `phone` = marc's Xiaomi
+        # (Android Tailscale app, headscale alternate server), `tablet` =
+        # upcoming Nix-on-Droid tablet.
         "MESH_DASHBOARD_EXPECTED=phone,tablet"
+        # "tunnels" section at the bottom of the page: snapshot written by the
+        # services/tunnel-health probe (same host, every 60 s). Read-only:
+        # the dashboard measures no tunnel itself.
+        "MESH_DASHBOARD_TUNNELS_STATE=/var/lib/tunnel-health/status.json"
       ]
       ++ lib.optional gotifyTokenAvailable "MESH_DASHBOARD_GOTIFY_TOKEN_FILE=${gotifyTokenPath}";
 
-      # État persistant : « vu en ligne pour la dernière fois à » survit ainsi à
-      # un redémarrage du service (le dossier est créé et chowné par systemd).
+      # Persistent state: "last seen online at" thus survives
+      # a service restart (the directory is created and chowned by systemd).
       StateDirectory = "mesh-dashboard";
       StateDirectoryMode = "0750";
       ExecStart = "${pkgs.python3}/bin/python3 ${./mesh_dashboard.py}";
       Restart = "always";
       RestartSec = 3;
 
-      # Durcissement : le service ne lit qu'un socket et ne sert que du HTTP.
+      # Hardening: the service only reads a socket and serves only HTTP.
       NoNewPrivileges = true;
       ProtectSystem = "strict";
       ProtectHome = true;
@@ -104,16 +108,20 @@ in
       CapabilityBoundingSet = "";
       AmbientCapabilities = "";
       RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
-      # Le socket du démon tailscale (srw-rw-rw-, cf. tailscaled) : lecture et
-      # connexion ; l'état persistant du dashboard (StateDirectory) est le seul
-      # autre chemin inscriptible.
+      # The tailscale daemon socket (srw-rw-rw-, cf. tailscaled): read and
+      # connect; the dashboard's persistent state (StateDirectory) is the only
+      # other writable path.
       ReadWritePaths = [ "/var/run/tailscale" "/var/lib/mesh-dashboard" ];
+      # Snapshot of the tunnel-health probe, read for the "tunnels" section.
+      # The "-" tolerates the directory being absent on the very first start (the
+      # probe runs 20 s after boot).
+      ReadOnlyPaths = [ "-/var/lib/tunnel-health" ];
     };
   };
 
-  # Le port reste fermé au firewall : on y accède par le tailnet (interface
-  # tailscale0 de confiance) ou par le SSO Pangolin via newt, jamais en clair
-  # depuis le LAN.
+  # The port stays closed at the firewall: it is reached via the tailnet (
+  # trusted tailscale0 interface) or via Pangolin SSO through newt, never in clear
+  # from the LAN.
   services.newt.blueprint.proxy-resources.mesh-dashboard = {
     name = "mesh-dashboard";
     protocol = "http";
@@ -145,7 +153,7 @@ in
   assertions = [
     {
       assertion = !(lib.elem port config.networking.firewall.allowedTCPPorts);
-      message = "mesh-dashboard : le port ${toString port} ne doit pas être ouvert au firewall (accès tailnet + SSO Pangolin uniquement).";
+      message = "mesh-dashboard: port ${toString port} must not be open at the firewall (tailnet + Pangolin SSO access only).";
     }
   ];
 }

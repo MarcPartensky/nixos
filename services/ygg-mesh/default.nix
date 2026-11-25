@@ -1,53 +1,53 @@
 # services/ygg-mesh/default.nix
 #
-# Réseau privé chiffré entre les machines de marc, sans qu'aucun tiers ne
-# connaisse leurs IP. Fichier IDENTIQUE sur chaque machine membre : il se
-# repère via networking.hostName.
+# Encrypted private network between marc's machines, without any third party
+# knowing their IPs. IDENTICAL file on each member machine: it
+# identifies itself via networking.hostName.
 #
-#   Hors LAN : Yggdrasil via Tor. Chaque machine n'est joignable qu'en .onion,
-#              même tes machines entre elles ne voient pas leurs IP.
-#   Même LAN : découverte multicast + lien direct à pleine vitesse (TLS sur
-#              [fe80::...]:12346), prioritaire sur Tor. Bascule automatique
-#              dans les deux sens, sans redécouverte.
-#   Accès    : mot de passe partagé + clés publiques épinglées. Aucun lien avec
-#              le réseau Yggdrasil public : seulement tes machines.
+#   Off LAN: Yggdrasil via Tor. Each machine is reachable only as .onion,
+#              even your machines do not see each other's IPs.
+#   Same LAN: multicast discovery + direct full-speed link (TLS on
+#              [fe80::...]:12346), takes priority over Tor. Automatic switchover
+#              in both directions, without rediscovery.
+#   Access   : shared password + pinned public keys. No link with
+#              the public Yggdrasil network: only your machines.
 #
-# Chaque machine obtient une IPv6 stable et un nom <hostname>.ygg (ex : ssh tower.ygg).
+# Each machine gets a stable IPv6 and a name <hostname>.ygg (e.g. ssh tower.ygg).
 #
-# Secret sops dédié, déchiffrable par les trois machines membres :
+# Dedicated sops secret, decryptable by the three member machines:
 #   secrets/ygg-mesh.yml   ygg_password: <openssl rand -hex 24>
-# Les clés Yggdrasil et onion sont générées sur chaque machine et n'en sortent jamais.
+# The Yggdrasil and onion keys are generated on each machine and never leave it.
 #
-# Écarts vs le brouillon initial (adapté et testé le 23/10/2026) :
-#   - nixpkgs 26.05 n'a PLUS d'option services.yggdrasil.configFile (remplacée
-#     par `settings`, généré dans le store donc lisible par tous) : le mot de
-#     passe ne peut pas y vivre. On garde la config rendue à chaud dans /run,
-#     via un ExecStartPre qui lit le mot de passe dans un credential systemd.
-#   - secret dans secrets/ygg-mesh.yml et pas common.yml : mêmes destinataires,
-#     mais common.yml ne s'édite qu'avec la clé age privée de marc.
-#   - networking.enableIPv6 forcé : les adresses ygg et le multicast ff02::114
-#     sont IPv6, et modules/nixos/networking le désactive (tower, deck).
-#   - Tor DÉDIÉ au mesh (ygg-mesh-tor) au lieu du tor système : le tor de tower
-#     est un relais public, et tor déconseille lui-même de mélanger relais et
-#     service onion dans un même processus. Surtout, le mesh ne doit pas
-#     dépendre de la santé du relais : au 23/10/2026 celui de tower est coincé
-#     au bootstrap (ExitNodes {ch} sans geoip, enableGeoIP = false côté
-#     services/tor). Instance séparée = client + onion service uniquement,
+# Differences vs the initial draft (adapted and tested on 2026-10-23):
+#   - nixpkgs 26.05 NO LONGER has the services.yggdrasil.configFile option (replaced
+#     by `settings`, generated in the store so readable by everyone): the
+#     password cannot live there. We keep the config rendered at runtime in /run,
+#     via an ExecStartPre that reads the password from a systemd credential.
+#   - secret in secrets/ygg-mesh.yml and not common.yml: same recipients,
+#     but common.yml can only be edited with marc's private age key.
+#   - networking.enableIPv6 forced: the ygg addresses and the multicast ff02::114
+#     are IPv6, and modules/nixos/networking disables it (tower, deck).
+#   - Tor DEDICATED to the mesh (ygg-mesh-tor) instead of the system tor: tower's
+#     tor is a public relay, and tor itself advises against mixing a relay and
+#     an onion service in the same process. Above all, the mesh must not
+#     depend on the health of the relay: on 2026-10-23 tower's is stuck
+#     at bootstrap (ExitNodes {ch} without geoip, enableGeoIP = false on the
+#     services/tor side). Separate instance = client + onion service only,
 #     SocksPort 127.0.0.1:9053.
-#   - ygg-mesh-identity.service publie onion/clé/adresse dans
-#     /var/lib/ygg-mesh/identity.txt (lisible sans root), pour le bootstrap.
+#   - ygg-mesh-identity.service publishes onion/key/address into
+#     /var/lib/ygg-mesh/identity.txt (readable without root), for bootstrap.
 #
-# Bootstrap : voir en bas du fichier.
+# Bootstrap: see at the bottom of the file.
 
 { config, lib, pkgs, ... }:
 
 let
-  # ===================== A ÉDITER : les membres du réseau =====================
-  # beacon = true uniquement pour les machines fixes chez toi : elles annoncent
-  # leur présence sur le LAN. Les machines mobiles écoutent sans jamais s'annoncer,
-  # donc restent muettes sur un wifi public.
-  # onion, key et addr : à remplir après le premier rebuild. `cat
-  # /var/lib/ygg-mesh/identity.txt` sur chaque machine donne les trois valeurs.
+  # ===================== TO EDIT: the network members =====================
+  # beacon = true only for the fixed machines at your place: they announce
+  # their presence on the LAN. Mobile machines listen without ever announcing,
+  # so they stay silent on a public wifi.
+  # onion, key and addr: to be filled after the first rebuild. `cat
+  # /var/lib/ygg-mesh/identity.txt` on each machine gives the three values.
   nodes = {
     tower = {
       beacon = true;
@@ -67,35 +67,35 @@ let
       key = "c324ac2a81edf3abb54d9157518589ca8cd2affb34d41421105a167c5602d17d";
       addr = "200:79b6:a7aa:fc24:18a8:9564:dd51:5cf4";
     };
-    # Clients sortants, sans onion (non dialables : ils sortent vers le mesh) :
-    # remplir key + addr après leur premier démarrage (voir bootstrap en bas).
-    # mac   = { beacon = false; onion = null; key = "<clé publique>"; addr = "<adresse ygg>"; };
-    # phone = { beacon = false; onion = null; key = "<clé publique>"; addr = "<adresse ygg>"; };
+    # Outbound clients, without onion (not dialable: they go out to the mesh):
+    # fill in key + addr after their first boot (see bootstrap at the bottom).
+    # mac   = { beacon = false; onion = null; key = "<public key>"; addr = "<ygg address>"; };
+    # phone = { beacon = false; onion = null; key = "<public key>"; addr = "<ygg address>"; };
   };
   secretsFile = ../../secrets/ygg-mesh.yml;
   # ============================================================================
 
   host = config.networking.hostName;
-  me = nodes.${host} or (throw "ygg-mesh : '${host}' absent de la table nodes");
+  me = nodes.${host} or (throw "ygg-mesh: '${host}' missing from the nodes table");
 
-  listenPort = 12345; # Yggdrasil, en local seulement, exposé en .onion
-  multicastPort = 12346; # liens directs sur le LAN (TCP ; seul le beacon écoute)
-  torSocksPort = 9053; # SocksPort du tor dédié au mesh
-  torLinks = 2; # connexions Tor parallèles par pair : un circuit qui tombe ne coupe rien
+  listenPort = 12345; # Yggdrasil, local only, exposed as .onion
+  multicastPort = 12346; # direct links on the LAN (TCP; only the beacon listens)
+  torSocksPort = 9053; # SocksPort of the tor dedicated to the mesh
+  torLinks = 2; # parallel Tor connections per peer: a circuit that drops cuts nothing
   configPath = "/run/yggdrasil/ygg-mesh.json";
-  stateDir = "/var/lib/ygg-mesh"; # tor dédié + identité (sauvegarder ce dossier)
+  stateDir = "/var/lib/ygg-mesh"; # dedicated tor + identity (back up this folder)
 
   others = lib.filterAttrs (n: v: n != host && v.onion != null && v.key != null) nodes;
 
-  # Nœuds reconnus par leur seule clé publique, même sans onion : le Mac et
-  # le téléphone sont des clients sortants (Tor ou multicast), pas dialables.
-  # Ils doivent quand même être acceptés par les nœuds du mesh.
+  # Nodes recognized by their public key alone, even without onion: the Mac and
+  # the phone are outbound clients (Tor or multicast), not dialable.
+  # They must still be accepted by the mesh nodes.
   known = lib.filterAttrs (n: v: n != host && v.key != null) nodes;
 
-  # Un identifiant SOCKS différent par connexion = un circuit Tor distinct
-  # (IsolateSOCKSAuth). priority=10 : Tor passe après le LAN (priorité 0, la
-  # plus petite gagne). maxbackoff=5s : retente vite après une coupure (sinon
-  # jusqu'à ~1 h).
+  # A different SOCKS identifier per connection = a distinct Tor circuit
+  # (IsolateSOCKSAuth). priority=10: Tor comes after the LAN (priority 0, the
+  # smallest wins). maxbackoff=5s: retries fast after a cut (otherwise
+  # up to ~1 h).
   peerUris = lib.concatLists (lib.mapAttrsToList (name: n:
     map (i:
       "socks://${name}-${toString i}:x@127.0.0.1:${toString torSocksPort}/${n.onion}:${toString listenPort}"
@@ -103,8 +103,8 @@ let
     ) (lib.range 1 torLinks)
   ) others);
 
-  # Config complète, mot de passe en placeholder : rendue à chaud au démarrage
-  # (ExecStartPre), donc jamais écrite dans le store.
+  # Full config, password as a placeholder: rendered at runtime at startup
+  # (ExecStartPre), so never written into the store.
   configTemplate = pkgs.writeText "ygg-mesh.json.in" (builtins.toJSON {
     Listen = [ "tcp://127.0.0.1:${toString listenPort}?password=@PW@" ];
     Peers = peerUris;
@@ -116,10 +116,10 @@ let
       Priority = 0;
       Password = "@PW@";
     }];
-    # Chemin du credential systemd posé par le module nixpkgs lui-même
-    # (LoadCredential=private-key:... dans les deux versions). En 26.05 le
-    # module bindait en plus la clé sur /private-key ; en 26.11 il n'y a plus
-    # de bind et son propre défaut est justement ce chemin de credential.
+    # Path of the systemd credential set by the nixpkgs module itself
+    # (LoadCredential=private-key:... in both versions). In 26.05 the
+    # module additionally bind-mounted the key on /private-key; in 26.11 there is no
+    # more bind and its own default is precisely this credential path.
     PrivateKeyPath = "/run/credentials/yggdrasil.service/private-key";
     IfName = "ygg";
     AllowedPublicKeys = lib.mapAttrsToList (_: n: n.key) known;
@@ -133,8 +133,8 @@ let
     sed "s/@PW@/$pw/g" ${configTemplate} > ${configPath}
   '';
 
-  # Tor dédié : client SOCKS + service onion du mesh. Aucun secret dedans
-  # (juste des chemins et des ports), donc peut vivre dans le store.
+  # Dedicated Tor: SOCKS client + mesh onion service. No secret inside
+  # (just paths and ports), so it can live in the store.
   torrc = pkgs.writeText "ygg-mesh-torrc" ''
     DataDirectory ${stateDir}/tor
     SocksPort 127.0.0.1:${toString torSocksPort} IsolateDestAddr IsolateSOCKSAuth
@@ -145,24 +145,24 @@ let
   '';
 in
 {
-  # Les adresses yggdrasil et la découverte multicast (ff02::114) sont IPv6 ;
-  # sans ça ni le réseau ni le lien LAN direct ne fonctionnent. mkForce car
-  # modules/nixos/networking (importé par tower et deck) pose false.
+  # The yggdrasil addresses and multicast discovery (ff02::114) are IPv6;
+  # without it neither the network nor the direct LAN link works. mkForce because
+  # modules/nixos/networking (imported by tower and deck) sets false.
   networking.enableIPv6 = lib.mkForce true;
 
   sops.secrets.ygg_password.sopsFile = secretsFile;
 
-  # ---------- Tor du mesh ----------
-  # Utilisateur système dédié (pas DynamicUser : avec un StateDirectory
-  # imbriqué sous un parent créé par un autre service, systemd bascule le
-  # dossier sous /var/lib/private et laisse un symlink en boucle).
+  # ---------- Tor of the mesh ----------
+  # Dedicated system user (not DynamicUser: with a StateDirectory
+  # nested under a parent created by another service, systemd switches the
+  # folder to /var/lib/private and leaves a symlink loop).
   users.users.ygg-mesh-tor = {
     isSystemUser = true;
     group = "ygg-mesh-tor";
   };
   users.groups.ygg-mesh-tor = { };
 
-  # Migration : le premier essai (DynamicUser) a laissé ce symlink cassé.
+  # Migration: the first attempt (DynamicUser) left this broken symlink.
   system.activationScripts.ygg-mesh-fix-state = ''
     if [ -L /var/lib/ygg-mesh/tor ] && [ ! -e /var/lib/ygg-mesh/tor ]; then
       rm -f /var/lib/ygg-mesh/tor
@@ -170,7 +170,7 @@ in
   '';
 
   systemd.services.ygg-mesh-tor = {
-    description = "Tor dédié au mesh ygg (client + onion service)";
+    description = "Tor dedicated to the ygg mesh (client + onion service)";
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     serviceConfig = {
@@ -182,7 +182,7 @@ in
       ExecReload = "${pkgs.coreutils}/bin/kill -HUP $MAINPID";
       Restart = "on-failure";
       RestartSec = 15;
-      # Durcissement : tor n'a besoin que du réseau et de son dossier d'état.
+      # Hardening: tor only needs the network and its state folder.
       NoNewPrivileges = true;
       PrivateTmp = true;
       ProtectSystem = "strict";
@@ -198,33 +198,33 @@ in
   };
 
   # ---------- Yggdrasil ----------
-  # On garde le module nixpkgs (clé persistée, durcissement, credential de la
-  # clé privée) mais sa config générée dans le store ne peut pas porter le mot
-  # de passe : le script est remplacé par le nôtre, qui lit la config rendue à
-  # chaud dans /run.
+  # We keep the nixpkgs module (persisted key, hardening, credential for the
+  # private key) but its config generated in the store cannot carry the
+  # password: the script is replaced by ours, which reads the config rendered at
+  # runtime in /run.
   services.yggdrasil = {
     enable = true;
-    persistentKeys = true; # clé générée une fois, gardée dans /var/lib/yggdrasil
-    openMulticastPort = true; # UDP 9001 : les balises LAN (ff02::114:9001)
+    persistentKeys = true; # key generated once, kept in /var/lib/yggdrasil
+    openMulticastPort = true; # UDP 9001: the LAN beacons (ff02::114:9001)
     denyDhcpcdInterfaces = [ "ygg" ];
   };
 
-  # AUCUNE dépendance vers ygg-mesh-tor, volontairement. Le module nixpkgs pose
-  # `before = [ "network.target" ]` sur yggdrasil (il fournit l'interface ygg au
-  # reste du système) : tout ce dont yggdrasil dépend doit donc pouvoir démarrer
-  # AVANT network.target, ce que tor ne peut pas (il lui faut le réseau). Avec
-  # `after = [ "ygg-mesh-tor.service" ]` ici et ygg-mesh-tor `after =
-  # [ "network.target" ]`, systemd trouvait un cycle d'ordre et supprimait
-  # carrément le job yggdrasil.service/start au boot (vu au boot du 23/10/2026 :
-  # « Found ordering cycle ... Job yggdrasil.service/start deleted to break
-  # ordering cycle ») -> yggdrasil jamais démarré, ygg-mesh-identity en échec.
-  # Sans l'ordre : yggdrasil démarre seul, retente ses pairs socks:// toutes les
-  # maxbackoff=5 s tant que tor n'est pas là, et le lien LAN (multicast) ne
-  # dépend pas de tor du tout.
+  # NO dependency towards ygg-mesh-tor, deliberately. The nixpkgs module sets
+  # `before = [ "network.target" ]` on yggdrasil (it provides the ygg interface to
+  # the rest of the system): so everything yggdrasil depends on must be able to start
+  # BEFORE network.target, which tor cannot (it needs the network). With
+  # `after = [ "ygg-mesh-tor.service" ]` here and ygg-mesh-tor `after =
+  # [ "network.target" ]`, systemd found an ordering cycle and outright
+  # deleted the job yggdrasil.service/start at boot (seen at the 2026-10-23 boot:
+  # "Found ordering cycle ... Job yggdrasil.service/start deleted to break
+  # ordering cycle") -> yggdrasil never started, ygg-mesh-identity failing.
+  # Without the ordering: yggdrasil starts alone, retries its socks:// peers every
+  # maxbackoff=5 s as long as tor is not there, and the LAN link (multicast) does
+  # not depend on tor at all.
   systemd.services.yggdrasil = {
-    # Pas de limite de démarrage : au premier boot, le credential sops peut
-    # arriver après yggdrasil (setupSecrets) ; Restart=always réessaie alors
-    # indéfiniment au lieu de finir en start-limit-hit.
+    # No start limit: at the first boot, the sops credential may
+    # arrive after yggdrasil (setupSecrets); Restart=always then retries
+    # indefinitely instead of ending in start-limit-hit.
     startLimitIntervalSec = 0;
     serviceConfig = {
       LoadCredential = [ "ygg-mesh-password:${config.sops.secrets.ygg_password.path}" ];
@@ -234,24 +234,24 @@ in
   };
 
   networking.firewall = {
-    trustedInterfaces = [ "ygg" ]; # n'y circulent que tes machines
-    # Seules les machines qui s'annoncent reçoivent des connexions LAN entrantes
+    trustedInterfaces = [ "ygg" ]; # only your machines travel there
+    # Only machines that announce themselves receive incoming LAN connections
     allowedTCPPorts = lib.optional me.beacon multicastPort;
   };
 
-  # Noms <machine>.ygg
+  # Names <machine>.ygg
   networking.hosts = lib.mapAttrs' (name: n: lib.nameValuePair n.addr [ "${name}.ygg" ])
     (lib.filterAttrs (_: n: n.addr != null) nodes);
 
-  # ---------- Identité (bootstrap sans root) ----------
-  # onion + clé publique + adresse dans un fichier lisible par tous : les trois
-  # valeurs à recopier dans la table `nodes` ci-dessus. Rien de secret dedans.
+  # ---------- Identity (bootstrap without root) ----------
+  # onion + public key + address in a file readable by everyone: the three
+  # values to copy into the `nodes` table above. Nothing secret inside.
   systemd.services.ygg-mesh-identity = {
-    description = "Identité ygg-mesh (onion, clé publique, adresse IPv6)";
+    description = "ygg-mesh identity (onion, public key, IPv6 address)";
     wantedBy = [ "multi-user.target" ];
     after = [ "yggdrasil.service" "ygg-mesh-tor.service" ];
-    # Se relance quand tor (onion) ou yggdrasil (clé, adresse) redémarre,
-    # pour recapturer une identité fraîche.
+    # Restarts when tor (onion) or yggdrasil (key, address) restarts,
+    # to recapture a fresh identity.
     partOf = [ "ygg-mesh-tor.service" "yggdrasil.service" ];
     serviceConfig = {
       Type = "oneshot";
@@ -278,11 +278,11 @@ in
         fi
         sleep 2
       done
-      # Fichier écrit seulement si l'identité est complète : sa présence
-      # signifie « onion + clé + adresse valides ».
+      # File written only if the identity is complete: its presence
+      # means "onion + key + address valid".
       rm -f ${stateDir}/identity.txt
       if [ -z "$onion" ] || [ -z "$self" ]; then
-        echo "ygg-mesh-identity: incomplet (onion='$onion') — yggdrasil/tor pas prêts" >&2
+        echo "ygg-mesh-identity: incomplete (onion='$onion') - yggdrasil/tor not ready" >&2
         exit 1
       fi
       {
@@ -296,25 +296,25 @@ in
 
 # ================================ BOOTSTRAP ================================
 #
-# 1. Mot de passe commun : déjà posé (secrets/ygg-mesh.yml, chiffré pour
-#    anywhere/tower/deck/deck-host). Rotation : réécrire le clair puis
+# 1. Shared password: already set (secrets/ygg-mesh.yml, encrypted for
+#    anywhere/tower/deck/deck-host). Rotation: rewrite the plaintext then
 #    `nix run nixpkgs#sops -- -e --filename-override secrets/ygg-mesh.yml
-#      --output secrets/ygg-mesh.yml <clair>`, et rebuild partout.
+#      --output secrets/ygg-mesh.yml <plaintext>`, and rebuild everywhere.
 #
-# 2. Importer ce fichier sur chaque machine (onion, key, addr = null), rebuild.
+# 2. Import this file on each machine (onion, key, addr = null), rebuild.
 #
-# 3. Sur CHAQUE machine, `cat /var/lib/ygg-mesh/identity.txt` donne :
-#      onion=...        -> champ onion (sans le .onion final)
-#      "key": "..."     -> champ key
-#      "address": ...   -> champ addr
+# 3. On EACH machine, `cat /var/lib/ygg-mesh/identity.txt` gives:
+#      onion=...        -> onion field (without the trailing .onion)
+#      "key": "..."     -> key field
+#      "address": ...   -> addr field
 #
-# 4. Remplir la table, rebuild partout.
+# 4. Fill in the table, rebuild everywhere.
 #
-# Vérifier :
-#      ping tower.ygg                  # depuis n'importe quelle machine du mesh
-#      sudo yggdrasilctl getpeers      # liens socks:// (Tor) et tls://[fe80::...] (LAN)
-#      journalctl -u ygg-mesh-tor      # bootstrap tor + publication de l'onion
+# Verify:
+#      ping tower.ygg                  # from any mesh machine
+#      sudo yggdrasilctl getpeers      # socks:// links (Tor) and tls://[fe80::...] (LAN)
+#      journalctl -u ygg-mesh-tor      # tor bootstrap + onion publication
 #
-# Réinstallation d'une machine : sauvegarder /var/lib/yggdrasil/private.pem et
-# /var/lib/ygg-mesh/tor (tor/hs = identité onion) pour garder la même identité,
-# sinon refaire l'étape 3 pour cette machine.
+# Reinstalling a machine: back up /var/lib/yggdrasil/private.pem and
+# /var/lib/ygg-mesh/tor (tor/hs = onion identity) to keep the same identity,
+# otherwise redo step 3 for that machine.
