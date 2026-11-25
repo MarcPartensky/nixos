@@ -13,13 +13,6 @@
       group = "keys";
     };
 
-    # Mot de passe du compte d'envoi noreply@marcpartensky.com (Stalwart sur le
-    # VPS). Fichier dédié pour que hermes puisse l'écrire sans toucher au reste.
-    "zitadel/smtp_password" = {
-      sopsFile = ../../secrets/zitadel-smtp.yml;
-      key = "zitadel_smtp_password";
-    };
-
     # "zitadel/steps" retiré le 12/10/2026 : le secret pointait sur
     # zitadel_steps, chiffré en type:int dans secrets/anywhere.yml, ce que
     # sops-install-secrets refuse ("the value of key '' is not a string"). Il
@@ -31,6 +24,18 @@
     # celle-ci est déjà initialisée (base "zitadel" existante). Pour repartir
     # d'une instance neuve : chiffrer le YAML des steps en type:str et remettre
     # extraStepsPaths = [ config.sops.secrets."zitadel/steps".path ].
+  } // lib.optionalAttrs (config.networking.hostName != "anywhere") {
+    # Mot de passe du compte d'envoi noreply@marcpartensky.com (Stalwart sur le
+    # VPS). Fichier dédié pour que hermes puisse l'écrire sans toucher au reste.
+    # HORS anywhere : secrets/zitadel-smtp.yml n'a pas la cle age du VPS, et un
+    # seul fichier indechiffrable avorte TOUT setupSecrets (donc l'activation).
+    # Ce secret ne sert qu'a la PROVISIONING par API — la config SMTP vit dans
+    # la base Zitadel (projection smtp_configs) — donc son absence sur le VPS
+    # ne change rien au runtime.
+    "zitadel/smtp_password" = {
+      sopsFile = ../../secrets/zitadel-smtp.yml;
+      key = "zitadel_smtp_password";
+    };
   };
 
   users.users.zitadel.extraGroups = ["keys"];

@@ -1,48 +1,48 @@
 # services/immich/default.nix
-# Immich : l'interface photos/videos (timeline, visages, recherche, carte,
-# applis mobiles). Verdict du comparatif SOTA : c'est l'etat de l'art, 119k
-# etoiles, release v3.4.1 upstream.
+# Immich: the photos/videos interface (timeline, faces, search, map,
+# mobile apps). Verdict of the SOTA comparison: it is the state of the art, 119k
+# stars, release v3.4.1 upstream.
 #
-# PAQUET : celui du pin 26.05 est immich 2.7.5, marque `insecure` par nixpkgs
-# (deux CVE : CVE-2026-59258, CVE-2026-82272, et 2.x ne recoit plus de
-# correctifs). On prend donc immich 3.2.2 depuis l'input `unstable` du flake :
-# le module nixpkgs 26.05 pilote le paquet sans probleme (memes variables
-# d'environnement, passthru `machine-learning` present).
+# PACKAGE: the one from pin 26.05 is immich 2.7.5, marked `insecure` by nixpkgs
+# (two CVEs: CVE-2026-59258, CVE-2026-82272, and 2.x no longer receives
+# fixes). So we take immich 3.2.2 from the flake's `unstable` input:
+# the nixpkgs 26.05 module drives the package without issue (same environment
+# variables, passthru `machine-learning` present).
 #
-# Architecture decidee : la SOURCE DE VERITE reste l'arbre ZFS
-# /home/marc/media/photos (dataset `nixos/marc/media`), Garage en est le miroir
-# de sauvegarde, et Immich ne fait que L'INDEXER via une bibliotheque externe.
-# Aucune copie, aucun reupload : Immich n'a pas de backend S3 (feature request
-# #30191 toujours ouverte), donc « Immich avec Garage en backend » n'existe pas.
+# Decided architecture: the SOURCE OF TRUTH remains the ZFS tree
+# /home/marc/media/photos (dataset `nixos/marc/media`), Garage is its backup
+# mirror, and Immich only INDEXES it via an external library.
+# No copy, no reupload: Immich has no S3 backend (feature request
+# #30191 still open), so "Immich with Garage as backend" does not exist.
 #
-# L'arbre est expose aux services par un bind READ-ONLY sur /srv/photos :
-#   - /home est protege (ProtectHome=true) dans les unites systemd, un bind
-#     explicite sur /srv contourne ca proprement ;
-#   - le mode ro garantit qu'aucune appli ne peut ecrire dans l'arbre partage
-#     avec Syncthing et le miroir Garage (pas de sidecar, pas de vignette).
+# The tree is exposed to the services by a READ-ONLY bind on /srv/photos:
+#   - /home is protected (ProtectHome=true) in the systemd units, an explicit
+#     bind on /srv bypasses that cleanly;
+#   - ro mode guarantees that no app can write into the tree shared
+#     with Syncthing and the Garage mirror (no sidecar, no thumbnail).
 #
-# Droits : les dossiers sont 2770 marc:photos et les fichiers hermes:photos,
-# donc l'utilisateur `immich` est ajoute au groupe `photos` pour lire.
-# PrivateUsers est desactive sur immich-server uniquement : sous PrivateUsers,
-# l'appartenance a un groupe hote n'est pas mappee et la lecture echouerait.
+# Rights: the directories are 2770 marc:photos and the files hermes:photos,
+# so the `immich` user is added to the `photos` group to read.
+# PrivateUsers is disabled on immich-server only: under PrivateUsers,
+# membership in a host group is not mapped and reading would fail.
 #
-# Ressources : ML (visages, recherche) active, sur CPU. tower n'a ni CUDA ni
-# ROCm. Le service tourne en Slice system-immich.slice, donc separable et
-# mesurable (systemd-cgtop -M system-immich.slice).
+# Resources: ML (faces, search) enabled, on CPU. tower has neither CUDA nor
+# ROCm. The service runs in Slice system-immich.slice, so separable and
+# measurable (systemd-cgtop -M system-immich.slice).
 { config, lib, pkgs, inputs, ... }:
 let
   photosSource = "/home/marc/media/photos";
   photosMount = "/srv/photos";
 
-  # Files d'indexation couteuses (cf. la section « Indexation uniquement la
-  # nuit » plus bas pour la raison et le planning).
+  # Expensive indexing queues (cf. the "Indexing only at
+  # night" section below for the reason and the schedule).
   immichHeavyQueues = [
-    # `ocr` ajoutee le 14/11/2026 : absente de cette liste, elle tournait 24/7
-    # (848 jobs en attente, 1 actif non stop) et c'est ELLE qui gardait le
-    # service machine-learning a ~190 % d'un coeur en pleine journee, alors que
-    # toutes les autres files etaient bien en pause. Une file oubliee ici suffit
-    # a annuler le planning : verifier la liste /api/jobs apres chaque montée
-    # de version d'immich, qui peut en ajouter.
+    # `ocr` added on 14/11/2026: absent from this list, it ran 24/7
+    # (848 jobs queued, 1 active non-stop) and it was IT that kept the
+    # machine-learning service at ~190 % of a core in the middle of the day, while
+    # all the other queues were properly paused. One queue forgotten here is enough
+    # to void the schedule: check the /api/jobs list after each version
+    # upgrade of immich, which can add some.
     "ocr"
     "thumbnailGeneration"
     "metadataExtraction"
@@ -53,34 +53,34 @@ let
     "duplicateDetection"
   ];
 
-  # Pilotage des files par l'API HTTP d'immich. La cle API vit dans un fichier
-  # (cree une fois par l'admin dans /var/lib/hermes/immich-jobs/api-key,
-  # propriete de hermes, lisible par root). Sans ce fichier les unites ne font
-  # rien et ne cassent pas le boot. L'idempotence est portee par immich : une
-  # file deja en pause ignore un second "pause".
+  # Queue control via immich's HTTP API. The API key lives in a file
+  # (created once by the admin in /var/lib/hermes/immich-jobs/api-key,
+  # owned by hermes, readable by root). Without this file the units do
+  # nothing and do not break the boot. Idempotence is carried by immich: a
+  # queue already paused ignores a second "pause".
   immichJobsScript = pkgs.writeShellScript "immich-jobs-schedule" ''
     set -eu
     mode="''${1:-auto}"
     key_file=/var/lib/hermes/immich-jobs/api-key
 
-    # Attendre que l'API reponde (le serveur met ~20 s a demarrer, et ce script
-    # peut etre lance juste apres lui). 5 min max, puis on abandonne proprement.
-    # 120 s ne suffisaient pas : au boot du 17/11/2026 l'unite a echoue alors
-    # que la machine venait de redemarrer et que deux autres services bouclaient.
+    # Wait for the API to respond (the server takes ~20 s to start, and this script
+    # can be launched right after it). 5 min max, then we give up cleanly.
+    # 120 s were not enough: at the boot of 17/11/2026 the unit failed while
+    # the machine had just restarted and two other services were looping.
     i=0
     while ! curl -sf -o /dev/null http://127.0.0.1:2283/api/server/ping; do
       i=$((i + 1))
       if [ "$i" -ge 150 ]; then
-        echo "immich-jobs: API injoignable apres 300 s, abandon" >&2
+        echo "immich-jobs: API unreachable after 300 s, giving up" >&2
         exit 1
       fi
       sleep 2
     done
 
     if [ ! -r "$key_file" ]; then
-      # Amorçage : sans cle API, on la cree avec le compte admin (mot de passe
-      # laisse dans un fichier root-lisible). Sinon la cle n'existerait qu'en
-      # la creant a la main, et les files resteraient actives a vie.
+      # Bootstrapping: without an API key, we create it with the admin account (password
+      # left in a root-readable file). Otherwise the key would only exist by
+      # creating it by hand, and the queues would stay active forever.
       pw_file=/var/lib/hermes/immich-jobs/admin-password
       if [ -r "$pw_file" ]; then
         pw=$(cat "$pw_file")
@@ -95,14 +95,14 @@ let
           if [ -n "$secret" ]; then
             umask 077
             printf '%s' "$secret" > "$key_file"
-            echo "immich-jobs: cle API creee dans $key_file"
+            echo "immich-jobs: API key created in $key_file"
           fi
         fi
       fi
     fi
 
     if [ ! -r "$key_file" ]; then
-      echo "immich-jobs: pas de cle API ($key_file), rien a faire" >&2
+      echo "immich-jobs: no API key ($key_file), nothing to do" >&2
       exit 0
     fi
 
@@ -110,11 +110,11 @@ let
       auto)
         h=$(date +%-H)
         if [ "$h" -ge 4 ] && [ "$h" -lt 8 ]; then action=resume; else action=pause; fi
-        echo "immich-jobs: mode auto a ''${h}h -> $action"
+        echo "immich-jobs: auto mode at ''${h}h -> $action"
         ;;
       pause|resume) action="$mode" ;;
       *)
-        echo "immich-jobs: mode inconnu '$mode' (auto|pause|resume)" >&2
+        echo "immich-jobs: unknown mode '$mode' (auto|pause|resume)" >&2
         exit 2
         ;;
     esac
@@ -140,87 +140,87 @@ in
     ];
   };
 
-  # L'utilisateur `immich` est cree par le module nixpkgs seulement quand le
-  # service est actif : on conditionne l'ajout au groupe photos, sinon l'eval
-  # casse des que services.immich.enable = false.
+  # The `immich` user is created by the nixpkgs module only when the
+  # service is active: we make the group addition conditional, otherwise the eval
+  # breaks as soon as services.immich.enable = false.
   users.users.immich = lib.mkIf config.services.immich.enable {
     extraGroups = [ "photos" ];
   };
 
   services.immich = {
-    # Marc avait coupe le service a 13h41 (le switch de 13h29 l'avait rallume et
-    # il relancait l'indexation en pleine journee). Rallume ici parce que le
-    # planning nocturne est desormais en place : `immich-jobs-boot` met les
-    # files couteuses en pause des le demarrage hors fenetre 01:00-08:00, donc
-    # l'UI repond sans faire tourner le CPU. Repasser a false pour couper sec.
+    # Marc had turned the service off at 13h41 (the 13h29 switch had turned it back on and
+    # it relaunched indexing in the middle of the day). Turned back on here because the
+    # nightly schedule is now in place: `immich-jobs-boot` pauses the
+    # expensive queues from startup outside the 01:00-08:00 window, so
+    # the UI responds without spinning the CPU. Set back to false to cut it dead.
     enable = true;
     host = "127.0.0.1";
     port = 2283;
     package = inputs.unstable.legacyPackages.${pkgs.system}.immich;
-    # Bibliotheque propre d'Immich (uploads depuis l'appli mobile, vignettes,
-    # videos transcodees). Sur le pool racine (191 Go libres) et non sur le
-    # dataset media, dont le quota de 150 G doit rester aux photos.
+    # Immich's own library (uploads from the mobile app, thumbnails,
+    # transcoded videos). On the root pool (191 GB free) and not on the
+    # media dataset, whose 150 G quota must stay for the photos.
     mediaLocation = "/var/lib/immich";
     database.enable = true;
     redis.enable = true;
     machine-learning.enable = true;
     environment = {
       TZ = "America/New_York";
-      # PAS de IMMICH_TELEMETRY_INCLUDE : immich 3.x valide cette variable contre
-      # une liste d'evenements et "none" n'en fait plus partie -> le serveur
-      # refuse de demarrer ("Invalid telemetry found: none", boucle de crash au
-      # premier switch, 14/11/2026). Sans la variable, la telemetrie est
-      # simplement desactivee.
+      # NO IMMICH_TELEMETRY_INCLUDE: immich 3.x validates this variable against
+      # a list of events and "none" is no longer part of it -> the server
+      # refuses to start ("Invalid telemetry found: none", crash loop at the
+      # first switch, 14/11/2026). Without the variable, telemetry is
+      # simply disabled.
     };
   };
 
-  # Immich lit un dossier, il n'a aucun endpoint S3 : la bibliotheque externe
-  # se declare dans l'UI (Administration > External Libraries) sur /srv/photos.
+  # Immich reads a directory, it has no S3 endpoint: the external library
+  # is declared in the UI (Administration > External Libraries) on /srv/photos.
   systemd.services.immich-server.serviceConfig = {
     PrivateUsers = lib.mkForce false;
     BindReadOnlyPaths = [ "${photosMount}:/srv/photos" ];
 
-    # ── Reseau ferme : immich est un ilot ──────────────────────────────────
-    # Filtre eBPF par cgroup (systemd 260) : le serveur ne peut joindre que le
-    # loopback (Pangolin, et le ML quand il vivait ici) et l'IP tailscale du
-    # portable qui heberge le ML GPU. Rien d'autre de tower ne lui est
-    # joignable, meme si une faille ouvrait une socket sortante. Les sockets
-    # unix (PostgreSQL /run/postgresql, redis /run/redis-immich) ne sont pas
-    # filtres par ces regles, la base et le cache ne sont donc pas concernes.
-    # Ce qui sort vers le tailnet sort par le tun, tailscaled encapsule hors du
-    # cgroup : le filtre n'a pas a connaitre le chemin reseau reel (DIRECT ou
-    # relais DERP).
+    # -- Closed network: immich is an island ----------------------------------
+    # eBPF filter by cgroup (systemd 260): the server can only reach the
+    # loopback (Pangolin, and the ML when it lived here) and the tailscale IP of the
+    # laptop that hosts the GPU ML. Nothing else of tower is
+    # reachable from it, even if a flaw opened an outbound socket. The unix
+    # sockets (PostgreSQL /run/postgresql, redis /run/redis-immich) are not
+    # filtered by these rules, so the database and the cache are not affected.
+    # What goes out to the tailnet goes through the tun, tailscaled encapsulates outside the
+    # cgroup: the filter does not need to know the real network path (DIRECT or
+    # DERP relay).
     IPAddressDeny = "any";
     IPAddressAllow = [
-      "127.0.0.1/32" # Pangolin (newt) et le ML en local
+      "127.0.0.1/32" # Pangolin (newt) and the local ML
       "::1/128"
-      "100.100.100.100/32" # MagicDNS, pour resoudre le nom du portable
-      "100.64.0.4/32" # portable : immich-machine-learning sur GPU
+      "100.100.100.100/32" # MagicDNS, to resolve the laptop name
+      "100.64.0.4/32" # laptop: immich-machine-learning on GPU
     ];
   };
 
-  # ── Indexation uniquement la nuit ─────────────────────────────────────────
-  # Un premier scan de l'arbre (23 600 fichiers) lance thumbnails, metadata,
-  # detection de visages et smart search : mesure du 14/11/2026, ~1,8 coeur
-  # pendant plus de 8 min et load average > 20 sur tower, ce qui a fait
-  # arreter le service a la main (deux fois). Marc veut donc que ces files ne
-  # tournent qu'entre 04:00 et 08:00 (fenetre avancee a 04:00 le 14/11/2026, il
-  # voulait l'indexation a 4 h du matin) ; le serveur, lui, reste joignable
+  # -- Indexing only at night -----------------------------------------
+  # A first scan of the tree (23 600 files) launches thumbnails, metadata,
+  # face detection and smart search: measurement of 14/11/2026, ~1,8 core
+  # for more than 8 min and load average > 20 on tower, which made
+  # the service be stopped by hand (twice). Marc therefore wants these queues to
+  # only run between 04:00 and 08:00 (window moved to 04:00 on 14/11/2026, he
+  # wanted indexing at 4 a.m.); the server itself stays reachable
   # (UI, timeline, uploads).
   #
-  # Trois declencheurs, parce que le planning seul ne suffit pas : immich
-  # demarre TOUJOURS avec ses files actives, donc un simple switch a 13h
-  # relancait l'indexation jusqu'au lendemain 08:00 (vecu). D'ou le service
-  # `immich-jobs-boot`, wantedBy multi-user.target : il applique l'etat
-  # correct des le demarrage (et a chaque switch qui l'active), y compris en
-  # deplacant le calcul d'heure dans le script (`auto`).
+  # Three triggers, because the schedule alone is not enough: immich
+  # ALWAYS starts with its queues active, so a simple switch at 13h
+  # relaunched indexing until 08:00 the next day (experienced). Hence the
+  # `immich-jobs-boot` service, wantedBy multi-user.target: it applies the correct
+  # state from startup (and at each switch that activates it), including by
+  # moving the hour computation into the script (`auto`).
 
   systemd.services.immich-jobs-pause = {
-    description = "Immich : met les files d'indexation en pause (journee)";
+    description = "Immich: pauses the indexing queues (daytime)";
     after = ["immich-server.service"];
     wants = ["immich-server.service"];
-    # Le PATH d'une unite systemd ne contient ni curl ni jq : sans cette ligne
-    # le script boucle sur "API injoignable" alors que le serveur repond.
+    # A systemd unit's PATH contains neither curl nor jq: without this line
+    # the script loops on "API unreachable" while the server responds.
     path = [pkgs.curl pkgs.jq pkgs.coreutils];
     serviceConfig = {
       Type = "oneshot";
@@ -229,7 +229,7 @@ in
   };
 
   systemd.services.immich-jobs-resume = {
-    description = "Immich : relance les files d'indexation (nuit)";
+    description = "Immich: resumes the indexing queues (night)";
     after = ["immich-server.service"];
     wants = ["immich-server.service"];
     path = [pkgs.curl pkgs.jq pkgs.coreutils];
@@ -239,9 +239,9 @@ in
     };
   };
 
-  # Etat correct au demarrage : pause sauf entre 04:00 et 08:00.
+  # Correct state at startup: pause except between 04:00 and 08:00.
   systemd.services.immich-jobs-boot = {
-    description = "Immich : applique l'etat des files selon l'heure (04-08 = actif)";
+    description = "Immich: applies the queue state depending on the hour (04-08 = active)";
     after = ["immich-server.service"];
     wants = ["immich-server.service"];
     wantedBy = ["multi-user.target"];
@@ -253,12 +253,12 @@ in
   };
 
   systemd.timers.immich-jobs-pause = {
-    description = "Immich : fenetre d'indexation 04:00 -> 08:00 (pause a 08:00)";
+    description = "Immich: indexing window 04:00 -> 08:00 (pause at 08:00)";
     wantedBy = ["timers.target"];
-    # Persistent = true sur la pause seulement : apres un boot en journee, la
-    # pause manquee se rejoue tout de suite ; la reprise, elle, attend la nuit
-    # suivante (sinon un boot a 12:00 relancerait l'indexation en pleine
-    # journee, ce que marc refuse).
+    # Persistent = true on the pause only: after a daytime boot, the
+    # missed pause replays right away; the resume, however, waits for the next
+    # night (otherwise a boot at 12:00 would relaunch indexing in the middle of
+    # the day, which marc refuses).
     timerConfig = {
       OnCalendar = "*-*-* 08:00:00";
       Persistent = true;
@@ -266,7 +266,7 @@ in
   };
 
   systemd.timers.immich-jobs-resume = {
-    description = "Immich : reprise des files a 04:00";
+    description = "Immich: resume of the queues at 04:00";
     wantedBy = ["timers.target"];
     timerConfig = {
       OnCalendar = "*-*-* 04:00:00";
@@ -274,9 +274,9 @@ in
     };
   };
 
-  # Force le (re)demarrage du serveur au prochain switch : sans ca, une unite
-  # arretee a la main le reste, et ce module ne ferait que poser des timers
-  # sans service a piloter.
+  # Forces the (re)start of the server at the next switch: without that, a unit
+  # stopped by hand stays so, and this module would only set timers
+  # with no service to drive.
   systemd.services.immich-server.restartTriggers = [
     (pkgs.writeText "immich-job-schedule" "night-only-v4-4h")
   ];

@@ -1,60 +1,60 @@
 # services/garage/default.nix
-# Garage : stockage objet S3 (Rust, deuxfleurs) pour les artifacts de build
-# (APK, IPA, archives : ce que winnie et hermes-mobile deposent dans le bucket
-# `artifacts`) + le MCP S3 qui les pilote depuis hermes.
+# Garage: S3 object storage (Rust, deuxfleurs) for the build artifacts
+# (APK, IPA, archives: what winnie and hermes-mobile deposit in the bucket
+# `artifacts`) + the S3 MCP that drives them from hermes.
 #
-# Remplace RustFS (retire le 2026-11-11) : rustfs passait ~1 coeur en rafales de
-# walk_dir au repos (mesure atop : 96 a 113 % d'un coeur par echantillon de 10 s
-# sans aucun client) pour un usage mono-machine. Garage est un binaire unique,
-# sans scanner d'objets, avec un mode single-node.
+# Replaces RustFS (removed on 2026-11-11): rustfs used ~1 core in bursts of
+# walk_dir at rest (atop measurement: 96 to 113 % of a core per 10 s sample
+# with no client at all) for a single-machine use. Garage is a single binary,
+# without an object scanner, with a single-node mode.
 #
-# Ports (loopback seul, jamais exposes au firewall) :
-#   - 127.0.0.1:3900 : API S3
-#   - 127.0.0.1:3901 : RPC inter-noeuds (une seule machine ici)
-#   - 127.0.0.1:3903 : API d'admin (garage CLI)
+# Ports (loopback only, never exposed on the firewall):
+#   - 127.0.0.1:3900: S3 API
+#   - 127.0.0.1:3901: inter-node RPC (a single machine here)
+#   - 127.0.0.1:3903: admin API (garage CLI)
 #
-# Secrets : generes a l'activation dans /var/lib/garage (rpc_secret en hex,
-# admin_token), comme le JWT d'atticd : ce sont des secrets d'ETAT du service,
-# pas des identifiants partages a saisir (hermes ne peut pas ecrire de fichier
-# sops, il n'a pas la cle age de tower). La cle S3 applicative, elle, est creee
-# par le bootstrap (unit oneshot idempotente) et deposee lisible par hermes
-# dans /var/lib/garage/s3-key.env.
+# Secrets: generated at activation in /var/lib/garage (rpc_secret in hex,
+# admin_token), like atticd's JWT: these are STATE secrets of the service,
+# not shared identifiers to enter (hermes cannot write a
+# sops file, it does not have tower's age key). The application S3 key, for its part, is created
+# by the bootstrap (idempotent oneshot unit) and deposited readable by hermes
+# in /var/lib/garage/s3-key.env.
 #
-# Pas de console web : Garage n'en a pas. Les clients sont le MCP S3 et les CLI
-# (rclone, aws). L'admin API (3903) reste en loopback.
+# No web console: Garage does not have one. The clients are the S3 MCP and the CLIs
+# (rclone, aws). The admin API (3903) stays on loopback.
 { config, lib, pkgs, ... }:
 let
   stateDir = "/var/lib/garage";
-  # Un bucket par source : le S3 n'a pas de vrais dossiers, un prefixe par
-  # projet suffit pour les artifacts mais les photos viennent de sources
-  # distinctes (camera, WhatsApp, Messenger) qu'on veut pouvoir isoler,
-  # compter et sauvegarder separement.
+  # One bucket per source: S3 has no real folders, a prefix per
+  # project is enough for the artifacts but the photos come from distinct
+  # sources (camera, WhatsApp, Messenger) that we want to be able to isolate,
+  # count and back up separately.
   buckets = [
     "artifacts"
     "photos-camera"
     "photos-whatsapp"
     "photos-messenger"
-    # Bucket PUBLIQUE, seul à avoir le mode website activé plus bas : tout
-    # objet qu'on y met est lisible par qui connaît l'URL, sans signature ni
-    # session. C'est ce bucket qui reçoit les fichiers partagés par lien court
-    # (services/share-mcp). Ne jamais y déposer ce qui doit rester privé :
-    # artifacts et photos-* restent, eux, inaccessibles en anonyme même si
-    # l'endpoint web est joignable (Garage n'expose au public que les buckets
-    # marqués website).
+    # PUBLIC bucket, the only one with website mode enabled below: any
+    # object put there is readable by anyone who knows the URL, without signature or
+    # session. It is this bucket that receives the files shared by short link
+    # (services/share-mcp). Never deposit there what must stay private:
+    # artifacts and photos-* stay, for their part, inaccessible anonymously even if
+    # the web endpoint is reachable (Garage exposes to the public only the buckets
+    # marked website).
     "public"
   ];
-  # Chemin du placeholder de santé : sert de sonde au healthcheck Pangolin
-  # (Garage répond 404 sur la racine d'un bucket sans index.html, donc une
-  # sonde sur /public/ marquerait la cible unhealthy et Pangolin la sortirait
-  # du load-balancer).
+  # Path of the health placeholder: serves as probe for the Pangolin healthcheck
+  # (Garage answers 404 on the root of a bucket without index.html, so a
+  # probe on /public/ would mark the target unhealthy and Pangolin would drop it
+  # from the load-balancer).
   healthKey = "_health.txt";
   keyName = "hermes";
 
-  # MCP S3 en stdio. `rustfs-mcp` (github:rustfs/mcp) est un client S3
-  # GENERIQUE : il prend --endpoint-url et fait du path-style pour un endpoint
-  # custom, donc il pilote Garage sans changement. Il n'est pas dans nixpkgs,
-  # d'ou le buildRustPackage ; ses features par defaut (io-uring) exigent
-  # tokio_unstable, comme dans le Dockerfile amont.
+  # S3 MCP over stdio. `rustfs-mcp` (github:rustfs/mcp) is a GENERIC S3
+  # client: it takes --endpoint-url and does path-style for a custom
+  # endpoint, so it drives Garage without change. It is not in nixpkgs,
+  # hence the buildRustPackage; its default features (io-uring) require
+  # tokio_unstable, as in the upstream Dockerfile.
   s3-mcp = pkgs.rustPlatform.buildRustPackage {
     pname = "rustfs-mcp";
     version = "0.1.0";
@@ -68,15 +68,15 @@ let
     env.RUSTFLAGS = "--cfg tokio_unstable";
     doCheck = false;
     meta = {
-      description = "MCP S3-compatible (client generique, pilote Garage)";
+      description = "S3-compatible MCP (generic client, drives Garage)";
       homepage = "https://github.com/rustfs/mcp";
       license = lib.licenses.asl20;
       mainProgram = "rustfs-mcp";
     };
   };
 
-  # Wrapper stdio : hermes spawn ce script, qui lit la cle applicative generee
-  # par garage-bootstrap (jamais un secret en dur dans le store nix).
+  # stdio wrapper: hermes spawns this script, which reads the application key generated
+  # by garage-bootstrap (never a hardcoded secret in the nix store).
   mcpWrapper = pkgs.writeShellScript "garage-s3-mcp-hermes" ''
     set -euo pipefail
     # shellcheck disable=SC1091
@@ -94,7 +94,7 @@ in
       metadata_dir = "${stateDir}/meta";
       data_dir = "${stateDir}/data";
       db_engine = "sqlite";
-      # Mono-noeud : pas de redondance a gerer, un seul disque.
+      # Single-node: no redundancy to manage, a single disk.
       replication_factor = 1;
       consistency_mode = "consistent";
       rpc_bind_addr = "127.0.0.1:3901";
@@ -108,19 +108,19 @@ in
         api_bind_addr = "127.0.0.1:3903";
         admin_token_file = "${stateDir}/admin_token";
       };
-      # Endpoint HTTP « website » : sert en path-style /<bucket>/<cle> les
-      # buckets marqués website (voir le bootstrap). Loopback seul, exposé au
-      # public uniquement par la ressource Pangolin files.marcpartensky.com
-      # (services/share-mcp), sans SSO puisque les liens courts pointent dessus.
+      # "website" HTTP endpoint: serves in path-style /<bucket>/<key> the
+      # buckets marked website (see the bootstrap). Loopback only, exposed to
+      # the public only by the Pangolin resource files.marcpartensky.com
+      # (services/share-mcp), without SSO since the short links point at it.
       web = {
         bind_addr = "127.0.0.1:3902";
       };
     };
   };
 
-  # Le module nixpkgs tourne en DynamicUser par defaut : les fichiers de
-  # secrets generes a l'activation (root) seraient alors illisibles pour le
-  # service. Utilisateur statique a la place, proprietaire de ses secrets.
+  # The nixpkgs module runs as DynamicUser by default: the secret
+  # files generated at activation (root) would then be unreadable for the
+  # service. Static user instead, owner of its secrets.
   users.groups.garage = { };
   users.users.garage = {
     isSystemUser = true;
@@ -135,11 +135,11 @@ in
     Group = "garage";
   };
 
-  # Secrets d'instance, generes une seule fois : les regenerer changerait le
-  # rpc_secret et rendrait les donnees existantes illisibles.
-  # Le dossier reste 0755 (traversable) : hermes doit pouvoir lire le
-  # s3-key.env que le bootstrap y depose. Les secrets eux-memes sont 0400
-  # garage, donc illisibles pour quiconque d'autre.
+  # Instance secrets, generated once: regenerating them would change the
+  # rpc_secret and make the existing data unreadable.
+  # The folder stays 0755 (traversable): hermes must be able to read the
+  # s3-key.env that the bootstrap deposits there. The secrets themselves are 0400
+  # garage, so unreadable for anyone else.
   system.activationScripts.garage-secrets = ''
     install -d -m 0755 -o garage -g garage ${stateDir}
     if [ ! -s ${stateDir}/rpc_secret ]; then
@@ -151,10 +151,10 @@ in
     chmod 0400 ${stateDir}/rpc_secret ${stateDir}/admin_token
   '';
 
-  # Bootstrap idempotent : layout du noeud, cle S3 applicative, bucket.
-  # Le CLI `garage` lit /etc/garage.toml (pose par le module) et l'admin_token.
+  # Idempotent bootstrap: node layout, application S3 key, bucket.
+  # The `garage` CLI reads /etc/garage.toml (set by the module) and the admin_token.
   systemd.services.garage-bootstrap = {
-    description = "Garage : layout mono-noeud, cle S3 ${keyName}, buckets (artifacts, photos-*)";
+    description = "Garage: single-node layout, S3 key ${keyName}, buckets (artifacts, photos-*)";
     wantedBy = [ "multi-user.target" ];
     after = [ "garage.service" ];
     requires = [ "garage.service" ];
@@ -168,7 +168,7 @@ in
       set -eu
       export GARAGE_CONFIG_FILE=/etc/garage.toml
 
-      # Le service atteint l'etat "active" avant d'ecouter : attendre l'API admin.
+      # The service reaches the "active" state before listening: wait for the admin API.
       for _ in $(seq 1 30); do
         garage status >/dev/null 2>&1 && break
         sleep 2
@@ -181,8 +181,8 @@ in
         layout="$(garage layout show 2>&1)"
       fi
       if printf '%s' "$layout" | grep -qi "staged\|not yet committed"; then
-        # `layout apply --version N` exige N = version courante + 1 : la version
-        # initiale d'un cluster neuf n'est pas 0, donc la lire au lieu de coder 1.
+        # `layout apply --version N` requires N = current version + 1: the
+        # initial version of a fresh cluster is not 0, so read it instead of hardcoding 1.
         cur="$(printf '%s' "$layout" | sed -n 's/^Current cluster layout version: *//p' | tr -dc '0-9')"
         : ''${cur:=0}
         echo "$layout" >&2
@@ -195,12 +195,12 @@ in
         garage bucket allow --read --write "$b" --key ${keyName}
       done
 
-      # Seul le bucket public passe en mode website (lecture anonyme via
-      # l'endpoint web). Les autres restent privés : Garage ne sert en
-      # anonyme que les buckets marqués website.
+      # Only the public bucket switches to website mode (anonymous read via
+      # the web endpoint). The others stay private: Garage serves anonymously
+      # only the buckets marked website.
       garage bucket website --allow public
 
-      # Identifiants S3 pour les clients non-root (wrapper MCP cote hermes).
+      # S3 credentials for the non-root clients (MCP wrapper on the hermes side).
       info="$(garage key info --show-secret ${keyName})"
       key_id="$(printf '%s\n' "$info" | sed -n 's/^Key ID: *//p')"
       key_secret="$(printf '%s\n' "$info" | sed -n 's/^Secret key: *//p')"
@@ -214,10 +214,10 @@ in
       chmod 0400 ${stateDir}/s3-key.env
       unset key_secret info
 
-      # Placeholder de santé du bucket public : le CLI garage ne sait pas
-      # déposer d'objet, donc il passe par l'API S3 avec la clé qu'on vient
-      # d'écrire. Sans lui, la sonde Pangolin tape une racine de bucket sans
-      # index.html et reçoit 404 (cible unhealthy, retirée du load-balancer).
+      # Health placeholder of the public bucket: the garage CLI does not know
+      # how to deposit an object, so it goes through the S3 API with the key we just
+      # wrote. Without it, the Pangolin probe hits a bucket root without
+      # index.html and receives 404 (target unhealthy, removed from the load-balancer).
       set -a
       . ${stateDir}/s3-key.env
       set +a

@@ -1,37 +1,37 @@
 # services/fdroid-repo/default.nix
-# Dépôt F-Droid personnel de Marc : https://fdroid.marcpartensky.com
+# Marc's personal F-Droid repository: https://fdroid.marcpartensky.com
 #
-# Chaîne : Droidify / F-Droid (client Android)
-#          -> Pangolin (fdroid.marcpartensky.com, SSO DÉSACTIVÉ)
+# Chain: Droidify / F-Droid (Android client)
+#          -> Pangolin (fdroid.marcpartensky.com, SSO DISABLED)
 #          -> newt (site tower)
-#          -> 127.0.0.1:8093 (nginx, sert /var/lib/fdroid/repo)
+#          -> 127.0.0.1:8093 (nginx, serves /var/lib/fdroid/repo)
 #
-# Pourquoi SSO désactivé : un dépôt F-Droid est lu par un client natif qui ne
-# sait pas suivre une redirection de login. Il fait des GET anonymes sur
-# index-v2.json, index-v1.jar et les APK. Le dépôt ne contient donc que des
-# artefacts publics (des APK release signés) : aucun secret ne transite.
+# Why SSO disabled: an F-Droid repository is read by a native client that does
+# not know how to follow a login redirect. It makes anonymous GETs on
+# index-v2.json, index-v1.jar and the APKs. The repository therefore contains only
+# public artifacts (signed release APKs): no secret goes through.
 #
-# Signature : la clé du dépôt (keystore JKS) est le SEUL secret, stocké chiffré
-# dans secrets/fdroid.yml (destinataire tower) et posé dans /var/lib/fdroid par
-# l'unité de publication. Si elle est perdue, les clients doivent supprimer
-# puis ré-ajouter le dépôt (nouvelle empreinte) : la sauvegarde du keystore,
-# c'est secrets/fdroid.yml dans le repo git.
+# Signature: the repository key (JKS keystore) is the ONLY secret, stored encrypted
+# in secrets/fdroid.yml (tower recipient) and placed in /var/lib/fdroid by
+# the publish unit. If it is lost, clients must delete
+# then re-add the repository (new fingerprint): the keystore backup
+# is secrets/fdroid.yml in the git repo.
 #
-# Publication : déposer un APK dans /var/lib/fdroid/incoming (boîte aux lettres
-# sticky 1777, donc sans sudo ni appartenance à un groupe). Le path unit
-# fdroid-repo-publish.path déclenche fdroid-repo-publish.service, qui déplace
-# l'APK dans repo/, régénère les index (v1 + v2) et les signe. Journal :
+# Publication: drop an APK in /var/lib/fdroid/incoming (mailbox
+# sticky 1777, so without sudo or group membership). The path unit
+# fdroid-repo-publish.path triggers fdroid-repo-publish.service, which moves
+# the APK into repo/, regenerates the indexes (v1 + v2) and signs them. Journal:
 # journalctl -u fdroid-repo-publish.
 #
-# Métadonnées par application (nom, description, catégories, captures) :
-# /var/lib/fdroid/metadata/<package>.yml, éditables par marc (groupe fdroid).
-# `fdroid update --create-metadata` ne crée que les squelettes manquants, donc
-# un fichier existant n'est jamais écrasé.
+# Per-application metadata (name, description, categories, screenshots):
+# /var/lib/fdroid/metadata/<package>.yml, editable by marc (fdroid group).
+# `fdroid update --create-metadata` only creates the missing skeletons, so
+# an existing file is never overwritten.
 #
-# Versions gérées : un APK plus récent du même paquet s'ajoute à l'index à côté
-# des précédents (Droidify propose la mise à jour), à condition d'être signé par
-# la MÊME clé applicative que l'APK déjà publié (sinon Android refuse
-# l'installation par-dessus).
+# Managed versions: a more recent APK of the same package is added to the index alongside
+# the previous ones (Droidify offers the update), provided it is signed by
+# the SAME application key as the already published APK (otherwise Android refuses
+# the install on top).
 {
   config,
   lib,
@@ -44,8 +44,8 @@
   incomingDir = "${stateDir}/incoming";
   httpPort = 8093;
 
-  # Étape privilégiée : arborescence, config.yml (mot de passe du keystore) et
-  # décodage du keystore. Tourne en root via le préfixe "+" d'ExecStartPre.
+  # Privileged step: tree, config.yml (keystore password) and
+  # keystore decoding. Runs as root via the "+" prefix of ExecStartPre.
   prepare = pkgs.writeShellApplication {
     name = "fdroid-repo-prepare";
     runtimeInputs = [pkgs.coreutils pkgs.bash pkgs.findutils];
@@ -55,10 +55,10 @@
       install -d -o fdroid -g fdroid -m 0755 ${stateDir}
       install -d -o fdroid -g fdroid -m 0755 ${repoDir} ${repoDir}/icons
       install -d -o fdroid -g fdroid -m 0775 ${metadataDir}
-      # Boîte aux lettres : sticky 1777 pour que marc et l'agent hermes y
-      # déposent un APK sans sudo ni appartenance au groupe fdroid. Le sticky
-      # bit empêche fdroid de renommer un fichier déposé par un autre
-      # utilisateur : on lui en donne la propriété ici (on tourne en root).
+      # Mailbox: sticky 1777 so that marc and the hermes agent can
+      # drop an APK there without sudo or membership in the fdroid group. The sticky
+      # bit prevents fdroid from renaming a file dropped by another
+      # user: its ownership is given to it here (we run as root).
       install -d -m 1777 ${incomingDir}
       find ${incomingDir} -maxdepth 1 -type f -name '*.apk' -exec chown fdroid:fdroid {} +
 
@@ -66,7 +66,7 @@
         ${config.sops.templates."fdroid-config.yml".path} ${stateDir}/config.yml
 
       if [ ! -r /run/secrets/fdroid_keystore_b64 ]; then
-        echo "secret fdroid_keystore_b64 illisible" >&2
+        echo "fdroid_keystore_b64 secret unreadable" >&2
         exit 1
       fi
       tmp=$(mktemp ${stateDir}/.keystore.XXXXXX)
@@ -75,13 +75,13 @@
       chmod 0600 "$tmp"
       mv -f "$tmp" ${stateDir}/keystore.jks
 
-      # Icône du dépôt : fdroid la copie lui-même dans repo/icons/icon.png, donc
-      # la source doit être HORS du dossier repo (sinon SameFileError).
+      # Repository icon: fdroid copies it itself into repo/icons/icon.png, so
+      # the source must be OUTSIDE the repo folder (otherwise SameFileError).
       install -o fdroid -g fdroid -m 0644 ${./repo-icon.png} ${stateDir}/icon.png
     '';
   };
 
-  # Étape non privilégiée : ingestion des APK + régénération/signature.
+  # Non-privileged step: APK ingestion + regeneration/signature.
   publish = pkgs.writeShellApplication {
     name = "fdroid-repo-publish";
     runtimeInputs = [pkgs.fdroidserver pkgs.jdk pkgs.coreutils pkgs.bash pkgs.python3];
@@ -93,24 +93,24 @@
       apks=(incoming/*.apk)
       if [ ''${#apks[@]} -gt 0 ]; then
         for f in "''${apks[@]}"; do
-          echo "ingestion : $(basename "$f")"
+          echo "ingesting: $(basename "$f")"
           mv -f "$f" ${repoDir}/
         done
       fi
 
-      # --create-metadata : squelette de métadonnées pour tout paquet nouveau,
-      # les fichiers déjà présents ne sont pas touchés.
+      # --create-metadata: metadata skeleton for every new package,
+      # the already present files are not touched.
       fdroid update --create-metadata
 
-      # Catégorie par défaut des squelettes = nom du dossier courant ("fdroid"),
-      # invalide côté F-Droid : on la remplace puis on régénère l'index.
+      # Default category of the skeletons = name of the current folder ("fdroid"),
+      # invalid on the F-Droid side: we replace it then regenerate the index.
       fixed=$(python3 ${./fix-categories.py})
       if [ -n "$fixed" ]; then
-        echo "catégorie par défaut remplacée pour : $fixed"
+        echo "default category replaced for: $fixed"
         fdroid update
       fi
 
-      echo "dépôt régénéré : $(ls -l ${repoDir}/index-v2.json)"
+      echo "repository regenerated: $(ls -l ${repoDir}/index-v2.json)"
     '';
   };
 in {
@@ -119,9 +119,9 @@ in {
     isSystemUser = true;
     group = "fdroid";
     home = stateDir;
-    description = "Dépôt F-Droid personnel";
+    description = "Personal F-Droid repository";
   };
-  # marc édite les métadonnées et dépose des APK sans sudo.
+  # marc edits the metadata and drops APKs without sudo.
   users.users.marc.extraGroups = ["fdroid"];
 
   sops.secrets.fdroid_keystore_b64 = {
@@ -135,8 +135,8 @@ in {
     restartUnits = ["fdroid-repo-publish.service"];
   };
 
-  # config.yml du dépôt : le mot de passe du keystore ne peut pas être en
-  # clair dans le store nix, donc le fichier est rendu à l'activation.
+  # Repository config.yml: the keystore password cannot be in
+  # clear in the nix store, so the file is rendered at activation.
   sops.templates."fdroid-config.yml" = {
     owner = "fdroid";
     group = "fdroid";
@@ -145,9 +145,9 @@ in {
     content = ''
       repo_url: https://fdroid.marcpartensky.com/repo
       repo_name: Marc Partensky
-      repo_description: Applications Android personnelles de Marc.
-      # fdroid combine repo_icon avec repo/icons/ : valeur = simple nom de
-      # fichier, source = icon.png à la racine de stateDir (hors dossier repo).
+      repo_description: Marc's personal Android applications.
+      # fdroid combines repo_icon with repo/icons/: value = simple file
+      # name, source = icon.png at the root of stateDir (outside the repo folder).
       repo_icon: icon.png
       repo_keyalias: fdroid
       keystore: ${stateDir}/keystore.jks
@@ -156,8 +156,8 @@ in {
     '';
   };
 
-  # Arborescence créée au boot (avant que le service ne démarre) : le service
-  # ne peut pas avoir WorkingDirectory sur un dossier qui n'existe pas encore.
+  # Tree created at boot (before the service starts): the service
+  # cannot have WorkingDirectory on a folder that does not exist yet.
   systemd.tmpfiles.rules = [
     "d ${stateDir} 0755 fdroid fdroid -"
     "d ${repoDir} 0755 fdroid fdroid -"
@@ -167,10 +167,10 @@ in {
   ];
 
   systemd.services.fdroid-repo-publish = {
-    description = "Régénère et signe le dépôt F-Droid personnel";
+    description = "Regenerates and signs the personal F-Droid repository";
     environment = {
       HOME = stateDir;
-      # fdroid écrit son cache sous $HOME/.cache ; stateDir appartient à fdroid.
+      # fdroid writes its cache under $HOME/.cache; stateDir belongs to fdroid.
       XDG_CACHE_HOME = "${stateDir}/.cache";
     };
     serviceConfig = {
@@ -184,15 +184,15 @@ in {
     };
   };
 
-  # Déclenchement automatique dès qu'un APK apparaît dans la boîte aux lettres.
+  # Automatic trigger as soon as an APK appears in the mailbox.
   systemd.paths.fdroid-repo-publish = {
     wantedBy = ["multi-user.target"];
     pathConfig.DirectoryNotEmpty = incomingDir;
   };
 
-  # Vhost local en HTTP loopback : le TLS est porté par Pangolin/newt.
-  # Seul /repo/ est servi (root = stateDir + uri -> stateDir/repo/...) : le
-  # keystore et config.yml restent hors de portée d'une requête HTTP.
+  # Local vhost in loopback HTTP: TLS is carried by Pangolin/newt.
+  # Only /repo/ is served (root = stateDir + uri -> stateDir/repo/...): the
+  # keystore and config.yml stay out of reach of an HTTP request.
   services.nginx.virtualHosts."fdroid-repo" = {
     listen = [
       {
@@ -209,15 +209,15 @@ in {
     };
     extraConfig = ''
       autoindex off;
-      # Les index et les APK sont réécrits à chaque publication : pas de cache
-      # long côté proxys, sinon un client peut voir un index périmé pendant
-      # des heures.
+      # The indexes and the APKs are rewritten at each publication: no long
+      # cache on the proxy side, otherwise a client can see a stale index for
+      # hours.
       add_header Cache-Control "public, max-age=300";
     '';
   };
 
-  # Ressource publique (SSO désactivé, cf. en-tête) : schema ancien de ce
-  # Pangolin -> `proxy-resources` + `protocol` + cible `127.0.0.1`.
+  # Public resource (SSO disabled, cf. header): old schema of this
+  # Pangolin -> `proxy-resources` + `protocol` + target `127.0.0.1`.
   services.newt.blueprint.proxy-resources.fdroid = {
     name = "fdroid";
     protocol = "http";

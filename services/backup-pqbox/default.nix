@@ -1,28 +1,28 @@
-# services/backup-pqbox : sauvegardes chiffrées de tower, en trois étages.
+# services/backup-pqbox: encrypted backups of tower, in three tiers.
 #
-#   pqbox.py  : outil unique, chiffrement + orchestration + transport.
-#               Chiffrement : cryptography (ML-KEM-768 FIPS 203 + X25519 hybride,
-#                             HKDF-SHA256, AES-256-GCM par chunks de 1 Mio,
-#                             PBKDF2 1e6 pour la clé privée scellée par le mot de
-#                             passe de marc).
-#               Transport   : paramiko (SFTP + exec, lecture de ~/.ssh/config,
-#                             ProxyJump, retries, upload atomique). Aucun
-#                             appel à ssh/scp/rsync.
+#   pqbox.py  : single tool, encryption + orchestration + transport.
+#               Encryption: cryptography (ML-KEM-768 FIPS 203 + X25519 hybrid,
+#                             HKDF-SHA256, AES-256-GCM in 1 MiB chunks,
+#                             PBKDF2 1e6 for the private key sealed by marc's
+#                             passphrase).
+#               Transport  : paramiko (SFTP + exec, reads ~/.ssh/config,
+#                             ProxyJump, retries, atomic upload). No
+#                             call to ssh/scp/rsync.
 #
-# Étage    contenu                                            cadence    rétention
-#   coeur  bases vivantes + état Hermes léger (config, skills, 03:30/jour 30 rack
-#          sessions, profils)                                             7 miroir
-#   volume winnie, matrix-synapse, state.db, pièces jointes    dim 04:30  3
-#   mortes bases abandonnées, à garder avant de les dropper    manuel     2
+# Tier     content                                            cadence    retention
+#   coeur  live databases + light Hermes state (config, skills, 03:30/day 30 rack
+#          sessions, profiles)                                             7 mirror
+#   volume winnie, matrix-synapse, state.db, attachments       Sun 04:30  3
+#   mortes abandoned databases, to keep before dropping them   manual     2
 #
-# Deux destinations, sur deux machines distinctes de tower :
-#   rack : VPS, /var/backups/pqbox         (toujours, échec = échec du service)
-#   mac  : Mac de marc, ~/backups-pqbox    (miroir best-effort, nœud différent)
+# Two destinations, on two machines distinct from tower:
+#   rack : VPS, /var/backups/pqbox         (always, failure = service failure)
+#   mac  : marc's Mac, ~/backups-pqbox    (best-effort mirror, different node)
 #
-# La clé publique vit dans ce dossier (backup.pub). La clé privée scellée est
-# écrite par marc lui-même (setup-key.sh) dans ~/.config/pqbox/backup.key : ni
-# l'agent ni les hôtes ne peuvent la lire. Sans son mot de passe, les archives
-# sont indéchiffrables, y compris pour root sur tower comme sur rack.
+# The public key lives in this folder (backup.pub). The sealed private key is
+# written by marc himself (setup-key.sh) into ~/.config/pqbox/backup.key: neither
+# the agent nor the hosts can read it. Without his passphrase, the archives
+# are undecipherable, including for root on tower as on rack.
 { config, lib, pkgs, ... }:
 
 let
@@ -30,14 +30,14 @@ let
 
   pythonEnv = pkgs.python3.withPackages (ps: [ ps.cryptography ps.paramiko ]);
 
-  # un seul outil, pour systemd comme pour l'agent à la main
+  # a single tool, for systemd as for the agent by hand
   pqbox = pkgs.writeShellScriptBin "pqbox" ''
     exec ${pythonEnv}/bin/python3 ${./pqbox.py} "$@"
   '';
 
   mkService = name: extra: {
-    description = "Sauvegarde chiffree pqbox (${name}) vers la cle publique de marc";
-    # pq_dump/pg_dump, zstd et coreutils : le reste (tar, sha256) est en Python
+    description = "Encrypted pqbox backup (${name}) to marc's public key";
+    # pq_dump/pg_dump, zstd and coreutils: the rest (tar, sha256) is in Python
     path = with pkgs; [ coreutils zstd postgresql ];
     environment = {
       PUB = "${./backup.pub}";
@@ -48,13 +48,17 @@ let
       KEEP_VOLUME = toString cfg.keepVolume;
       KEEP_MORTES = toString cfg.keepMortes;
       KEEP_MIRROR = toString cfg.keepMirror;
+      PG_REMOTE_HOST = cfg.pgRemoteHost;
+      STATE_REMOTE_HOST = cfg.stateRemoteHost;
+      HERMES_REMOTE_DIR = cfg.hermesRemoteDir;
+      SKIP_IF_FRESH = toString cfg.skipIfFresh;
     } // lib.optionalAttrs cfg.mirrorVolume { MIRROR_VOLUME = "1"; };
     serviceConfig = {
       Type = "oneshot";
       User = "hermes";
       Group = "hermes";
       ExecStart = "${pqbox}/bin/pqbox backup ${name}";
-      # un dump ne doit pas disputer le CPU a marc
+      # a dump must not compete for the CPU with marc
       Nice = 10;
       IOSchedulingClass = "idle";
       IOSchedulingPriority = 7;
@@ -64,44 +68,74 @@ let
 in
 {
   options.services.backup-pqbox = {
-    enable = lib.mkEnableOption "les sauvegardes chiffrées pqbox de tower";
+    enable = lib.mkEnableOption "the encrypted pqbox backups of tower";
     directory = lib.mkOption {
       type = lib.types.path;
       default = "/var/lib/hermes/backups/pqbox";
-      description = "Dossier des archives chiffrées.";
+      description = "Folder of the encrypted archives.";
     };
     rack = lib.mkOption {
       type = lib.types.str;
       default = "rack:/var/backups/pqbox";
-      description = "Destination principale : alias ssh et chemin.";
+      description = "Main destination: ssh alias and path.";
     };
     mirror = lib.mkOption {
       type = lib.types.str;
       default = "mac:backups-pqbox";
       description = ''
-        Second dépôt, sur une AUTRE machine que tower et que le VPS. Copie
-        best-effort : une machine éteinte ne fait pas échouer la sauvegarde.
-        Chaîne vide = pas de miroir.
+        Second repository, on a DIFFERENT machine than tower and than the VPS. Copy
+        best-effort: a powered-off machine does not make the backup fail.
+        Empty string = no mirror.
       '';
     };
     mirrorVolume = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Miroiter aussi l'étage volume (775 Mo) ; le Mac n'a que ~6 Go libres.";
+      description = "Also mirror the volume tier (775 MB); the Mac has only ~6 GB free.";
     };
-    keepCoeur = lib.mkOption { type = lib.types.int; default = 30; description = "Archives coeur conservées sur rack."; };
-    keepVolume = lib.mkOption { type = lib.types.int; default = 3; description = "Archives volume conservées sur rack."; };
-    keepMortes = lib.mkOption { type = lib.types.int; default = 2; description = "Archives mortes conservées sur rack."; };
-    keepMirror = lib.mkOption { type = lib.types.int; default = 7; description = "Archives conservées sur le miroir."; };
+    keepCoeur = lib.mkOption { type = lib.types.int; default = 30; description = "coeur archives kept on rack."; };
+    keepVolume = lib.mkOption { type = lib.types.int; default = 3; description = "volume archives kept on rack."; };
+    keepMortes = lib.mkOption { type = lib.types.int; default = 2; description = "mortes archives kept on rack."; };
+    keepMirror = lib.mkOption { type = lib.types.int; default = 7; description = "Archives kept on the mirror."; };
     coeurAt = lib.mkOption {
       type = lib.types.str;
       default = "*-*-* 03:30:00";
-      description = "Cadence de l'étage coeur.";
+      description = "Cadence of the coeur tier.";
     };
     volumeAt = lib.mkOption {
       type = lib.types.str;
       default = "Sun 04:30:00";
-      description = "Cadence de l'étage volume.";
+      description = "Cadence of the volume tier.";
+    };
+    pgRemoteHost = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = ''
+        SSH host from which to pull the databases, dumped in streaming (`pg_dump` executed
+        over there, sent by paramiko), instead of the local PostgreSQL. Used to make
+        the expensive work (zstd -19) run on an idle machine while
+        leaving the data on tower, whose `pg_hba` refuses everything that
+        is not 127.0.0.1.
+      '';
+    };
+    stateRemoteHost = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = "SSH host from which to pull the Hermes state (`tar -c` streamed). Empty = local state.";
+    };
+    hermesRemoteDir = lib.mkOption {
+      type = lib.types.str;
+      default = "/var/lib/hermes/.hermes";
+      description = "Directory of the Hermes state on the remote host (the one that contains config.yaml, skills, sessions).";
+    };
+    skipIfFresh = lib.mkOption {
+      type = lib.types.int;
+      default = 0;
+      description = ''
+        Hours. If an archive of the same tier is younger than that, the run does
+        nothing. This is what turns a host into a simple safety net
+        behind the one that produces the archive normally.
+      '';
     };
   };
 
@@ -109,8 +143,8 @@ in
     systemd.services = {
       backup-pqbox-coeur = mkService "coeur" { startAt = cfg.coeurAt; };
       backup-pqbox-volume = mkService "volume" { startAt = cfg.volumeAt; };
-      # L'étage mortes reste manuel : il sert une fois, avant de dropper les
-      # bases abandonnées. `systemctl start backup-pqbox-mortes` ou
+      # The mortes tier stays manual: it serves once, before dropping the
+      # abandoned databases. `systemctl start backup-pqbox-mortes` or
       # `pqbox backup mortes`.
       backup-pqbox-mortes = mkService "mortes" { };
     };

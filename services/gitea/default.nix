@@ -1,39 +1,41 @@
 # services/gitea/default.nix
-# Instance Gitea (forge git auto-hébergée) sur git.marcpartensky.com.
+# Gitea instance (self-hosted git forge) on git.marcpartensky.com.
 #
-# Écoute en loopback (127.0.0.1:3001), exposée uniquement via le blueprint
-# Pangolin/newt, sans SSO Pangolin (auth.sso-enabled=false) : Gitea porte son
-# propre login (comptes locaux + OIDC Zitadel) et ses tokens d'API — une seule
-# couche d'auth, et les clients git/API à token ne sont pas redirigés vers une
-# page SSO. Base postgres locale via socket unix (peer auth, pas de secret DB
-# nécessaire : services.gitea.database.createDatabase=true crée le rôle "gitea"
-# et se connecte par défaut sur /run/postgresql avec le user système "gitea").
+# Listens on loopback (127.0.0.1:3001), exposed only via the
+# Pangolin/newt blueprint, without Pangolin SSO (auth.sso-enabled=false): Gitea carries its
+# own login (local accounts + Zitadel OIDC) and its API tokens - a single
+# auth layer, and the git/API clients with a token are not redirected to an
+# SSO page. Local postgres DB via unix socket (peer auth, no DB secret
+# needed: services.gitea.database.createDatabase=true creates the "gitea" role
+# and connects by default on /run/postgresql with the system user "gitea").
 #
-# Inscription publique désactivée (DISABLE_REGISTRATION) : le compte admin
-# "marc" est créé une fois par un oneshot idempotent (gitea-admin-init) via
-# la CLI, mot de passe dans secrets/gitea.yml (sops, clé admin_password).
+# Public registration disabled (DISABLE_REGISTRATION): the admin account
+# "marc" is created once by an idempotent oneshot (gitea-admin-init) via
+# the CLI, password in secrets/gitea.yml (sops, key admin_password).
 #
-# SSH désactivé pour ce premier déploiement (DISABLE_SSH) : le serveur SSH
-# intégré de Gitea entrerait en conflit avec le sshd de tower, et newt 1.12.4
-# ne supporte pas le mode de ressource "ssh" de Pangolin (exige > 1.13). Clone
-# HTTPS uniquement pour l'instant (token d'accès personnel Gitea).
+# SSH disabled for this first deployment (DISABLE_SSH): Gitea's built-in
+# SSH server would conflict with tower's sshd, and newt 1.12.4
+# does not support Pangolin's "ssh" resource mode (requires > 1.13). Clone
+# HTTPS only for now (Gitea personal access token).
 #
-# OIDC vers Zitadel (auth.marcpartensky.com) : source d'auth OAuth2 "Zitadel"
-# (bouton sur la page de login), entretenue par le oneshot gitea-oidc-init
-# (idempotent, add-or-update). App Zitadel "Gitea" (projet marcpartensky,
-# appId 396570385799184684) de type Web : client_id ci-dessous, client_secret
-# dans secrets/gitea-oidc.yml. NB : la section [openid] d'app.ini n'est PAS de
-# l'OIDC (OpenID 2.0 legacy, incompatible avec Zitadel) : désactivée ci-dessous.
+# OIDC to Zitadel (auth.marcpartensky.com): OAuth2 auth source "Zitadel"
+# (button on the login page), maintained by the gitea-oidc-init oneshot
+# (idempotent, add-or-update). Zitadel app "Gitea" (marcpartensky project,
+# appId 396570385799184684) of type Web: client_id below, client_secret
+# in secrets/gitea-oidc.yml. NB: the [openid] section of app.ini is NOT
+# OIDC (legacy OpenID 2.0, incompatible with Zitadel): disabled below.
 {
   config,
   lib,
   pkgs,
   ...
 }: let
-  # App OIDC "Gitea" dans Zitadel (projet marcpartensky), créée le 24/10/2026.
-  # Zitadel GÉNÈRE les client_id : "gitea" (l'ancienne valeur) n'a jamais pu
-  # exister. Le client_secret vit hors du store nix (secrets/gitea-oidc.yml).
-  oidcClientId = "396570385799250220";
+  # OIDC app "Gitea" in a DEDICATED ZITADEL PROJECT (project "Gitea", role
+  # "gitea", projectRoleCheck): granting the role is what opens the app, and
+  # this role opens NOTHING else. Zitadel GENERATES the client_id: "gitea"
+  # (the old value) could never exist. The client_secret lives outside the
+  # nix store (secrets/zitadel-oidc-secrets.yml, key gitea_client_secret).
+  oidcClientId = "400636685496418604";
   oidcClientSecret = config.sops.secrets."gitea/oidc_client_secret";
 in {
   sops.secrets."gitea/admin_password" = {
@@ -43,14 +45,14 @@ in {
   };
 
   sops.secrets."gitea/oidc_client_secret" = {
-    key = "oidc_client_secret";
-    sopsFile = ../../secrets/gitea-oidc.yml;
+    key = "gitea_client_secret";
+    sopsFile = ../../secrets/zitadel-oidc-secrets.yml;
     owner = "gitea";
   };
 
   services.gitea = {
     enable = true;
-    appName = "Gitea de marc";
+    appName = "marc's Gitea";
     database.type = "postgres";
     settings = {
       server = {
@@ -64,41 +66,50 @@ in {
         DISABLE_REGISTRATION = false;
         ALLOW_ONLY_EXTERNAL_REGISTRATION = true;
         SHOW_REGISTRATION_BUTTON = false;
+        # Closes anonymous access: exploration, raw, archives, anonymous API and
+        # /compare pages require an account. Set on 15/11/2026 after measurement:
+        # an AWS crawler (216.73.216.157) made 14 580 requests in 3 h on
+        # /compare pages at 4 s of CPU each, i.e. 312 % of a core continuously.
+        # Authenticated clients (git HTTPS with PAT, gitea MCP on
+        # loopback, Zitadel OIDC) are not affected; anonymous clones and
+        # navigation are, on purpose. The edge CIDR filtering
+        # (DROP rules of Pangolin resource 32) remains the first layer.
+        REQUIRE_SIGNIN_VIEW = true;
       };
-      # OpenID 2.0 legacy (bouton « OpenID » de la page de login) : sans
-      # rapport avec Zitadel qui parle OIDC. Désactivé pour ne pas induire en
-      # erreur (avec une URL Zitadel il échoue en "LINK with
-      # rel=openid2.provider not found"). Le SSO passe par la source OAuth2.
+      # Legacy OpenID 2.0 (the "OpenID" button of the login page): unrelated
+      # to Zitadel which speaks OIDC. Disabled so as not to mislead
+      # (with a Zitadel URL it fails with "LINK with
+      # rel=openid2.provider not found"). The SSO goes through the OAuth2 source.
       openid = {
         ENABLE_OPENID_SIGNIN = false;
         ENABLE_OPENID_SIGNUP = false;
       };
-      # Source OAuth2 (Zitadel) : création automatique du compte local au
-      # premier login OIDC. USERNAME=email → localpart de l'email Zitadel
-      # (marc@marcpartensky.com → "marc"). Si le nom dérivé entre en collision
-      # avec un compte existant (cas de marc), ACCOUNT_LINKING=login affiche
-      # une page de liaison : on saisit son mot de passe local une fois, puis
-      # l'identité OIDC est rattachée au compte existant.
+      # OAuth2 source (Zitadel): automatic creation of the local account on
+      # the first OIDC login. USERNAME=email -> localpart of the Zitadel email
+      # (marc@marcpartensky.com -> "marc"). If the derived name collides
+      # with an existing account (marc's case), ACCOUNT_LINKING=login shows
+      # a linking page: you enter your local password once, then
+      # the OIDC identity is attached to the existing account.
       oauth2_client = {
         ENABLE_AUTO_REGISTRATION = true;
         USERNAME = "email";
         ACCOUNT_LINKING = "login";
       };
-      # Pangolin/newt tunnelent en local : gitea verrait toute requête
-      # publique comme venant de 127.0.0.1. Rien de sensible n'est protégé
-      # par une IP ici (cf. piège jellyfin), mais ça évite un signal trompeur
-      # dans les logs d'audit gitea.
+      # Pangolin/newt tunnel locally: gitea would see every public
+      # request as coming from 127.0.0.1. Nothing sensitive is protected
+      # by an IP here (cf. jellyfin pitfall), but it avoids a misleading signal
+      # in the gitea audit logs.
       security = {
         REVERSE_PROXY_TRUSTED_PROXIES = "127.0.0.1";
       };
     };
   };
 
-  # Compte admin créé une seule fois (idempotent : gitea refuse silencieusement
-  # de recréer un username existant, `|| true` avale l'erreur sans faire
-  # échouer l'unité). Même environnement que gitea.service (module nixpkgs).
+  # Admin account created only once (idempotent: gitea silently refuses
+  # to recreate an existing username, `|| true` swallows the error without making
+  # the unit fail). Same environment as gitea.service (nixpkgs module).
   systemd.services.gitea-admin-init = {
-    description = "Crée le compte admin Gitea (idempotent)";
+    description = "Creates the Gitea admin account (idempotent)";
     after = ["gitea.service" "postgresql.service"];
     requires = ["gitea.service"];
     wantedBy = ["multi-user.target"];
@@ -123,13 +134,22 @@ in {
     '';
   };
 
-  # Enregistre/actualise la source OAuth2 OIDC "Zitadel" dans Gitea
-  # (add-or-update idempotent). S'appuie sur l'app Zitadel "Gitea" :
-  # client_id = oidcClientId, redirect_uri enregistrée côté Zitadel =
+  # Registers/updates the OAuth2 OIDC "Zitadel" source in Gitea
+  # (idempotent add-or-update). Relies on the Zitadel app "Gitea":
+  # client_id = oidcClientId, redirect_uri registered on the Zitadel side =
   # https://git.marcpartensky.com/user/oauth2/zitadel/callback.
-  # Le client_secret est lu depuis sops à chaque exécution.
+  # The client_secret is read from sops at each run.
+  # A change of client_id/secret on the Zitadel side only takes effect at
+  # Gitea STARTUP: the gitea-oidc-init oneshot does write the DB, but the
+  # server keeps the OAuth sources in memory (verified on 21/11/2026: after
+  # migration to a dedicated Zitadel project, Gitea still served the OLD
+  # client_id, hence a broken login, until the restart). This trigger forces the
+  # restart at the activation that changes the value; the value being stable
+  # afterwards, subsequent switches do not restart Gitea.
+  systemd.services.gitea.restartTriggers = [oidcClientId];
+
   systemd.services.gitea-oidc-init = {
-    description = "Enregistre la source OAuth2 OIDC Zitadel dans Gitea (idempotent)";
+    description = "Registers the OAuth2 OIDC Zitadel source in Gitea (idempotent)";
     after = ["gitea.service" "gitea-admin-init.service" "postgresql.service"];
     requires = ["gitea.service" "gitea-admin-init.service"];
     wantedBy = ["multi-user.target"];
@@ -149,10 +169,10 @@ in {
       set -eu
       DISCOVERY="https://auth.marcpartensky.com/.well-known/openid-configuration"
       SECRET="$(cat ${oidcClientSecret.path})"
-      # Add-or-update : si la source existe (id en base), la mettre à jour
-      # (toute dérive de client_id/secret est corrigée à chaque activation),
-      # sinon la créer. En 1.27.x les sources créées par la CLI sont actives
-      # par défaut (les flags --enabled/--allow-deactivate n'existent plus).
+      # Add-or-update: if the source exists (id in the DB), update it
+      # (any drift of client_id/secret is corrected at each activation),
+      # otherwise create it. In 1.27.x the sources created by the CLI are active
+      # by default (the --enabled/--allow-deactivate flags no longer exist).
       PSQL="${config.services.postgresql.package}/bin/psql"
       SRC_ID="$("$PSQL" -U gitea -d gitea -Atc "select id from login_source where name = 'zitadel'")"
       if [ -n "$SRC_ID" ]; then
@@ -174,12 +194,12 @@ in {
     '';
   };
 
-  # Ressource publique Pangolin, appliquée par le site qui porte le blueprint
-  # (tower) : `site` omis volontairement, cf. services/newt. Schéma
-  # `proxy-resources` + `protocol` (celui vérifié fonctionnel côté hermes-webui
-  # / hermes-dashboard sur ce contrôleur Pangolin, cf. selfhosted-remote-access
-  # / references/pangolin-blueprint.md). Pas de SSO Pangolin : l'auth est
-  # portée par Gitea lui-même (local + OIDC Zitadel), une seule couche.
+  # Pangolin public resource, applied by the site that carries the blueprint
+  # (tower): `site` omitted on purpose, cf. services/newt. Schema
+  # `proxy-resources` + `protocol` (the one verified working on the hermes-webui
+  # / hermes-dashboard side on this Pangolin controller, cf. selfhosted-remote-access
+  # / references/pangolin-blueprint.md). No Pangolin SSO: auth is
+  # carried by Gitea itself (local + Zitadel OIDC), a single layer.
   services.newt.blueprint.proxy-resources.gitea = {
     name = "gitea";
     protocol = "http";
@@ -208,11 +228,11 @@ in {
     ];
   };
 
-  # Garde-fou : le port HTTP local ne doit jamais être ouvert sur le LAN.
+  # Safeguard: the local HTTP port must never be opened on the LAN.
   assertions = [
     {
       assertion = !(lib.elem config.services.gitea.settings.server.HTTP_PORT config.networking.firewall.allowedTCPPorts);
-      message = "gitea : le port HTTP local ne doit pas être ouvert au firewall (exposition uniquement via Pangolin/newt).";
+      message = "gitea: the local HTTP port must not be opened on the firewall (exposure only via Pangolin/newt).";
     }
   ];
 }
