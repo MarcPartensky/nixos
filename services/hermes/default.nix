@@ -5,65 +5,106 @@
   inputs,
   ...
 }: let
-  # claude-code épinglé plus récent que nixpkgs 26.05 (2.1.223).
-  # L'API refuse les modèles Opus 5.5 en dessous de 2.1.280 :
+  # claude-code pinned newer than nixpkgs 26.05 (2.1.223).
+  # The API rejects Opus 5.5 models below 2.1.280:
   #   "API Error: 400 Claude Code 2.1.223 does not support this model;
   #    version 2.1.280 or newer is required."
-  # Le paquet nixpkgs prend son manifeste (version + checksums par plateforme)
-  # en argument : on lui passe celui publié par Anthropic pour le canal stable
-  # (https://downloads.claude.ai/claude-code-releases/2.1.280/manifest.json),
-  # copié tel quel dans ./claude-code-manifest.json. Mise à jour = recopier le
-  # manifeste d'une version plus récente, rien d'autre.
+  # Fable 5.2 (claude-fable-5-2) only appears in the CLI selector from 2.1.321
+  # (upstream CHANGELOG), hence the 2.1.325 pin: without it the provider
+  # claude-subscription-directsdk cannot offer the model, whatever its config.
+  # The nixpkgs package takes its manifest (version + per-platform checksums)
+  # as an argument: we pass it the one published by Anthropic for the stable channel
+  # (https://downloads.claude.ai/claude-code-releases/2.1.325/manifest.json),
+  # copied as-is into ./claude-code-manifest.json. Update = recopy the
+  # manifest of a newer version, nothing else.
   claudeCode = pkgs.claude-code.override {
     manifest = lib.importJSON ./claude-code-manifest.json;
   };
 
-  # MCP Pangolin : plus de paquet ici. Le serveur est monte par
-  # modules/nixos/mcp-host directement depuis ./pangolin-mcp.py (entree
-  # `pangolin` de profiles/tower/configuration.nix), donc le binaire
-  # writePython3Bin ne servait plus a rien et n'etait plus reference nulle
-  # part : il ne faisait qu'evaluer un paquet python a chaque eval de l'hote.
+  # MCP Pangolin: no more package here. The server is mounted by
+  # modules/nixos/mcp-host directly from ./pangolin-mcp.py (entry
+  # `pangolin` of profiles/tower/configuration.nix), so the binary
+  # writePython3Bin was no longer useful and was no longer referenced any
+  # where: it only evaluated a python package on each host eval.
 in {
-  # Option : le token Matrix du bot @hermes (clé hermes_matrix_env de
-  # secrets/hermes-matrix.yml). Les destinataires de ce fichier sops ne
-  # contiennent PAS les clés age de anywhere/laptop : ne l'activer que sur les
-  # hôtes capables de le déchiffrer (tower), sinon l'activation (setupSecrets)
-  # échoue et hermes-agent démarre sans son fichier d'env.
+  # Option: the Matrix token of the @hermes bot (hermes_matrix_env key of
+  # secrets/hermes-matrix.yml). The recipients of this sops file do
+  # NOT contain the age keys of anywhere/laptop: only enable it on
+  # hosts able to decrypt it (tower), otherwise the activation (setupSecrets)
+  # fails and hermes-agent starts without its env file.
   options.services.hermes.enableMatrixToken = lib.mkEnableOption ''
-    le token Matrix du bot @hermes (secrets/hermes-matrix.yml, destinataires = tower uniquement)
+    the Matrix token of the @hermes bot (secrets/hermes-matrix.yml, recipients = tower only)
   '';
 
-  # Option : le token du bot Discord dédié de Hermes (voix + texte natifs, profil
-  # `discord-bridge`). Même contrainte que enableMatrixToken : les destinataires
-  # de secrets/hermes-discord.yml n'incluent pas anywhere/laptop, donc ne
-  # l'activer que sur tower, sinon l'activation (setupSecrets) échoue et
-  # hermes-agent démarre sans son fichier d'env.
+  # Option: the token of Hermes's dedicated Discord bot (native voice + text, profile
+  # `discord-bridge`). Same constraint as enableMatrixToken: the recipients
+  # of secrets/hermes-discord.yml do not include anywhere/laptop, so only
+  # enable it on tower, otherwise the activation (setupSecrets) fails and
+  # hermes-agent starts without its env file.
   options.services.hermes.enableDiscordToken = lib.mkEnableOption ''
-    le token Discord du bot Hermes (secrets/hermes-discord.yml, destinataires = tower uniquement)
+    the Discord token of the Hermes bot (secrets/hermes-discord.yml, recipients = tower only)
   '';
 
-  # Option : lancer le gateway hermes-agent (chat) sur cet hôte. Défaut actif
-  # partout où ce module est importé. Le couper (ex. VPS racknerd, où le chat
-  # est inerte : pas de token Matrix/Discord, modèle DirectSDK sans login
-  # claude) retire le service, ollama, claude-code (unfree) et les MCP, mais
-  # GARDE l'utilisateur hermes + clé SSH + sudo nixos-rebuild (accès remote).
+  # Option: the Gitea MCP server. It reads secrets/gitea-mcp.yml (recipients =
+  # tower only) via GITEA_ACCESS_TOKEN_FILE: importing it elsewhere would
+  # reference an undeclared secret (eval error) or an undecryptable one.
+  options.services.hermes.enableGiteaMcp = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Declare the Gitea MCP server (secrets/gitea-mcp.yml, tower only).";
+  };
+
+  # Option: the Gemini key (secrets/hermes-gemini.yml, recipients = tower
+  # only). True on tower, false on a fallback host that cannot
+  # decrypt this file: without it, setupSecrets fails and nothing is written.
+  options.services.hermes.enableGeminiToken = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = "Declare the Gemini key (secrets/hermes-gemini.yml, tower only).";
+  };
+
+  # Option: launch the hermes-agent gateway (chat) on this host. Default active
+  # everywhere this module is imported. Turning it off (e.g. racknerd VPS, where chat
+  # is inert: no Matrix/Discord token, DirectSDK model without claude
+  # login) removes the service, ollama, claude-code (unfree) and the MCPs, but
+  # KEEPS the hermes user + SSH key + sudo nixos-rebuild (remote access).
   options.services.hermes.enableAgent = lib.mkOption {
     type = lib.types.bool;
     default = true;
-    description = "Lancer le gateway hermes-agent (chat) sur cet hôte.";
+    description = "Launch the hermes-agent gateway (chat) on this host.";
   };
 
-  # hermes n'a plus d'acces direct a nixos-rebuild : uniquement le wrapper
-  # gated (refus de --impure + verrou de serialisation), cf le module.
-  imports = [ ../../modules/nixos/nixos-rebuild-gated ];
+  # CPUs reserved EXCLUSIVELY for hermes.slice (cgroup v2 root partition).
+  # null = no isolation. The value depends on the host hardware (tower:
+  # "12-15", i.e. the 2 physical cores 6 and 7), it cannot be guessed: a
+  # laptop with 12 threads has no cpu12-15, and an invalid value prevents
+  # hermes-agent from starting (AllowedCPUs rejected by systemd). To be declared per
+  # host, then.
+  options.services.hermes.cpuIsolation = lib.mkOption {
+    type = lib.types.nullOr lib.types.str;
+    default = null;
+    example = "12-15";
+    description = "CPUs reserved exclusively for hermes.slice (null = no isolation).";
+  };
+
+  # hermes no longer has direct access to nixos-rebuild: only the wrapper
+  # gated (refuses --impure + serialization lock), see the module.
+  imports = [
+    ../../modules/nixos/nixos-rebuild-gated
+    # Compilation ban for hermes on tower (marc's policy,
+    # 25/11/2026): /etc/hermes-no-compile shims + shell block in
+    # /var/lib/hermes/.bashrc. The module is limited to tower (the deck, though, must
+    # be able to compile).
+    ../../modules/nixos/hermes-no-compile
+  ];
 
   config = lib.mkMerge [
     {
-    # --- utilisateur hermes (accès SSH remote + sudo nixos-rebuild) ---
-    # Défini ici pour TOUS les hôtes, même quand le gateway est coupé
-    # (enableAgent = false) : c'est via cet utilisateur que hermes@tower
-    # déploie et diagnostique les hôtes distants. Le module hermes-agent ne
-    # doit pas le recréer (createUser = false).
+    # --- hermes user (remote SSH access + sudo nixos-rebuild) ---
+    # Defined here for ALL hosts, even when the gateway is off
+    # (enableAgent = false): it is through this user that hermes@tower
+    # deploys and diagnoses remote hosts. The hermes-agent module must
+    # not recreate it (createUser = false).
     users.groups.hermes = {};
     users.users.hermes = {
       isSystemUser = true;
@@ -71,33 +112,44 @@ in {
       home = "/var/lib/hermes";
       createHome = true;
       shell = pkgs.bashInteractive;
-      # Plage subuid/subgid pour podman rootless (agents : conteneurs d'outils
-      # jetables). Sans elle, `podman pull` echoue a l'unpack sur
+      # subuid/subgid range for rootless podman (agents: tool containers
+      # throwaway). Without it, `podman pull` fails at unpack on
       # "potentially insufficient UIDs or GIDs available in user namespace".
-      # 200000 pour ne pas chevaucher la plage de marc (100000:65536).
+      # 200000 to avoid overlapping marc's range (100000:65536).
       subUidRanges = [{ startUid = 200000; count = 65536; }];
       subGidRanges = [{ startGid = 200000; count = 65536; }];
+      # Both agent keys of the mesh: hermes@tower and hermes@laptop. Every host
+      # running this module accepts either one, so the agent can hop from any
+      # machine to any other (tower, laptop) without a separate authorization.
+      # nix-builder@tower: key pair DEDICATED to tower's nix-daemon for
+      # distributed builds (nix.buildMachines of profiles/tower). Authorized here in a
+      # declarative way (so via /etc/ssh/authorized_keys.d/hermes, which sshd reads
+      # even when the home is group-writable): in ~/.ssh/authorized_keys,
+      # sshd StrictModes silently ignored it when /var/lib/hermes was
+      # in 2770 (observed on 25/11/2026 on the laptop -> "Permission denied").
       openssh.authorizedKeys.keys = [
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMTNk2eJYoD87QP/Ajg6iCX/EwYCjVVvoTfTAFqh2qnW hermes@laptop"
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIItlIA6k7s5q58FQBvof2aJ5ZljvA2vhhhRJqap6uVCb nix-builder@tower"
       ];
     };
     services.hermes-agent.createUser = false;
 
-    # python3 SYSTEME (pas celui du venv scelle) : le probe de demarrage SSH de
-    # Hermes Desktop execute `python3 -c ...` sur la machine distante pour lire
-    # ~/.hermes-update-in-progress. Sans python3 dans le PATH ssh, TOUTE connexion
-    # Desktop en SSH echoue avec "Could not prove that the remote Hermes install
-    # is clear for SSH startup." (verifie le 27/09/2026)
-    # claude-code (unfree) n'est ajouté QUE si le gateway tourne sur cet hôte :
-    # il ne sert qu'au provider claude-subscription-directsdk (Matrix).
+    # SYSTEM python3 (not the one from the sealed venv): the SSH startup probe of
+    # Hermes Desktop runs `python3 -c ...` on the remote machine to read
+    # ~/.hermes-update-in-progress. Without python3 in the ssh PATH, ANY
+    # Desktop SSH connection fails with "Could not prove that the remote Hermes install
+    # is clear for SSH startup." (verified on 27/09/2026)
+    # claude-code (unfree) is added ONLY if the gateway runs on this host:
+    # it is only used by the claude-subscription-directsdk provider (Matrix).
     environment.systemPackages = [pkgs.python3] ++ lib.optionals config.services.hermes.enableAgent [claudeCode];
 
-    # --- Accès SSH direct de hermes (tower) vers les autres hôtes qui importent
-    # ce module (laptop, anywhere) : ouvre un shell (et-session + zellij) pour
-    # agir/builder directement sur la machine, sans copier-coller par marc.
-    # Même clé que celle déjà posée pour root sur anywhere (25/09/2026).
+    # --- Direct SSH access from hermes (tower) to the other hosts that import
+    # this module (laptop, anywhere): opens a shell (et-session + zellij) to
+    # act/build directly on the machine, without copy-paste by marc.
+    # Same key as the one already placed for root on anywhere (25/09/2026).
     security.sudo.extraRules = [
-      # marc : acces direct conserve (c'est lui le proprietaire de la machine).
+      # marc: direct access kept (he owns the machine).
       {
         users = ["marc"];
         commands = [
@@ -121,18 +173,18 @@ in {
       }
     ];
 
-    # --- git : nixos-rebuild s'exécute en root même lancé par hermes ---
-    # sans ça, libgit2 refuse d'ouvrir un flake appartenant à marc
+    # --- git: nixos-rebuild runs as root even when launched by hermes ---
+    # without this, libgit2 refuses to open a flake owned by marc
     programs.git = {
       enable = true;
       config.safe.directory = ["/home/marc/git/nixos"];
     };
     }
 
-    # --- gateway hermes-agent (chat) : actif par défaut, coupable par hôte ---
+    # --- hermes-agent gateway (chat): active by default, switchable per host ---
     (lib.mkIf config.services.hermes.enableAgent {
-    # --- déclaration des besoins postgresql ---
-    # nixos fusionne automatiquement ces listes avec celles du module postgres
+    # --- declaration of postgresql needs ---
+    # nixos automatically merges these lists with those of the postgres module
     services.postgresql.ensureDatabases = ["hermes"];
     services.postgresql.ensureUsers = [
       {
@@ -143,124 +195,154 @@ in {
     # --- service hermes ---
     services.hermes-agent = {
       enable = true;
+
+      # Upstream hermes-agent fix (services/hermes/hermes-agent-managed-home.py,
+      # run as postFixup): secure_parent_dir() in hermes_constants.py chmods the
+      # home to 0700 on every credential save (auth.py _save_private_json ->
+      # auth.json), with no managed-install carve-out -- unlike
+      # apply_secure_dir_policy()/ensure_private_store(), which both skip managed
+      # installs by design. On this host the home is group-shared with marc
+      # (0750 + ACLs, cf. profiles/tower/configuration.nix), so every auth.json
+      # save silently re-locked him out; observed live 2026-11-25 02:06:59
+      # (auth save, mode 750 -> 700, gateway unaffected). The fixer rewrites the
+      # installed file so the same carve-outs win (managed installs,
+      # HERMES_HOME_MODE). The anchor must match exactly once or the build fails
+      # loudly: on an upstream bump that moves the code, update the fixer.
+      package =
+        inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs
+          (old: {
+            postFixup = (old.postFixup or "") + ''
+              ${pkgs.python3}/bin/python3 ${./hermes-agent-managed-home.py} $out
+            '';
+          });
+
       environmentFiles =
         [ config.sops.secrets."hermes_env".path ]
         ++ lib.optional config.services.hermes.enableMatrixToken config.sops.secrets."hermes_matrix_env".path
         ++ lib.optional config.services.hermes.enableDiscordToken config.sops.secrets."hermes_discord_env".path
-        # API_SERVER_KEY : la valeur chiffrée est la CLÉ NUE (64 hex), pas un
-        # dotenv « API_SERVER_KEY=... ». Le module ne fait que CONCATÉNER les
-        # environmentFiles dans $HERMES_HOME/.env, donc la clé arrivait seule sur
-        # une ligne sans nom de variable : API_SERVER_KEY restait vide,
-        # l'api_server refuse de démarrer sans clé utilisable (min 16 car.), et
-        # le pont Discord (services/discord-bot -> 127.0.0.1:8642) n'avait plus
-        # de listener. Un template sops-nix préfixe la clé.
+        # API_SERVER_KEY: the encrypted value is the BARE KEY (64 hex), not a
+        # dotenv "API_SERVER_KEY=...". The module only CONCATENATES the
+        # environmentFiles into $HERMES_HOME/.env, so the key arrived alone on
+        # a line without a variable name: API_SERVER_KEY stayed empty,
+        # the api_server refuses to start without a usable key (min 16 chars), and
+        # the Discord bridge (services/discord-bot -> 127.0.0.1:8642) no longer had
+        # a listener. A sops-nix template prefixes the key.
         ++ [ config.sops.templates."hermes-api-server.env".path ]
-        # DEEPSEEK_API_KEY (compte direct), consommée par le provider custom
-        # provider deepseek : sans ce fichier le provider existe mais l'appel part
-        # sans jeton et rend 401.
+        # DEEPSEEK_API_KEY (direct account), consumed by the custom
+        # provider deepseek: without this file the provider exists but the call goes
+        # out without a token and returns 401.
         ++ [
           config.sops.secrets."hermes_deepseek_env".path
-          # MODEL_API_KEY (compte Meta Model API, provider INTÉGRÉ meta-ai).
-          # Même mécanisme, contenu dotenv. La valeur est un PLACEHOLDER inerte
-          # (« MODEL_API_KEY=replace-me ») tant que marc n'a pas posé sa clé :
-          # le provider se résout, mais les appels rendraient 401.
+          # MODEL_API_KEY (Meta Model API account, INTEGRATED meta-ai provider).
+          # Same mechanism, dotenv content. REAL key set on 20/11/2026
+          # (48 chars, LLM_ prefix; catalog muse-spark/wonder/ember + sam-3.1).
+          # Rotation: sops set secrets/meta.yml, never the file by hand.
           config.sops.secrets."hermes_meta_env".path
-        ];
+        ]
+        # GOOGLE_API_KEY (Google AI Studio key, INTEGRATED gemini provider).
+        # dotenv content. Verified on 20/11/2026: 65 models listed by
+        # /v1beta/models, gemini-3.8-flash and gemini-4-argon available.
+        # Rotation: sops set secrets/hermes-gemini.yml, never the file by
+        # hand. OPTIONAL: secrets/hermes-gemini.yml only has the age key of
+        # tower as recipient, so any other host (fallback laptop)
+        # must turn off this flag, otherwise setupSecrets aborts its activation.
+        ++ lib.optional config.services.hermes.enableGeminiToken
+        config.sops.secrets."hermes_gemini_env".path;
       addToSystemPackages = true;
 
-      # venv nix scellé -> deps mem0 (mem0ai) installées au runtime dans une cible durable
+      # sealed nix venv -> mem0 deps (mem0ai) installed at runtime in a durable target
       environment.HERMES_LAZY_INSTALL_TARGET = "/var/lib/hermes/.hermes/lazy-python";
 
-      # --- Matrix : bot @hermes (Element + ponts mautrix) ---
+      # --- Matrix: @hermes bot (Element + mautrix bridges) ---
       environment.MATRIX_HOMESERVER = "https://matrix.marcpartensky.com";
       environment.MATRIX_USER_ID = "@hermes:matrix.marcpartensky.com";
-      # salles du pont = chiffrées E2EE (encryption.default=true côté mautrix-signal)
+      # bridge rooms = E2EE encrypted (encryption.default=true on the mautrix-signal side)
       environment.MATRIX_E2EE_MODE = "required";
-      # salle de pont = 3+ membres (bot du pont inclus) -> pas classée DM :
-      # réponse sans mention, et pas d'auto-thread (les ponts aplatissent les threads)
+      # bridge room = 3+ members (bridge bot included) -> not classified as DM:
+      # reply without mention, and no auto-thread (bridges flatten threads)
       environment.MATRIX_REQUIRE_MENTION = "false";
       environment.MATRIX_AUTO_THREAD = "false";
-      # @marc + son ghost Signal (mautrix-signal)
+      # @marc + his Signal ghost (mautrix-signal)
       environment.MATRIX_ALLOWED_USERS = "@marc:matrix.marcpartensky.com,@signal_ad927dda-4064-48ff-8652-01a0d71005e4:matrix.marcpartensky.com";
 
-      # --- Discord : NATIF DESACTIVE (cf. profiles/tower : enableDiscordToken) ---
-      # Historiquement : bot dedie (voix + texte) sur le profil `discord-bridge`.
-      # Aujourd'hui Discord est servi par services/discord-bot (bot de marc) qui
-      # appelle l'API server du profil default sous /p/discord-bridge/. La
-      # plateforme native reste donc desactivee : son token sops est un
-      # placeholder et discord.py n'est pas dans le venv scelle, ce qui la
-      # faisait apparaitre "down" en permanence. Allowlist conservee pour le jour
-      # ou elle sera reactivee (@marc uniquement, id Discord).
+      # --- Discord: NATIVE DISABLED (see profiles/tower: enableDiscordToken) ---
+      # Historically: dedicated bot (voice + text) on the `discord-bridge` profile.
+      # Today Discord is served by services/discord-bot (marc's bot) which
+      # calls the API server of the default profile under /p/discord-bridge/. The
+      # native platform therefore stays disabled: its sops token is a
+      # placeholder and discord.py is not in the sealed venv, which
+      # made it show up "down" permanently. Allowlist kept for the day
+      # it gets re-enabled (@marc only, Discord id).
       environment.DISCORD_ALLOWED_USERS = "478552571510915072";
 
-      # --- Opus (voix Discord) : voir le bloc "Opus" plus bas, au niveau `config`
-      # (l'env du process se pose sur l'unité systemd, pas via `environment`, qui
-      # n'écrit que $HERMES_HOME/.env) ---
+      # --- Opus (Discord voice): see the "Opus" block below, at the `config` level
+      # (the process env is set on the systemd unit, not via `environment`, which
+      # only writes $HERMES_HOME/.env) ---
 
-      # --- API Server (OpenAI-compatible) : UN SEUL listener pour l'hôte ---
-      # La topologie de Hermes est "un gateway par hôte qui sert tous les profils"
-      # (multiplex). Un profil secondaire qui demande son API server n'obtient PAS
-      # son propre port : le listener du profil default le sert sous
-      # /p/<profil>/... (log gateway : "api_server is served by the default
-      # profile's listener at /p/<profil>/ — not starting a second listener").
-      # C'est ce que consomme le pont Discord : services/discord-bot appelle
+      # --- API Server (OpenAI-compatible): A SINGLE listener per host ---
+      # Hermes's topology is "one gateway per host serving all profiles"
+      # (multiplex). A secondary profile requesting its API server does NOT get
+      # its own port: the default profile's listener serves it under
+      # /p/<profile>/... (gateway log: "api_server is served by the default
+      # profile's listener at /p/<profile>/ - not starting a second listener").
+      # This is what the Discord bridge consumes: services/discord-bot calls
       # http://127.0.0.1:8642/p/discord-bridge/v1/chat/completions.
-      # Bind loopback uniquement, clé obligatoire (sops), jamais ouvert au
-      # firewall, jamais routé par Pangolin.
+      # Bind loopback only, mandatory key (sops), never opened to
+      # the firewall, never routed by Pangolin.
       environment.API_SERVER_ENABLED = "true";
       environment.API_SERVER_PORT = "8642";
 
-      # psycopg2 buildé par nix (évite le wheel manylinux psycopg2-binary)
-      # numpy N'EST PLUS LISTÉ ICI : depuis l'ajout de "stt-whisper" (onnxruntime ->
-      # numpy 2.4.3) le venv scellé le fournit lui-même, et le build du paquet hermes
-      # ÉCHOUE si un paquet de extraPythonPackages doublonne le venv ("plugin package
-      # \"numpy\" collides with a package in hermes sealed venv"). Le numpy du venv
-      # (buildé par nix) sert aussi aux lazy-installs runtime : wheel manylinux cassée
-      # sur NixOS (libstdc++.so.6 absent), d'où l'ancienne présence ici.
-      # ATTENTION : les paquets DOIVENT être de l'interpréteur du venv. La famille
-      # python est pilotée par pm/lock.json (nix/pythonLock.nix, ici 3.14) ; un
-      # paquet d'une autre famille est filtré silencieusement par hasPythonModule
-      # -> PYTHONPATH sans le paquet. package.python.pkgs suit le venv.
+      # psycopg2 built by nix (avoids the manylinux psycopg2-binary wheel)
+      # numpy is NO LONGER LISTED HERE: since the addition of "stt-whisper" (onnxruntime ->
+      # numpy 2.4.3) the sealed venv provides it itself, and the build of the hermes package
+      # FAILS if a package of extraPythonPackages duplicates the venv ("plugin package
+      # "numpy" collides with a package in hermes sealed venv"). The venv's numpy
+      # (built by nix) also serves runtime lazy-installs: manylinux wheel broken
+      # on NixOS (libstdc++.so.6 missing), hence its former presence here.
+      # WARNING: the packages MUST be from the venv interpreter. The
+      # python family is driven by pm/lock.json (nix/pythonLock.nix, here 3.14); a
+      # package from another family is silently filtered by hasPythonModule
+      # -> PYTHONPATH without the package. package.python.pkgs follows the venv.
       extraPythonPackages = with config.services.hermes-agent.package.python.pkgs; [ psycopg2 ];
 
-      # groupes de deps du pyproject résolus par uv DANS le venv scellé (pas de
-      # PYTHONPATH) :
-      # - "matrix" : mautrix[encryption] + python-olm (libolm embarqué)
-      #   -> adaptateur Matrix du gateway (plugins/platforms/matrix)
-      # - "edge-tts" : SDK edge-tts (7.2.7, pur python) du provider TTS gratuit
-      #   par défaut. Sans lui, l'outil tts échoue avec "No TTS provider
-      #   available" (le venv nix ne contient aucun moteur TTS).
-      # - "stt-whisper" : faster-whisper (transcription locale, gratuite, CPU) pour
-      #   les vocaux entrants. Sans lui le gateway répond "voice message could not
-      #   be transcribed automatically" et le cas d'usage "je parle dans mes
-      #   écouteurs depuis Element" ne marche pas.
-      # - "anthropic" : paquet du provider natif `anthropic`, celui des lignes du
-      #   sélecteur de modèle SANS suffixe [1m] (claude-opus-5-5, claude-opus-5,
-      #   claude-sonnet-5). Sans lui, une session ouverte sur une de ces lignes
-      #   meurt en agent_init_failed ("The 'anthropic' package is required for the
-      #   Anthropic provider"). Les lignes AVEC [1m] passent par le provider
-      #   claude-subscription-directsdk (CLI `claude`) et n'en ont pas besoin.
-      #   Auth de ce provider natif : pas de clé API, agent/anthropic_credentials.py
-      #   prend l'OAuth de l'abonnement dans ~/.claude/.credentials.json (refresh et
-      #   réécriture gérés par Hermes) ou un grant Hermes
+      # pyproject dep groups resolved by uv INSIDE the sealed venv (no
+      # PYTHONPATH):
+      # - "matrix": mautrix[encryption] + python-olm (embedded libolm)
+      #   -> gateway Matrix adapter (plugins/platforms/matrix)
+      # - "edge-tts": edge-tts SDK (7.2.7, pure python) of the free TTS provider
+      #   by default. Without it, the tts tool fails with "No TTS provider
+      #   available" (the nix venv contains no TTS engine).
+      # - "stt-whisper": faster-whisper (local transcription, free, CPU) for
+      #   incoming voice messages. Without it the gateway replies "voice message could not
+      #   be transcribed automatically" and the use case "I speak into my
+      #   earphones from Element" does not work.
+      # - "anthropic": package of the native `anthropic` provider, the one for the lines of the
+      #   model selector WITHOUT the [1m] suffix (claude-opus-5-5, claude-opus-5,
+      #   claude-sonnet-5). Without it, a session opened on one of these lines
+      #   dies with agent_init_failed ("The 'anthropic' package is required for the
+      #   Anthropic provider"). The lines WITH [1m] go through the
+      #   claude-subscription-directsdk provider (CLI `claude`) and do not need it.
+      #   Auth of this native provider: no API key, agent/anthropic_credentials.py
+      #   takes the subscription OAuth from ~/.claude/.credentials.json (refresh and
+      #   rewrite handled by Hermes) or a Hermes grant
       #   (hermes auth add anthropic --type oauth).
       extraDependencyGroups = ["matrix" "edge-tts" "stt-whisper" "anthropic"];
 
-      # claude-code CLI sur le PATH du service : requis par le plugin officiel
-      # claude-subscription-directsdk (provider sur abonnement Claude Pro/Max,
-      # login OAuth via `claude`, pas de clé API)
+      # claude-code CLI on the service PATH: required by the official
+      # claude-subscription-directsdk plugin (provider on Claude Pro/Max subscription,
+      # OAuth login via `claude`, no API key)
       extraPackages = [
         claudeCode
-        # node/npm : requis par le MCP GitHub (npx -y @modelcontextprotocol/server-github)
+        # node/npm: required by the GitHub MCP (npx -y @modelcontextprotocol/server-github)
         pkgs.nodejs_22
-        # binutils : donne `ld` et `objdump` sur le PATH, dont dépend le repli de
-        # ctypes.util.find_library("opus") pour libopus (voix Discord). Voir le
-        # bloc "Opus" plus bas.
+        # binutils: provides `ld` and `objdump` on the PATH, on which the fallback of
+        # ctypes.util.find_library("opus") for libopus depends (Discord voice). See the
+        # "Opus" block below.
         pkgs.binutils
-        # ffmpeg : requis par la voix Discord des DEUX côtés (conversion du TTS en
-        # PCM 48 kHz pour la sortie, et décodage côté réception). Sans lui dans le
-        # PATH du service, `hermes doctor` signale "install out of sync" et la
-        # lecture en vocal échoue.
+        # ffmpeg: required by Discord voice on BOTH sides (conversion of TTS to
+        # PCM 48 kHz for output, and decoding on the receiving side). Without it in the
+        # service PATH, `hermes doctor` reports "install out of sync" and
+        # voice playback fails.
         pkgs.ffmpeg
       ];
       # settings.model = {
@@ -268,24 +350,55 @@ in {
       #   default = "anthropic/claude-sonnet-4";
       # };
       settings = {
-        # --- Limites de la mémoire persistante ---
-        # La mémoire (MEMORY.md, injectée à CHAQUE tour) est plafonnée par défaut
-        # à 2200 chars (~800 tokens) et le profil utilisateur (USER.md) à 1375.
-        # Valeurs relevées dans le code (tools/memory_tool.py) : les clés lues
-        # sont memory_char_limit / user_char_limit dans la section `memory`.
-        # Le savoir procédural reste dans les skills (chargés à la demande) ;
-        # ces limites ne servent qu'aux faits valables dans toute session.
+        # --- Persistent memory limits ---
+        # Memory (MEMORY.md, injected on EVERY turn) is capped by default
+        # at 2200 chars (~800 tokens) and the user profile (USER.md) at 1375.
+        # Values read from the code (tools/memory_tool.py): the keys read
+        # are memory_char_limit / user_char_limit in the `memory` section.
+        # Procedural knowledge stays in the skills (loaded on demand);
+        # these limits only serve facts valid across any session.
         memory = {
-          memory_char_limit = 6000; # ~2200 tokens, contre 2200 chars par défaut
-          user_char_limit = 3000; # ~1100 tokens, contre 1375 par défaut
+          memory_char_limit = 6000; # ~2200 tokens, vs 2200 chars by default
+          user_char_limit = 3000; # ~1100 tokens, vs 1375 by default
         };
 
-        # --- Provider custom Kimi/Moonshot ---
+        # --- hermes-tools MCP: the transport lives in the file, not in the option ---
+        # The `services.hermes-agent.mcpServers.<name>` option is a typed submodule
+        # that does NOT expose a `transport` key (only command/args/env/url/
+        # headers/timeout/tools). But tower's mcp-host daemon only speaks SSE
+        # (its Hermes runtime has no mcp.client.streamable_http): without this key,
+        # a `url` entry is attempted as streamable HTTP and fails with 404.
+        # `settings` is copied as-is into config.yaml, where the key is valid;
+        # the merge at activation keeps the file's existing keys, so
+        # this one survives even without being in the typed option.
+        mcp_servers.hermes-tools.transport = "sse";
+
+        # --- Fast sessions: cap the context replayed on each turn ---
+        # Measurement of 25/11/2026: `threshold: 0.5` applies to the
+        # declared `context_length` of the model, i.e. 0.5 x 1 048 576 = 524k
+        # tokens. None of marc's chats reach it (110k to 205k observed), so
+        # compression NEVER triggered and each turn re-paid for the whole
+        # history (2.4 to 8.0 s per API call, 166 calls for a single
+        # investigation turn).
+        #   - `threshold_tokens` is a CAP on the computed threshold (the code
+        #     takes the minimum of the two, with a hard floor at 64k). 150k keeps
+        #     a comfortable margin above the observed sessions.
+        #   - `proactive_prune_tokens` (0 = disabled upstream) prunes large
+        #     tool results (> proactive_prune_min_result_chars = 8000
+        #     chars) once the context is above the threshold: removes the
+        #     "a 68 KB file read once, re-sent on every turn for
+        #     ever" without an extra LLM call.
+        compression = {
+          threshold_tokens = 150000;
+          proactive_prune_tokens = 60000;
+        };
+
+        # --- Kimi/Moonshot custom provider ---
         custom_providers = [
           {
             name = "kimi-k3-global";
             base_url = "https://api.moonshot.ai/v1";
-            key_env = "KIMI_API_KEY"; # <- la var d'env qui porte ta clé
+            key_env = "KIMI_API_KEY"; # <- the env var that carries your key
             api_mode = "chat_completions";
             model = "kimi-k3";
             extra_body = {
@@ -299,16 +412,16 @@ in {
             };
           }
 
-          # --- Provider custom : llama.cpp + llama-swap du portable ---
-          # Le portable (RTX 3060 6 Go) sert plusieurs GGUF sur UN seul port
-          # compatible OpenAI, joint par le tailnet (100.64.0.4:8080). Serveur
-          # local sans cle : pas de key_env, Hermes substitue « no-key-required ».
-          # qwen3.5-4b est le seul modele confortable dans Hermes (64k, 20-40
-          # tok/s mesures, appels d'outils corrects) ; qwen3.5-2b est minuscule
-          # et rapide ; ornith-9b plafonne a 16k et ~5 tok/s (interface web
-          # de llama-swap seulement). Cette entree doit vivre ICI : une entree
-          # ajoutee a chaud dans config.yaml est ecrasee a l'activation (le
-          # merge Nix remplace les listes, il ne les fusionne pas).
+          # --- Custom provider: llama.cpp + llama-swap of the laptop ---
+          # The laptop (RTX 3060 6 GB) serves several GGUF on A SINGLE port
+          # OpenAI-compatible, reached via the tailnet (100.64.0.4:8080). Local
+          # server without a key: no key_env, Hermes substitutes "no-key-required".
+          # qwen3.5-4b is the only comfortable model in Hermes (64k, 20-40
+          # tok/s measured, correct tool calls); qwen3.5-2b is tiny
+          # and fast; ornith-9b caps at 16k and ~5 tok/s (web interface
+          # of llama-swap only). This entry must live HERE: an entry
+          # added hot into config.yaml is overwritten at activation (the
+          # Nix merge replaces lists, it does not merge them).
           {
             name = "laptop-llama";
             base_url = "http://100.64.0.4:8080/v1";
@@ -318,58 +431,86 @@ in {
               "qwen3.5-4b".context_length = 65536;
               "qwen3.5-2b".context_length = 65536;
               "ornith-9b".context_length = 16384;
+              # NO qwen3-8b-abl-32k here, and not by mistake: Qwen3-8B has
+              # n_ctx_train = 40960, so it can NEVER reach the minimum
+              # of 64 000 tokens required by Hermes (verified on 15/11:
+              # "ValueError: Model qwen3-8b-abl-32k has a context window of
+              # 32,768 tokens, which is below the minimum 64,000 required by
+              # Hermes Agent"). Declaring it at 32k fails the turn;
+              # declaring it at 64k would make Hermes lie about a window that the
+              # server truncates. It stays in llama-swap.yaml for the
+              # web interface of llama-swap, not for Hermes.
             };
           }
 
-          # --- Provider custom : Qwen3.5 4B abliterated sur le portable ---
-          # Second endpoint du portable, distinct de llama-swap (100.64.0.4:8080,
-          # service SYSTEME `llm-server` en Vulkan) : celui-ci est notre propre
-          # llama-server compile en CUDA sm_86, 128k de contexte, KV q4_0.
-          # Verifie : prompt de 36 640 tokens avec retrieval exact, pp ~560-680
-          # tok/s, 12-27 tok/s en generation, 4.8-5.1 Go de VRAM sur 6.
-          # Mesure Hermes reelle : 49 058 tokens d'entree pour un one-shot, donc
-          # 8k etait inutilisable et 32k juste ; 128k laisse la marge.
-          # Unite cote portable : ~/.config/systemd/user/llama-abl.service.
+          # --- Custom provider: Qwen3.5 4B abliterated on the laptop ---
+          # Same endpoint as laptop-llama (100.64.0.4:8080), NOT a second
+          # server: the former user unit llama-abl.service (port 8083) held
+          # 4.9 GB of the 6 GB of VRAM permanently. llama-swap could not
+          # unload it, so any other model failed at load with
+          # cudaMalloc OOM and Hermes received "upstream command exited
+          # prematurely" (HTTP 500). The unit is removed, the model lives in
+          # llama-swap.yaml (qwen3.5-4b-abl, 96k, KV q4_0, all in VRAM).
+          # Measurements of 15/11 on this endpoint: 676 tok/s of prefill and 16 tok/s
+          # of decode on a 36 844 token prompt, 4.6 GB of VRAM.
+          # 96k and not 128k: at 131k the KV no longer fits with the compute
+          # buffers and -fit offloads layers to the CPU (decode drops to
+          # 3 tok/s). The largest entry observed on the Hermes side is 49k.
           {
             name = "laptop-abl";
-            base_url = "http://100.64.0.4:8083/v1";
+            base_url = "http://100.64.0.4:8080/v1";
             api_mode = "chat_completions";
             model = "qwen3.5-4b-abl";
             models = {
-              "qwen3.5-4b-abl".context_length = 131072;
+              "qwen3.5-4b-abl".context_length = 98304;
             };
           }
 
-          # (DeepSeek direct : PAS de provider custom ici, le provider intégré
-          # `deepseek` couvre le cas. Il porte le ProviderProfile upstream qui
-          # émet `extra_body.thinking` explicitement et mappe l'effort sur
-          # `reasoning_effort` : sans ça l'API V4 laisse thinking ON par défaut
-          # et exige de renvoyer `reasoning_content` au tour suivant (HTTP 400
-          # après le premier appel d'outil). Un provider custom ne reçoit pas ce
-          # profil, il ne servait qu'à déclarer les métadonnées 1 M / vision.)
+          # (DeepSeek direct: NO custom provider here, the INTEGRATED
+          # `deepseek` provider covers the case. It carries the upstream ProviderProfile which
+          # emits `extra_body.thinking` explicitly and maps the effort to
+          # `reasoning_effort`: without it the V4 API leaves thinking ON by default
+          # and requires sending `reasoning_content` back on the next turn (HTTP 400
+          # after the first tool call). A custom provider does not receive this
+          # profile, it only served to declare the 1 M / vision metadata.)
         ];
 
-        # --- Modèle par défaut : DeepSeek v4.1 Flash, servi EN DIRECT ---
-        # Politique marc du 11/11/2026 : le compte DeepSeek direct remplace
-        # OpenRouter pour le modele par defaut (solde recharge suivi sur
-        # usage.marcpartensky.com, hors heures pleines deux fois moins cher).
-        # Provider = le slug INTÉGRÉ `deepseek` (pas un custom) : une seule
-        # entrée DeepSeek dans le picker, et le ProviderProfile upstream gère
-        # le contrat thinking de l'API V4. Le slug custom `deepseek-direct`
-        # faisait doublon avec la même paire de modèles.
-        # La chaine de secours juste en dessous reste OpenRouter puis le
-        # Nemotron gratuit : un solde DeepSeek a zero ne coupe pas l'agent.
+        # --- Default model: DeepSeek v4.1 Flash, served DIRECT ---
+        # marc's policy of 11/11/2026: the direct DeepSeek account replaces
+        # OpenRouter for the default model (top-up balance tracked on
+        # usage.marcpartensky.com, off-peak twice as cheap).
+        # Provider = the INTEGRATED `deepseek` slug (not a custom one): a single
+        # DeepSeek entry in the picker, and the upstream ProviderProfile handles
+        # the thinking contract of the V4 API. The custom `deepseek-direct` slug
+        # duplicated the same pair of models.
+        # The fallback chain just below stays OpenRouter (pinned to
+        # endpoints without training, see provider_routing) then the
+        # Nemotron: a zero DeepSeek balance does not cut off the agent.
+        # 25/11/2026: the switch of the default to the aggregator made last
+        # night was cancelled (marc: "the default is now
+        # openrouter, fix it"). The privacy hardening of the day before is
+        # kept, but it applies to the OpenRouter ROUTE (fallback), not to the
+        # default: changing the default is a cost decision, separate.
         model = {
           provider = "deepseek";
           default = "deepseek-flash";
-          # base_url declaree EXPLICITEMENT : le fichier en place gardait
-          # https://openrouter.ai/api/v1 du defaut precedent, et un base_url
-          # perime avec un nom de modele DeepSeek ferait un 400 silencieux
-          # (bascule sur la chaine de secours sans que ca se voie).
+          # base_url declared EXPLICITLY: the file in place kept
+          # https://openrouter.ai/api/v1 from the previous default, and a stale
+          # base_url with a DeepSeek model name would make a silent 400
+          # (switch to the fallback chain without it being visible).
           base_url = "https://api.deepseek.com/v1";
         };
 
-        # --- Chaîne de secours : DeepSeek en premier, Nemotron en secours ---
+        # --- Fallback chain: OpenRouter (hardened route) then Nemotron ---
+        # The first fallback is the same model served by OpenRouter, pinned
+        # by `provider_routing.models` to the US endpoints without training
+        # (DeepInfra, River, CoreWeave...). It is this route that carries the
+        # privacy hardening of 24/11; it is the fallback, not the default.
+        # The `:free` Nemotron was replaced by its paid endpoint: the
+        # free endpoints are in the "retention + training" tier and the
+        # `data_collection = "deny"` filter rejects them (verified: HTTP 404
+        # "No endpoints found matching your data policy (Free model training)"),
+        # which made it dead code.
         fallback_providers = [
           {
             provider = "openrouter";
@@ -380,26 +521,87 @@ in {
           }
           {
             provider = "openrouter";
-            model = "nvidia/nemotron-3-ultra-550b-a55b:free";
+            model = "nvidia/nemotron-3-ultra-550b-a55b";
+            context_length = 262144;
           }
         ];
 
+        # --- Privacy: never route to a provider that stores prompts for training ---
+        # `data_collection = "deny"` drops OpenRouter's retention/training tier
+        # (verified against the live API: with this filter the `:free` Nemotron
+        # endpoint answers 404 "No endpoints found matching your data policy",
+        # while the primary and the paid Nemotron stay routable). `ignore` drops
+        # providers whose headquarters or datacenters published on
+        # /api/v1/providers are in the PRC, so prompt content does not land on
+        # Chinese infrastructure. Hermes forwards both fields on every
+        # OpenRouter request (provider_routing: sort/only/ignore/order/
+        # require_parameters/data_collection). It does NOT forward `zdr`, so
+        # Zero Data Retention stays a dashboard setting:
+        # https://openrouter.ai/settings/privacy
+        provider_routing = {
+          data_collection = "deny";
+          ignore = [
+            "deepseek" # CN
+            "tencent" # CN
+            "baidu" # CN
+            "nex-agi" # CN
+            "xiaomi" # CN
+            "streamlake" # CN
+            "stepfun" # CN
+            "alibaba" # SG, datacenters SG + CN
+            "siliconflow" # SG
+          ];
+          # --- Per-model pin for the OpenRouter route (first fallback) ---
+          # 98.18% of input tokens over the last 30 days were cache reads
+          # (6.674e9 hit vs 1.239e8 miss), so the cache-read price dominates and
+          # a `sort = "price"` pick is a trap: Wafer's $0.051/M input looks
+          # cheapest, but its $0.018/M cache read is 6x DeepSeek's and 5x
+          # DeepInfra's. Repricing the same 30-day mix (2026-11-24 prices, all
+          # `training = false` + ZDR tier endpoints):
+          #   DeepInfra $51.17 | River $52.12 | CoreWeave $55.55 | Relace $57.01
+          #   Cohere $73.38 | Crusoe $88.23 | InferenceNet $92.70
+          #   DeepSeek direct off-peak $65.15 | peak $130.30 | recorded spend $71.23
+          #   Wafer $151.55 | Cloudflare $252.45
+          models = {
+            "deepseek/deepseek-v4.1-flash" = {
+              only = [
+                "deepinfra" # US, fp8 flex
+                "river" # US HQ, EU datacenters (FI/IS)
+                "coreweave" # US, fp8
+                "relace" # fp4
+                "cohere" # US, fp8
+                "crusoe" # US, fp8
+                "inference-net" # US, fp8
+              ];
+              order = [
+                "deepinfra"
+                "river"
+                "coreweave"
+                "relace"
+                "cohere"
+                "crusoe"
+                "inference-net"
+              ];
+            };
+          };
+        };
+
         agent = {
           reasoning_effort = "max";
-          # Politique marc du 25/09/2026 : le niveau suit le modèle.
-          # DeepSeek Flash -> high ; Opus 5 -> max ; Sonnet 5 -> high.
-          # Deux clés par famille : forme complète (deepseek/... , modèle par défaut)
-          # et forme nue ([1m] des salons, route de secours) ; la résolution est
-          # tolérante aux variantes de nommage.
+          # marc's policy of 25/09/2026: the level follows the model.
+          # DeepSeek Flash -> high; Opus 5 -> max; Sonnet 5 -> high.
+          # Two keys per family: full form (deepseek/... , default model)
+          # and bare form ([1m] of the rooms, fallback route); the resolution is
+          # tolerant of naming variants.
           reasoning_overrides = {
             "deepseek/deepseek-v4.1-flash" = "high";
             "deepseek-v4.1-flash" = "high";
-            # Memes niveaux pour les noms servis par l'API DeepSeek directe
-            # (provider intégré `deepseek`). V4-Pro est le gros modele :
-            # max, comme Opus 5.
+            # Same levels for the names served by the direct DeepSeek API
+            # (INTEGRATED `deepseek` provider). V4-Pro is the big model:
+            # max, like Opus 5.
             "deepseek-flash" = "high";
             "deepseek-v4-pro" = "max";
-            "nvidia/nemotron-3-ultra-550b-a55b:free" = "max";
+            "nvidia/nemotron-3-ultra-550b-a55b" = "max";
             "nemotron-3-ultra" = "max";
             "claude-opus-5-5[1m]" = "max";
             "claude-opus-5-5" = "max";
@@ -410,62 +612,100 @@ in {
           };
         };
 
-        # --- Coût estimé dans la status bar CLI/TUI ---
-        # interface = "tui" : le REPL classique n'écrit AUCUN titre de terminal
-        # (aucun module terminal_title dans la version installée), alors que le TUI
-        # publie son titre en OSC 0/1/2 : "<etat> <session> · <modele> · <cwd>".
-        # C'est ce titre que herdr lit pour l'etat (blocked/working/done) ET pour
-        # afficher le modele de chaque pane dans sa sidebar (modules/nixos/herdr).
-        # Sans ce reglage, les panes hermes n'exposent pas leur modele a herdr.
+        # --- Estimated cost in the CLI/TUI status bar ---
+        # interface = "tui": the classic REPL writes NO terminal title
+        # (no terminal_title module in the installed version), whereas the TUI
+        # publishes its title in OSC 0/1/2: "<state> <session> - <model> - <cwd>".
+        # It is this title that herdr reads for the state (blocked/working/done) AND to
+        # display the model of each pane in its sidebar (modules/nixos/herdr).
+        # Without this setting, the hermes panes do not expose their model to herdr.
         display = {
           show_cost = true;
           interface = "tui";
-          # Thème Catppuccin Mocha (dark) + accent Lavender, demandé par marc
-          # le 26/09/2026. Fichier de palette : skins/catppuccin-dark-lavender.yaml
-          # sous /var/lib/hermes/.hermes/skins/ (pas géré par nix, écrit au runtime).
-          skin = "catppuccin-dark-lavender";
+          # "Claude Code" theme (neutral grays + lavender accent), requested by
+          # marc on 21/11/2026 to remove the lavender interface from the desktop.
+          # The palette YAML lives in this repo and is copied at activation
+          # (see tmpfiles/activation script): it also carries the customCSS of the
+          # desktop surfaces (composer/bubbles/rounded cards).
+          skin = "claude-code";
         };
 
-        # Thème du DASHBOARD web (dash.marcpartensky.com) : même palette que le
-        # skin ci-dessus. Le dashboard n'utilise PAS display.skin (c'est le CLI/TUI
-        # et le desktop) : il lit `dashboard.theme`, qui doit nommer un thème
-        # utilisateur découvert dans $HERMES_HOME/dashboard-themes/*.yaml.
-        # Ce YAML est posé déclarativement par tmpfiles (voir plus bas), d'où le
-        # nom identique des deux côtés : le renommer aux deux endroits.
+        # Web DASHBOARD theme (dash.marcpartensky.com): same palette as the
+        # skin above. The dashboard does NOT use display.skin (that is the CLI/TUI
+        # and the desktop): it reads `dashboard.theme`, which must name a user
+        # theme discovered in $HERMES_HOME/dashboard-themes/*.yaml.
+        # This YAML is set declaratively by tmpfiles (see below), hence the
+        # identical name on both sides: rename it in both places.
         dashboard = {
           theme = "catppuccin-mocha-lavender";
+
+          # --- Zitadel SSO: a SECOND door, backed by a role -----------
+          # The `basic` password stays in place for marc (no change
+          # for him); this provider adds a "Self-Hosted OIDC" button to the
+          # login page, for people who do not have the shared
+          # password. The entry right is a ZITADEL ROLE, not a list
+          # of emails: the "Hermes Webapp" app (client_id below, type
+          # User Agent = public PKCE without secret, EXACT redirect
+          # https://hermes.marcpartensky.com/auth/callback) lives in the Zitadel
+          # project "Hermes" (400179685910118700) which carries
+          # project_role_check=true: Zitadel refuses to authenticate an account
+          # that has NO role on this project, so only a holder of the
+          # `hermes` role gets an id_token. Removing the role is enough to cut
+          # access, without a rebuild.
+          # `idTokenUserinfoAssertion` is ENABLED on the app on the Zitadel side: this
+          # provider reads ONLY the id_token (never /userinfo), without it email and
+          # name are absent and the session is anonymous.
+          # Read at gateway STARTUP: a switch sets the config, the
+          # SSO button appears at the next start of hermes-agent.
+          oauth.self_hosted = {
+            issuer = "https://auth.marcpartensky.com";
+            client_id = "400179699633946924";
+            # Zitadel scopes, all measured on the instance (18/11/2026):
+            #   openid profile email                        -> basic identity
+            #   urn:zitadel:iam:org:id:<org>                -> scopes the login to the default org
+            #                                                  and sets
+            #                                                  `urn:zitadel:iam:org:id`
+            #   urn:zitadel:iam:org:roles:id:<org>          -> returns only the
+            #                                                  roles of that org
+            #   urn:zitadel:iam:user:resourceowner          -> id/name/domain of
+            #                                                  the account's org in
+            #                                                  the token
+            # The roles themselves come from `idTokenRoleAssertion` (set on
+            # the app): claim `urn:zitadel:iam:org:project:roles`.
+            scopes = "openid profile email urn:zitadel:iam:org:id:314403750724829190 urn:zitadel:iam:org:roles:id:314403750724829190 urn:zitadel:iam:user:resourceowner";
+          };
         };
 
-        # --- Approbations de commandes : plus aucune validation humaine ---
-        # Politique marc du 13/10/2026 : le shell ne demande plus rien avant
-        # d'executer une commande. "off" est le troisieme bypass du gate
-        # (tools/approval.py, is_approval_bypass_active_for_session : yolo OU
-        # /yolo de session OU mode == off) et il est teste AVANT les branches
-        # cron / single_query / unattended, donc il coupe aussi les refus par
-        # defaut en contexte headless (cron_mode etc. deviennent sans objet).
-        # Les outils web (web_search / web_extract) ne passaient deja par
-        # aucun prompt : cette cle ne concerne que les commandes shell
-        # dangereuses (rm -r, chmod 777, bash -c, curl | sh, systemctl...).
-        # Restent actifs malgre "off" : le blocklist hardline code-shippe
-        # (tools/approval.py::UNRECOVERABLE_BLOCKLIST) et les regles
-        # approvals.deny (vides ici) — aucun override possible.
+        # --- Command approvals: no human validation anymore ---
+        # marc's policy of 13/10/2026: the shell no longer asks anything before
+        # executing a command. "off" is the third bypass of the gate
+        # (tools/approval.py, is_approval_bypass_active_for_session: yolo OR
+        # session /yolo OR mode == off) and it is tested BEFORE the
+        # cron / single_query / unattended branches, so it also cuts the default
+        # refusals in headless context (cron_mode etc. become moot).
+        # The web tools (web_search / web_extract) already went through no
+        # prompt: this key only concerns dangerous shell
+        # commands (rm -r, chmod 777, bash -c, curl | sh, systemctl...).
+        # Still active despite "off": the hardline blocklist code-shipped
+        # (tools/approval.py::UNRECOVERABLE_BLOCKLIST) and the
+        # approvals.deny rules (empty here) - no override possible.
         approvals = {
           mode = "off";
         };
 
-        # --- Télémétrie « shared metrics » : réponse explicite « Non merci » ---
-        # Marc ne partage pas les stats (23/10/2026). L'offre (bandeau Desktop,
-        # bannière dashboard) est considérée répondue dès qu'UNE des deux clés
-        # est écrite EXPLICITEMENT dans config.yaml — le défaut (tout
-        # désactivé) n'est PAS une réponse, donc la question revient à chaque
-        # session tant que ces clés sont absentes.
-        #   enabled=false + send=false  -> réponse « Non merci »
-        #   offer_version=2             -> évite la « re-ask » unique prévue
-        #     pour les réponses « off » antérieures au fix type-ahead
-        #     (consent_state : une réponse off sans offer_version=2 est
-        #     reposée une fois). Avec ces trois clés, decided=true partout.
-        # Aucune donnée n'est collectée ni envoyée avec ces valeurs ; pour
-        # changer d'avis : éditer ce bloc + rebuild (install nix-managed).
+        # --- "shared metrics" telemetry: explicit "No thanks" answer ---
+        # Marc does not share stats (23/10/2026). The offer (Desktop banner,
+        # dashboard banner) is considered answered as soon as ONE of the two keys
+        # is written EXPLICITLY in config.yaml - the default (all
+        # disabled) is NOT an answer, so the question comes back at each
+        # session as long as these keys are absent.
+        #   enabled=false + send=false  -> "No thanks" answer
+        #   offer_version=2             -> avoids the single "re-ask" planned
+        #     for "off" answers prior to the type-ahead fix
+        #     (consent_state: an off answer without offer_version=2 is
+        #     re-asked once). With these three keys, decided=true everywhere.
+        # No data is collected or sent with these values; to
+        # change your mind: edit this block + rebuild (nix-managed install).
         telemetry = {
           shared_metrics = {
             enabled = false;
@@ -474,37 +714,43 @@ in {
           };
         };
 
-        # --- Plugin herdr : integre hermes a herdr, declarativement ---
-        # `extraPlugins` symlinke le paquet dans /var/lib/hermes/.hermes/plugins/
-        # (sous le nom nix-managed-<nom>) ; le code du plugin est vendorise dans
-        # services/hermes/plugins/herdr-agent-state (recopie de ce que produit
-        # `herdr integration install hermes`), donc plus d'install imperative.
-        # Ce plugin rapporte l'ID DE SESSION a herdr (herdr pane
-        # report-agent-session), ce qui permet a herdr de relancer le pane dans sa
+        # --- herdr plugin: integrates hermes into herdr, declaratively ---
+        # `extraPlugins` symlinks the package into /var/lib/hermes/.hermes/plugins/
+        # (under the name nix-managed-<name>); the plugin code is vendored in
+        # services/hermes/plugins/herdr-agent-state (a copy of what
+        # `herdr integration install hermes` produces), so no more imperative install.
+        # This plugin reports the SESSION ID to herdr (herdr pane
+        # report-agent-session), which lets herdr relaunch the pane in its
         # conversation (`hermes --resume <id>`, option [session]
         # resume_agents_on_restore).
-        # LIMITE : le plugin sort immediatement si HERDR_ENV != 1 ou sans
-        # HERDR_PANE_ID, et il parle au socket herdr de MARC
-        # (~/.config/herdr/herdr.sock) : il ne peut donc fonctionner que si hermes
-        # tourne dans le pane avec l'env herdr et sous le meme utilisateur que le
-        # serveur herdr. Le lancement habituel (`sudo su -l hermes hermes chat`)
-        # efface cet env -> plugin inerte mais sans effet de bord.
-        # `matrix-loop-emoji` : emoji 🔄 en fin de chaque message Matrix, et une
-        # reaction 🔄 d'un utilisateur autorise sur un message du bot renouvelle
-        # la session (chemin de /new, sans confirmation). Code vendorise dans
-        # services/hermes/plugins/matrix-loop-emoji et pose par hermesHomeFiles.
+        # LIMIT: the plugin exits immediately if HERDR_ENV != 1 or without
+        # HERDR_PANE_ID, and it talks to MARC's herdr socket
+        # (~/.config/herdr/herdr.sock): it can therefore only work if hermes
+        # runs in the pane with the herdr env and under the same user as the
+        # herdr server. The usual launch (`sudo su -l hermes hermes chat`)
+        # clears this env -> plugin inert but with no side effect.
+        # `matrix-loop-emoji`: 🔄 emoji at the end of each Matrix message, and a
+        # 🔄 reaction from an authorized user on a bot message renews
+        # the session (path of /new, without confirmation). Code vendored in
+        # services/hermes/plugins/matrix-loop-emoji and placed by hermesHomeFiles.
+        # `turn-scoped-desktop-lease` : a Desktop chat's active-session lease is
+        # released at turn end instead of being held for the whole life of the
+        # tab, so a second Hermes window can take the chat over instead of
+        # "This chat is open in another Hermes window/terminal" until the first
+        # window idles out. Code vendored in
+        # services/hermes/plugins/turn-scoped-desktop-lease.
         plugins = {
-          enabled = [ "herdr-agent-state" "matrix-loop-emoji" ];
+          enabled = [ "herdr-agent-state" "matrix-loop-emoji" "turn-scoped-desktop-lease" ];
         };
 
-        # --- TTS : Edge TTS (gratuit, sans clé API) ---
-        # Voix française par défaut (Hermes répond en français). Le SDK est fourni
-        # par extraDependencyGroups = "edge-tts" ci-dessus ; sans ce groupe l'outil
-        # tts échoue. Autres voix fr : fr-FR-HenriNeural (masculin),
+        # --- TTS: Edge TTS (free, without API key) ---
+        # French voice by default (Hermes replies in French). The SDK is provided
+        # by extraDependencyGroups = "edge-tts" above; without this group the
+        # tts tool fails. Other fr voices: fr-FR-HenriNeural (male),
         # fr-FR-VivienneMultilingualNeural, fr-FR-RemyMultilingualNeural,
-        # fr-CA-SylvieNeural. Liste complète : `edge-tts --list-voices`.
-        # Lecture automatique des réponses : voice.auto_tts (défaut false ;
-        # à la demande via /voice tts en CLI).
+        # fr-CA-SylvieNeural. Full list: `edge-tts --list-voices`.
+        # Automatic reading of replies: voice.auto_tts (default false;
+        # on demand via /voice tts in the CLI).
         tts = {
           provider = "edge";
           edge = {
@@ -512,16 +758,16 @@ in {
           };
         };
 
-        # --- STT : faster-whisper local (gratuit, CPU, sans clé API) ---
-        # Transcrit automatiquement les vocaux entrants (Matrix/Element, etc.) :
-        # le gateway transcrit tout message vocal quand stt.enabled est vrai.
-        # Le moteur vient du groupe "stt-whisper" ci-dessus.
-        # language = "" est IMPORTANT : la valeur par défaut est "en", qui force
-        # Whisper à décoder du français comme de l'anglais. Vide = détection
-        # automatique (mesuré : fr détecté à p=0.99 sur un vocal court).
-        # Modèle "base" (140 Mo, ~5 s pour 3 s d'audio, CPU) ; "small" ou "medium"
-        # si la précision ne suffit pas avec un micro d'écouteurs en environnement
-        # bruyant. provider non déclaré = échelle auto (local d'abord).
+        # --- STT: local faster-whisper (free, CPU, without API key) ---
+        # Automatically transcribes incoming voice messages (Matrix/Element, etc.):
+        # the gateway transcribes any voice message when stt.enabled is true.
+        # The engine comes from the "stt-whisper" group above.
+        # language = "" is IMPORTANT: the default value is "en", which forces
+        # Whisper to decode French as English. Empty = automatic
+        # detection (measured: fr detected at p=0.99 on a short voice message).
+        # "base" model (140 MB, ~5 s for 3 s of audio, CPU); "small" or "medium"
+        # if the accuracy is not enough with an earphone mic in a noisy
+        # environment. provider not declared = auto scale (local first).
         stt = {
           enabled = true;
           language = "";
@@ -531,8 +777,8 @@ in {
         };
 
         auxiliary = {
-          # vision : reste sur kimi explicitement (ne pas taper dans le quota
-          # Claude Pro pour les descriptions d'images)
+          # vision: stays on kimi explicitly (do not tap into the Claude Pro
+          # quota for image descriptions)
           vision = {
             provider = "custom:kimi-k3-global";
             model = "kimi-k3";
@@ -540,13 +786,28 @@ in {
               reasoning_effort = "max";
             };
           };
+
+          # title_generation: pin on the cloud model, NEVER the local model.
+          # Without a pin, the aux follows the session model. A session opened on
+          # the laptop (--parallel 1, 2 to 16 tok/s) therefore saw its title
+          # generation queue behind the main turn and time out at 30 s
+          # ("Auxiliary title_generation: request to http://100.64.0.4:8080/v1/
+          # timed out after 30.0s"), then fail for lack of fallback.
+          # 25/11/2026: pin put back on the direct route, like the default. A
+          # session title is generated FROM the conversation, so it
+          # must land on the same account as the default, not on the aggregator.
+          title_generation = {
+            provider = "deepseek";
+            model = "deepseek-flash";
+          };
         };
 
-        # --- Modèle par salon Matrix : politique channel_overrides ---
-        # La plupart des salons restent sur le défaut (DeepSeek v4.1 via OpenRouter).
-        # Les salons ci-dessous tournent sur l'abonnement Claude (DirectSDK) :
-        # Opus 5 (O5), ou Sonnet 5 à effort high pour Zoé (S5 high, 1M).
-        # Lu par le gateway à son démarrage (un restart est requis après le switch).
+        # --- Per-Matrix-room model: channel_overrides policy ---
+        # Most rooms stay on the default (DeepSeek v4.1 Flash,
+        # direct `deepseek` account; the fallbacks go through OpenRouter).
+        # The rooms below run on the Claude subscription (DirectSDK):
+        # Opus 5 (O5), or Sonnet 5 at high effort for Zoe (S5 high, 1M).
+        # Read by the gateway at startup (a restart is required after the switch).
         platforms = {
           matrix = {
             channel_overrides = {
@@ -554,15 +815,15 @@ in {
                 provider = "claude-subscription-directsdk-experimental";
                 model = "claude-opus-5[1m]";
               };
-              # Nino : Opus 5.5 (route native `claude-opus-5-5`, tirets ; la forme
-              # `claude-opus-5.5` est rejetée par le CLI). Variante [1m] = 1M de
-              # contexte ; effort max via reasoning_overrides.
-              # Nino : DeepSeek v4.1 Flash (OpenRouter), 1er secours par defaut.
+              # Nino: Opus 5.5 (native route `claude-opus-5-5`, dashes; the form
+              # `claude-opus-5.5` is rejected by the CLI). [1m] variant = 1M of
+              # context; max effort via reasoning_overrides.
+              # Nino: DeepSeek v4.1 Flash (OpenRouter), 1st fallback by default.
               "!zOyDctBWcuFCJKJINI:matrix.marcpartensky.com" = {
                 provider = "openrouter";
                 model = "deepseek/deepseek-v4.1-flash";
               };
-              # Zoé : DeepSeek v4.1 Flash (OpenRouter), 1er secours par defaut.
+              # Zoe: DeepSeek v4.1 Flash (OpenRouter), 1st fallback by default.
               "!sylSYxsYVJRknngRnF:matrix.marcpartensky.com" = {
                 provider = "openrouter";
                 model = "deepseek/deepseek-v4.1-flash";
@@ -588,23 +849,23 @@ in {
         };
       };
 
-      # --- Plugin herdr : integre hermes a herdr, declarativement ---
-      # Option de SERVICE (pas dans settings : un extraPlugins mis dans settings
-      # finit juste comme cle inerte de config.yaml, et aucun symlink n'est cree).
-      # `extraPlugins` symlinke le paquet dans /var/lib/hermes/.hermes/plugins/
-      # sous le nom nix-managed-<nom> ; le code du plugin est vendorise dans
-      # services/hermes/plugins/herdr-agent-state (recopie de ce que produit
-      # `herdr integration install hermes`), donc plus d'install imperative.
-      # Ce plugin rapporte l'ID DE SESSION a herdr (herdr pane
-      # report-agent-session), ce qui permet a herdr de relancer le pane dans sa
+      # --- herdr plugin: integrates hermes into herdr, declaratively ---
+      # SERVICE option (not in settings: an extraPlugins put in settings
+      # just ends up as an inert key of config.yaml, and no symlink is created).
+      # `extraPlugins` symlinks the package into /var/lib/hermes/.hermes/plugins/
+      # under the name nix-managed-<name>; the plugin code is vendored in
+      # services/hermes/plugins/herdr-agent-state (a copy of what
+      # `herdr integration install hermes` produces), so no more imperative install.
+      # This plugin reports the SESSION ID to herdr (herdr pane
+      # report-agent-session), which lets herdr relaunch the pane in its
       # conversation (`hermes --resume <id>`, option [session]
       # resume_agents_on_restore).
-      # LIMITE : le plugin sort immediatement si HERDR_ENV != 1 ou sans
-      # HERDR_PANE_ID, et il parle au socket herdr de MARC
-      # (~/.config/herdr/herdr.sock, 0600, dossier 0700) : il ne peut donc
-      # fonctionner que si hermes tourne dans le pane avec l'env herdr ET sous
-      # l'utilisateur marc. Le lancement habituel (`sudo su -l hermes hermes
-      # chat`) efface cet env -> plugin inerte mais sans effet de bord.
+      # LIMIT: the plugin exits immediately if HERDR_ENV != 1 or without
+      # HERDR_PANE_ID, and it talks to MARC's herdr socket
+      # (~/.config/herdr/herdr.sock, 0600, directory 0700): it can therefore
+      # only work if hermes runs in the pane with the herdr env AND under
+      # the marc user. The usual launch (`sudo su -l hermes hermes
+      # chat`) clears this env -> plugin inert but with no side effect.
       extraPlugins = [
         (pkgs.runCommandLocal "herdr-agent-state" {} ''
           mkdir -p $out
@@ -612,13 +873,13 @@ in {
           cp ${./plugins/herdr-agent-state/__init__.py} $out/__init__.py
         '')
 
-        # --- Entree automatique dans le vocal Discord ---
-        # Hermes n'entre en vocal que sur `/voice join` ; ce plugin ajoute un
-        # handler natif discord.py sur l'adaptateur Discord (ctx.
-        # register_platform_handler) : un membre autorise rejoint un salon vocal
-        # -> le bot s'y connecte, et il sort quand plus personne n'y est. Il
-        # branche `adapter.join_voice_channel(text_channel_id=...)`, indispensable
-        # car sans salon texte lie la transcription est jetee.
+        # --- Automatic join of the Discord voice channel ---
+        # Hermes only joins voice on `/voice join`; this plugin adds a
+        # native discord.py handler on the Discord adapter (ctx.
+        # register_platform_handler): an authorized member joins a voice channel
+        # -> the bot connects to it, and leaves when nobody is there anymore. It
+        # wires `adapter.join_voice_channel(text_channel_id=...)`, essential
+        # because without a linked text channel the transcription is discarded.
         (pkgs.runCommandLocal "discord-auto-join" {} ''
           mkdir -p $out
           cp ${./plugins/discord-auto-join/plugin.yaml} $out/plugin.yaml
@@ -626,28 +887,48 @@ in {
         '')
       ];
 
-      # --- Hook de gateway : pont Matrix -> Gotify ---
-      # Vendorise ici, installe dans $HERMES_HOME/hooks/gotify-notify (extension
-      # point "trusted by placement" : le gateway charge au demarrage tout
-      # dossier contenant HOOK.yaml + handler.py, donc un switch suffit a
-      # l'activer). Le handler lit le jeton d'application Gotify provisionne par
-      # services/gotify-matrix et pousse les reponses publiees dans la salle du
-      # pont. Details et filtres : services/hermes/hooks/gotify-notify/handler.py.
+      # --- Gateway hook: Matrix -> Gotify bridge ---
+      # Vendored here, installed into $HERMES_HOME/hooks/gotify-notify (extension
+      # point "trusted by placement": the gateway loads at startup any
+      # directory containing HOOK.yaml + handler.py, so a switch is enough to
+      # enable it). The handler reads the Gotify application token provisioned by
+      # services/gotify-matrix and pushes the replies published in the bridge
+      # room. Details and filters: services/hermes/hooks/gotify-notify/handler.py.
       hermesHomeFiles = {
         "hooks/gotify-notify/HOOK.yaml" = ./hooks/gotify-notify/HOOK.yaml;
         "hooks/gotify-notify/handler.py" = ./hooks/gotify-notify/handler.py;
 
-        # Plugin matrix-loop-emoji : pose directement dans $HERMES_HOME/plugins/
-        # sous son nom d'origine (pas de prefixe nix-managed-), pour qu'il soit
-        # charge comme plugin "user" et non en doublon via extraPlugins.
+        # matrix-loop-emoji plugin: placed directly in $HERMES_HOME/plugins/
+        # under its original name (no nix-managed- prefix), so that it is
+        # loaded as a "user" plugin and not duplicated via extraPlugins.
         "plugins/matrix-loop-emoji/plugin.yaml" = ./plugins/matrix-loop-emoji/plugin.yaml;
         "plugins/matrix-loop-emoji/__init__.py" = ./plugins/matrix-loop-emoji/__init__.py;
+
+        # Plugin turn-scoped-desktop-lease : same drop-in, see the `plugins`
+        # block above for what it changes.
+        "plugins/turn-scoped-desktop-lease/plugin.yaml" = ./plugins/turn-scoped-desktop-lease/plugin.yaml;
+        "plugins/turn-scoped-desktop-lease/__init__.py" = ./plugins/turn-scoped-desktop-lease/__init__.py;
+
+        # OpenRouter Zero Data Retention. Hermes forwards only
+        # sort/only/ignore/order/require_parameters/data_collection from
+        # `provider_routing` (agent/chat_completion_helpers.py), so OpenRouter's
+        # per-request `provider.zdr` cannot be set from config even though the
+        # API accepts it. This model-provider plugin SHADOWS the bundled
+        # `openrouter` profile (a $HERMES_HOME plugin wins on a name collision,
+        # providers/__init__.py::register_provider) and adds `zdr: true` to the
+        # provider preferences of every OpenRouter request, so OpenRouter only
+        # routes to endpoints with a Zero Data Retention policy. It lives under
+        # plugins/model-providers/ (NOT plugins/) because that is the directory
+        # the provider registry scans, and it needs no `plugins.enabled` entry:
+        # every directory there is imported at discovery.
+        "plugins/model-providers/openrouter-zdr/plugin.yaml" = ./plugins/openrouter-zdr/plugin.yaml;
+        "plugins/model-providers/openrouter-zdr/__init__.py" = ./plugins/openrouter-zdr/__init__.py;
       };
     };
 
-    # --- MCP GitHub : serveur officiel (@modelcontextprotocol/server-github) ---
-    # Note : le package est déprécié (2025.4.8) mais toujours fonctionnel.
-    # Remplacer le placeholder par le vrai token GitHub (fine-grained PAT).
+    # --- GitHub MCP: official server (@modelcontextprotocol/server-github) ---
+    # Note: the package is deprecated (2025.4.8) but still functional.
+    # Replace the placeholder with the real GitHub token (fine-grained PAT).
     services.hermes-agent.mcpServers.github = {
       command = "npx";
       args = [ "-y" "@modelcontextprotocol/server-github" ];
@@ -657,10 +938,10 @@ in {
       timeout = 60;
     };
 
-    # --- MCP Gitea : serveur officiel (gitea.com/gitea/gitea-mcp) ---
-    # Nécessite un PAT Gitea (Settings -> Applications -> Generate Token)
+    # --- Gitea MCP: official server (gitea.com/gitea/gitea-mcp) ---
+    # Requires a Gitea PAT (Settings -> Applications -> Generate Token)
     # scopes: repo, admin:org, admin:user, notification, user, write:package, read:package
-    services.hermes-agent.mcpServers.gitea = {
+    services.hermes-agent.mcpServers.gitea = lib.mkIf config.services.hermes.enableGiteaMcp {
       command = "gitea-mcp";
       args = [ "-t" "stdio" ];
       env = {
@@ -670,28 +951,13 @@ in {
       timeout = 60;
     };
 
-    # --- MCP Beeper : API locale de Beeper Desktop (loopback 23373) ---
-    # L'entrée n'existait qu'impérativement dans config.yaml, avec un token en
-    # dur (29 caractères) qui ne correspond plus à BEEPER_ACCESS_TOKEN et prend
-    # un 401. Déclarée ici : le token est lu depuis l'environnement (.env /
-    # sops hermes_env), jamais recopié dans le dépôt. L'URL LAN rend le lien
-    # cliquable depuis Hermes Desktop (module services/mcp-lan-access).
-    services.hermes-agent.mcpServers.beeper = {
-      url =
-        if config.services.mcp-lan-access.enable
-        then "http://${config.services.mcp-lan-access.host}:23373/v0/mcp"
-        else "http://127.0.0.1:23373/v0/mcp";
-      headers.Authorization = "Bearer \${env:BEEPER_ACCESS_TOKEN}";
-      timeout = 60;
-    };
-
-    # --- MCP Hinge : pilotage de l'app sur le telephone de marc -----------------
-    # Le telephone fait tourner android-remote-control-mcp sur son 127.0.0.1:8080.
-    # On l'atteint par le sshd du tel (maintenu par phone-up/watchdog cote tel).
-    # Le forward est un service ici, jamais un `ssh -N -L` de session : il survit
-    # aux deconnexions et redemarre seul. Cote client, hinge_mcp.py parle stdio.
+    # --- Hinge MCP: driving the app on marc's phone -----------------
+    # The phone runs android-remote-control-mcp on its 127.0.0.1:8080.
+    # It is reached through the phone's sshd (maintained by phone-up/watchdog on the phone side).
+    # The forward is a service here, never a session `ssh -N -L`: it survives
+    # disconnections and restarts on its own. On the client side, hinge_mcp.py speaks stdio.
     systemd.services.phone-mcp-tunnel = {
-      description = "Forward loopback vers le MCP du telephone (ssh -L 18080)";
+      description = "Loopback forward to the phone MCP (ssh -L 18080)";
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
@@ -712,31 +978,31 @@ in {
       timeout = 300;
     };
 
-    # --- MCP iprep : score de reputation d'IP agrege ---------------------------
-    # Serveur stdio ecrit a la main (stdlib python, aucune dependance) qui
-    # interroge les sources publiques sans cle (Scamalytics, AlienVault OTX,
-    # StopForumSpam, GreyNoise community, Project HoneyPot, DNSBL) et renvoie
-    # un risque normalise 0-100 par source + la moyenne. AbuseIPDB et
-    # IPQualityScore s'ajoutent si ABUSEIPDB_API_KEY / IPQS_API_KEY sont
-    # fournies dans l'environnement (facultatif, sans cle ils sont ignores).
+    # --- iprep MCP: aggregated IP reputation score ---------------------------
+    # Hand-written stdio server (python stdlib, no dependency) that
+    # queries public keyless sources (Scamalytics, AlienVault OTX,
+    # StopForumSpam, GreyNoise community, Project HoneyPot, DNSBL) and returns
+    # a normalized risk 0-100 per source + the average. AbuseIPDB and
+    # IPQualityScore are added if ABUSEIPDB_API_KEY / IPQS_API_KEY are
+    # provided in the environment (optional, without a key they are ignored).
     services.hermes-agent.mcpServers.iprep = {
       command = "${pkgs.python3}/bin/python3";
       args = [ "/var/lib/hermes/workspace/iprep-mcp/server.py" ];
-      # Le MCP lit quatre sources dans le vrai Chrome du Mac : il a besoin de
-      # node pour driver le CDP et du tunnel loopback ci-dessous.
+      # The MCP reads four sources in the real Chrome on the Mac: it needs
+      # node to drive the CDP and the loopback tunnel below.
       env.IPREP_NODE = "${pkgs.nodejs}/bin/node";
       timeout = 300;
     };
 
-    # Tunnel loopback vers le CDP du Chrome "agent" du Mac (9222 cote Mac,
-    # 19222 cote tower). Le MCP iprep s'en sert pour les quatre sources que
-    # Cloudflare ferme a curl et au Chromium headless : AbuseIPDB,
-    # IPQualityScore, Cisco Talos, check.spamhaus.org. Meme pattern que
-    # phone-mcp-tunnel : un service, pas un `ssh -N -L` de session, pour qu'il
-    # survive aux deconnexions. Hote `mac` (tunnel inverse autossh du Mac), donc
-    # valable aussi hors du LAN de tower.
+    # Loopback tunnel to the CDP of the Mac's "agent" Chrome (9222 on the Mac side,
+    # 19222 on the tower side). The iprep MCP uses it for the four sources that
+    # Cloudflare closes to curl and headless Chromium: AbuseIPDB,
+    # IPQualityScore, Cisco Talos, check.spamhaus.org. Same pattern as
+    # phone-mcp-tunnel: a service, not a session `ssh -N -L`, so that it
+    # survives disconnections. Host `mac` (autossh reverse tunnel of the Mac), so
+    # valid also outside tower's LAN.
     systemd.services.mac-cdp-tunnel = {
-      description = "Tunnel loopback vers le CDP du Chrome agent du Mac";
+      description = "Loopback tunnel to the CDP of the Mac's agent Chrome";
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
@@ -751,153 +1017,209 @@ in {
       };
     };
 
-    # --- MCP phonerep : score de reputation de NUMERO DE TELEPHONE agrege ------
-    # Meme convention que iprep (risque 0-100 par source + moyenne, 0 = propre).
-    # Sources sans cle : veriastra (spam score + plaintes FTC, validite et
-    # operateur), spamcalls, RoboKiller, shouldianswer, Nomorobo,
-    # 800notes/whocallsme. phonenumbers (paquet nix) donne la normalisation
-    # E.164 et le type de ligne hors ligne. VERIASTRA_API_KEY et IPQS_API_KEY
-    # sont optionnelles : sans cle ces sources sont ignorees et signalees.
-    # tellows et la page gratuite IPQS restent a lire dans un vrai navigateur.
+    # --- chrome-mac MCP: Mac's Chrome MCP Server extension -------------------
+    # Replaces firefox-mac (Marionette) since 15/11/2026. Measurement on tower:
+    # a Firefox launched with --marionette advertises navigator.webdriver=true even
+    # without an attached client, whereas a Chromium reached by --remote-debugging-port
+    # alone stays at false. The extension, loaded in the Mac's Chrome, adds
+    # in addition the browser APIs (tabs, bookmarks, history, downloads) and
+    # accepts several simultaneous clients (Marionette only accepts one).
+    # On the Mac side (imperative, outside the flake, like geckodriver):
+    #   npm i -g mcp-chrome-bridge && mcp-chrome-bridge register
+    # then load ~/apps/chrome-mcp-server by hand in chrome://extensions
+    # (Chrome 157 refuses --load-extension). The bridge listens on 127.0.0.1:12306/mcp
+    # hence the loopback tunnel below. Threat model: the bridge has no
+    # authentication, it must stay only on the Mac's loopback.
+    systemd.services.mac-mcp-chrome-tunnel = {
+      description = "Loopback tunnel to the MCP of the Mac's Chrome extension";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
+      serviceConfig = {
+        User = "hermes";
+        Group = "users";
+        Restart = "always";
+        RestartSec = 15;
+        ExecStart = "${pkgs.openssh}/bin/ssh -N -T -o ExitOnForwardFailure=yes "
+          + "-o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes "
+          + "-o BatchMode=yes -L 127.0.0.1:19236:127.0.0.1:12306 mac";
+      };
+    };
+
+    services.hermes-agent.mcpServers.chrome-mac = {
+      url = "http://127.0.0.1:19236/mcp";
+      timeout = 180;
+    };
+
+    # --- phonerep MCP: aggregated PHONE NUMBER reputation score ------
+    # Same convention as iprep (risk 0-100 per source + average, 0 = clean).
+    # Keyless sources: veriastra (spam score + FTC complaints, validity and
+    # carrier), spamcalls, RoboKiller, shouldianswer, Nomorobo,
+    # 800notes/whocallsme. phonenumbers (nix package) gives E.164
+    # normalization and the line type offline. VERIASTRA_API_KEY and IPQS_API_KEY
+    # are optional: without a key these sources are ignored and reported.
+    # tellows and the free IPQS page still have to be read in a real browser.
     services.hermes-agent.mcpServers.phonerep = {
       command = "${pkgs.python3.withPackages (p: [ p.phonenumbers ])}/bin/python3";
       args = [ "/var/lib/hermes/workspace/phonerep-mcp/server.py" ];
       timeout = 180;
     };
 
-    # --- MCP Pangolin : API d'intégration self-hosted ---
-    # L'API v1 (clé Bearer, clé "hermes" de la table apiKeys du dashboard) est
-    # activée par le flag enable_integration_api de services/pangolin et
-    # répond sur api.marcpartensky.com/v1 (routeur traefik dédié) ; PAS sur
-    # pangolin.vps.marcpartensky.com qui ne sert que le dashboard. Le script
-    # (services/hermes/pangolin-mcp.py) relit la clé à chaque appel ; un
-    # process déjà lancé garde son ancienne PANGOLIN_BASE_URL jusqu'au
-    # redémarrage de hermes.
+    # --- Pangolin MCP: self-hosted integration API ---
+    # The v1 API (Bearer key, "hermes" key of the dashboard's apiKeys table) is
+    # enabled by the enable_integration_api flag of services/pangolin and
+    # answers on api.marcpartensky.com/v1 (dedicated traefik router); NOT on
+    # pangolin.vps.marcpartensky.com which only serves the dashboard. The script
+    # (services/hermes/pangolin-mcp.py) re-reads the key at each call; a
+    # already-running process keeps its old PANGOLIN_BASE_URL until
+    # hermes restarts.
 
-    # --- MCP voix (TTS) : serveur HTTP sur le PORTABLE, joint par le tailnet ---
-    # Les moteurs (Phonon, Kokoro en CPU ; OmniVoice, Ming, Chatterbox, Breeze
-    # en GPU), les poids et la RTX 3060 sont sur le portable : toute generation
-    # de voix y reste, quelle que soit la machine qui pilote l'agent. Le
-    # serveur vit dans services/tts-mcp (laptop) et garde les modeles chauds ;
-    # timeout large car un moteur GPU charge son modele avant de parler.
-    # Adresse : tailscale du portable (100.64.0.4), port ouvert sur
-    # tailscale0 seulement.
+    # --- voice MCP (TTS): HTTP server on the LAPTOP, reached via the tailnet ---
+    # The engines (Phonon, Kokoro on CPU; OmniVoice, Ming, Chatterbox, Breeze
+    # on GPU), the weights and the RTX 3060 are on the laptop: any voice
+    # generation stays there, whichever machine drives the agent. The
+    # server lives in services/tts-mcp (laptop) and keeps the models warm;
+    # large timeout because a GPU engine loads its model before speaking.
+    # Address: laptop's tailscale (100.64.0.4), port open on
+    # tailscale0 only.
     services.hermes-agent.mcpServers.tts = {
       url = "http://100.64.0.4:8092/mcp";
       timeout = 900;
     };
 
-    # --- MCP Vaultwarden : temporairement désactivé (blocage sops manifest) ---
+    # --- Vaultwarden MCP: temporarily disabled (sops manifest block) ---
     # services.hermes-agent.mcpServers.vaultwarden = {
     #   command = "vaultwarden-mcp";
 
-    # --- node/npm requis pour le serveur GitHub (npx) ---
-    # (ajouté dans extraPackages plus haut : l'option n'accepte qu'une définition)
+    # --- node/npm required for the GitHub server (npx) ---
+    # (added in extraPackages above: the option accepts only one definition)
 
-    # --- ollama : embeddings locaux pour mem0 ---
-    # nomic-embed-text = 768 dims, supporté par le plugin mem0. CPU suffit.
+    # --- ollama: local embeddings for mem0 ---
+    # nomic-embed-text = 768 dims, supported by the mem0 plugin. CPU is enough.
     services.ollama = {
       enable = true;
       loadModels = ["nomic-embed-text"];
     };
 
-    # claude aussi dispo pour marc et les sessions CLI de hermes
-    # (le python3 SYSTEME est déjà ajouté hors du bloc ci-dessus, cf. en haut de
-    # `config` : requis par le probe SSH de Hermes Desktop)
+    # claude also available for marc and hermes CLI sessions
+    # (the SYSTEM python3 is already added outside the block above, see at the top of
+    # `config`: required by the SSH probe of Hermes Desktop)
 
-    sops.secrets."hermes_env" = {};
+    # Agent secrets: A SINGLE sops file (secrets/hermes-agent.yml),
+    # recipients = tower + laptop + VPS + Mac. It replaces the copies
+    # scattered around (hermes_env was encrypted twice, in tower.yml AND
+    # anywhere.yml): adding a fallback host now only requires a
+    # `sops updatekeys secrets/hermes-agent.yml` instead of one per file.
+    # What remains outside this file is deliberately single-host: gemini and
+    # the Matrix/Discord token (single bot, two gateways with the same token would
+    # fight over the connection).
+    sops.secrets."hermes_env" = {
+      sopsFile = ../../secrets/hermes-agent.yml;
+    };
 
-    # Clé du compte DeepSeek direct, en clair pour l'agent : son contenu est un
-    # dotenv (« DEEPSEEK_API_KEY=... ») ajouté aux environmentFiles de l'unité,
-    # donc lue par le provider INTÉGRÉ deepseek (model.provider ci-dessus).
-    # Même fichier que
-    # le solde affiché par le dashboard d'usage (secrets/deepseek.yml).
+    # Key of the direct DeepSeek account, in clear for the agent: its content is a
+    # dotenv ("DEEPSEEK_API_KEY=...") added to the unit's environmentFiles,
+    # so read by the INTEGRATED deepseek provider (model.provider above).
+    # Same file as
+    # the balance shown by the usage dashboard (secrets/deepseek.yml).
     sops.secrets."hermes_deepseek_env" = {
       key = "hermes_deepseek_env";
-      sopsFile = ../../secrets/deepseek.yml;
+      sopsFile = ../../secrets/hermes-agent.yml;
     };
 
-    # Clé du compte Meta Model API (provider intégré meta-ai, env MODEL_API_KEY).
-    # Contenu dotenv, comme la clé DeepSeek. Mode Standard uniquement côté Meta
-    # (pas de Contributor pour Ember) : le contenu n'est pas utilisé pour
-    # entraîner. Rotation / pose de la valeur : sops set, jamais le fichier à la
-    # main.
+    # Key of the Meta Model API account (INTEGRATED meta-ai provider, env MODEL_API_KEY).
+    # dotenv content, like the DeepSeek key. Standard mode only on the Meta
+    # side (no Contributor for Ember): the content is not used to
+    # train. Rotation / setting the value: sops set, never the file by
+    # hand.
     sops.secrets."hermes_meta_env" = {
       key = "hermes_meta_env";
-      sopsFile = ../../secrets/meta.yml;
+      sopsFile = ../../secrets/hermes-agent.yml;
     };
 
-    # Clé du listener API Server du profil default (clé "hermes_api_server_env"
-    # du fichier sops, valeur = contenu dotenv "API_SERVER_KEY=..."). Même valeur
-    # que HERMES_BRIDGE_API_KEY côté services/discord-bot, qui l'envoie en Bearer :
-    # le pont Discord et l'API server partagent donc LA MÊME clé, chiffrée une
-    # seule fois dans secrets/discord-hermes-bridge.yml.
+    # Gemini key (Google AI Studio) for the INTEGRATED gemini provider (env
+    # GOOGLE_API_KEY). dotenv content, same mechanism as deepseek/meta. No
+    # plugin or CLI required: the provider speaks HTTPS to
+    # generativelanguage.googleapis.com. Free tier = prompts used to
+    # improve Google products; take the paid tier to avoid it.
+    sops.secrets."hermes_gemini_env" = lib.mkIf config.services.hermes.enableGeminiToken {
+      key = "hermes_gemini_env";
+      sopsFile = ../../secrets/hermes-gemini.yml;
+    };
+
+    # Key of the API Server listener of the default profile ("hermes_api_server_env" key
+    # of the sops file, value = dotenv content "API_SERVER_KEY=..."). Same value
+    # as HERMES_BRIDGE_API_KEY on the services/discord-bot side, which sends it as Bearer:
+    # the Discord bridge and the API server therefore share THE SAME key, encrypted
+    # once in secrets/discord-hermes-bridge.yml.
     sops.secrets."hermes_api_server_env" = {
-      # TODO(marc) : renommer la clé hermes_discord_bridge_env -> hermes_api_server_env
-      # dans secrets/discord-hermes-bridge.yml (sops) quand tu as la clé age sous la
-      # main ; hermes n'a pas accès en déchiffrement pour le faire lui-même.
-      key = "hermes_discord_bridge_env";
-      sopsFile = ../../secrets/discord-hermes-bridge.yml;
+      # Lives in hermes-agent.yml so that the fallback laptop can
+      # decrypt it (secrets/discord-hermes-bridge.yml only has tower's key).
+      # SAME VALUE as HERMES_BRIDGE_API_KEY of services/discord-bot, which still reads it
+      # from its own file: rotation = rewrite both keys in
+      # the same step (see the header of both files).
+      key = "hermes_api_server_env";
+      sopsFile = ../../secrets/hermes-agent.yml;
     };
 
-    # Le secret ci-dessus est une clé NUE : rendue en .env par concaténation, elle
-    # n'aurait pas de nom de variable. Le template ci-dessous en fait un vrai
-    # dotenv (API_SERVER_KEY=...), consommé par l'unité hermes-agent.
+    # The secret above is a BARE key: rendered into .env by concatenation, it
+    # would have no variable name. The template below turns it into a real
+    # dotenv (API_SERVER_KEY=...), consumed by the hermes-agent unit.
     sops.templates."hermes-api-server.env".content = ''
       API_SERVER_KEY=${config.sops.placeholder."hermes_api_server_env"}
     '';
 
-    # Clé API du MCP Pangolin (clé racine "pangolin_api_key" de
-    # secrets/common.yml, valeur = clé "hermes" créée dans le dashboard).
-    # owner hermes + 0400 : le MCP est un process de l'agent et relit ce
-    # fichier lui-même à chaque appel HTTP. L'ancienne déclaration pointait
-    # une clé imbriquée pangolin.api_key inexistante ("the key 'pangolin'
-    # cannot be found" faisait échouer tout switch : laissée hors service
-    # jusqu'à maintenant).
+    # API key of the Pangolin MCP (root key "pangolin_api_key" of
+    # secrets/common.yml, value = "hermes" key created in the dashboard).
+    # owner hermes + 0400: the MCP is an agent process and re-reads this
+    # file itself at each HTTP call. The former declaration pointed to
+    # a non-existent nested key pangolin.api_key ("the key 'pangolin'
+    # cannot be found" made any switch fail: left out of service
+    # until now).
     sops.secrets."pangolin_api_key" = lib.mkIf config.services.hermes.enableAgent {
-      sopsFile = ../../secrets/common.yml;
+      sopsFile = ../../secrets/hermes-agent.yml;
       owner = "hermes";
       mode = "0400";
     };
 
-    # Mot de passe maitre du compte technique Vaultwarden de l'agent
-    # (hermes@marcpartensky.com), lu par ~/.hermes/scripts/vault-get.sh.
-    # Il vivait dans services/vaultwarden/default.nix tant que ce module etait
-    # importe par services/default.nix (donc tower ET le portable). Depuis le
-    # 14/11/2026 le coffre Vaultwarden ne tourne plus que sur le VPS (profil
-    # anywhere, source de verite unique) : le module n'est plus importe ici, mais
-    # l'agent a toujours besoin du secret sur tower pour ouvrir son coffre a
-    # distance. Fichier chiffre vers la seule cle age de tower.
+    # Master password of the agent's Vaultwarden technical account
+    # (hermes@marcpartensky.com), read by ~/.hermes/scripts/vault-get.sh.
+    # It lived in services/vaultwarden/default.nix as long as this module was
+    # imported by services/default.nix (so tower AND the laptop). Since
+    # 14/11/2026 the Vaultwarden vault only runs on the VPS (profile
+    # anywhere, single source of truth): the module is no longer imported here, but
+    # the agent still needs the secret on tower to open its vault
+    # remotely. File encrypted to tower's only age key.
     sops.secrets."vaultwarden/agent_password" = lib.mkIf config.services.hermes.enableAgent {
       key = "vaultwarden_agent_password";
-      sopsFile = ../../secrets/vaultwarden-agent.yml;
+      sopsFile = ../../secrets/hermes-agent.yml;
       owner = "hermes";
       group = "hermes";
       mode = "0400";
     };
 
-    # Token Matrix du bot (@hermes) — clé "hermes_matrix_env" du fichier sops,
-    # valeur = contenu dotenv (MATRIX_ACCESS_TOKEN=...) fusionné dans .env.
-    # Déclaré uniquement là où l'option est active : les destinataires du fichier
-    # n'incluent pas anywhere/laptop, y déclarer le secret ferait échouer
-    # l'activation (setupSecrets « 0 successful groups required »).
+    # Matrix token of the bot (@hermes) - "hermes_matrix_env" key of the sops file,
+    # value = dotenv content (MATRIX_ACCESS_TOKEN=...) merged into .env.
+    # Declared only where the option is active: the recipients of the file
+    # do not include anywhere/laptop, declaring the secret there would fail
+    # the activation (setupSecrets "0 successful groups required").
     sops.secrets."hermes_matrix_env" = lib.mkIf config.services.hermes.enableMatrixToken {
       sopsFile = ../../secrets/hermes-matrix.yml;
     };
 
-    # Token du bot Discord dédié (voix + texte) — clé "hermes_discord_env" du
-    # fichier sops, valeur = contenu dotenv (DISCORD_BOT_TOKEN=...) fusionné
-    # dans .env. Déclaré uniquement là où l'option est active, même raison que
-    # pour le token Matrix.
+    # Token of the dedicated Discord bot (voice + text) - "hermes_discord_env" key of
+    # the sops file, value = dotenv content (DISCORD_BOT_TOKEN=...) merged
+    # into .env. Declared only where the option is active, same reason as
+    # for the Matrix token.
     sops.secrets."hermes_discord_env" = lib.mkIf config.services.hermes.enableDiscordToken {
       sopsFile = ../../secrets/hermes-discord.yml;
     };
 
-    # --- Accès SSH direct de hermes (tower) vers les autres hôtes qui importent
-    # ce module (laptop, anywhere) : défini en haut de `config` (utilisateur
-    # hermes + clé + sudo), commun à tous les hôtes.
+    # --- Direct SSH access from hermes (tower) to the other hosts that import
+    # this module (laptop, anywhere): defined at the top of `config` (user
+    # hermes + key + sudo), common to all hosts.
     security.sudo.extraRules = [
-      # marc : acces direct conserve (c'est lui le proprietaire de la machine).
+      # marc: direct access kept (he owns the machine).
       {
         users = ["marc"];
         commands = [
@@ -921,60 +1243,65 @@ in {
       }
     ];
 
-    # --- La règle sudo ci-dessus était INOPÉRANTE depuis les unités hermes ---
-    # Le module hermes-agent pose NoNewPrivileges=true dans le serviceConfig
-    # commun au gateway (hermes-agent.service) et au backend (hermes-backend.
-    # service). Sous ce flag le noyau IGNORE le bit setuid : sudo refuse net
-    # (« the "no new privileges" flag is set »), su échoue au setuid(), et le
-    # flag s'hérite par tous les enfants. Conséquence : une session ouverte
-    # depuis Matrix ou depuis le terminal web ne pouvait PAS lancer le
-    # nixos-rebuild que la règle NOPASSWD lui accorde pourtant.
+    # --- The sudo rule above was INOPERATIVE from the hermes units ---
+    # The hermes-agent module sets NoNewPrivileges=true in the serviceConfig
+    # common to the gateway (hermes-agent.service) and to the backend (hermes-backend.
+    # service). Under this flag the kernel IGNORES the setuid bit: sudo flatly refuses
+    # ("the \"no new privileges\" flag is set"), su fails at setuid(), and the
+    # flag is inherited by all children. Consequence: a session opened
+    # from Matrix or from the web terminal could NOT launch the
+    # nixos-rebuild that the NOPASSWD rule nevertheless grants it.
     #
-    # On le désactive donc sur les deux unités. Ça ne donne pas de shell root :
-    # sudo reste borné à la liste de commandes ci-dessus.
+    # So we disable it on both units. It does not give a root shell:
+    # sudo stays bounded to the command list above.
     systemd.services.hermes-agent.serviceConfig.NoNewPrivileges = lib.mkForce false;
     systemd.services.hermes-backend.serviceConfig.NoNewPrivileges = lib.mkForce false;
 
-    # --- Le gateway ne doit jamais etre tue ni affame ---
-    # Sans ce bloc, hermes-agent vit dans system.slice au poids par defaut
-    # (100), a egalite avec un build nix, sans protection memoire.
+    # --- The gateway must never be killed or starved ---
+    # Without this block, hermes-agent lives in system.slice at the default weight
+    # (100), on par with a nix build, without memory protection.
     #
-    #  - hermes.slice CPUWeight=2000 : sous contention il passe avant tout le
-    #    reste de system.slice (poids 100), soit 20x la priorite par defaut.
-    #    Un POIDS, pas un quota : machine libre il prend tout le CPU, et rien
-    #    ne le bride jamais. (10000 donnait ~91 % du CPU sous contention et
-    #    tombait les builds a ~0,2 % : trop brutal, 2000 suffit largement.)
-    #  - MemoryMin/MemoryLow : plancher cgroup v2, sa memoire n'est plus
-    #    recuperable par un autre cgroup sous pression. Surtout PAS de
-    #    MemoryMax : ca le rendrait tuable depuis l'interieur de son cgroup.
-    #  - OOMScoreAdjust=-1000 : le killer OOM du noyau l'exclut.
-    #  - StartLimitIntervalSec=0 : systemd ne renonce plus jamais a relancer.
+    #  - hermes.slice CPUWeight=2000: under contention it goes before all the
+    #    rest of system.slice (weight 100), i.e. 20x the default priority.
+    #    A WEIGHT, not a quota: on a free machine it takes all the CPU, and nothing
+    #    ever throttles it. (10000 gave ~91 % of the CPU under contention and
+    #    dropped builds to ~0.2 %: too brutal, 2000 is more than enough.)
+    #  - MemoryMin/MemoryLow: cgroup v2 floor, its memory is no longer
+    #    reclaimable by another cgroup under pressure. Above all NO
+    #    MemoryMax: that would make it killable from inside its cgroup.
+    #  - OOMScoreAdjust=-1000: the kernel OOM killer excludes it.
+    #  - StartLimitIntervalSec=0: systemd never gives up restarting again.
     #
-    # Les ENFANTS heritent du cgroup : les serveurs MCP et les sous-processus
-    # des taches (builds, navigateurs, scripts) sont bornes par ce meme poids.
+    # CHILDREN inherit the cgroup: the MCP servers and the sub-processes
+    # of tasks (builds, browsers, scripts) are bounded by this same weight.
     systemd.slices.hermes = {
-      description = "Hermes Agent (priorite interactive)";
+      description = "Hermes Agent (interactive priority)";
       sliceConfig = {
         CPUWeight = 2000;
         IOWeight = 1000;
-        # Reservation materielle : les deux threads du coeur physique 6
-        # (cpu12, cpu13) sont a Hermes, exclus de background.slice. Meme sous
-        # un build 14 threads, le gateway garde un coeur physique entier.
-        # Un POIDS seul ne garantit rien en valeur absolue ; cpuset, si.
-        # Contrepartie assumee : les sous-processus des taches (builds,
-        # navigateurs lances par un agent) heritent du cpuset et tournent sur
-        # ces 2 threads. Le travail lourd doit partir sur la flotte (Windmill).
-        AllowedCPUs = "12-13";
+        # Hardware reservation: the threads of physical cores 6 and 7
+        # (cpu12 to cpu15) belong to Hermes, excluded from background.slice. Even under
+        # a 12-thread build, the gateway keeps 2 whole physical cores.
+        # A WEIGHT alone guarantees nothing in absolute terms; cpuset does.
+        # Until 21/11/2026 the reservation was 1 core (cpu12-13): a
+        # gateway with two tasks serialized on it. Widened to 2 cores.
+        # Accepted trade-off: the sub-processes of tasks (builds,
+        # browsers launched by an agent) inherit the cpuset and run on
+        # these 4 threads. Heavy work must go to the fleet (Windmill).
+        # Only applies if the host declares services.hermes.cpuIsolation.
+      } // lib.optionalAttrs (config.services.hermes.cpuIsolation != null) {
+        AllowedCPUs = config.services.hermes.cpuIsolation;
       };
     };
 
-    # `member` n'exclut personne : system.slice/user.slice peuvent encore
-    # tourner sur 12-13. On promeut la slice en partition root cgroup v2, ce
-    # qui rend ces 2 threads exclusifs a Hermes et a ses descendants. Aucun
-    # parametre de boot (isolcpus) necessaire. Contrepartie : 12-13 ne sont
-    # plus utilisables par le reste du systeme, meme quand Hermes est idle.
-    systemd.services.hermes-cpuset = {
-      description = "Promeut hermes.slice en partition root cpuset (12-13 exclusifs)";
+    # `member` excludes no one: system.slice/user.slice can still
+    # run on the reserved CPUs. We promote the slice to cgroup v2 root
+    # partition, which makes them exclusive to Hermes and its descendants.
+    # No boot parameter (isolcpus) needed. Trade-off: these CPUs are no
+    # longer usable by the rest of the system, even when Hermes is idle.
+    # Only on hosts that declare cpuIsolation (tower).
+    systemd.services.hermes-cpuset = lib.mkIf (config.services.hermes.cpuIsolation != null) {
+      description = "Promotes hermes.slice to a cpuset root partition (${config.services.hermes.cpuIsolation} exclusive)";
       wantedBy = [ "multi-user.target" ];
       after = [ "hermes.slice" ];
       before = [ "hermes-agent.service" ];
@@ -984,16 +1311,24 @@ in {
         ExecStart = pkgs.writeShellScript "hermes-cpuset" ''
           set -eu
           cg=/sys/fs/cgroup/hermes.slice
-          echo "12-13" > "$cg/cpuset.cpus.exclusive"
-          echo "root" > "$cg/cpuset.cpus.partition"
+          desired=${config.services.hermes.cpuIsolation}
+          # Adding cpus cannot fail in itself; the fallback covers the case
+          # where the kernel refuses to hot-modify an already-active partition.
+          if ! echo "$desired" > "$cg/cpuset.cpus.exclusive" 2>/dev/null; then
+            echo member > "$cg/cpuset.cpus.partition"
+            echo "$desired" > "$cg/cpuset.cpus.exclusive"
+          fi
+          if [ "$(cat "$cg/cpuset.cpus.partition")" != "root" ]; then
+            echo root > "$cg/cpuset.cpus.partition"
+          fi
         '';
       };
     };
     systemd.services.hermes-agent = {
-      # Un rebuild NixOS ne doit pas couper le gateway : ses taches vivent
-      # dedans. restartIfChanged=false => switch-to-configuration met a jour
-      # le fichier d'unite mais ne redemarre pas le process en cours ; la
-      # nouvelle config s'applique au prochain demarrage manuel.
+      # A NixOS rebuild must not cut the gateway: its tasks live
+      # inside it. restartIfChanged=false => switch-to-configuration updates
+      # the unit file but does not restart the running process; the
+      # new config applies at the next manual start.
       restartIfChanged = false;
       serviceConfig = {
         Slice = "hermes.slice";
@@ -1004,7 +1339,7 @@ in {
       };
       unitConfig.StartLimitIntervalSec = 0;
     };
-    # Le backend sert le desktop et le terminal web : meme traitement.
+    # The backend serves the desktop and the web terminal: same treatment.
     systemd.services.hermes-backend = {
       restartIfChanged = false;
       serviceConfig = {
@@ -1017,40 +1352,61 @@ in {
       unitConfig.StartLimitIntervalSec = 0;
     };
 
-    # --- Opus pour la voix Discord ---
-    # L'adaptateur Discord de Hermes (plugins/platforms/discord/adapter.py) charge
-    # libopus via ctypes.util.find_library("opus"), qui sur NixOS ne trouve rien :
-    # pas de /etc/ld.so.cache, et le repli gcc/ld échoue faute de binaires. Le
-    # repli `ld -L <LD_LIBRARY_PATH> -lopus` + `objdump` fonctionne avec binutils
-    # sur le PATH (extraPackages), et il faut LD_LIBRARY_PATH DANS l'environnement
-    # du process dès le démarrage : dlopen("libopus.so.0") utilise la valeur lue
-    # par ld.so au lancement, une variable ajoutée plus tard via .env ne suffit
-    # pas. C'est l'env de l'UNITÉ systemd (l'option `environment` du module, elle,
-    # n'écrit que $HERMES_HOME/.env).
-    # Vérifié : find_library -> libopus.so.0, discord.opus.is_loaded() -> True,
-    # Decoder/Encoder opus instanciables.
+    # --- Opus for Discord voice ---
+    # The Hermes Discord adapter (plugins/platforms/discord/adapter.py) loads
+    # libopus via ctypes.util.find_library("opus"), which on NixOS finds nothing:
+    # no /etc/ld.so.cache, and the gcc/ld fallback fails for lack of binaries. The
+    # fallback `ld -L <LD_LIBRARY_PATH> -lopus` + `objdump` works with binutils
+    # on the PATH (extraPackages), and LD_LIBRARY_PATH is needed IN the
+    # process environment from startup: dlopen("libopus.so.0") uses the value read
+    # by ld.so at launch, a variable added later via .env is not
+    # enough. It is the env of the systemd UNIT (the module's `environment` option, for
+    # its part, only writes $HERMES_HOME/.env).
+    # Verified: find_library -> libopus.so.0, discord.opus.is_loaded() -> True,
+    # Decoder/Encoder opus instantiable.
     systemd.services.hermes-agent.environment.LD_LIBRARY_PATH = "${pkgs.libopus}/lib";
 
-    # --- Desktop plugin: vim-keybindings (déclaratif, géré par nix) ---
-    # Crée le plugin dans /var/lib/hermes/.hermes/desktop-plugins/vim-bindings/
-    # via tmpfiles + service oneshot au démarrage du service hermes.
+    # --- Desktop plugin: vim-keybindings (declarative, managed by nix) ---
+    # Creates the plugin in /var/lib/hermes/.hermes/desktop-plugins/vim-bindings/
+    # via tmpfiles + oneshot service at the start of the hermes service.
     systemd.tmpfiles.rules = [
       "d /var/lib/hermes/.hermes/desktop-plugins 0755 hermes hermes -"
       "d /var/lib/hermes/.hermes/desktop-plugins/vim-bindings 0755 hermes hermes -"
-      # Thème Catppuccin du dashboard web : le fichier vit dans ce repo et arrive
-      # dans le home Hermes par symlink store (le dashboard ne lit que, donc le
-      # 0444 du store suffit). Le nom du fichier ET le `name:` du YAML doivent
-      # rester égaux, sinon _discover_user_themes() l'ignore en silence.
+      # Catppuccin theme of the web dashboard: the file lives in this repo and arrives
+      # in the Hermes home by store symlink (the dashboard only reads, so the
+      # 0444 of the store is enough). The file name AND the `name:` of the YAML must
+      # stay equal, otherwise _discover_user_themes() silently ignores it.
       "d /var/lib/hermes/.hermes/dashboard-themes 0755 hermes hermes -"
       "L+ /var/lib/hermes/.hermes/dashboard-themes/catppuccin-mocha-lavender.yaml - hermes hermes - ${./dashboard-themes/catppuccin-mocha-lavender.yaml}"
+      # Hermes skin (CLI + TUI + desktop): the YAML lives in this repo but is
+      # COPIED, not symlinked, by the activation script below. Why: the
+      # gateway's change_watcher watches the mtime of the active skin file, and a
+      # store file keeps mtime=1, so a symlink NEVER repaints the
+      # desktop after a color tweak. The copy takes a fresh mtime at
+      # each switch, which triggers `skin.changed` without a gateway restart.
+      "d /var/lib/hermes/.hermes/skins 0755 hermes hermes -"
       "a /home/marc - - - - u:hermes:--x,m::--x"
       "a /home/marc/git - - - - u:hermes:--x,m::r-x"
+      # Repos outside nixos: hermes only has --x on /home/marc/git, so it can
+      # only create a new repo when the directory already exists with an ACL.
+      # mcp-rust (Rust MCP servers) is created here once and for all; add one
+      # line per new repo instead of widening the parent directory.
+      "d /home/marc/git/mcp-rust 2775 marc dev -"
+      "a /home/marc/git/mcp-rust - - - - u:hermes:rwX"
     ];
 
-        # --- vim-bindings plugin : DISABLED (JS heredoc parsing issues in Nix)
+    # Skin copy at each activation (see the tmpfiles comment): fresh
+    # mtime => `skin.changed` => desktop, CLI and TUI repainted without restart.
+    system.activationScripts."hermes-skin" = ''
+      install -d -m 0755 -o hermes -g hermes /var/lib/hermes/.hermes/skins
+      install -m 0644 -o hermes -g hermes ${./skins/claude-code.yaml} \
+        /var/lib/hermes/.hermes/skins/claude-code.yaml
+    '';
+
+        # --- vim-bindings plugin: DISABLED (JS heredoc parsing issues in Nix)
         # systemd.services.hermes-vim-bindings-plugin = { ... };
     })
 
-    # --- MCP Nextcloud : voir services/nextcloud-mcp (single_user_basic, loopback) ---
+    # --- Nextcloud MCP: see services/nextcloud-mcp (single_user_basic, loopback) ---
   ];
 }

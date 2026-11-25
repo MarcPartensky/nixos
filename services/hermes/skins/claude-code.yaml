@@ -1,0 +1,259 @@
+# Claude Code inspired skin for Hermes (CLI, TUI and desktop app).
+#
+# One flat neutral dark palette, no purple anywhere: greys with a single
+# lavender accent, the Claude look. The desktop stylesheet below (composer card, user
+# bubbles, side-panel card, rounded menus) is injected by the desktop theme.
+#
+# The file name AND the `name:` key must stay equal, otherwise the skin engine
+# ignores the file silently.
+
+name: claude-code
+description: Claude Code inspired neutral greys with a lavender accent
+
+colors:
+  # Surfaces
+  background: "#151515"
+  status_bar_bg: "#151515"
+
+  # Text
+  ui_text: "#e7e7e7"
+  ui_label: "#e7e7e7"
+  banner_title: "#e7e7e7"
+  banner_text: "#e7e7e7"
+  banner_dim: "#9b9b9b"
+  status_bar_text: "#9b9b9b"
+
+  # One accent, Catppuccin lavender
+  ui_accent: "#b4befe"
+  banner_accent: "#b4befe"
+  prompt: "#b4befe"
+  session_label: "#b4befe"
+  input_rule: "#3a3a3a"
+
+  # Borders
+  ui_border: "#2f2f2f"
+  banner_border: "#2f2f2f"
+  response_border: "#2f2f2f"
+  session_border: "#3d3d3d"
+
+  # Tool / thinking markers
+  ui_tool: "#d7b06a"
+  ui_thinking: "#7a7a7a"
+
+  # Semantic status
+  ui_ok: "#8fbf7f"
+  ui_warn: "#d7b06a"
+  ui_error: "#e0716b"
+  status_bar_good: "#8fbf7f"
+  status_bar_warn: "#d7b06a"
+  status_bar_critical: "#e0716b"
+
+  # Diffs
+  diff_added: "#8fbf7f"
+  diff_removed: "#e0716b"
+
+  # Code syntax (neutral, no purple tints)
+  syntax_string: "#a8c98f"
+  syntax_number: "#d7a06a"
+  syntax_keyword: "#8fa8c0"
+  syntax_comment: "#6e6e6e"
+
+  # Completion menu
+  completion_menu_bg: "#1e1e1e"
+  completion_menu_current_bg: "#2a2a2a"
+  completion_menu_meta_bg: "#151515"
+
+branding:
+  agent_name: Hermes Agent
+  prompt_symbol: "❯"
+  help_header: "(^_^)? Commands"
+
+tool_prefix: "┊"
+
+# Desktop-only stylesheet, taken from the claude-code-theme desktop plugin
+# (MIT, aliilhami/hermes-claude-code-theme) and laid flat: one surface, rounded
+# cards, no chat backdrop image. Kept here so the look travels with the skin.
+customCSS: |
+
+  /* Palette: light and dark palettes */
+  :root {
+    --ccl-bg: #fbfbf9; --ccl-card: #ffffff; --ccl-subtle: #f7f7f6; --ccl-hover: #f3f3f2; --ccl-sidebar: #f4f4f4;
+    --ccl-bubble: var(--ccl-sidebar); --ccl-row-active: #eeedeb; --ccl-row-open: #f4f3f1;
+    --ccl-border: #e2e1de; --ccl-border-strong: #d3d2ce; --ccl-divider: #ecebe8;
+    --ccl-text: #171717; --ccl-code: #1f2328; --ccl-muted: #888783; --ccl-icon: #555653;
+    --ccl-check: var(--ccl-text); --ccl-selection: #d9e7fb;
+    --ccl-send-bg: #1a1a1a; --ccl-send-fg: #ffffff;
+    --ccl-shadow: rgba(0,0,0,0.08); --ccl-shadow-sm: rgba(0,0,0,0.06); --ccl-shadow-xs: rgba(0,0,0,0.04);
+  }
+  :root.dark {
+    --ccl-bg: #151515; --ccl-card: #1e1e1e; --ccl-subtle: #232323; --ccl-hover: #2a2a2a; --ccl-sidebar: #1a1a1a;
+    --ccl-bubble: var(--ccl-sidebar); --ccl-row-active: #303030; --ccl-row-open: #242424;
+    --ccl-border: #2f2f2f; --ccl-border-strong: #3d3d3d; --ccl-divider: #2b2b2b;
+    --ccl-text: #e7e7e7; --ccl-code: #e6edf3; --ccl-muted: #9b9b9b; --ccl-icon: #a3a3a3;
+    --ccl-selection: #264f78;
+    --ccl-send-bg: #e7e7e7; --ccl-send-fg: #151515;
+    --ccl-shadow: rgba(0,0,0,0.45); --ccl-shadow-sm: rgba(0,0,0,0.35); --ccl-shadow-xs: rgba(0,0,0,0.25);
+  }
+  /* One surface colour everywhere */
+  :root, .dark {
+    --ui-chat-surface-background: var(--ccl-bg) !important;
+    --ui-sidebar-surface-background: var(--ccl-sidebar) !important;
+    --dt-background: var(--ccl-bg) !important;
+  }
+  /* Hide the statue chat backdrop regardless of the Appearance toggle */
+  img[src*='filler-bg0'] {
+    display: none !important;
+  }
+  /* Side-panel file viewer. The whole ZONE (tab strip + editor) is the card;
+     [data-tree-group] wraps both. Only zones holding a file viewer qualify. */
+  [data-tree-group]:has(aside :is(.cm-editor, .preview-source-code, [data-preview-markdown])) {
+    background: var(--ccl-sidebar) !important;
+    border: 1px solid var(--ccl-border) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px var(--ccl-shadow) !important;
+    margin: 6px 12px 8px 4px !important;
+    overflow: hidden !important;
+  }
+  [data-tree-group]:has(aside :is(.cm-editor, .preview-source-code, [data-preview-markdown])) :is([data-zone-tabstrip], [data-panel-header], [data-zone-body], aside) {
+    background: var(--ccl-sidebar) !important;
+  }
+  /* The inner editor goes flat: no second card inside the first. */
+  aside:is(:has(.cm-editor), :has(.preview-source-code), :has([data-preview-markdown])) {
+    background: var(--ccl-sidebar) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  aside:is(:has(.cm-editor), :has(.preview-source-code), :has([data-preview-markdown])) .border-b {
+    border-bottom-color: var(--ccl-divider) !important;
+  }
+  aside .bg-background,
+  aside .cm-editor,
+  aside .cm-editor .cm-gutters,
+  aside .cm-scroller,
+  aside .preview-source-code,
+  aside .preview-source-code pre,
+  aside [data-preview-markdown] {
+    background: var(--ccl-sidebar) !important;
+  }
+  aside .cm-editor .cm-gutters {
+    border-right: 0 !important;
+    color: var(--ccl-muted) !important;
+  }
+  aside .cm-editor .cm-content,
+  aside .preview-source-code {
+    font-family: 'SF Mono', Menlo, Monaco, Consolas, monospace !important;
+  }
+  aside .cm-editor .cm-content { color: var(--ccl-code) !important; caret-color: var(--ccl-code) !important; }
+  aside .cm-editor .cm-cursor { border-left-color: var(--ccl-code) !important; }
+  aside .cm-editor .cm-activeLine,
+  aside .cm-editor .cm-activeLineGutter {
+    background: var(--ccl-subtle) !important;
+  }
+  aside .cm-editor .cm-selectionBackground,
+  aside .cm-editor.cm-focused .cm-selectionBackground {
+    background: var(--ccl-selection) !important;
+  }
+  /* Left sidebar: selected row + icon colours */
+  :root, .dark {
+    --ui-row-active-background: var(--ccl-row-active) !important;
+    --ui-row-open-background: var(--ccl-row-open) !important;
+  }
+  [data-tour='sessions-sidebar'] :is(.bg-\\(--ui-row-active-background\\), .bg-\\(--ui-row-open-background\\)) {
+    border-radius: 6px !important;
+  }
+  [data-tour='sessions-sidebar'] .bg-\\(--ui-row-active-background\\) {
+    color: var(--ccl-text) !important;
+  }
+  [data-tour='sessions-sidebar'] button:not([data-row-actions] button) svg {
+    color: var(--ccl-icon) !important;
+  }
+  /* Working-session arc: same corners as the selected row */
+  .arc-border.arc-row, :root.dark .arc-border.arc-row {
+    --arc-radius: 6px !important;
+  }
+  [data-tour='sessions-sidebar'] [data-working='true'],
+  .arc-border.arc-row { border-radius: 6px !important; }
+  /* Dropdown menus (filter/sort etc.): white rounded popover */
+  :is([data-slot='dropdown-menu-content'], [data-slot='dropdown-menu-sub-content'], [role='menu'][data-radix-menu-content]) {
+    background: var(--ccl-sidebar) !important;
+    border: 1px solid var(--ccl-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 4px var(--ccl-shadow-sm), 0 6px 16px var(--ccl-shadow) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 4px !important;
+    min-width: 200px !important;
+  }
+  :is([data-slot='dropdown-menu-item'], [data-slot='dropdown-menu-checkbox-item'], [data-slot='dropdown-menu-radio-item'], [data-slot='dropdown-menu-sub-trigger']) {
+    border-radius: 8px !important;
+    min-height: 28px !important;
+    padding-inline: 8px !important;
+    font-size: 13px !important;
+    color: var(--ccl-text) !important;
+  }
+  :is([data-slot='dropdown-menu-item'], [data-slot='dropdown-menu-checkbox-item'], [data-slot='dropdown-menu-radio-item'], [data-slot='dropdown-menu-sub-trigger']):is([data-highlighted], [data-state='open']) {
+    background: var(--ccl-hover) !important;
+    color: var(--ccl-text) !important;
+  }
+  [role='menu'] :is([data-slot='dropdown-menu-item'], [data-slot='dropdown-menu-sub-trigger']) svg { color: var(--ccl-muted) !important; }
+  [role='menu'] :is([data-slot='dropdown-menu-checkbox-item'], [data-slot='dropdown-menu-radio-item']) [data-state='checked'] svg,
+  [role='menu'] [data-state='checked'] > span svg { color: var(--ccl-check) !important; }
+  [data-slot='dropdown-menu-label'] {
+    color: var(--ccl-muted) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    padding: 6px 8px 2px !important;
+  }
+  [data-slot='dropdown-menu-separator'] {
+    background: var(--ccl-divider) !important;
+    margin: 4px 6px !important;
+    height: 1px !important;
+  }
+  /* User message: right-aligned, fit-content, soft grey, no border */
+  [data-slot='aui_user-message-root'] {
+    align-items: flex-end !important;
+  }
+  [data-slot='aui_user-message-root'] .composer-human-message {
+    width: fit-content !important;
+    max-width: min(85%, 640px) !important;
+    margin-left: auto !important;
+    background: var(--ccl-bubble) !important;
+    border: 0 !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 10px 18px !important;
+    color: var(--ccl-text) !important;
+  }
+  [data-slot='aui_user-message-root'] .composer-human-message::before,
+  [data-slot='aui_user-message-root'] .composer-human-message::after {
+    display: none !important;
+  }
+
+  /* Composer: style ONLY the inner surface (root wrapper stays untouched,
+     otherwise you get two borders). White, one pale border, soft halo. */
+  [data-slot='composer-root'] {
+    --composer-fill: var(--ccl-sidebar) !important;
+  }
+  [data-slot='composer-surface'] {
+    background: var(--ccl-sidebar) !important;
+    border: 1px solid var(--ccl-border) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 1px 3px var(--ccl-shadow-xs), 0 4px 16px var(--ccl-shadow-xs) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    outline: none !important;
+  }
+  [data-slot='composer-surface']:focus-within {
+    border-color: var(--ccl-border-strong) !important;
+  }
+  [data-slot='composer-surface'] button[type='submit'] {
+    background: var(--ccl-send-bg) !important;
+    color: var(--ccl-card) !important;
+    border-radius: 9999px !important;
+  }

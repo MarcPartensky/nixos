@@ -26,7 +26,11 @@ import urllib.request
 
 
 ROOM = os.environ.get("GOTIFY_PONT_ROOM", "!bHIbXBYEcLDiMFtbse:matrix.marcpartensky.com")
-GOTIFY_URL = os.environ.get("GOTIFY_PONT_URL", "http://127.0.0.1:8070")
+# Gotify vit sur le VPS depuis le 20/11/2026 : l'URL publique est la cible
+# normale. Le repli loopback reste utile pendant une bascule (serveur encore
+# local) et coute une seconde d'attente en cas d'echec.
+GOTIFY_URL = os.environ.get("GOTIFY_PONT_URL", "https://gotify.marcpartensky.com")
+GOTIFY_URL_FALLBACK = os.environ.get("GOTIFY_PONT_URL_FALLBACK", "http://127.0.0.1:8070")
 TOKEN_FILE = os.environ.get("GOTIFY_PONT_APP_TOKEN_FILE", "/var/lib/gotify-pont/application_token")
 PRIORITY = int(os.environ.get("GOTIFY_PONT_PRIORITY", "5"))
 MAX_CHARS = 4000
@@ -55,14 +59,20 @@ def handle(*args, **kwargs):
     if not text:
         return
     payload = {"title": "Hermes (Matrix)", "message": text[:MAX_CHARS], "priority": PRIORITY}
-    request = urllib.request.Request(
-        GOTIFY_URL + "/message",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json", "X-Gotify-Key": _token()},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=10) as response:
-            print("gotify-notify: pousse dans Gotify (plateforme %s, salle %s) -> HTTP %s"
-                  % (context.get("platform"), chat_id, response.status), flush=True)
-    except Exception as exc:  # noqa: BLE001 — un hook ne doit jamais casser un tour
-        print("gotify-notify: echec de la poussee Gotify : %s" % exc, flush=True)
+    last_exc = None
+    for base in (GOTIFY_URL, GOTIFY_URL_FALLBACK):
+        if not base:
+            continue
+        request = urllib.request.Request(
+            base.rstrip("/") + "/message",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "X-Gotify-Key": _token()},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                print("gotify-notify: pousse dans Gotify (%s, plateforme %s, salle %s) -> HTTP %s"
+                      % (base, context.get("platform"), chat_id, response.status), flush=True)
+                return
+        except Exception as exc:  # noqa: BLE001 — un hook ne doit jamais casser un tour
+            last_exc = exc
+    print("gotify-notify: echec de la poussee Gotify : %s" % last_exc, flush=True)

@@ -1,8 +1,8 @@
 # services/mcp-lan-access/default.nix
 #
 # Rend cliquables depuis le Mac de marc les URLs des serveurs MCP HTTP qui
-# écoutent en loopback sur tower (nextcloud 8710, anki 3141, arrmcp 6060,
-# beeper 23373). Hermes Desktop affiche l'URL de `mcp_servers.<nom>.url` telle
+# écoutent en loopback sur tower (nextcloud 8710, anki 3141, arrmcp 6060).
+# Hermes Desktop affiche l'URL de `mcp_servers.<nom>.url` telle
 # quelle dans Capabilities -> MCP : en loopback, le clic part sur le localhost
 # du Mac et ne peut pas répondre.
 #
@@ -36,8 +36,7 @@ in {
       default = "192.168.1.44";
       description = ''
         Adresse LAN de tower sur laquelle les redirecteurs écoutent. Sert aussi
-        de base aux URLs MCP des modules nextcloud-mcp, arr-mcp, anki-mcp et au
-        serveur beeper déclaré dans services/hermes.
+        de base aux URLs MCP des modules nextcloud-mcp, arr-mcp et anki-mcp.
       '';
     };
 

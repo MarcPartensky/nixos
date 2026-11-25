@@ -23,7 +23,22 @@
       flakeIgnore = ["E501" "W503" "W504"];
     } (builtins.readFile file);
 in {
-  shlink-mcp = mk "shlink-mcp" ../services/shlink-mcp/server.py [py.mcp];
+  # Portage Rust du serveur MCP shlink (crate dans ./shlink-mcp-rs).
+  # Mesure du 15/11/2026, meme API, memes 10 outils : 1,4 Mo de RSS au lieu de
+  # 54, 2 ms de demarrage au lieu de 4200, et le texte rendu au modele est du
+  # JSON compact (1,4 ko au lieu de 2,4 ko sur un list). Cargo.lock est
+  # verrouille dans le depot, donc le build est reproductible sans reseau
+  # au-dela du fetch des crates de la serrure.
+  shlink-mcp = pkgs.rustPlatform.buildRustPackage {
+    pname = "shlink-mcp-rs";
+    version = "0.1.0";
+    src = ./shlink-mcp-rs;
+    cargoLock.lockFile = ./shlink-mcp-rs/Cargo.lock;
+    meta = {
+      description = "Serveur MCP Shlink en Rust (stdio, 10 outils)";
+      mainProgram = "shlink-mcp-rs";
+    };
+  };
   shorturl-mcp = mk "shorturl-mcp" ../services/shorturl-mcp/server.py [py.mcp];
   beef-mcp = mk "beef-mcp" ../services/beef-mcp/server.py [py.mcp];
   share-mcp = mk "share-mcp" ../services/share-mcp/server.py [py.mcp];

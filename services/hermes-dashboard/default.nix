@@ -1,32 +1,32 @@
 # services/hermes-dashboard/default.nix
-# Terminal web + panneau d'admin de Hermes sur tower.
+# Web terminal + Hermes admin panel on tower.
 #
-# Rien à packager : le backend est déjà dans l'input `hermes-agent` du flake.
-# `hermes serve` et `hermes dashboard` sont le MÊME point d'entrée, à un flag
-# près, et les deux exposent les sockets /api/ws et /api/pty. C'est /api/pty
-# qui est le terminal web ; `dashboard` ajoute en plus l'interface navigateur
-# sur le même port. Un seul des deux modes peut tourner par instance.
+# Nothing to package: the backend is already in the flake's `hermes-agent` input.
+# `hermes serve` and `hermes dashboard` are the SAME entry point, one flag
+# apart, and both expose the /api/ws and /api/pty sockets. It is /api/pty
+# that is the web terminal; `dashboard` additionally adds the browser interface
+# on the same port. Only one of the two modes can run per instance.
 #
-# Chaîne : Pangolin (dash.marcpartensky.com, SSO)
+# Chain: Pangolin (dash.marcpartensky.com, SSO)
 #          -> newt (site tower)
-#          -> 127.0.0.1:9121 (nginx, réécrit Host: 127.0.0.1:9120)
-#          -> 127.0.0.1:9120 (hermes-backend.service, mode dashboard).
+#          -> 127.0.0.1:9121 (nginx, rewrites Host: 127.0.0.1:9120)
+#          -> 127.0.0.1:9120 (hermes-backend.service, dashboard mode).
 #
-# Le domaine était terminal.marcpartensky.com jusqu'au 11/11/2026 : ce nom est
-# désormais pris par le vrai terminal web (services/terminal, ttyd). Un domaine
-# Pangolin ne peut porter qu'une ressource, d'où le déplacement ici.
-# L'identifiant Pangolin (niceId) de cette ressource est `hermes-dashboard` :
-# c'est une ressource NEUVE (l'ancienne, niceId `hermes-terminal`, est reprise
-# par services/terminal, qui la met à jour sur place pour garder le domaine).
+# The domain was terminal.marcpartensky.com until 11/11/2026: that name is
+# now taken by the real web terminal (services/terminal, ttyd). A Pangolin domain
+# can only carry one resource, hence the move here.
+# The Pangolin identifier (niceId) of this resource is `hermes-dashboard`:
+# it is a NEW resource (the old one, niceId `hermes-terminal`, is taken over
+# by services/terminal, which updates it in place to keep the domain).
 #
-# Le backend bindé en loopback ne déclenche PAS la garde d'authentification du
-# dashboard (elle ne s'active que sur une adresse non-loopback) : c'est le SSO
-# Pangolin qui protège l'accès, exactement comme la ressource noVNC de tower.
-# Ne JAMAIS exposer 9120 ou 9121 au firewall : /api/pty est un shell.
+# The backend bound to loopback does NOT trigger the dashboard's
+# authentication guard (it only activates on a non-loopback address): it is the
+# Pangolin SSO that protects access, exactly like tower's noVNC resource.
+# NEVER expose 9120 or 9121 to the firewall: /api/pty is a shell.
 #
-# ⚠ Le PTY hérite du durcissement de l'unité hermes-backend (User=hermes).
-# Sans le `NoNewPrivileges = false` posé dans services/hermes/default.nix, le
-# shell obtenu n'a aucun sudo, pas même le nixos-rebuild NOPASSWD.
+# ! The PTY inherits the hardening of the hermes-backend unit (User=hermes).
+# Without the `NoNewPrivileges = false` set in services/hermes/default.nix, the
+# resulting shell has no sudo, not even the NOPASSWD nixos-rebuild.
 {
   config,
   lib,
@@ -37,9 +37,9 @@
   backendUrl = "http://127.0.0.1:${toString backendPort}";
   backendHost = "127.0.0.1:${toString backendPort}";
 in {
-  # Token de session stable : sans lui le backend en régénère un à chaque
-  # démarrage, que personne d'autre ne peut connaître (donc aucun client
-  # externe ne peut se rattacher à CE backend).
+  # Stable session token: without it the backend regenerates one on each
+  # start, which no one else can know (so no external client
+  # can attach to THIS backend).
   sops.secrets."hermes_dashboard_token" = {
     sopsFile = ../../secrets/hermes-dashboard.yml;
     key = "hermes_dashboard_token";
@@ -55,9 +55,9 @@ in {
     sessionTokenFile = config.sops.secrets."hermes_dashboard_token".path;
   };
 
-  # Proxy local : le backend refuse toute requête dont le Host diffère de
-  # l'adresse sur laquelle il a bindé (défense anti-DNS-rebinding), d'où la
-  # réécriture. Même mécanique que services/hermes-mobile.
+  # Local proxy: the backend rejects any request whose Host differs from
+  # the address it bound to (anti-DNS-rebinding defense), hence the
+  # rewrite. Same mechanism as services/hermes-mobile.
   services.nginx.virtualHosts."hermes-dashboard-proxy" = {
     listen = [
       {
@@ -65,8 +65,8 @@ in {
         port = proxyPort;
       }
     ];
-    # `/` couvre l'app web, /api/ws et /api/pty ; proxyWebsockets pose les
-    # en-têtes Upgrade/Connection dont le PTY a besoin.
+    # `/` covers the web app, /api/ws and /api/pty; proxyWebsockets sets the
+    # Upgrade/Connection headers the PTY needs.
     locations."/" = {
       proxyPass = backendUrl;
       proxyWebsockets = true;
@@ -79,10 +79,10 @@ in {
     };
   };
 
-  # Ressource publique Pangolin, appliquée par le site qui porte le blueprint
-  # (donc tower) : `site` est omis volontairement, cf. services/newt.
-  # NB : cle `proxy-resources` + `protocol` (schema attendu par le Pangolin du
-  # VPS), cf. le commentaire detaille dans services/newt.
+  # Public Pangolin resource, applied by the site that carries the blueprint
+  # (so tower): `site` is deliberately omitted, cf. services/newt.
+  # NB: key `proxy-resources` + `protocol` (schema expected by the VPS
+  # Pangolin), cf. the detailed comment in services/newt.
   services.newt.blueprint.proxy-resources.hermes-dashboard = {
     name = "hermes-dashboard";
     protocol = "http";
@@ -111,15 +111,15 @@ in {
     ];
   };
 
-  # Garde-fou : ces ports ne doivent jamais être ouverts sur le LAN.
+  # Guard rail: these ports must never be opened on the LAN.
   assertions = [
     {
       assertion = !(lib.elem backendPort config.networking.firewall.allowedTCPPorts);
-      message = "hermes-dashboard : le port ${toString backendPort} (/api/pty = shell) ne doit pas être ouvert au firewall.";
+      message = "hermes-dashboard: port ${toString backendPort} (/api/pty = shell) must not be open on the firewall.";
     }
     {
       assertion = !(lib.elem proxyPort config.networking.firewall.allowedTCPPorts);
-      message = "hermes-dashboard : le port ${toString proxyPort} (proxy du /api/pty) ne doit pas être ouvert au firewall.";
+      message = "hermes-dashboard: port ${toString proxyPort} (proxy of /api/pty) must not be open on the firewall.";
     }
   ];
 }

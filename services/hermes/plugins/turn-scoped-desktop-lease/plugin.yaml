@@ -1,0 +1,3 @@
+name: turn-scoped-desktop-lease
+version: "1.0"
+description: Release a Desktop chat's active-session lease at turn end so another Hermes window can take the chat over instead of being refused until the first window idles out.

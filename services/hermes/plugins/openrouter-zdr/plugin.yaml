@@ -1,0 +1,4 @@
+name: openrouter-zdr
+kind: model-provider
+version: 1.0.0
+description: OpenRouter profile that demands Zero Data Retention on every request

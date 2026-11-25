@@ -5,6 +5,9 @@ L'agent (utilisateur `hermes`) depose une demande sur un socket unix. Le broker
 la publie sur une page HTTPS et arme en meme temps tous les canaux de preuve :
 
   - mot de passe  : PAM sur le compte de marc (pamtester), rien de nouveau a retenir
+  - touch-id      : popup natif sur le Mac de marc. Le broker (root) joint le Mac
+                    par SSH et lance un helper du store Nix (root-owned, immuable)
+                    qui ne rend 0 qu'apres un vrai match d'empreinte
   - passkey       : WebAuthn, n'importe quel authentificateur (Touch ID du Mac via
                     Chrome, empreinte du telephone, Bitwarden, cle materielle)
 
@@ -21,6 +24,7 @@ import hashlib
 import json
 import os
 import secrets
+import shlex
 import socket
 import subprocess
 import sys
@@ -41,6 +45,10 @@ TTL = int(os.environ.get("BROKER_TTL", "300"))
 EXEC_TIMEOUT = int(os.environ.get("BROKER_EXEC_TIMEOUT", "900"))
 PAM_USER = os.environ.get("BROKER_PAM_USER", "marc")
 PAMTESTER = os.environ.get("BROKER_PAMTESTER", "pamtester")
+# Canal Touch ID : commande ssh (root) vers le Mac, helper distant, delai.
+TOUCHID_SSH = shlex.split(os.environ.get("BROKER_TOUCHID_SSH", ""))
+TOUCHID_REMOTE = os.environ.get("BROKER_TOUCHID_REMOTE", "/run/current-system/sw/bin/hermes-touch-id")
+TOUCHID_TIMEOUT = int(os.environ.get("BROKER_TOUCHID_TIMEOUT", "110"))
 CALLER_GROUP = "hermes"
 MAX_ATTEMPTS = 5
 MAX_OUTPUT = 200_000
@@ -273,6 +281,50 @@ def finish_request(token, proof, who):
         return True
 
 
+def touch_id_worker(token, request):
+    """Popup Touch ID natif sur le Mac, en parallele du lien et du mot de passe.
+
+    Le broker tourne en root et joint le Mac par SSH : l'agent n'a aucun moyen de
+    fabriquer cette preuve. Le helper est un binaire du store Nix (root-owned,
+    immuable), donc pas remplacable par un "exit 0" cote Mac.
+    """
+    text = "Hermes veut executer: %s" % " ".join(request["argv"])
+    if request.get("reason"):
+        text += " | " + request["reason"]
+    payload = "b64:" + base64.b64encode(text[:400].encode()).decode()
+    cmd = TOUCHID_SSH + [TOUCHID_REMOTE, payload]
+    started = time.time()
+    try:
+        proc = subprocess.run(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=TOUCHID_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        audit({"event": "touchid_timeout", "id": request["id"], "delta_s": round(time.time() - started, 1)})
+        return
+    except OSError as exc:
+        audit({"event": "touchid_error", "id": request["id"], "error": str(exc)[:120]})
+        return
+    detail = (proc.stdout or "").strip()[:120]
+    if proc.returncode == 0:
+        if finish_request(token, "touch-id", "marc@mac"):
+            audit(
+                {
+                    "event": "approved",
+                    "id": request["id"],
+                    "proof": "touch-id",
+                    "cred": "touch-id",
+                    "detail": detail,
+                    "delta_s": round(time.time() - started, 1),
+                }
+            )
+    else:
+        audit({"event": "touchid_refused", "id": request["id"], "rc": proc.returncode, "detail": detail})
+
+
 # --- page d'approbation ------------------------------------------------------
 
 PAGE = """<!doctype html>
@@ -376,11 +428,19 @@ async function prefetch(creation) {
   if (!window.OPTS.platform) msg('Aucun authentificateur de la machine disponible, utilise l autre bouton.', 'bad');
 }
 async function doAssert(att) {
+  if (att === 'platform' && window.UV === 'false') {
+    msg('Cet onglet ne peut pas faire Touch ID: aucun authentificateur de plateforme dans ce navigateur. Ouvre ce lien dans Chrome ou Safari.', 'bad');
+    report('assert-click', {name: att, message: 'uvpaa false: refus local, pas de popup possible'});
+    return;
+  }
+  report('assert-click', {name: att, message: (window.OPTS[att] ? 'options pre-chargees' : 'pas d options')});
   let pk = window.OPTS[att];
   if (!pk) { try { pk = hydrate(await fetchOptions(att === 'any' ? undefined : att), false); } catch (e) { msg(e.message, 'bad'); report('assert', e); return; } }
   let cred;
+  const stall = setTimeout(() => report('stall', {name: att, message: 'create/get sans reponse depuis 30s'}), 30000);
   try { cred = await navigator.credentials.get({publicKey: pk}); }
-  catch (e) { msg('refus navigateur: ' + ((e && e.name) || '') + ' ' + ((e && e.message) || ''), 'bad'); report('assert', e); return; }
+  catch (e) { clearTimeout(stall); msg('refus navigateur: ' + ((e && e.name) || '') + ' ' + ((e && e.message) || ''), 'bad'); report('assert', e); return; }
+  clearTimeout(stall);
   window.OPTS = {};
   await approve({
     id: cred.id,
@@ -390,12 +450,15 @@ async function doAssert(att) {
   });
 }
 async function doCreate(att) {
-  if (!window.ENROLL) { msg('valide ton mot de passe d abord', 'bad'); return; }
+  if (!window.ENROLL) { msg('valide ton mot de passe d abord', 'bad'); report('create-click', {name: att, message: 'sans session d enrolement'}); return; }
+  report('create-click', {name: att, message: (window.OPTS[att] ? 'options pre-chargees' : 'pas d options')});
   let pk = window.OPTS[att];
   if (!pk) { try { pk = hydrate(await fetchOptions(att === 'any' ? undefined : att), true); } catch (e) { msg(e.message, 'bad'); report('create', e); return; } }
   let cred;
+  const stall = setTimeout(() => report('stall', {name: att, message: 'create sans reponse depuis 30s'}), 30000);
   try { cred = await navigator.credentials.create({publicKey: pk}); }
-  catch (e) { msg('creation refusee: ' + ((e && e.name) || '') + ' ' + ((e && e.message) || ''), 'bad'); report('create', e); return; }
+  catch (e) { clearTimeout(stall); msg('creation refusee: ' + ((e && e.name) || '') + ' ' + ((e && e.message) || ''), 'bad'); report('create', e); return; }
+  clearTimeout(stall);
   window.OPTS = {};
   const out = await post('/enroll/wa/attest', {
     enroll: window.ENROLL,
@@ -408,6 +471,13 @@ async function doCreate(att) {
   else { msg(out.error || 'refuse', 'bad'); report('attest-http', out); }
 }
 document.getElementById('passkey-row').style.display = 'flex';
+window.UV = 'inconnu';
+report('load', {name: MODE, message: 'uvpaa en cours'});
+if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+  PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+    .then(v => { window.UV = String(v); report('uvpaa', {name: String(v), message: ''}); if (!v) msg('Ce navigateur ne propose pas de passkey de plateforme (Touch ID). Ouvre cette page dans Chrome ou Safari.', 'bad'); })
+    .catch(e => { window.UV = 'erreur'; report('uvpaa', e); });
+} else { window.UV = 'absent'; report('uvpaa', {name: 'absent', message: 'API WebAuthn indisponible'}); }
 if (MODE !== 'enroll') {
   document.getElementById('passkey').onclick = () => doAssert('platform');
   document.getElementById('passkey-other').onclick = () => doAssert('any');
@@ -520,12 +590,13 @@ class Handler(BaseHTTPRequestHandler):
         # l'aveugle. Taille bornee, contenu tronque.
         if path == "/client-log":
             print(
-                "client-log %s %s %r %r"
+                "client-log %s %s %r %r ua=%r"
                 % (
                     str(body.get("kind"))[:20],
                     str(body.get("name"))[:40],
                     str(body.get("message"))[:200],
                     str(body.get("where"))[:40],
+                    str(body.get("ua"))[:90],
                 ),
                 flush=True,
             )
@@ -750,8 +821,21 @@ def serve_client(conn, peercred=(-1, -1, -1)):
             flush=True,
         )
         conn.sendall(
-            (json.dumps({"status": "pending", "id": request["id"], "url": url, "expires_in": TTL}) + "\n").encode()
+            (
+                json.dumps(
+                    {
+                        "status": "pending",
+                        "id": request["id"],
+                        "url": url,
+                        "expires_in": TTL,
+                        "touch_id": bool(TOUCHID_SSH),
+                    }
+                )
+                + "\n"
+            ).encode()
         )
+        if TOUCHID_SSH:
+            threading.Thread(target=touch_id_worker, args=(token, request), daemon=True).start()
         approved = request["event"].wait(TTL)
         with _lock:
             REQUESTS.pop(token, None)
@@ -875,7 +959,10 @@ def client_main(argv):
                 sys.stderr.write(line.decode(errors="replace") + "\n")
                 return 1
             if message.get("status") == "pending":
-                sys.stderr.write("approbation: %s\n" % message["url"])
+                if message.get("touch_id"):
+                    sys.stderr.write("popup: Touch ID demande sur le Mac de marc (repli: %s)\n" % message["url"])
+                else:
+                    sys.stderr.write("approbation: %s\n" % message["url"])
                 chunks = [rest] if rest else []
                 continue
             if message.get("status") == "executed":

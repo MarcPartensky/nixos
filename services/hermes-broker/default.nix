@@ -5,17 +5,23 @@
 # n'execute rien tant qu'une preuve humaine n'est pas arrivee.
 #
 # Preuves acceptees, toutes armees en meme temps pour chaque demande :
+#   - Touch ID natif : popup macOS sur le Mac de marc (canal par defaut, aucun
+#     navigateur implique). Le broker joint le Mac par SSH et lance un helper
+#     LocalAuthentication compile par Nix (packages/hermes-touch-id du flake).
 #   - mot de passe systeme de marc, verifie par PAM (pamtester) : aucun secret
 #     n'est stocke par le broker
 #   - passkey WebAuthn, n'importe quel authentificateur : Touch ID du Mac via
 #     Chrome, empreinte du telephone, Bitwarden, cle materielle. La verification
 #     exige le flag de verification utilisateur, donc un geste biometrie ou PIN
 #
-# Le canal "Secure Enclave par binaire maison" a ete abandonne : macOS exige un
-# entitlement keychain-access-groups, qui demande une identite Apple Developer
-# (erreur -34018 en ad-hoc, et le noyau tue le binaire des que l'entitlement est
-# pose). WebAuthn dans un navigateur signe par Apple donne la meme cle materielle
-# sans certificat.
+# Les deux premiers sont natifs. La page WebAuthn reste le secours quand le Mac
+# est absent (reseau, capot ferme) : elle exige un navigateur, d'ou le lien.
+#
+# Le canal "cle Secure Enclave signataire dans un binaire maison" reste abandonne :
+# macOS exige un entitlement keychain-access-groups pour creer une cle protegee
+# par biometrie, ce qui demande une identite Apple Developer (-34018 en ad-hoc).
+# Le helper actuel n'a pas besoin de cle : il ne fait que rendre un code de
+# sortie apres un match d'empreinte, et c'est le broker root qui le lance.
 {
   config,
   lib,
@@ -65,8 +71,48 @@ in {
       BROKER_TTL = "300";
       BROKER_PAM_USER = "marc";
       BROKER_PAMTESTER = "${pkgs.pamtester}/bin/pamtester";
+      # Canal Touch ID : le broker (root) joint le Mac par SSH et lance un helper
+      # du store Nix du Mac. La cle et la config sont celles de hermes, mais le
+      # known_hosts est FIGE sous /etc/hermes-broker : l'agent ne peut pas le
+      # reecrire pour detourner la connexion vers un faux Mac.
+      BROKER_TOUCHID_SSH = "${pkgs.openssh}/bin/ssh -F /etc/hermes-broker/ssh_config mac-touchid";
+      BROKER_TOUCHID_REMOTE = "/run/current-system/sw/bin/hermes-touch-id";
+      BROKER_TOUCHID_TIMEOUT = "110";
     };
   };
+
+  # Configuration SSH de root vers le Mac de marc, dediee au popup Touch ID.
+  # Le known_hosts est en clair et fixe les deux cles d'hote : un saut par le VPS
+  # (rack) ne suffit donc pas a usurper le Mac.
+  environment.etc."hermes-broker/ssh_config".text = ''
+    Host rack
+      HostName marcpartensky.com
+      User root
+      IdentityFile /var/lib/hermes/.ssh/id_ed25519
+      IdentitiesOnly yes
+      BatchMode yes
+      UserKnownHostsFile /etc/hermes-broker/known_hosts
+      StrictHostKeyChecking yes
+      ConnectTimeout 8
+
+    Host mac-touchid
+      HostName localhost
+      User marc
+      Port 2223
+      ProxyJump rack
+      IdentityFile /var/lib/hermes/.ssh/id_ed25519
+      IdentitiesOnly yes
+      BatchMode yes
+      UserKnownHostsFile /etc/hermes-broker/known_hosts
+      StrictHostKeyChecking yes
+      ConnectTimeout 8
+      ServerAliveInterval 15
+  '';
+
+  environment.etc."hermes-broker/known_hosts".text = ''
+    marcpartensky.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMjdb63fJwF8MAsy16xVtE5fSj9Sc53n+y7P22iKkKSR
+    [localhost]:2223 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID6c+5hXtBvpgtWKuC1DexczmCdKwrSqlYoa5e1qOHoB
+  '';
 
   # Client cote agent : hermes-request --reason "..." -- cmd arg...
   environment.systemPackages = [
