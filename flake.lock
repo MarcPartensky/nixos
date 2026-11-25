@@ -1921,14 +1921,18 @@
         ]
       },
       "locked": {
-        "path": "./projects/typer",
-        "type": "path"
+        "lastModified": 1795594326,
+        "narHash": "sha256-YRhPmZ6Ahgz8qYVNHSuW29W7A/KeF8tXyi4+syPEwoc=",
+        "ref": "refs/heads/master",
+        "rev": "2dd3aec6dca5ef367553161c08f80212bbdc5d63",
+        "revCount": 6,
+        "type": "git",
+        "url": "https://codeberg.org/mazex/typer"
       },
       "original": {
-        "path": "./projects/typer",
-        "type": "path"
-      },
-      "parent": []
+        "type": "git",
+        "url": "https://codeberg.org/mazex/typer"
+      }
     },
     "unstable": {
       "locked": {

@@ -94,13 +94,13 @@
 
   user.shell = "${pkgs.zsh}/bin/zsh";
 
-  # --- CONFIGURATION GPG (OBLIGATOIRE SUR 25.11) ---
-  # Sans ça, git sign / gpg plantera car il ne trouvera pas pinentry
+  # --- GPG CONFIGURATION (MANDATORY ON 25.11) ---
+  # Without it, git sign / gpg will crash because it won't find pinentry
   # environment.etc."gnupg/gpg-agent.conf".text = ''
   #   pinentry-program ${pkgs.pinentry-curses}/bin/pinentry
   # '';
 
-  # Ces options activent l'intégration Home Manager
+  # These options enable the Home Manager integration
   # home-manager.useGlobalPkgs = true;
   # home-manager.useUserPackages = true;
   home-manager.backupFileExtension = "hm-backup";

@@ -12,12 +12,12 @@ in {
     ]);
     # settings = {
     # };
-    # La clé sources.video correspond à la section <video> dans sources.xml
+    # The sources.video key corresponds to the <video> section in sources.xml
     sources.video = [
       {
         name = "movies";
         path = "/srv/media/movies/";
-        # 'allowsharing = true;' partage upnp
+        # 'allowsharing = true;' shares over upnp
       }
       {
         name = "tvshows";

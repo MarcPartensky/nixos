@@ -4,19 +4,19 @@
   lib,
   ...
 }: let
-  # On force explicitement l'utilisation de Python 3.11 (satisfait la condition 3.10+)
+  # We explicitly force the use of Python 3.11 (satisfies the 3.10+ condition)
   pythonPackages = pkgs.python3Packages;
 
-  # 1. Définition de la dépendance locale "geoip2fast"
+  # 1. Definition of the local dependency "geoip2fast"
   geoip2fast = pythonPackages.buildPythonPackage rec {
     pname = "geoip2fast";
-    version = "1.2.2"; # On utilise la version exacte demandée par tewi
+    version = "1.2.2"; # We use the exact version required by tewi
     pyproject = true;
 
     src = pythonPackages.fetchPypi {
       inherit pname version;
-      # ⚠️ Laisse ce hash tel quel pour le premier lancement,
-      # Nix va planter et te donner le vrai hash de geoip2fast 1.2.2 à copier ici !
+      # Leave this hash as-is for the first launch,
+      # Nix will crash and give you the real geoip2fast 1.2.2 hash to copy here!
       hash = "sha256-OIFXAM7f6xl9UbS4czsNT3lls23hUUfBJVJxJPi0XWs=";
     };
 
@@ -24,7 +24,7 @@
     doCheck = false;
   };
 
-  # 2. Définition de l'application principale "tewi"
+  # 2. Definition of the main application "tewi"
   tewi = pythonPackages.buildPythonApplication rec {
     pname = "tewi-torrent";
     version = "2.3.1";
@@ -47,8 +47,8 @@
       transmission-rpc
       qbittorrent-api
       pyperclip
-      platformdirs # <-- Ajout de la dépendance identifiée dans pyproject.toml
-      # Appel de la variable définie plus haut
+      platformdirs # <-- Addition of the dependency identified in pyproject.toml
+      # Call of the variable defined above
       geoip2fast
     ];
 
@@ -62,7 +62,7 @@
     };
   };
 in {
-  # Le mot clé "in" indique qu'on a fini de déclarer nos variables (let).
-  # On peut maintenant utiliser "tewi" pour l'installer dans notre environnement.
+  # The keyword "in" indicates that we have finished declaring our variables (let).
+  # We can now use "tewi" to install it in our environment.
   home.packages = [tewi];
 }

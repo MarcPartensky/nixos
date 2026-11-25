@@ -129,34 +129,34 @@ fn loadavg_mem() -> Value {
 /// home / work / out / out? / unknown, from the most reliable signal to the least reliable.
 fn where_am_i(tower_active: bool, mac: &Device, phone: &Device, phone_net: &Map<String, Value>) -> (String, String) {
     if tower_active {
-        return ("home".into(), "tower utilisé".into());
+        return ("home".into(), "tower in use".into());
     }
     let mac_loc = if mac.b("online") { mac.s("location") } else { String::new() };
     if mac_loc == "home" || mac_loc == "work" {
         return (
             mac_loc.clone(),
-            format!("Mac sur réseau {mac_loc} ({})", mac.s("gw_mac")),
+            format!("Mac on {mac_loc} network ({})", mac.s("gw_mac")),
         );
     }
     let hw = phone_net.get("home_wifi").and_then(|v| v.as_bool());
     if hw == Some(true) {
-        return ("home".into(), "téléphone sur le wifi maison".into());
+        return ("home".into(), "phone on home wifi".into());
     }
     if mac_loc == "out" && hw == Some(false) {
-        return ("out".into(), "Mac et téléphone hors réseau maison".into());
+        return ("out".into(), "Mac and phone off the home network".into());
     }
     if hw == Some(false) {
         let addr = phone_net.get("ts_addr").and_then(|v| v.as_str()).unwrap_or("?");
         return (
             "out?".into(),
-            format!("téléphone hors wifi maison ({addr}), Mac muet"),
+            format!("phone off home wifi ({addr}), Mac silent"),
         );
     }
     if mac_loc == "out" {
-        return ("out".into(), "Mac hors réseau maison".into());
+        return ("out".into(), "Mac off the home network".into());
     }
     let _ = phone;
-    ("unknown".into(), "aucun signal de lieu".into())
+    ("unknown".into(), "no location signal".into())
 }
 
 /// Full snapshot + writing of devices.json and forecast.json.
@@ -183,18 +183,18 @@ pub fn build(ctx: &mut Ctx) -> Value {
     let active_thr = env_s("PRESENCE_CONSOLE_ACTIVE_IDLE", "600").parse().unwrap_or(600.0);
     let tower_active = kasm.active || cidle.map(|i| i < active_thr).unwrap_or(false);
     let tower_why = if kasm.active {
-        "bureau Kasm en usage".to_string()
+        "Kasm desktop in use".to_string()
     } else if cidle.map(|i| i < active_thr).unwrap_or(false) {
-        format!("console tower utilisee (idle {:.0} s)", cidle.unwrap_or(0.0))
+        format!("tower console used (idle {:.0} s)", cidle.unwrap_or(0.0))
     } else {
-        "tower au repos".to_string()
+        "tower idle".to_string()
     };
     let tower_state = if tower_active {
-        "actif"
+        "active"
     } else if kasm.clients > 0 {
-        "bureau connecte"
+        "desktop connected"
     } else {
-        "inactif"
+        "inactive"
     };
     let mut tower: Value = json!({
         "online": true,
@@ -248,7 +248,7 @@ pub fn build(ctx: &mut Ctx) -> Value {
         Some("tower") => tower_why.clone(),
         Some("mac") => mac.s("why"),
         Some("phone") => phone.s("why"),
-        _ => "aucun appareil actif".to_string(),
+        _ => "no active device".to_string(),
     };
     let devices = json!({
         "mac": dev_json(&mac),
@@ -281,7 +281,7 @@ pub fn build(ctx: &mut Ctx) -> Value {
                 hint = json!({"device": d, "age_s": age.round() as i64, "source": src});
                 if active_device.is_none() {
                     active_device = Some(d.to_string());
-                    why_active = format!("message Hermes ({src}) il y a {} min", (age / 60.0) as i64);
+                    why_active = format!("Hermes message ({src}) {} min ago", (age / 60.0) as i64);
                 }
             }
         }
@@ -297,7 +297,7 @@ pub fn build(ctx: &mut Ctx) -> Value {
         let age = act["last_user_at"].as_f64().map(|a| t_f - a).unwrap_or(1e9);
         if age < 15.0 * 60.0 {
             format!(
-                "message utilisateur il y a {} min ({})",
+                "user message {} min ago ({})",
                 (age / 60.0) as i64,
                 act["last_user_source"].as_str().unwrap_or("?")
             )
@@ -373,7 +373,7 @@ pub fn build(ctx: &mut Ctx) -> Value {
             "local_model": false,
             "ttys": [],
             "tty_why": Value::Null,
-            "note": "cpu/ttys retires : mesures inutiles et couteuses",
+            "note": "cpu/ttys removed: useless and costly measurements",
         },
         "devices": devices,
         "hermes": {
@@ -405,7 +405,7 @@ pub fn build(ctx: &mut Ctx) -> Value {
         t.insert("busy".into(), Value::Bool(tower_active));
         t.insert(
             "note".into(),
-            Value::from("cpu/ttys retires : mesures inutiles et couteuses"),
+            Value::from("cpu/ttys removed: useless and costly measurements"),
         );
     }
     if let Some(o) = snap.as_object_mut() {

@@ -52,10 +52,10 @@
     util-linux
     sops
     typer
-    # typer-race : client terminal des salons de typer.marcpartensky.com,
-    # depuis le flake typer (projects/typer) ; ttyper reste l'exercice solo.
+    # typer-race: terminal client for the rooms of typer.marcpartensky.com,
+    # from the typer flake (projects/typer); ttyper remains the solo exercise.
     (pkgs.callPackage (inputs.typer.outPath + "/package.nix") {})
-    ttyper # version TUI de typer.macpartensky.com (exercice de frappe)
+    ttyper # TUI version of typer.macpartensky.com (typing exercise)
     nerd-fonts.meslo-lg # MesloLGS NF
     nmap
     just
@@ -64,7 +64,7 @@
     gh
     uv
 
-    # neovim deps manquants
+    # missing neovim deps
     ripgrep # telescope live-grep + vim.health
     fd # telescope extended
     stylua # conform lua formatter
@@ -78,7 +78,7 @@
     neovim-node-client # node provider
 
     # (nerdfonts.override { fonts = [ "Meslo" ]; })
-    # ou sur nixpkgs récent :
+    # or on recent nixpkgs:
     nerd-fonts.meslo-lg
     meslo-lg
     meslo-lgs-nf
@@ -138,32 +138,32 @@
   my.hermesSkins.enable = true;
 
 
-  # Plugin desktop « Claude Code Theme » : surfaces plates, bulles grises
-  # alignées à droite, composer et panneaux en cartes arrondies (le look Claude),
-  # avec l'accent remplacé par le mauve Catppuccin : #8839ef (Latte, mode clair)
-  # et #cba6f7 (Mocha, mode sombre).
+  # Desktop plugin "Claude Code Theme": flat surfaces, grey bubbles
+  # right-aligned, composer and panels as rounded cards (the Claude look),
+  # with the accent replaced by the Catppuccin mauve: #8839ef (Latte, light mode)
+  # and #cba6f7 (Mocha, dark mode).
   #
-  # Source épinglée sur la révision du catalogue Hermes (la même que
-  # `hermes plugins install aliilhami/hermes-claude-code-theme`) : elle ne bouge
-  # pas au `nix flake update`, rev + hash s'éditent ensemble.
+  # Source pinned to the Hermes catalog revision (the same as
+  # `hermes plugins install aliilhami/hermes-claude-code-theme`): it does not move
+  # on `nix flake update`, rev + hash are edited together.
   #
-  # Une seule retouche, en --replace-fail (une mise à jour du plugin qui change
-  # cette ligne casse le build au lieu de rendre un réglage fantôme) : l'accent
-  # par défaut, parce que le réglage du plugin vit dans le localStorage du
-  # renderer et n'est donc pas pré-remplissable depuis Nix.
+  # A single touch-up, in --replace-fail (a plugin update that changes
+  # this line breaks the build instead of leaving a ghost setting): the default
+  # accent, because the plugin setting lives in the renderer's
+  # localStorage and so cannot be pre-filled from Nix.
   #
-  # Plus la barre latérale, un cran plus sombre que le reste : le thème aplatit
-  # tout sur --ccl-bg, on définit --ccl-sidebar par mode et on la branche sur
-  # --ui-sidebar-surface-background. Teinte = celle de l'accent (mauve), très
-  # légère, comme les thèmes Catppuccin qui teintent leurs surfaces avec la
-  # couleur du flavor : #1a191e en sombre, #f4f2f6 en clair. Pas de gris bleuté
-  # (mantle Mocha #181825 essayé et rejeté : trop bleu).
-  # ATTENTION : cette variable
-  # est partagée avec la barre d'état et le bandeau de titre d'un volet
-  # (tree-group.tsx), donc les trois deviennent un seul aplat, et le
-  # bandeau de la zone de chat reste sur la base : la marche est voulue, c'est
-  # elle qui dessine la colonne de gauche. Ne PAS reteinter cette variable avec
-  # l'accent mauve : ça produit une couture sale au milieu de la barre du haut.
+  # Plus the sidebar, one notch darker than the rest: the theme flattens
+  # everything onto --ccl-bg, we define --ccl-sidebar per mode and wire it to
+  # --ui-sidebar-surface-background. Hue = that of the accent (mauve), very
+  # light, like the Catppuccin themes that tint their surfaces with the
+  # flavor color: #1a191e in dark, #f4f2f6 in light. No bluish grey
+  # (mantle Mocha #181825 tried and rejected: too blue).
+  # WARNING: this variable
+  # is shared with the status bar and the title bar of a pane
+  # (tree-group.tsx), so the three become a single flat surface, and the
+  # chat area banner stays on the base: the step is intended, it is
+  # what draws the left column. Do NOT re-tint this variable with
+  # the mauve accent: it produces an ugly seam in the middle of the top bar.
   my.hermesDesktopPlugins = {
     enable = true;
     plugins.claude-code-theme = pkgs.runCommand "hermes-claude-code-theme-plugin.js" { } ''
@@ -190,11 +190,11 @@
         "  --ui-sidebar-surface-background: var(--ccl-bg) !important;" \
         "  --ui-sidebar-surface-background: var(--ccl-sidebar) !important;"
 
-      # Bulles de messages et champs de saisie sur le même aplat que la barre de
-      # gauche : marc veut moins de gris différents dans l'interface. --ccl-bubble
-      # porte ses propres bulles, --ccl-card le composer (et, tant qu'à faire,
-      # les menus déroulants et les cartes du panneau fichiers, qui étaient à un
-      # quatrième gris).
+      # Message bubbles and input fields on the same flat surface as the left
+      # bar: marc wants fewer different greys in the interface. --ccl-bubble
+      # carries its own bubbles, --ccl-card the composer (and, while at it,
+      # the dropdown menus and the cards of the files panel, which were at a
+      # fourth grey).
       substituteInPlace $out --replace-fail \
         "  --ccl-bubble: #f1f1f0; --ccl-row-active: #eeedeb; --ccl-row-open: #f4f3f1;" \
         "  --ccl-bubble: var(--ccl-sidebar); --ccl-row-active: #eeedeb; --ccl-row-open: #f4f3f1;"
@@ -213,12 +213,12 @@
     '';
   };
 
-  # Build de l'app Winnie sur le Mac : winnie-doctor, winnie-sync, winnie-ios,
-  # winnie-macos, winnie-front, winnie-verify. Le toolchain reste dans le
-  # devShell du flake `winnie`, ces commandes ne font que l'appeler.
+  # Build of the Winnie app on the Mac: winnie-doctor, winnie-sync, winnie-ios,
+  # winnie-macos, winnie-front, winnie-verify. The toolchain stays in the
+  # devShell of the `winnie` flake, these commands only call it.
   my.winnie.enable = true;
 
-  # Connexions Eternal Terminal vers les hôtes NixOS : `et tower` = zellij enregistré.
+  # Eternal Terminal connections to the NixOS hosts: `et tower` = recorded zellij.
   my.et = {
     enable = true;
     hosts = {
@@ -227,14 +227,14 @@
     };
   };
 
-  # Clés SSH autorisées sur marc@mac :
-  #   - hermes@tower, pour que l'agent (qui tourne sur tower) entre en marc@ ;
-  #   - marc@Air-de-Marc, la clé ed25519 du Mac lui-même, pour que marc puisse
-  #     s'y connecter depuis une autre machine du tailnet (ssh marc@100.64.0.5)
-  #     et pour que l'alias `mac` réponde depuis le Mac.
-  # Append idempotent plutôt que home.file.".ssh/authorized_keys" : ne remplace
-  # JAMAIS un authorized_keys déjà en place (le .bak de home-manager perdrait
-  # les clés existantes).
+  # SSH keys authorized on marc@mac:
+  #   - hermes@tower, so the agent (running on tower) can enter marc@ ;
+  #   - marc@Air-de-Marc, the Mac's own ed25519 key, so marc can
+  #     connect to it from another tailnet machine (ssh marc@100.64.0.5)
+  #     and so the `mac` alias answers from the Mac.
+  # Idempotent append rather than home.file.".ssh/authorized_keys": NEVER
+  # replaces an authorized_keys already in place (the home-manager .bak would lose
+  # the existing keys).
   home.activation.addHermesAuthorizedKey = lib.hm.dag.entryAfter ["writeBoundary"] ''
     mkdir -p "$HOME/.ssh"
     chmod 700 "$HOME/.ssh"

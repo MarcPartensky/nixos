@@ -2,17 +2,17 @@
   pkgs,
   inputs,
 }: let
-  # thClaws : paquet du flake projet /home/marc/git/thclaws, copie dans
-  # services/thclaws/package.nix parce que l'eval NixOS est PURE (skill
-  # nixos-pure-eval) : un `callPackage /home/marc/git/...` est un chemin absolu
-  # hors depot, refuse en eval pure. Le flake projet reste utilisable seul
-  # (nix build .#) ; les deux copies portent la meme version et le meme sha256.
+  # thClaws: package of the project flake /home/marc/git/thclaws, copied into
+  # services/thclaws/package.nix because the NixOS eval is PURE (skill
+  # nixos-pure-eval): a `callPackage /home/marc/git/...` is an absolute path
+  # outside the repo, refused in pure eval. The project flake remains usable alone
+  # (nix build .#); both copies carry the same version and the same sha256.
   thclaws = pkgs.callPackage ../../services/thclaws/package.nix { };
 
-  # Initialisation correcte de NUR
+  # Correct initialization of NUR
   nur = import inputs.nur {
     inherit pkgs;
-    # Certains modules NUR nécessitent cela
+    # Some NUR modules require this
     nurpkgs = pkgs;
   };
 
@@ -28,30 +28,30 @@
 
     # 🔹 Hardware / PCI / USB
     lshw
-    pciutils # pour lspci
-    usbutils # pour lsusb
+    pciutils # for lspci
+    usbutils # for lsusb
     dmidecode
-    inxi # résumé complet du hardware
+    inxi # full hardware summary
 
     # 🔹 GPU / drivers / OpenGL / VAAPI / Vulkan
     # mesa-utils    # glxinfo, glxgears
     # vainfo        # VA-API (Intel/AMD video acceleration)
     vulkan-tools # vulkaninfo
-    intel-media-driver # si Intel GPU pour VA-API (optionnel)
+    intel-media-driver # if Intel GPU for VA-API (optional)
 
     # 🔹 DRM / Wayland / GBM
-    weston # weston-info et test Wayland (optionnel)
-    libgbm # pour tester GBM devices
+    weston # weston-info and Wayland test (optional)
+    libgbm # to test GBM devices
 
-    # 🔹 Réseau
+    # 🔹 Network
     networkmanager # nmtui, nmcli
-    wpa_supplicant # si Wi-Fi managé par NM
+    wpa_supplicant # if Wi-Fi managed by NM
     inetutils # ping, traceroute, etc.
 
-    # 🔹 Disques / partitionnement
+    # 🔹 Disks / partitioning
     util-linux # lsblk, blkid, fdisk
     gptfdisk # gdisk
-    parted # parted pour partitions avancées
+    parted # parted for advanced partitions
     smartmontools # smartctl
 
     # 🔹 Debug / monitoring
@@ -59,7 +59,7 @@
     lsof
     htop
     # perf
-    valgrind # optionnel pour debug mémoire
+    valgrind # optional for memory debug
 
     neovim
     wget
@@ -104,12 +104,12 @@
     gsettings-desktop-schemas
     glib
     exfatprogs
-    # zellij en profil systeme : l'agent (hermes) et root peuvent s'y rattacher
-    # sur n'importe quel hote, pas seulement dans le home-manager de marc.
+    # zellij in the system profile: the agent (hermes) and root can attach to it
+    # on any host, not only in marc's home-manager.
     zellij
-    # ttyper : entrainement a la frappe au toucher en terminal (Rust/ratatui).
-    # Version TUI de typer.macpartensky.com, meme listes de mots. En profil
-    # systeme pour etre utilisable tout de suite par marc ET par l'agent.
+    # ttyper: touch-typing practice in the terminal (Rust/ratatui).
+    # TUI version of typer.macpartensky.com, same word lists. In the system
+    # profile so it is usable right away by marc AND by the agent.
     ttyper
   ] ++ [ thclaws ];
 

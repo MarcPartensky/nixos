@@ -9,12 +9,12 @@
     webuiPort = 8084;
     torrentingPort = 8085;
     serverConfig = {
-      LegalNotice.Accepted = true; # Souvent nécessaire pour le démarrage
-      # Média partagé (cf. services/media) : les torrents atterrissent dans le
-      # MÊME dataset que la bibliothèque, ce qui permet aux *arr d'importer par
-      # lien dur (Radarr/Sonarr) au lieu de recopier, et donc de laisser le
-      # seed actif sans doubler l'espace disque. Les sous-dossiers par catégorie
-      # (radarr/, sonarr/) sont créés par les *arr eux-mêmes.
+      LegalNotice.Accepted = true; # Often needed for startup
+      # Shared media (see services/media): torrents land in the
+      # SAME dataset as the library, which lets the *arrs import by
+      # hard link (Radarr/Sonarr) instead of copying, and therefore leave the
+      # seed active without doubling disk space. The per-category subfolders
+      # (radarr/, sonarr/) are created by the *arrs themselves.
       BitTorrent = {
         "Session\\DefaultSavePath" = "/srv/media/downloads";
         "Session\\TempPathEnabled" = "true";
@@ -22,19 +22,19 @@
       };
       Preferences = {
         WebUI = {
-          Username = "marc"; # Remplacez par le nom d'utilisateur souhaité
+          Username = "marc"; # Replace with the desired username
           AuthSubnetWhitelistEnabled = true;
           AuthSubnetWhitelist = "127.0.0.1/32, ::1/128";
           # Password_PBKDF2 =
           #   "@ByteArray(wUQ/AMQATShMtwm8UpQfGQ==:8bUAN8WTM5IEQ3qzDjYkiA4Rj/23RxnVfZLHk0M1REMyfH7vKLY7RwFMmgQf9lyNkr/KOlRvK9MN1s5uKGC7Dg==)";
-          # # LocalHostAuth = true; # Optionnel: Peut être utile pour l'accès local
+          # # LocalHostAuth = true; # Optional: may be useful for local access
         };
       };
     };
   };
 
-  # Média partagé : les fichiers en cours de téléchargement (puis à l'arrêt,
-  # pour le seed) doivent rester lisibles et modifiables par les *arr et par
-  # marc. Le module ne pose pas d'UMask, il est donc fixé ici.
+  # Shared media: files being downloaded (then at rest,
+  # for seeding) must remain readable and writable by the *arrs and by
+  # marc. The module does not set a UMask, so it is set here.
   systemd.services.qbittorrent.serviceConfig.UMask = "0002";
 }

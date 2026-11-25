@@ -1,7 +1,7 @@
 {
   disko.devices.disk.main = {
     type = "disk";
-    device = "/dev/nvme0n1"; # SSD interne, ou "/dev/mmcblk0" pour un essai sur microSD
+    device = "/dev/nvme0n1"; # internal SSD, or "/dev/mmcblk0" for a test on microSD
     content = {
       type = "gpt";
       partitions = {

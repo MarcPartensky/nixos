@@ -3,18 +3,18 @@
   lib,
   ...
 }: let
-  # --- CONFIGURATION SCREENSHOTS ---
+  # --- SCREENSHOTS CONFIGURATION ---
   screenshotDir = "~/media/screenshots";
-  # Format : Année-Mois-Jour_Heure-Min-Sec (ex: 2024-05-20_14-30-05)
+  # Format: Year-Month-Day_Hour-Min-Sec (e.g. 2024-05-20_14-30-05)
   screenshotFormat = "$(date +%Y-%m-%d_%H-%M-%S).png";
 in {
-  # Assure-toi que niri et alacritty sont installés
+  # Make sure niri and alacritty are installed
   home.packages = with pkgs; [
     pkgs.alacritty
     pkgs.niri
     pkgs.xwayland-satellite
 
-    # Ton script "à part"
+    # Your "separate" script
     (writeShellScriptBin "niri-reset" ''
       ${bluez}/bin/bluetoothctl devices | cut -f2 -d' ' | while read -r uuid; do
         ${bluez}/bin/bluetoothctl connect "$uuid"
@@ -48,18 +48,18 @@ in {
     };
   };
 
-  # On s'assure que les services dbus utilisateur sont là
+  # Make sure the user dbus services are there
   #services.dbus.enable = true;
   home.sessionVariables = {
-    # Force Electron/Chromium à utiliser Wayland
+    # Force Electron/Chromium to use Wayland
     NIXOS_OZONE_WL = "1";
-    # Indique aux applis Qt d'utiliser wayland
+    # Tell Qt apps to use wayland
     QT_QPA_PLATFORM = "wayland";
-    # Indique aux applis SDL d'utiliser wayland
+    # Tell SDL apps to use wayland
     SDL_VIDEODRIVER = "wayland";
-    # Pour Mozilla (si besoin)
+    # For Mozilla (if needed)
     MOZ_ENABLE_WAYLAND = "1";
-    # Variables XDG standards
+    # Standard XDG variables
     XDG_SESSION_TYPE = "wayland";
     XDG_CURRENT_DESKTOP = "niri";
     GTK_IS_WIDGET = 0;
@@ -102,7 +102,7 @@ in {
 
       input.keyboard.xkb = {
         layout = "fr";
-        variant = "us"; # "us" pour avoir le layout qwerty mais typé FR
+        variant = "us"; # "us" to have the qwerty layout but typed FR
       };
 
       input = {
@@ -113,16 +113,16 @@ in {
 
       binds =
         {
-          # --- Navigation Vim ---
-          # Colonnes (Gauche / Droite)
+          # --- Vim navigation ---
+          # Columns (Left / Right)
           "Mod+H".action.focus-column-left = [];
           "Mod+L".action.focus-column-right = [];
 
-          # Workspaces (Suivant / Precedent)
+          # Workspaces (Next / Previous)
           "Mod+J".action.focus-workspace-down = [];
           "Mod+K".action.focus-workspace-up = [];
 
-          # --- Navigation existante ---
+          # --- Existing navigation ---
           "Mod+Q".action.close-window = [];
           "Mod+Left".action.focus-column-left = [];
           "Mod+Right".action.focus-column-right = [];
@@ -138,7 +138,7 @@ in {
           "Mod+B".action.spawn = ["gtk-launch" "blueberry"];
           "Alt+L".action.spawn = "nautilus";
 
-          # --- Gestion des fenêtres ---
+          # --- Window management ---
           "Mod+R".action.spawn = ["niri-reset"];
           "Mod+M".action.maximize-column = [];
           "Mod+V".action.toggle-window-floating = [];
@@ -148,15 +148,15 @@ in {
           "Super+Shift+C".action.close-window = [];
           "Super+Shift+Q".action.quit.skip-confirmation = true;
 
-          # PRINT : Direct -> Dossier + Presse-papier (Automatique)
+          # PRINT: Direct -> Folder + Clipboard (Automatic)
           "Print".action.spawn = [
             "sh"
             "-c"
             "grim -g \"$(slurp)\" - | tee ${screenshotDir}/${screenshotFormat} | wl-copy"
           ];
 
-          # MOD + PRINT : Edit -> Satty (Interactif)
-          # Satty permet de choisir ensuite de sauver ou copier via son interface
+          # MOD + PRINT: Edit -> Satty (Interactive)
+          # Satty then lets you choose to save or copy via its interface
           "Mod+Print".action.spawn = [
             "sh"
             "-c"
@@ -171,7 +171,7 @@ in {
           "Alt+K".action.spawn = ["playerctl" "-p" "spotify" "play-pause"];
           "Alt+W".action.spawn = ["auto-wallpaper"];
 
-          # --- Materiel ---
+          # --- Hardware ---
           "XF86AudioRaiseVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "2%+"];
           "XF86AudioLowerVolume".action.spawn = ["wpctl" "set-volume" "@DEFAULT_AUDIO_SINK@" "2%-"];
           "XF86AudioMute".action.spawn = ["wpctl" "set-mute" "@DEFAULT_AUDIO_SINK@" "toggle"];
@@ -187,7 +187,7 @@ in {
           }
         ) [1 2 3 4 5 6 7 8 9]);
 
-      # Lancement automatique
+      # Automatic startup
       spawn-at-startup = [
         {argv = ["${pkgs.xdg-desktop-portal}/libexec/xdg-desktop-portal"];}
         {argv = ["dbus-update-activation-environment" "--systemd" "all"];}
@@ -210,7 +210,7 @@ in {
         };
       };
 
-      # Quelques réglages visuels pour ne pas être perdu
+      # A few visual tweaks so you do not get lost
       layout = {
         default-column-width = {
           # proportion = 0.33;

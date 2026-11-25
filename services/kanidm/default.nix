@@ -1,5 +1,5 @@
 # services/kanidm/default.nix
-# Kanidm — gestionnaire d'identité (IdM/IAM) : https://github.com/kanidm/kanidm
+# Kanidm - identity manager (IdM/IAM): https://github.com/kanidm/kanidm
 {
   pkgs,
   config,
@@ -7,17 +7,17 @@
   inputs,
   ...
 }: let
-  # domaine public de l'instance (à exposer via pangolin/newt comme auth.vps.*)
+  # public domain of the instance (to expose via pangolin/newt as auth.vps.*)
   domain = "idm.vps.marcpartensky.com";
   certs = "/var/lib/kanidm/certs";
-  # kanidm_1_9 (nixos-26.05) est EOL depuis 2026-05-31 → version récente via unstable.
-  # l'alias non versionné pkgs.kanidm a été retiré de nixpkgs : version explicite obligatoire
+  # kanidm_1_9 (nixos-26.05) has been EOL since 2026-05-31 -> recent version via unstable.
+  # the unversioned alias pkgs.kanidm was removed from nixpkgs: explicit version required
   kanidmPkg = (import inputs.unstable {system = pkgs.stdenv.hostPlatform.system;}).kanidm_1_11;
 in {
-  # kanidm exige du TLS même derrière un reverse proxy :
-  # cert auto-signé local (10 ans), SAN = domaine + localhost
+  # kanidm requires TLS even behind a reverse proxy:
+  # local self-signed cert (10 years), SAN = domain + localhost
   systemd.services.kanidm-certs = {
-    description = "Certificat TLS auto-signé pour kanidm";
+    description = "Self-signed TLS certificate for kanidm";
     wantedBy = ["multi-user.target"];
     serviceConfig = {
       Type = "oneshot";
@@ -43,7 +43,7 @@ in {
 
   services.kanidm = {
     package = kanidmPkg;
-    # si provision avec secrets (adminPasswordFile, basicSecretFile) :
+    # if provisioning with secrets (adminPasswordFile, basicSecretFile):
     # package = kanidmPkg.withSecretProvisioning;
 
     server = {
@@ -51,27 +51,27 @@ in {
       settings = {
         inherit domain;
         origin = "https://${domain}";
-        bindaddress = "127.0.0.1:8443"; # loopback : exposition via pangolin, pas de port pare-feu
-        # ldapbindaddress = "127.0.0.1:3636"; # LDAP désactivé par défaut
+        bindaddress = "127.0.0.1:8443"; # loopback: exposure via pangolin, no firewall port
+        # ldapbindaddress = "127.0.0.1:3636"; # LDAP disabled by default
         tls_chain = "${certs}/chain.pem";
         tls_key = "${certs}/key.pem";
-        online_backup.versions = 7; # backups quotidiens (22h) dans /var/lib/kanidm/backups
+        online_backup.versions = 7; # daily backups (22h) in /var/lib/kanidm/backups
       };
     };
 
-    # CLI kanidm sur la machine (config dans /etc/kanidm/config)
+    # kanidm CLI on the machine (config in /etc/kanidm/config)
     client = {
       enable = true;
       settings = {
         uri = "https://localhost:8443";
-        verify_ca = false; # cert auto-signé, loopback uniquement
+        verify_ca = false; # self-signed cert, loopback only
       };
     };
 
-    # unix.enable = intégration PAM/NSS (login des users kanidm sur la machine) :
-    # laissé désactivé volontairement — un mauvais setup peut verrouiller l'accès local.
+    # unix.enable = PAM/NSS integration (login of kanidm users on the machine):
+    # deliberately left disabled - a bad setup can lock out local access.
 
-    # provisioning déclaratif (users/groupes/clients OIDC) — décommenter et adapter :
+    # declarative provisioning (users/groups/OIDC clients) - uncomment and adapt:
     # provision = {
     #   enable = true;
     #   adminPasswordFile = config.sops.secrets."kanidm/admin_password".path;
@@ -92,7 +92,7 @@ in {
     # };
   };
 
-  # secrets à ajouter dans secrets/tower.yml si provision activée :
+  # secrets to add in secrets/tower.yml if provisioning is enabled:
   # sops.secrets."kanidm/admin_password".key = "kanidm_admin_password";
   # sops.secrets."kanidm/idm_admin_password".key = "kanidm_idm_admin_password";
   # sops.secrets."kanidm/nextcloud_secret".key = "kanidm_nextcloud_secret";

@@ -1,9 +1,9 @@
 #!/bin/sh
-# À lancer par marc, une seule fois : crée la paire de clés pqbox et scelle la
-# clé privée avec un mot de passe que TOI seul tapes (l'agent ne le voit pas).
+# To be run by marc, only once: creates the pqbox key pair and seals the
+# private key with a password that YOU alone type (the agent does not see it).
 #
-#   ./setup-key.sh            # crée backup.pub + ~/.config/pqbox/backup.key
-#   ./setup-key.sh reseal     # change le mot de passe (même clé publique)
+#   ./setup-key.sh            # creates backup.pub + ~/.config/pqbox/backup.key
+#   ./setup-key.sh reseal     # changes the password (same public key)
 set -eu
 cd "$(dirname "$0")"
 mkdir -p "$HOME/.config/pqbox"
@@ -14,7 +14,7 @@ if command -v pqbox >/dev/null 2>&1; then
 elif [ -x /nix/var/nix/profiles/system/sw/bin/pqbox ]; then
   PQ=/nix/var/nix/profiles/system/sw/bin/pqbox
 else
-  echo "pqbox introuvable : lancer 'HOST=tower just nixos' d'abord" >&2
+  echo "pqbox not found: run 'HOST=tower just nixos' first" >&2
   exit 1
 fi
 

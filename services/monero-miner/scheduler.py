@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Planificateur du mineur Monero.
+"""Monero miner scheduler.
 
-Le service tourne en root et applique la regle :
-  - semaine : 01:00-09:00 toujours, 09:00-18:00 seulement pendant un
-    evenement du calendrier de travail Nextcloud ;
-  - week-end : 01:00-09:00.
-Si le calendrier est indisponible, le comportement depend de
-MONERO_CALENDAR_FAIL_OPEN (defaut : ne pas miner pendant la plage travail).
+The service runs as root and applies the rule:
+  - weekdays: 01:00-09:00 always, 09:00-18:00 only during an
+    event in the Nextcloud work calendar;
+  - weekend: 01:00-09:00.
+If the calendar is unavailable, the behavior depends on
+MONERO_CALENDAR_FAIL_OPEN (default: do not mine during the work window).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ def env(name: str, default: str | None = None) -> str | None:
 def parse_time(name: str) -> dt.time:
     raw = env(name)
     if raw is None:
-        raise SystemExit(f"{name} manquant")
+        raise SystemExit(f"{name} missing")
     hour, minute = raw.split(":", 1)
     return dt.time(int(hour), int(minute))
 
@@ -36,7 +36,7 @@ def read_secret(path: str) -> str:
 
 
 def calendar_event_active(now: dt.datetime) -> bool | None:
-    """True si un evenement de travail est actif, None si erreur."""
+    """True if a work event is active, None on error."""
     url = env("MONERO_CALENDAR_URL")
     user_file = env("MONERO_CALENDAR_USER_FILE")
     password_file = env("MONERO_CALENDAR_PASSWORD_FILE")
@@ -98,7 +98,7 @@ def calendar_event_active(now: dt.datetime) -> bool | None:
                         if start <= now < end:
                             return True
             print(
-                "calendar: aucun evenement actif dans "
+                "calendar: no active event in "
                 + ",".join(names),
                 flush=True,
             )
@@ -107,8 +107,8 @@ def calendar_event_active(now: dt.datetime) -> bool | None:
             close = getattr(client, "close", None)
             if close is not None:
                 close()
-    except Exception as exc:  # noqa: BLE001 - le detail part dans le journal
-        print(f"calendar: erreur {type(exc).__name__}: {exc}", flush=True)
+    except Exception as exc:  # noqa: BLE001 - the detail goes into the log
+        print(f"calendar: error {type(exc).__name__}: {exc}", flush=True)
         return None
 
 
@@ -134,23 +134,23 @@ def main() -> int:
 
     if weekday:
         if weekday_start <= current < work_start:
-            desired, reason = True, "sommeil"
+            desired, reason = True, "sleep"
         elif work_start <= current < weekday_end:
             if calendar_enabled:
                 active = calendar_event_active(now)
                 if active is None:
                     desired = fail_open
-                    reason = "calendrier indisponible"
+                    reason = "calendar unavailable"
                 else:
                     desired = active
-                    reason = "travail" if active else "hors travail"
+                    reason = "work" if active else "outside work"
             else:
-                desired, reason = True, "fenetre semaine"
+                desired, reason = True, "weekday window"
         else:
-            desired, reason = False, "hors fenetre semaine"
+            desired, reason = False, "outside weekday window"
     else:
         desired = weekend_start <= current < weekend_end
-        reason = "fenetre week-end" if desired else "hors fenetre week-end"
+        reason = "weekend window" if desired else "outside weekend window"
 
     unit = env("MONERO_MINER_UNIT", "monero-miner.service") or "monero-miner.service"
     print(
@@ -176,7 +176,7 @@ def main() -> int:
         rc = subprocess.run([systemctl, "stop", unit], check=False).returncode
         print(f"systemctl stop {unit} -> {rc}", flush=True)
     else:
-        print(f"{unit} deja {'actif' if active else 'inactif'}", flush=True)
+        print(f"{unit} already {'active' if active else 'inactive'}", flush=True)
     return 0
 
 

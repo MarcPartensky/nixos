@@ -1,32 +1,32 @@
-"""Presence de marc (travail / sommeil / machine) pour la porte `needs_absence`.
+"""marc's presence (work / sleep / machine) for the `needs_absence` gate.
 
-Le dispatcher taskq garde une porte : une tache `needs_absence` ne tourne que
-si marc n'utilise pas la machine. Historiquement la porte etait REACTIVE
-("aucune interaction depuis TASKQ_ABSENCE_MINUTES"). Ce module ajoute le
-modele PREVISIONNEL demande par marc : des fenetres de sommeil et de travail
-declarees (fichier /etc/taskq/presence.json, ecrit par le module Nix), croisees
-avec les signaux reels (cpu des process de marc, tty actif, activite hermes ou
-webui), pour deviner sa presence meme quand il discute depuis son telephone au
-bureau (une interaction ne prouve pas qu'il est devant tower).
+The taskq dispatcher keeps a gate: a `needs_absence` task only runs
+if marc is not using the machine. Historically the gate was REACTIVE
+("no interaction for TASKQ_ABSENCE_MINUTES"). This module adds the
+PREDICTIVE model marc asked for: declared sleep and work
+windows (file /etc/taskq/presence.json, written by the Nix module), crossed
+with the real signals (cpu of marc's processes, active tty, hermes or
+webui activity), to guess his presence even when he is chatting from his phone at
+the office (an interaction does not prove he is in front of tower).
 
-Etats calcules :
-  at_tower    machine utilisee a l'instant (cpu marc eleve ou shell recent) :
-              une tache de fond doit se mettre en pause
-  away_work   fenetre de travail (lun-ven) et machine au repos : marc est au
-              bureau ; ses messages depuis un autre appareil ne comptent pas
-  away_sleep  fenetre de sommeil et aucune interaction recente : il dort
-  nearby      hors fenetre, machine au repos : la regle reactive (15 min sans
-              interaction) decide
+Computed states:
+  at_tower    machine used right now (marc cpu high or recent shell):
+              a background task must pause
+  away_work   work window (mon-fri) and machine idle: marc is at the
+              office; his messages from another device do not count
+  away_sleep  sleep window and no recent interaction: he is asleep
+  nearby      outside a window, machine idle: the reactive rule (15 min with no
+              interaction) decides
 
-Overrides par date (table `state`, cle `presence_overrides`) : kind "off"
-(jour libre) ou "wfh" (teletravail) suppriment la fenetre de travail du jour
-concerne ; le sommeil n'a pas d'override en v1.
+Per-date overrides (table `state`, key `presence_overrides`): kind "off"
+(day off) or "wfh" (remote work) remove the work window for the day
+concerned; sleep has no override in v1.
 
-Tests (sans toucher a la base) :
+Tests (without touching the database):
   python3 presence.py --at '2026-10-26T10:30:00' --json
   python3 presence.py --at '2026-10-26T03:00:00' --busy
-  TASKQ_PRESENCE_FAKE_NOW=... est aussi lu par now_local(), ce qui permet de
-  rejouer un dry-run du dispatcher a une heure simulee.
+  TASKQ_PRESENCE_FAKE_NOW=... is also read by now_local(), which allows
+  replaying a dry-run of the dispatcher at a simulated hour.
 """
 
 from __future__ import annotations
@@ -52,10 +52,10 @@ DAY_NAMES = ["lun", "mar", "mer", "jeu", "ven", "sam", "dim"]
 
 
 def load_config(path: str | None = None) -> dict:
-    """Config declarative ; retombe sur DEFAULT_CONFIG si le fichier manque.
+    """Declarative config; falls back to DEFAULT_CONFIG if the file is missing.
 
-    Un fichier partiel se superpose aux defauts cle par cle : le module Nix
-    peut n'ecrire que ce qu'il veut surcharger.
+    A partial file is merged over the defaults key by key: the Nix module
+    can write only what it wants to override.
     """
     cfg = copy.deepcopy(DEFAULT_CONFIG)
     try:
@@ -82,10 +82,10 @@ def tz_of(cfg: dict) -> dt.tzinfo:
 
 
 def now_local(cfg: dict) -> dt.datetime:
-    """Maintenant dans le fuseau de la config.
+    """Now in the config timezone.
 
-    TASKQ_PRESENCE_FAKE_NOW (ISO) force l'instant : tests seulement, pour
-    rejouer un dry-run du dispatcher a une heure simulee.
+    TASKQ_PRESENCE_FAKE_NOW (ISO) forces the instant: tests only, to
+    replay a dry-run of the dispatcher at a simulated hour.
     """
     tz = tz_of(cfg)
     fake = os.environ.get("TASKQ_PRESENCE_FAKE_NOW")
@@ -106,10 +106,10 @@ def _hhmm(value: str) -> dt.time:
 
 
 def windows_on(cfg: dict, overrides: dict, day: dt.date) -> list[tuple]:
-    """Fenetres (kind, debut, fin) qui COMMENCENT ce jour-la.
+    """Windows (kind, start, end) that START that day.
 
-    Le sommeil est quotidien ; le travail respecte `days` (1 = lundi) et une
-    date marquee "off" ou "wfh" n'a pas de fenetre de travail.
+    Sleep is daily; work respects `days` (1 = Monday) and a
+    date marked "off" or "wfh" has no work window.
     """
     tz = tz_of(cfg)
     out: list[tuple] = []
@@ -128,10 +128,10 @@ def windows_on(cfg: dict, overrides: dict, day: dt.date) -> list[tuple]:
 
 
 def window_at(cfg: dict, overrides: dict, now: dt.datetime) -> tuple:
-    """(kind, fin) de la fenetre active a `now`, ou (None, None).
+    """(kind, end) of the window active at `now`, or (None, None).
 
-    On regarde aussi la veille : une fenetre commencee hier peut courir
-    aujourd'hui.
+    We also look at the previous day: a window started yesterday can run
+    into today.
     """
     for back in (1, 0):
         day = (now + dt.timedelta(days=back)).date()
@@ -144,80 +144,80 @@ def window_at(cfg: dict, overrides: dict, now: dt.datetime) -> tuple:
 def verdict(cfg: dict, overrides: dict, now: dt.datetime,
             busy: bool, tty_why: str | None,
             connected: bool, connected_why: str) -> dict:
-    """L'etat de presence a `now`, croise avec les signaux reels.
+    """The presence state at `now`, crossed with the real signals.
 
-    busy/tty_why = signaux d'UTILISATION de tower (cpu de marc, shell actif) ;
-    connected = interaction recente par n'importe quel canal (la partie
-    prudente : erreur de lecture => connecte).
+    busy/tty_why = tower USAGE signals (marc cpu, active shell);
+    connected = recent interaction through any channel (the
+    cautious part: read error => connected).
     """
     kind, until = window_at(cfg, overrides, now)
     until_iso = until.isoformat() if until else None
     if busy or tty_why:
         return {"state": "at_tower",
-                "why": tty_why or "cpu de marc eleve",
+                "why": tty_why or "marc cpu high",
                 "window": kind, "until": until_iso, "absent_confident": False}
     if kind == "work":
-        why = "fenetre travail"
+        why = "work window"
         if connected:
-            why += " (interaction via un autre appareil, ignoree pour la porte)"
+            why += " (interaction via another device, ignored for the gate)"
         return {"state": "away_work", "why": why,
                 "window": kind, "until": until_iso, "absent_confident": True}
     if kind == "sleep":
         if connected:
             return {"state": "nearby",
-                    "why": f"fenetre sommeil mais {connected_why}",
+                    "why": f"sleep window but {connected_why}",
                     "window": kind, "until": until_iso, "absent_confident": False}
-        return {"state": "away_sleep", "why": "fenetre sommeil, machine au repos",
+        return {"state": "away_sleep", "why": "sleep window, machine idle",
                 "window": kind, "until": until_iso, "absent_confident": True}
-    return {"state": "nearby", "why": connected_why or "machine au repos",
+    return {"state": "nearby", "why": connected_why or "machine idle",
             "window": None, "until": None, "absent_confident": False}
 
 
 def may_start(state: str | None, absent_confident: bool, connected: bool,
               calm_seconds: float | None, calm_needed: int) -> tuple[bool, str]:
-    """La porte `needs_absence` a l'instant : (peut demarrer, raison).
+    """The `needs_absence` gate right now: (may start, reason).
 
-    `calm_seconds` = secondes depuis la derniere activite de marc sur tower
-    (None = jamais vue depuis le demarrage du dispatcher : repute calme). La
-    fenetre exige CALME + fenetre : un marc actif sur la machine bloque meme
-    pendant une fenetre (jour de teletravail non declare, par exemple).
+    `calm_seconds` = seconds since marc's last activity on tower
+    (None = never seen since the dispatcher started: considered calm). The
+    gate requires CALM + window: a marc active on the machine blocks even
+    during a window (an undeclared remote-work day, for example).
     """
     if state == "at_tower":
-        return False, "marc utilise tower"
+        return False, "marc is using tower"
     if absent_confident:
         if calm_seconds is not None and calm_seconds < calm_needed:
-            return False, (f"fenetre d'absence mais activite recente de marc "
+            return False, (f"absence window but recent activity from marc "
                            f"({int(calm_seconds)} s)")
-        return True, "marc absent (fenetre)"
+        return True, "marc absent (window)"
     if not connected:
-        return True, "marc absent (aucune interaction recente)"
-    return False, "marc actif (interaction recente)"
+        return True, "marc absent (no recent interaction)"
+    return False, "marc active (recent interaction)"
 
 
 def must_stop(state: str | None, absent_confident: bool,
               connected: bool) -> tuple[bool, str]:
-    """Faut-il interrompre une tache `needs_absence` en cours : (oui, raison).
+    """Should an ongoing `needs_absence` task be interrupted: (yes, reason).
 
-    Pendant une fenetre d'absence confirmee, seul l'usage reel de la machine
-    (at_tower, deja calcule) interrompt : un message depuis le telephone au
-    bureau ne coupe pas un job. Hors fenetre, la regle reactive d'origine
-    s'applique : la premiere interaction le coupe.
+    During a confirmed absence window, only real machine usage
+    (at_tower, already computed) interrupts: a message from the phone at the
+    office does not cut a job. Outside a window, the original reactive rule
+    applies: the first interaction cuts it.
     """
     if state == "at_tower":
-        return True, "marc utilise tower"
+        return True, "marc is using tower"
     if not absent_confident and connected:
-        return True, "marc est revenu (interaction recente)"
+        return True, "marc is back (recent interaction)"
     return False, ""
 
 
 def transitions(cfg: dict, overrides: dict, now: dt.datetime,
                 count: int = 6) -> list[tuple]:
-    """Les prochaines bornes de fenetres : [(quand, 'debut travail'), ...]."""
+    """The next window boundaries: [(when, 'start work'), ...]."""
     events: list[tuple] = []
     for ahead in range(-1, 8):
         day = (now + dt.timedelta(days=ahead)).date()
         for kind, start, end in windows_on(cfg, overrides, day):
-            for at, label in ((start, f"debut {kind}"), (end, f"fin {kind}")):
+            for at, label in ((start, f"start {kind}"), (end, f"end {kind}")):
                 if at > now:
                     events.append((at, label))
     events.sort(key=lambda item: item[0])
@@ -225,7 +225,7 @@ def transitions(cfg: dict, overrides: dict, now: dt.datetime,
 
 
 def resolve_day(cfg: dict, token: str, now: dt.datetime | None = None) -> dt.date:
-    """today | demain | tomorrow | YYYY-MM-DD -> date (fuseau de la config)."""
+    """today | demain | tomorrow | YYYY-MM-DD -> date (config timezone)."""
     now = now or now_local(cfg)
     token = (token or "").strip().lower()
     if token in ("today", "aujourd'hui", "aujourdhui"):
@@ -237,13 +237,13 @@ def resolve_day(cfg: dict, token: str, now: dt.datetime | None = None) -> dt.dat
 
 def _main() -> int:
     import argparse
-    ap = argparse.ArgumentParser(description="probe de presence (tests)")
-    ap.add_argument("--at", help="instant simule (ISO), force FAKE_NOW")
-    ap.add_argument("--busy", action="store_true", help="simule cpu marc eleve")
-    ap.add_argument("--tty", metavar="RAISON", help="simule un shell marc actif")
+    ap = argparse.ArgumentParser(description="presence probe (tests)")
+    ap.add_argument("--at", help="simulated instant (ISO), forces FAKE_NOW")
+    ap.add_argument("--busy", action="store_true", help="simulates high marc cpu")
+    ap.add_argument("--tty", metavar="REASON", help="simulates an active marc shell")
     ap.add_argument("--connected", action="store_true",
-                    help="simule une interaction hermes recente")
-    ap.add_argument("--config", help="chemin du presence.json")
+                    help="simulates a recent hermes interaction")
+    ap.add_argument("--config", help="path to presence.json")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--transitions", action="store_true")
     args = ap.parse_args()
@@ -252,13 +252,13 @@ def _main() -> int:
     cfg = load_config(args.config)
     now = now_local(cfg)
     v = verdict(cfg, {}, now, args.busy, args.tty, args.connected,
-                "interaction simulee")
+                "simulated interaction")
     if args.json:
         print(json.dumps({"at": now.isoformat(timespec="seconds"),
                           **v}, indent=2, ensure_ascii=False))
     else:
         print(f"{now.isoformat(timespec='seconds')} presence={v['state']} "
-              f"({v['why']})" + (f" jusqu'a {v['until']}" if v["until"] else ""))
+              f"({v['why']})" + (f" until {v['until']}" if v["until"] else ""))
     if args.transitions:
         for at, label in transitions(cfg, {}, now):
             print(f"  {DAY_NAMES[at.weekday()]} {at:%Y-%m-%d %H:%M} {label}")

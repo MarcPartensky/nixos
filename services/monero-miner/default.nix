@@ -9,8 +9,8 @@ let
 
   isTime = value: (builtins.match "(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]" value) != null;
 
-  # XMRig est pilote par la ligne de commande : pas de fichier de config a
-  # generer, donc rien a synchroniser dans /etc et aucun secret dans le store.
+  # XMRig is driven by the command line: no config file to
+  # generate, so nothing to synchronize in /etc and no secret in the store.
   baseArgs =
     [
       "--url=${cfg.pool}"
@@ -29,8 +29,8 @@ let
 
   args = baseArgs ++ [ "--user=${cfg.wallet}" ];
 
-  # Quand le wallet vient de sops, il est lu dans le credential systemd et
-  # n'apparait jamais dans la ligne de commande ni dans le store.
+  # When the wallet comes from sops, it is read from the systemd credential and
+  # never appears in the command line or in the store.
   startScript = pkgs.writeShellApplication {
     name = "monero-miner-start";
     runtimeInputs = [ cfg.package pkgs.coreutils ];
@@ -50,9 +50,9 @@ let
     '';
   };
 
-  # Plafond de charge batterie : le controleur steamdeck_hwmon expose
-  # max_battery_charge_level (0 = pas de plafond, 80 = charge a 80 %). Le
-  # chemin hwmonN varie selon l'ordre de detection, d'ou la recherche par nom.
+  # Battery charge ceiling: the steamdeck_hwmon controller exposes
+  # max_battery_charge_level (0 = no ceiling, 80 = charge to 80%). The
+  # hwmonN path varies with the detection order, hence the search by name.
   chargeLimitScript = limit:
     pkgs.writeShellApplication {
       name = "steamdeck-battery-charge-limit";
@@ -64,18 +64,18 @@ let
           [ -r "$h/name" ] || continue
           if [ "$(cat "$h/name")" = "steamdeck_hwmon" ] && [ -w "$h/max_battery_charge_level" ]; then
             echo "$limit" > "$h/max_battery_charge_level"
-            echo "steamdeck: charge limitee a ''${limit}% ($h)"
+            echo "steamdeck: charge limited to ''${limit}% ($h)"
             found=1
           fi
         done
-        [ "$found" -eq 1 ] || echo "steamdeck: max_battery_charge_level absent, plafond non applique"
+        [ "$found" -eq 1 ] || echo "steamdeck: max_battery_charge_level absent, ceiling not applied"
       '';
     };
 
-  # Surveille la temperature Tctl (k10temp) et gele/degele XMRig avec
-  # SIGSTOP/SIGCONT. SIGSTOP plutot qu'un arret : le dataset RandomX reste en
-  # memoire, la reprise est immediate et le pool retrouve le worker au lieu de
-  # repartir de zero.
+  # Monitors the Tctl temperature (k10temp) and freezes/thaws XMRig with
+  # SIGSTOP/SIGCONT. SIGSTOP rather than a stop: the RandomX dataset stays in
+  # memory, the resume is immediate and the pool finds the worker again instead of
+  # starting from scratch.
   thermalGuardScript = pkgs.writeShellApplication {
     name = "monero-miner-thermal-guard";
     runtimeInputs = [ pkgs.coreutils pkgs.systemd ];
@@ -98,10 +98,10 @@ let
       [ -n "$temp" ] || exit 0
       if [ "$temp" -ge ${toString (cfg.thermalGuard.maxTemperature * 1000)} ] && [ ! -e "$flag" ]; then
         systemctl kill --signal=SIGSTOP monero-miner.service && touch "$flag"
-        echo "thermal: pause a ''${temp}mC"
+        echo "thermal: paused at ''${temp}mC"
       elif [ "$temp" -le ${toString (cfg.thermalGuard.resumeTemperature * 1000)} ] && [ -e "$flag" ]; then
         systemctl kill --signal=SIGCONT monero-miner.service && rm -f "$flag"
-        echo "thermal: reprise a ''${temp}mC"
+        echo "thermal: resumed at ''${temp}mC"
       fi
     '';
   };
@@ -114,7 +114,7 @@ in
       type = lib.types.package;
       default = pkgs.xmrig;
       defaultText = lib.literalExpression "pkgs.xmrig";
-      description = "Paquet XMRig a utiliser.";
+      description = "XMRig package to use.";
     };
 
     wallet = lib.mkOption {
@@ -122,9 +122,9 @@ in
       default = "";
       example = "48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWZgDJRh3jpbZ7knX2aMVJpXyF5bZ1...";
       description = ''
-        Adresse Monero qui recoit les gains. Une adresse principale (commence
-        par 4) ou une sous-adresse (commence par 8) fait 95 caracteres.
-        Laisser vide si walletFile est utilise.
+        Monero address that receives the earnings. A main address (starts
+        with 4) or a subaddress (starts with 8) is 95 characters.
+        Leave empty if walletFile is used.
       '';
     };
 
@@ -132,98 +132,98 @@ in
       type = lib.types.nullOr lib.types.str;
       default = null;
       description = ''
-        Chemin d'un fichier contenant l'adresse Monero, typiquement un secret
-        sops lu par systemd via LoadCredential. Prioritaire sur wallet.
+        Path to a file containing the Monero address, typically a sops secret
+        read by systemd via LoadCredential. Takes precedence over wallet.
       '';
     };
 
     schedule = {
-      enable = lib.mkEnableOption "la planification du minage";
+      enable = lib.mkEnableOption "the mining schedule";
 
       weekdayStart = lib.mkOption {
         type = lib.types.str;
         default = "01:00";
-        description = "Debut de la fenetre de sommeil en semaine (HH:MM).";
+        description = "Start of the weekday sleep window (HH:MM).";
       };
 
       weekdayWorkStart = lib.mkOption {
         type = lib.types.str;
         default = "09:00";
-        description = "Heure a partir de laquelle le calendrier decide en semaine (HH:MM).";
+        description = "Time from which the calendar decides on weekdays (HH:MM).";
       };
 
       weekdayEnd = lib.mkOption {
         type = lib.types.str;
         default = "18:00";
-        description = "Fin de la fenetre de semaine (HH:MM).";
+        description = "End of the weekday window (HH:MM).";
       };
 
       weekendStart = lib.mkOption {
         type = lib.types.str;
         default = "01:00";
-        description = "Debut de la fenetre du week-end (HH:MM).";
+        description = "Start of the weekend window (HH:MM).";
       };
 
       weekendEnd = lib.mkOption {
         type = lib.types.str;
         default = "09:00";
-        description = "Fin de la fenetre du week-end (HH:MM).";
+        description = "End of the weekend window (HH:MM).";
       };
     };
 
     calendar = {
-      enable = lib.mkEnableOption "la restriction aux evenements de travail Nextcloud";
+      enable = lib.mkEnableOption "the restriction to Nextcloud work events";
 
       url = lib.mkOption {
         type = lib.types.str;
         default = "https://cloud.marcpartensky.com";
-        description = "URL de base CalDAV Nextcloud.";
+        description = "Nextcloud CalDAV base URL.";
       };
 
       userFile = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;
-        description = "Fichier contenant le nom d'utilisateur Nextcloud.";
+        description = "File containing the Nextcloud username.";
       };
 
       passwordFile = lib.mkOption {
         type = lib.types.nullOr lib.types.str;
         default = null;
-        description = "Fichier contenant le mot de passe ou app password Nextcloud.";
+        description = "File containing the Nextcloud password or app password.";
       };
 
       calendars = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [ "sg" ];
-        description = "Calendriers dont un evenement actif autorise le minage.";
+        description = "Calendars whose active event authorizes mining.";
       };
 
       failOpen = lib.mkOption {
         type = lib.types.bool;
         default = false;
-        description = "Miner pendant la plage travail si le calendrier est indisponible.";
+        description = "Mine during the work window if the calendar is unavailable.";
       };
     };
 
     pool = lib.mkOption {
       type = lib.types.str;
       default = "gulf.moneroocean.stream:10008";
-      description = "Endpoint Stratum du pool, au format host:port.";
+      description = "Stratum endpoint of the pool, in host:port format.";
     };
 
     poolPassword = lib.mkOption {
       type = lib.types.str;
       default = "x";
-      description = "Mot de passe/envoye au pool (la plupart ignorent sa valeur).";
+      description = "Password sent to the pool (most ignore its value).";
     };
 
     tls = lib.mkOption {
       type = lib.types.bool;
       default = false;
       description = ''
-        Active TLS vers le pool. MoneroOcean ne le propose pas sur son port
-        Stratum (contrairement a son dashboard HTTPS) ; laisser false pour lui.
-        Le Stratum ne transporte que l'adresse publique du portefeuille.
+        Enables TLS to the pool. MoneroOcean does not offer it on its Stratum
+        port (unlike its HTTPS dashboard); leave false for it.
+        Stratum only carries the public wallet address.
       '';
     };
 
@@ -231,89 +231,89 @@ in
       type = lib.types.ints.positive;
       default = 4;
       description = ''
-        Nombre de threads RandomX. Sur le Steam Deck (4 coeurs Zen 2, 4 Mo de
-        L3), 4 threads suffisent a saturer les coeurs physiques ; 8 threads
-        (SMT) donnent le hashrate maximal au prix de plus de chaleur.
+        Number of RandomX threads. On the Steam Deck (4 Zen 2 cores, 4 MB of
+        L3), 4 threads are enough to saturate the physical cores; 8 threads
+        (SMT) give the maximum hashrate at the cost of more heat.
       '';
     };
 
     hugePages = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Reserve des huge pages 2 Mo pour RandomX (gain jusqu'a 50 %).";
+      description = "Reserves 2 MB huge pages for RandomX (gain up to 50%).";
     };
 
     hugePagesCount = lib.mkOption {
       type = lib.types.ints.positive;
       default = 1280;
       description = ''
-        Nombre de pages de 2 Mo reservees au boot. 1280 = 2,5 Gio : 2080 Mo de
-        dataset + 256 Mo de cache + 16 Mo de scratchpads (8 threads) + marge.
+        Number of 2 MB pages reserved at boot. 1280 = 2.5 GiB: 2080 MB of
+        dataset + 256 MB of cache + 16 MB of scratchpads (8 threads) + margin.
       '';
     };
 
     pauseOnBattery = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Met le minage en pause quand la machine est sur batterie.";
+      description = "Pauses mining when the machine is on battery.";
     };
 
     rigId = lib.mkOption {
       type = lib.types.str;
       default = "";
-      description = "Identifiant de la machine affiche dans les stats du pool.";
+      description = "Machine identifier shown in the pool stats.";
     };
 
     donateLevel = lib.mkOption {
       type = lib.types.ints.between 0 100;
       default = 1;
-      description = "Pourcentage de temps donne au developpeur de XMRig.";
+      description = "Percentage of time given to the XMRig developer.";
     };
 
     printTime = lib.mkOption {
       type = lib.types.ints.positive;
       default = 60;
-      description = "Intervalle (secondes) des rapports de hashrate dans le journal.";
+      description = "Interval (seconds) of the hashrate reports in the log.";
     };
 
     cpuQuota = lib.mkOption {
       type = lib.types.ints.positive;
       default = 300;
       description = ''
-        Plafond CPU en pourcentage (100 % = un coeur). 300 laisse un coeur
-        libre pour l'interface Steam et les jeux.
+        CPU ceiling in percent (100% = one core). 300 leaves one core
+        free for the Steam interface and games.
       '';
     };
 
     nice = lib.mkOption {
       type = lib.types.ints.between (-20) 19;
       default = 19;
-      description = "Priorite CPU du processus (19 = la plus basse).";
+      description = "CPU priority of the process (19 = the lowest).";
     };
 
     chargeLimit = lib.mkOption {
       type = lib.types.nullOr (lib.types.ints.between 50 100);
       default = null;
       description = ''
-        Plafond de charge de la batterie en pourcentage, applique au controleur
-        steamdeck_hwmon s'il expose max_battery_charge_level. Utile pour un
-        appareil qui mine branche en permanence. null = pas de plafond.
+        Battery charge ceiling in percent, applied to the steamdeck_hwmon
+        controller if it exposes max_battery_charge_level. Useful for a
+        device that mines plugged in permanently. null = no ceiling.
       '';
     };
 
     thermalGuard = {
-      enable = lib.mkEnableOption "la mise en pause du mineur au-dela d'une temperature CPU";
+      enable = lib.mkEnableOption "pausing the miner above a CPU temperature";
 
       maxTemperature = lib.mkOption {
         type = lib.types.ints.positive;
         default = 85;
-        description = "Temperature (C) a laquelle le mineur est mis en pause (SIGSTOP).";
+        description = "Temperature (C) at which the miner is paused (SIGSTOP).";
       };
 
       resumeTemperature = lib.mkOption {
         type = lib.types.ints.positive;
         default = 75;
-        description = "Temperature (C) a laquelle le mineur reprend (SIGCONT).";
+        description = "Temperature (C) at which the miner resumes (SIGCONT).";
       };
     };
   };
@@ -322,13 +322,13 @@ in
     assertions = [
       {
         assertion = cfg.wallet != "" || cfg.walletFile != null;
-        message = "services.monero-miner.wallet ou walletFile doit etre renseigne.";
+        message = "services.monero-miner.wallet or walletFile must be set.";
       }
       {
         assertion = cfg.wallet == "" || (builtins.match "[48][1-9A-HJ-NP-Za-km-z]{94}" cfg.wallet) != null;
         message = ''
-          services.monero-miner.wallet n'a pas la forme d'une adresse Monero
-          standard ou de sous-adresse (95 caracteres, commence par 4 ou 8).
+          services.monero-miner.wallet does not have the form of a standard
+          Monero address or subaddress (95 characters, starts with 4 or 8).
         '';
       }
       {
@@ -339,19 +339,19 @@ in
           cfg.schedule.weekendStart
           cfg.schedule.weekendEnd
         ];
-        message = "Les horaires de services.monero-miner.schedule doivent etre au format HH:MM.";
+        message = "The times of services.monero-miner.schedule must be in HH:MM format.";
       }
       {
         assertion = !cfg.schedule.enable || !cfg.calendar.enable
           || (cfg.calendar.userFile != null && cfg.calendar.passwordFile != null);
         message = ''
-          services.monero-miner.calendar.enable exige userFile et passwordFile
-          (secrets sops) pour interroger Nextcloud.
+          services.monero-miner.calendar.enable requires userFile and passwordFile
+          (sops secrets) to query Nextcloud.
         '';
       }
       {
         assertion = cfg.thermalGuard.resumeTemperature < cfg.thermalGuard.maxTemperature;
-        message = "services.monero-miner.thermalGuard.resumeTemperature doit etre inferieure a maxTemperature.";
+        message = "services.monero-miner.thermalGuard.resumeTemperature must be lower than maxTemperature.";
       }
     ];
 
@@ -371,7 +371,7 @@ in
           then "${startScript}/bin/monero-miner-start"
           else "${cfg.package}/bin/xmrig ${lib.escapeShellArgs args}";
 
-        # Utilisateur jetable : aucun fichier, aucun home, aucun droit persistant.
+        # Disposable user: no file, no home, no persistent rights.
         DynamicUser = true;
         Restart = "on-failure";
         RestartSec = 15;
@@ -381,7 +381,7 @@ in
           "wallet:${cfg.walletFile}"
         ];
 
-        # Priorite basse et plafond : le Deck reste utilisable pendant le minage.
+        # Low priority and ceiling: the Deck stays usable during mining.
         Nice = cfg.nice;
         CPUSchedulingPolicy = "batch";
         CPUWeight = 20;
@@ -389,11 +389,11 @@ in
         IOSchedulingClass = "idle";
         OOMScoreAdjust = 500;
 
-        # RandomX alloue le dataset en huge pages et peut verrouiller la memoire.
+        # RandomX allocates the dataset in huge pages and may lock the memory.
         LimitMEMLOCK = "infinity";
 
-        # Durcissement. Ne PAS activer MemoryDenyWriteExecute : le JIT de
-        # RandomX a besoin de pages a la fois executables et modifiables.
+        # Hardening. Do NOT enable MemoryDenyWriteExecute: the RandomX JIT
+        # needs pages that are both executable and writable.
         ProtectSystem = "strict";
         ProtectHome = true;
         PrivateTmp = true;
@@ -406,7 +406,7 @@ in
     };
 
     systemd.services.monero-miner-charge-limit = lib.mkIf (cfg.chargeLimit != null) {
-      description = "Plafond de charge batterie (Steam Deck)";
+      description = "Battery charge ceiling (Steam Deck)";
       wantedBy = [ "multi-user.target" ];
       after = [ "systemd-udev-settle.service" ];
       serviceConfig = {
@@ -417,7 +417,7 @@ in
     };
 
     systemd.services.monero-miner-thermal-guard = lib.mkIf cfg.thermalGuard.enable {
-      description = "Pause XMRig si le CPU depasse le seuil thermique";
+      description = "Pause XMRig if the CPU exceeds the thermal threshold";
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${thermalGuardScript}/bin/monero-miner-thermal-guard";
@@ -426,7 +426,7 @@ in
     };
 
     systemd.timers.monero-miner-thermal-guard = lib.mkIf cfg.thermalGuard.enable {
-      description = "Surveillance thermique du mineur Monero";
+      description = "Thermal monitoring of the Monero miner";
       wantedBy = [ "timers.target" ];
       timerConfig = {
         OnBootSec = "1min";
@@ -437,7 +437,7 @@ in
     };
 
     systemd.services.monero-miner-scheduler = lib.mkIf cfg.schedule.enable {
-      description = "Planificateur du mineur Monero (calendrier Nextcloud)";
+      description = "Monero miner scheduler (Nextcloud calendar)";
       wantedBy = [ "multi-user.target" ];
       wants = [ "network-online.target" ];
       after = [ "network-online.target" ];
@@ -466,7 +466,7 @@ in
     };
 
     systemd.timers.monero-miner-scheduler = lib.mkIf cfg.schedule.enable {
-      description = "Application periodique du planning du mineur Monero";
+      description = "Periodic application of the Monero miner schedule";
       wantedBy = [ "timers.target" ];
       timerConfig = {
         OnBootSec = "2min";
@@ -476,7 +476,7 @@ in
       };
     };
 
-    # Permet de lancer `xmrig --bench=1M` a la main pour comparer les reglages.
+    # Allows running `xmrig --bench=1M` by hand to compare settings.
     environment.systemPackages = [ cfg.package ];
   };
 }

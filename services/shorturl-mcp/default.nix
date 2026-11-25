@@ -1,29 +1,29 @@
 # services/shorturl-mcp/default.nix
-# Serveur MCP `shorturl` pour hermes : raccourcisseurs PUBLICS ANONYMES a
-# domaine de 4 caracteres (x.gd, v.gd, t.tl), code dans ./server.py.
+# MCP `shorturl` server for hermes: PUBLIC ANONYMOUS shorteners with
+# 4-character domains (x.gd, v.gd, t.tl), code in ./server.py.
 #
-# Pourquoi ces trois-la et pas un connecteur unique : aucun raccourcisseur
-# public ne cumule anonymat, slug custom et fiabilite, donc le serveur expose
-# une interface unique (shorturl_shorten / shorturl_expand / shorturl_history)
-# et choisit le backend, avec repli automatique. Detail des criteres et des
-# services ecartes (t.ly, s.ee, s.id, 0.gp et sa flotte a Turnstile, t.im,
-# t.mr, l.tl, z.sh, d.to, t.co) dans l'entete de server.py.
+# Why these three and not a single connector: no public
+# shortener combines anonymity, custom slug and reliability, so the server exposes
+# a single interface (shorturl_shorten / shorturl_expand / shorturl_history)
+# and chooses the backend, with automatic fallback. Details of the criteria and the
+# services ruled out (t.ly, s.ee, s.id, 0.gp and its Turnstile fleet, t.im,
+# t.mr, l.tl, z.sh, d.to, t.co) in the header of server.py.
 #
-# Aucun secret : ces services sont sans compte et sans captcha. Le seul etat
-# local est le journal des creations (SHORTURL_STATE_DIR), sous le home de
-# hermes, puisqu'aucun de ces services ne tient d'historique sans compte.
+# No secret: these services are account-less and captcha-less. The only
+# local state is the creation log (SHORTURL_STATE_DIR), under hermes's
+# home, since none of these services keeps history without an account.
 #
-# Transport stdio : hermes spawn le subprocess. Debug a la main (garder stdin
-# ouvert, un EOF tue la requete en vol) :
+# stdio transport: hermes spawns the subprocess. Debug by hand (keep stdin
+# open, an EOF kills the request in flight):
 #   { printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'; sleep 5; } \
 #     | /nix/store/.../bin/shorturl-mcp
 {self, pkgs, ...}: let
-  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
-  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  # Binary built as a flake output (mcp/default.nix): buildable
+  # without evaluating this config, and no longer rebuilt on each host eval.
   shorturl-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.shorturl-mcp;
 
 in {
-  # Le binaire sur le PATH, et reference par mcpServers.shorturl.command.
+  # The binary on the PATH, and referenced by mcpServers.shorturl.command.
   environment.systemPackages = [shorturl-mcp];
 
 }

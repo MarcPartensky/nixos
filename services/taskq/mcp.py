@@ -1,13 +1,13 @@
-"""taskq-mcp : serveur MCP (stdio) pour la file de taches de tower.
+"""taskq-mcp: MCP server (stdio) for tower's task queue.
 
-Memes operations que le CLI `taskq` et la webui : poser, lire, expliquer,
-piloter, journaliser. Les chemins psql/journalctl et la base viennent de
-l'environnement (poses par le module services/taskq) ; zero dependance en
-dehors du SDK `mcp`.
+Same operations as the `taskq` CLI and the webui: submit, read, explain,
+drive, log. The psql/journalctl paths and the database come from
+the environment (set by the services/taskq module); zero dependency beyond
+the `mcp` SDK.
 
-Outils : submit, list_tasks, show, why, metrics, state, hosts, control,
-logs, digest, webui. Les actions ecrivent les memes lignes `decisions` que le
-CLI et la webui (actor "mcp").
+Tools: submit, list_tasks, show, why, metrics, state, hosts, control,
+logs, digest, webui. Actions write the same `decisions` rows as the
+CLI and the webui (actor "mcp").
 """
 
 import json
@@ -87,19 +87,19 @@ def submit(
     env: dict | None = None,
     by: str = "mcp",
 ) -> dict:
-    """Pose une tache dans la file taskq (le dispatcher decide QUAND la lancer).
+    """Submit a task to the taskq queue (the dispatcher decides WHEN to run it).
 
-    kind : "systemd_unit" (defaut si target finit par .service) ou "command"
-    (commande shell, lancee par systemd-run). cpu_class : light|medium|heavy.
-    llm_cost : none|free|paid (paid consomme le budget payant du jour).
-    needs_absence : ne tourne que quand marc n'est pas connecte.
-    deadline_minutes : force le demarrage quand l'echeance approche.
-    key : cle d'idempotence (une seule ligne par cle).
+    kind: "systemd_unit" (default if target ends with .service) or "command"
+    (shell command, launched by systemd-run). cpu_class: light|medium|heavy.
+    llm_cost: none|free|paid (paid uses the day's paid budget).
+    needs_absence: only runs when marc is not connected.
+    deadline_minutes: forces the start when the deadline approaches.
+    key: idempotency key (a single row per key).
     """
     if cpu_class not in ("light", "medium", "heavy"):
-        raise ValueError("cpu_class doit etre light|medium|heavy")
+        raise ValueError("cpu_class must be light|medium|heavy")
     if llm_cost not in ("none", "free", "paid"):
-        raise ValueError("llm_cost doit etre none|free|paid")
+        raise ValueError("llm_cost must be none|free|paid")
     if not kind:
         kind = "systemd_unit" if target.endswith(".service") else "command"
     cols = {
@@ -131,7 +131,7 @@ def submit(
 
 @mcp.tool()
 def list_tasks(status: str = "", limit: int = 25) -> list:
-    """Liste les taches de la file. status : queued|running|done|failed|blocked|... (vide = tout)."""
+    """List the tasks in the queue. status: queued|running|done|failed|blocked|... (empty = all)."""
     where = f"where status = {q(status)}" if status else ""
     return rows(
         "select id, status, priority, cpu_class, llm_cost, left(target, 60) as target,"
@@ -143,10 +143,10 @@ def list_tasks(status: str = "", limit: int = 25) -> list:
 
 @mcp.tool()
 def show(task_id: int) -> dict:
-    """Detail d'une tache : champs complets + 10 dernieres decisions."""
+    """Task detail: full fields + last 10 decisions."""
     t = one(f"select row_to_json(x) from (select * from tasks where id = {int(task_id)}) x")
     if not t:
-        raise ValueError(f"tache {task_id} inconnue")
+        raise ValueError(f"unknown task {task_id}")
     d = rows(
         "select to_char(at, 'HH24:MI:SS') as at, action, actor, left(reason, 120) as reason"
         f" from decisions where task_id = {int(task_id)} order by at desc limit 10"
@@ -156,8 +156,8 @@ def show(task_id: int) -> dict:
 
 @mcp.tool()
 def why(task_id: int = 0) -> dict:
-    """Pourquoi la file est dans cet etat : metriques machine/budget +, si un id
-    est donne, les dernieres raisons de report/demarrage de cette tache."""
+    """Why the queue is in this state: machine/budget metrics +, if an id
+    is given, the latest defer/start reasons for that task."""
     m, b = metrics_blob()
     out = {
         "paused": (one("select value from state where key='paused'") or "false") in ("true", True),
@@ -180,14 +180,14 @@ def why(task_id: int = 0) -> dict:
 
 @mcp.tool()
 def metrics() -> dict:
-    """Etat machine vu par le dispatcher (load, RAM, marc, GPU, modele local, budget payant)."""
+    """Machine state seen by the dispatcher (load, RAM, marc, GPU, local model, paid budget)."""
     m, b = metrics_blob()
     return {"metrics": m, "budget": b}
 
 
 @mcp.tool()
 def state() -> dict:
-    """Etat deterministe (compteurs par statut, pause, budget) : concu pour du polling rapide."""
+    """Deterministic state (counts per status, pause, budget): built for fast polling."""
     counts = {r["status"]: r["n"] for r in rows("select status, count(*) as n from tasks group by status")}
     m, b = metrics_blob()
     paused = (one("select value from state where key='paused'") or "false") in ("true", True)
@@ -198,8 +198,8 @@ def state() -> dict:
 
 @mcp.tool()
 def hosts() -> list:
-    """Flotte : workers enregistres (name, capabilities, metriques, heartbeat, quarantaine).
-    Vide tant que la flotte n'est pas branchee ; tower execute en local."""
+    """Fleet: registered workers (name, capabilities, metrics, heartbeat, quarantine).
+    Empty while the fleet is not wired up; tower runs locally."""
     return rows(
         "select name, caps, metrics, enabled, quarantined_until::text as quarantined_until,"
         " left(coalesce(note, ''), 120) as note, heartbeat::text as heartbeat,"
@@ -210,62 +210,62 @@ def hosts() -> list:
 
 @mcp.tool()
 def control(action: str, task_id: int = 0, reason: str = "") -> dict:
-    """Pilote la file : pause | resume | unblock | ack (marque les decisions comme lues),
-    retry (id) | cancel (id). Meme SQL que le CLI, trace dans `decisions`."""
+    """Drive the queue: pause | resume | unblock | ack (marks decisions as read),
+    retry (id) | cancel (id). Same SQL as the CLI, traced in `decisions`."""
     if action == "pause":
         exec_("insert into state (key, value) values ('paused', 'true'::jsonb)"
               " on conflict (key) do update set value = 'true'::jsonb, updated_at = now()")
-        exec_(f"insert into decisions (action, actor, reason) values ('pause', {q(ACTOR)}, 'file en pause (mcp)')")
+        exec_(f"insert into decisions (action, actor, reason) values ('pause', {q(ACTOR)}, 'queue paused (mcp)')")
     elif action == "resume":
         exec_("insert into state (key, value) values ('paused', 'false'::jsonb)"
               " on conflict (key) do update set value = 'false'::jsonb, updated_at = now()")
-        exec_(f"insert into decisions (action, actor, reason) values ('resume', {q(ACTOR)}, 'file relancee (mcp)')")
+        exec_(f"insert into decisions (action, actor, reason) values ('resume', {q(ACTOR)}, 'queue resumed (mcp)')")
     elif action == "unblock":
-        exec_("update tasks set status='queued', note='debloque', updated_at=now() where status='blocked'")
-        exec_(f"insert into decisions (action, actor, reason) values ('unblock', {q(ACTOR)}, 'taches bloquees remises en file (mcp)')")
+        exec_("update tasks set status='queued', note='unblocked', updated_at=now() where status='blocked'")
+        exec_(f"insert into decisions (action, actor, reason) values ('unblock', {q(ACTOR)}, 'blocked tasks requeued (mcp)')")
     elif action == "ack":
         n = psql("update decisions set notified = true where not notified returning id")
         return {"ok": True, "action": action, "acked": n.count("\n") + 1 if n else 0}
     elif action == "retry":
         if not task_id:
-            raise ValueError("retry exige task_id")
+            raise ValueError("retry requires task_id")
         exec_(f"update tasks set status='queued', not_before=now(), attempts=0, updated_at=now() where id={int(task_id)}")
-        exec_(f"insert into decisions (task_id, action, actor, reason) values ({int(task_id)}, 'note', {q(ACTOR)}, 'remise en file (mcp)')")
+        exec_(f"insert into decisions (task_id, action, actor, reason) values ({int(task_id)}, 'note', {q(ACTOR)}, 'requeued (mcp)')")
     elif action == "cancel":
         if not task_id:
-            raise ValueError("cancel exige task_id")
-        msg = reason or "annule par le mcp"
+            raise ValueError("cancel requires task_id")
+        msg = reason or "cancelled by mcp"
         exec_(f"update tasks set status='cancelled', finished_at=now(), updated_at=now(), note={q(msg)}"
               f" where id={int(task_id)} and status in ('queued','blocked')")
         exec_(f"insert into decisions (task_id, action, actor, reason) values ({int(task_id)}, 'skip', {q(ACTOR)}, {q(msg)})")
     else:
-        raise ValueError(f"action inconnue: {action}")
+        raise ValueError(f"unknown action: {action}")
     return {"ok": True, "action": action}
 
 
 @mcp.tool()
 def logs(unit: str = "", task_id: int = 0, lines: int = 50) -> str:
-    """Journal systemd d'une tache (par task_id, ou directement le nom d'une unite).
-    Utile pour voir ou en est un scrape/ingest en cours."""
+    """Systemd log of a task (by task_id, or directly the unit name).
+    Useful to see where an ongoing scrape/ingest stands."""
     if not unit and task_id:
         t = one(f"select row_to_json(x) from (select unit, target, kind from tasks where id={int(task_id)}) x")
         if not t:
-            raise ValueError(f"tache {task_id} inconnue")
+            raise ValueError(f"unknown task {task_id}")
         unit = t.get("unit") or t.get("target")
     if not unit or not UNIT_RE.match(unit):
-        raise ValueError("unite invalide")
+        raise ValueError("invalid unit")
     out = subprocess.run(
         [JOURNALCTL, "-u", unit, "-n", str(max(1, min(int(lines), 500))), "--no-pager"],
         capture_output=True, text=True, timeout=30,
     )
     txt = (out.stdout or out.stderr or "").strip()
-    return txt[-6000:] if txt else "(journal vide)"
+    return txt[-6000:] if txt else "(empty journal)"
 
 
 @mcp.tool()
 def digest(ack: bool = False) -> dict:
-    """Resume pour marc : decisions non notifiees + file courante. ack=True marque
-    les decisions comme lues (a faire quand le resume a ete delivre)."""
+    """Summary for marc: unnotified decisions + current queue. ack=True marks
+    the decisions as read (do this once the summary has been delivered)."""
     m, b = metrics_blob()
     pend = rows("select id, action, left(coalesce(reason, ''), 90) as reason, to_char(at, 'HH24:MI') as at"
                 " from decisions where not notified order by at limit 30")
@@ -283,10 +283,10 @@ def digest(ack: bool = False) -> dict:
 
 @mcp.tool()
 def webui() -> dict:
-    """URL de la webui taskq (SSO Pangolin) + etat compact de la file."""
+    """taskq webui URL (Pangolin SSO) + compact queue state."""
     counts = {r["status"]: r["n"] for r in rows("select status, count(*) as n from tasks group by status")}
     return {"url": WEBUI_URL, "counts": counts,
-            "hint": "la page poll /api/state toutes les 5 s ; actions pause/retry/cancel incluses"}
+            "hint": "the page polls /api/state every 5 s; pause/retry/cancel actions included"}
 
 
 if __name__ == "__main__":

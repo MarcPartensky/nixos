@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# Corrige la categorie par defaut des squelettes de metadonnees crees par
-# `fdroid update --create-metadata` : fdroid prend le nom du dossier courant
-# comme categorie (ici "fdroid"), qui n'est pas une categorie F-Droid valide.
-# On la remplace par une categorie valide, puis le service regenere l'index.
-# Les fichiers deja edites a la main (categorie differente) ne sont pas touches.
+# Fixes the default category of the metadata skeletons created by
+# `fdroid update --create-metadata`: fdroid takes the name of the current directory
+# as the category (here "fdroid"), which is not a valid F-Droid category.
+# We replace it with a valid category, then the service regenerates the index.
+# Files already edited by hand (different category) are not touched.
 import pathlib
 import sys
 

@@ -5,14 +5,14 @@
   ...
 }:
 
-# Serveur de livres audio et podcasts. Bibliothèque sous /srv/media (dataset
-# ZFS partagé, cf. services/media : /home/marc/media est banni pour les
-# services car systemd-tmpfiles y échoue, "Detected unsafe path transition").
+# Audiobook and podcast server. Library under /srv/media (shared ZFS
+# dataset, cf. services/media: /home/marc/media is banned for
+# services because systemd-tmpfiles fails there, "Detected unsafe path transition").
 {
-  # Clé API audiobookshelf (créée dans Settings > Users, compte hermes) : dans
-  # secrets/audiobookshelf.yml (fichier sops dédié, common.yml/tower.yml ne
-  # sont pas éditables par hermes sans la clé age privée). Pas encore
-  # consommée par un service : disponible pour un futur MCP ou script.
+  # audiobookshelf API key (created in Settings > Users, hermes account): in
+  # secrets/audiobookshelf.yml (dedicated sops file, common.yml/tower.yml are
+  # not editable by hermes without the age private key). Not yet
+  # consumed by a service: available for a future MCP or script.
   sops.secrets."audiobookshelf_api_key" = {
     sopsFile = ../../secrets/audiobookshelf.yml;
     owner = "hermes";
@@ -33,12 +33,12 @@
     "d /srv/media/podcasts 2775 root media -"
   ];
 
-  networking.firewall.allowedTCPPorts = [ 8000 ]; # interface web, LAN uniquement
+  networking.firewall.allowedTCPPorts = [ 8000 ]; # web interface, LAN only
 
-  # Exposition publique via Pangolin (newt, site "tower") : audiobookshelf.marcpartensky.com
-  # -> 127.0.0.1:8000. Même schéma que jellyfin : `proxy-resources` + `protocol`
-  # (le Pangolin de ce VPS ignore silencieusement `public-resources`/`mode`,
-  # cf. services/newt). Pas d'auth Pangolin : audiobookshelf a sa propre auth.
+  # Public exposure via Pangolin (newt, site "tower"): audiobookshelf.marcpartensky.com
+  # -> 127.0.0.1:8000. Same scheme as jellyfin: `proxy-resources` + `protocol`
+  # (this VPS's Pangolin silently ignores `public-resources`/`mode`,
+  # cf. services/newt). No Pangolin auth: audiobookshelf has its own auth.
   services.newt.blueprint.proxy-resources.audiobookshelf = {
     name = "audiobookshelf";
     protocol = "http";

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Ramene Gemfile.lock a la plateforme `ruby`.
+"""Brings Gemfile.lock back to the `ruby` platform.
 
-Le lockfile upstream ne liste que des variantes precompilees
-(x86_64-linux-gnu, aarch64-linux-musl, arm64-darwin...) : au demarrage,
-bundler cherche ces variantes parmi les gems installes, or nixpkgs construit
-les gems generiques, d'ou « Could not find sqlite3-2.10.2-x86_64-linux-gnu in
-locally installed gems » (Bundler::GemNotFound) et un service en boucle
-d'echec. On remet les specs sur la version generique et on reduit la section
-PLATFORMS a `ruby`, ce qui correspond exactement a ce que bundlerEnv fournit.
+The upstream lockfile lists only precompiled variants
+(x86_64-linux-gnu, aarch64-linux-musl, arm64-darwin...): at startup,
+bundler looks for these variants among the installed gems, but nixpkgs builds
+the generic gems, hence "Could not find sqlite3-2.10.2-x86_64-linux-gnu in
+locally installed gems" (Bundler::GemNotFound) and a service in a loop
+of failure. We put the specs back on the generic version and reduce the
+PLATFORMS section to `ruby`, which corresponds exactly to what bundlerEnv provides.
 
-Ne pas remplacer ce script par une desactivation de bundler : loader.rb ne
-charge la plupart des gems que par Bundler.require(:default) (sinatra, sqlite3,
-activerecord...), donc sauter bundler casse BeEF a l'import de Sinatra::Base.
+Do not replace this script with a disabling of bundler: loader.rb
+loads most of the gems only through Bundler.require(:default) (sinatra, sqlite3,
+activerecord...), so skipping bundler breaks BeEF at the import of Sinatra::Base.
 """
 
 import re
@@ -25,8 +25,8 @@ PLATFORM_RE = re.compile(
 path = sys.argv[1]
 text = open(path).read()
 
-# 1. Specs : version generique, et une seule entree par gem (le meme gem
-# apparait une fois par variante de plateforme, avec ses dependances).
+# 1. Specs: generic version, and a single entry per gem (the same gem
+# appears once per platform variant, with its dependencies).
 lines = []
 seen = set()
 skipping = False
@@ -35,7 +35,7 @@ for line in text.splitlines():
     if match:
         normalized = "    %s (%s)" % (match.group("name"), match.group("version"))
         if normalized.strip() in seen:
-            skipping = True  # entree deja gardee : sauter aussi ses deps
+            skipping = True  # entry already kept: skip its deps too
             continue
         seen.add(normalized.strip())
         skipping = False
@@ -47,8 +47,8 @@ for line in text.splitlines():
     lines.append(line)
 text = "\n".join(lines) + "\n"
 
-# 2. PLATFORMS : ne garder que `ruby`, sinon bundler reclame une gem valide
-# pour toutes les plateformes listees a la fois.
+# 2. PLATFORMS: keep only `ruby`, otherwise bundler demands a valid gem
+# for all the listed platforms at once.
 text = re.sub(r"^PLATFORMS\n(?:  \S+\n)+", "PLATFORMS\n  ruby\n", text,
               flags=re.M)
 

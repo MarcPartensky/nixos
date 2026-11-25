@@ -637,9 +637,9 @@
     platforms = [];
     source = {
       remotes = ["https://rubygems.org"];
-      # Hash corrige a la main : bundix enregistre celui d'une autre variante de
-      # plateforme et nix echoue sur « hash mismatch » au premier build. Verifie
-      # par telechargement du .gem et `nix hash file --type sha256 --base32`.
+      # Hash fixed by hand: bundix records that of another platform
+      # variant and nix fails on "hash mismatch" at the first build. Verified
+      # by downloading the .gem and `nix hash file --type sha256 --base32`.
       sha256 = "00wf7j0mbv1qvj1yd1s5pivxplphvgwqwba1j4qs0bz3zc6q7zyp";
       type = "gem";
     };
@@ -1092,8 +1092,8 @@
     platforms = [];
     source = {
       remotes = ["https://rubygems.org"];
-      # Hash corrige a la main, meme motif que nokogiri : bundix pointe sur une
-      # autre variante de plateforme. Verifie par telechargement du .gem.
+      # Hash fixed by hand, same pattern as nokogiri: bundix points to
+      # another platform variant. Verified by downloading the .gem.
       sha256 = "0r39asq48zjcvmh4lgac75zlxvyh9fgar25076gs9y476b6nispi";
       type = "gem";
     };

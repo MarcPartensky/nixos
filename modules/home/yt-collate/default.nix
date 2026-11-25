@@ -1,5 +1,5 @@
 # Client YouTube Music TUI "yt-collate" (github:indigo0445/yt-collate).
-# Pas de flake upstream : empaqueté ici sur python313.
+# No upstream flake: packaged here on python313.
 {lib, pkgs, ...}: let
   pythonPackages = pkgs.python313Packages;
 
@@ -25,8 +25,8 @@
       pypresence
     ];
 
-    # mpv lit les streams, yt-dlp les résout, node est le JS runtime exigé
-    # par yt-dlp pour le challenge YouTube.
+    # mpv plays the streams, yt-dlp resolves them, node is the JS runtime required
+    # by yt-dlp for the YouTube challenge.
     makeWrapperArgs = [
       "--prefix"
       "PATH"

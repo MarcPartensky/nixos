@@ -1,21 +1,21 @@
-# (Optionnel mais recommandé) Garder un tmpfs large au cas où
+# (Optional but recommended) Keep a large tmpfs just in case
 mount -o remount,size=8G /tmp
 mount -o remount,size=8G /run/nixos
 
-# 2. Lancer un shell avec disko et git
+# 2. Start a shell with disko and git
 # nix-shell -p disko git
 
-# --- Dans le nix-shell ---
+# --- Inside the nix-shell ---
 
-# 3. Partitionner
+# 3. Partition
 disko --flake .#tower --mode disko
 
-# 4. Générer la config hardware (et vérifier les changements si besoin)
+# 4. Generate the hardware config (and review the changes if needed)
 nixos-generate-config --root /mnt --show-hardware-config
 
-# 5. Installer NixOS en augmentant le buffer de téléchargement à 1 Go
+# 5. Install NixOS with the download buffer increased to 1 GB
 nixos-install --flake .#tower --root /mnt --no-root-passwd --option download-buffer-size 1073741824
 
-# 6. Quitter et redémarrer
+# 6. Exit and reboot
 exit
 reboot

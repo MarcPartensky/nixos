@@ -17,21 +17,21 @@
   
   services.postgresql = {
     enable = true;
-    # pgvector : vector store pour la mémoire mem0 de hermes
-    # même majeur (17.11) -> simple restart, pas de dump/restore
+    # pgvector: vector store for hermes's mem0 memory
+    # same major (17.11) -> simple restart, no dump/restore
     package = pkgs.postgresql_17.withPackages (ps: [ ps.pgvector ]);
     settings = {
       ssl_cert_file = config.sops.secrets."postgres_crt".path;
       ssl_key_file  = config.sops.secrets."postgres_key".path;
-      # Le defaut de 100 a ete ATTEINT le 14/11/2026 a 02h10 (103 connexions) :
-      # winnie-ingest ouvre jusqu'a 55 connexions courtes en pointe et le role
-      # windmill s'est vu refuser la sienne ("remaining connection slots are
-      # reserved for roles with the SUPERUSER attribute"). Toute pool qui ne
-      # peut plus ouvrir de connexion attend son timeout, ce qui se traduit
-      # cote client par des requetes qui pendent puis echouent : c'est le
-      # mecanisme le plus credible des gels du backend Hermes. 300 laisse de la
-      # marge pour toutes les bases (une trentaine d'instances) sans pression
-      # memoire notable sur 62 Go.
+      # The default of 100 was REACHED on 14/11/2026 at 02h10 (103 connections):
+      # winnie-ingest opens up to 55 short connections at peak and the
+      # windmill role was denied its own ("remaining connection slots are
+      # reserved for roles with the SUPERUSER attribute"). Any pool that can no
+      # longer open a connection waits for its timeout, which translates
+      # on the client side into requests that hang then fail: this is the
+      # most credible mechanism of the Hermes backend freezes. 300 leaves
+      # room for all the databases (about thirty instances) without notable
+      # memory pressure on 62 GB.
       max_connections = 300;
     };
 
@@ -47,7 +47,7 @@
     ];
 
 
-    # Authentification (locale et localhost)
+    # Authentication (local and localhost)
     authentication = pkgs.lib.mkOverride 10 ''
       # type database  DBuser  auth-method
       local all all trust
@@ -58,14 +58,14 @@
       # IPv6 localhost
       host all all ::1/128 trust
 
-      # Workers Windmill (deck, anywhere) : uniquement le role `windmill` sur
-      # la base `windmill`, uniquement depuis le tailnet headscale, et avec le
-      # mot de passe scram (sops). Sans cette ligne, le worker echoue en
-      # "no pg_hba.conf entry for host 100.64.x.x" et reste en CrashLoop.
+      # Windmill workers (deck, anywhere): only the `windmill` role on
+      # the `windmill` database, only from the headscale tailnet, and with the
+      # scram password (sops). Without this line, the worker fails with
+      # "no pg_hba.conf entry for host 100.64.x.x" and stays in CrashLoop.
       host windmill windmill 100.64.0.0/10 scram-sha-256
     '';
 
-    # # Script SQL initial pour créer utilisateurs et droits
+    # # Initial SQL script to create users and rights
     # initialScript = pkgs.writeText "init.sql" ''
     #   CREATE USER root WITH LOGIN PASSWORD 'rootpassword' SUPERUSER;
     #
@@ -82,12 +82,12 @@
     startAt = "*-*-* 5:00:00";
   };
 
-  # Recovery WAL = demarrage long. Le 17/11/2026 tower a redemarre sans arret
-  # propre ; postgres a rejoue son WAL pendant plus de 120 s, systemd l'a tue au
-  # TimeoutStartSec par defaut, et TOUT ce qui en depend est tombe en
-  # « dependency failed » sans jamais etre relance : matrice 503 pendant 5 h,
-  # immich et attic avec. 15 min couvrent une recovery large sur ce disque ZFS
-  # sans masquer un vrai blocage (postgres logue sa progression).
+  # WAL recovery = long start. On 17/11/2026 tower restarted without a clean
+  # shutdown; postgres replayed its WAL for more than 120 s, systemd killed it at
+  # the default TimeoutStartSec, and EVERYTHING depending on it fell into
+  # "dependency failed" without ever being restarted: matrix 503 for 5 h,
+  # immich and attic with it. 15 min covers a large recovery on this ZFS disk
+  # without masking a real hang (postgres logs its progress).
   systemd.services.postgresql.serviceConfig.TimeoutStartSec = "15min";
 }
 

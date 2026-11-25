@@ -7,56 +7,56 @@
   cfg = config.services.dnsFilter;
 in {
   options.services.dnsFilter = {
-    enable = lib.mkEnableOption "AdGuard Home comme résolveur filtrant du tailnet"
+    enable = lib.mkEnableOption "AdGuard Home as the tailnet's filtering resolver"
       // {
         default = true;
         description = ''
-          Actif par défaut : importer ce module (directement, ou via
-          services/default.nix pour tower et le laptop) suffit à faire tourner
-          le résolveur. Se désactive au cas par cas avec `enable = false`.
+          Active by default: importing this module (directly, or via
+          services/default.nix for tower and the laptop) is enough to run
+          the resolver. Disabled on a per-case basis with `enable = false`.
         '';
       };
 
     webHost = lib.mkOption {
       type = lib.types.str;
       default = "127.0.0.1";
-      description = "Adresse d'écoute de l'UI d'admin AdGuard.";
+      description = "Listen address of the AdGuard admin UI.";
     };
 
     webPort = lib.mkOption {
       type = lib.types.port;
       default = 3000;
-      description = "Port de l'UI d'admin AdGuard.";
+      description = "Port of the AdGuard admin UI.";
     };
 
     bindHosts = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = ["127.0.0.1"];
       description = ''
-        Adresses d'écoute du résolveur DNS. NE JAMAIS remettre "0.0.0.0" : un
-        bind joker sur le 53/UDP échoue dès qu'une adresse PRÉCISE tient déjà
-        le port, et c'est le cas des passerelles de réseaux podman
-        (aardvark-dns écoute sur le 53 de 10.88.0.1, 10.89.0.1, 10.89.1.1).
-        Mesuré le 14/11/2026 sur tower : 2300 redémarrages d'affilée sur
-        « listen udp 0.0.0.0:53: bind: address already in use », donc zéro
-        résolution sur 127.0.0.1:53 comme sur 100.64.0.3:53 pendant des
-        semaines, alors que la configuration semblait bonne. Chaque hôte du
-        tailnet ajoute donc explicitement SON adresse 100.64.x.y dans son
-        profil ; le service a Restart=always et retente jusqu'à ce que
-        tailscale0 porte son IP (il est aussi ordonné après tailscaled).
+        Listen addresses of the DNS resolver. NEVER put back "0.0.0.0": a
+        wildcard bind on 53/UDP fails as soon as a SPECIFIC address already holds
+        the port, and that is the case for the gateways of podman networks
+        (aardvark-dns listens on port 53 of 10.88.0.1, 10.89.0.1, 10.89.1.1).
+        Measured on 14/11/2026 on tower: 2300 restarts in a row on
+        "listen udp 0.0.0.0:53: bind: address already in use", so zero
+        resolution on 127.0.0.1:53 as well as 100.64.0.3:53 for
+        weeks, while the configuration looked correct. Each host of the
+        tailnet therefore explicitly adds ITS 100.64.x.y address in its
+        profile; the service has Restart=always and retries until
+        tailscale0 carries its IP (it is also ordered after tailscaled).
       '';
     };
 
     openWebPort = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Ouvre webPort au firewall (inutile quand webHost est en loopback).";
+      description = "Open webPort in the firewall (useless when webHost is on loopback).";
     };
 
     nameservers = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = ["1.1.1.1"];
-      description = "Résolveurs de secours de la machine elle-même (pas ceux poussés au tailnet).";
+      description = "Fallback resolvers of the machine itself (not the ones pushed to the tailnet).";
     };
 
     extraRewrites = lib.mkOption {
@@ -64,9 +64,9 @@ in {
       default = [ ];
       example = [ { domain = "mesh"; answer = "100.64.0.3"; } ];
       description = ''
-        Réécritures DNS servies par cette instance (réponses statiques). Sert à
-        faire résoudre un nom court comme `mesh` sans search domain, y compris
-        sur les appareils qui ne peuvent pas éditer /etc/hosts (Android).
+        DNS rewrites served by this instance (static answers). Used to
+        resolve a short name like `mesh` without a search domain, including
+        on devices that cannot edit /etc/hosts (Android).
       '';
     };
 
@@ -76,7 +76,7 @@ in {
         "https://dns.cloudflare.com/dns-query"
         "https://dns.quad9.net/dns-query"
       ];
-      description = "Amonts DoH d'AdGuard : ils décident de ce que le filtrage laisse passer.";
+      description = "AdGuard's DoH upstreams: they decide what the filtering lets through.";
     };
 
     filters = lib.mkOption {
@@ -95,16 +95,16 @@ in {
         }
       ];
       description = ''
-        Abonnements de filtrage, par (nom, url). AdGuard les retélécharge toutes
-        les 24 h : rien n'est épinglé dans le store, et une liste mise à jour en
-        amont arrive sans rebuild. Les `id` sont attribués par position.
+        Filtering subscriptions, by (name, url). AdGuard re-downloads them every
+        24 h: nothing is pinned in the store, and a list updated
+        upstream arrives without a rebuild. The `id`s are assigned by position.
 
-        Coût mesuré sur tower (0.107.79, même binaire, instance isolée) :
-        liste de base seule 57 Mo de RSS / 2,5 Mo de disque ; + HaGeZi Pro 96 Mo ;
-        + TIF medium 263 Mo ; + Fake 357 Mo / 11 Mo. La RAM est le vrai coût, pas
-        le disque : les listes de menaces (domaines très longs) pèsent ~470 octets
-        de RSS par règle, contre ~120 pour une liste de pubs. D'où un défaut
-        volontairement minimal : chaque hôte ajoute ce qu'il peut porter.
+        Cost measured on tower (0.107.79, same binary, isolated instance):
+        base list alone 57 MB of RSS / 2.5 MB of disk; + HaGeZi Pro 96 MB;
+        + TIF medium 263 MB; + Fake 357 MB / 11 MB. RAM is the real cost, not
+        disk: threat lists (very long domains) weigh ~470 bytes
+        of RSS per rule, versus ~120 for an ads list. Hence a deliberately
+        minimal default: each host adds what it can carry.
       '';
     };
   };
@@ -114,7 +114,7 @@ in {
       enable = true;
       host = cfg.webHost;
       port = cfg.webPort;
-      mutableSettings = false; # régénère le YAML et nettoie les clés parasites
+      mutableSettings = false; # regenerates the YAML and cleans up stray keys
       settings = {
         dns = {
           bind_hosts = cfg.bindHosts;
@@ -129,9 +129,9 @@ in {
           safe_search.enabled = false;
         };
         querylog.enabled = false;
-        # Reponses statiques : noms courts du proxy interne (le service est sur
-        # tower, d'ou l'IP mesh). Sans ca, `mesh` ne resout que la ou un
-        # /etc/hosts a ete pose.
+        # Static answers: short names of the internal proxy (the service is on
+        # tower, hence the mesh IP). Without it, `mesh` only resolves where a
+        # /etc/hosts has been placed.
         filtering = lib.mkIf (cfg.extraRewrites != [ ]) {
           rewrites = cfg.extraRewrites;
         };
@@ -144,17 +144,17 @@ in {
           f
           // {
             id = if f ? id then f.id else i + 1;
-            # Un filtre sans `enabled` explicite est écrit `enabled: false`
-            # par AdGuard, donc présent mais inerte (symptôme : rules_count 0).
+            # A filter without an explicit `enabled` is written `enabled: false`
+            # by AdGuard, so present but inert (symptom: rules_count 0).
             enabled = if f ? enabled then f.enabled else true;
           }
         ) cfg.filters;
       };
     };
 
-    # L'adresse 100.64.x.y de tailscale0 n'existe pas forcément au boot : sans
-    # cet ordre, AdGuard boucle une dizaine de fois avant que tailscaled ne
-    # publie l'IP (il finit par démarrer, Restart=always, mais bruyamment).
+    # tailscale0's 100.64.x.y address does not necessarily exist at boot: without
+    # this ordering, AdGuard loops about ten times before tailscaled
+    # publishes the IP (it does eventually start, Restart=always, but noisily).
     systemd.services.adguardhome = {
       after = ["tailscaled.service"];
       wants = ["tailscaled.service"];

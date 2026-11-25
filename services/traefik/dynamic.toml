@@ -1,11 +1,11 @@
 # --- SERVICES ---
-# [http.services.vaultwarden.loadBalancer]  RETIRE le 14/11/2026.
-# vault.vps.marcpartensky.com etait la route statique historique vers le
-# vaultwarden LOCAL du VPS (127.0.0.1:8222), sans SSO Pangolin, et elle restait
-# servie apres la suppression de la ressource Pangolin homonyme : deux noms pour
-# un meme coffre. Le seul nom valide est vault.marcpartensky.com (ressource
-# Pangolin 9, middlewares badger + regles /api /identity /notifications /events
-# /icons /attachments). Le service ci-dessous ne servait que cette route.
+# [http.services.vaultwarden.loadBalancer]  REMOVED on 14/11/2026.
+# vault.vps.marcpartensky.com was the historic static route to the
+# VPS's LOCAL vaultwarden (127.0.0.1:8222), without Pangolin SSO, and it remained
+# served after the deletion of the same-named Pangolin resource: two names for
+# the same vault. The only valid name is vault.marcpartensky.com (Pangolin
+# resource 9, middlewares badger + rules /api /identity /notifications /events
+# /icons /attachments). The service below only served this route.
 
 [http.services.nextcloud.loadBalancer]
   [[http.services.nextcloud.loadBalancer.servers]]
@@ -27,17 +27,17 @@
   [[http.services.zitadel.loadBalancer.servers]]
     url = "http://127.0.0.1:2080"
 
-# API d'intégration Pangolin (MCP, scripts) — activée par
-# flags.enable_integration_api dans services/pangolin/default.nix.
-# Le module nixpkgs pangolin définit ces routeurs via dynamicConfigOptions,
-# mais cette archi-ci (dynamicConfigFile custom) ne les prend pas : la route
-# est donc posée ici, main dans la main avec le flag.
+# Pangolin integration API (MCP, scripts) -- enabled by
+# flags.enable_integration_api in services/pangolin/default.nix.
+# The nixpkgs pangolin module defines these routers via dynamicConfigOptions,
+# but this architecture (custom dynamicConfigFile) does not take them: the route
+# is therefore placed here, hand in hand with the flag.
 [http.services.int-api.loadBalancer]
   [[http.services.int-api.loadBalancer.servers]]
     url = "http://127.0.0.1:3003"
 
-# headscale (contrôleur du mesh tailscale, cf services/headscale) : porte aussi
-# le DERP embarqué des clients (/derp) ; le STUN est à part, en UDP 3478.
+# headscale (tailscale mesh controller, see services/headscale): also carries
+# the clients' embedded DERP (/derp); STUN is separate, on UDP 3478.
 [http.services.headscale.loadBalancer]
   [[http.services.headscale.loadBalancer.servers]]
     url = "http://127.0.0.1:8090"
@@ -56,9 +56,9 @@
   service = "api@internal"
   tls = { certResolver = "letsencrypt" }
 
-# [http.routers.vaultwarden]  RETIRE le 14/11/2026 (voir l'entete SERVICES).
-# Le domaine vault.vps.marcpartensky.com n'existe plus : doublon non-SSO de
-# vault.marcpartensky.com pour le meme coffre.
+# [http.routers.vaultwarden]  REMOVED on 14/11/2026 (see the SERVICES header).
+# The domain vault.vps.marcpartensky.com no longer exists: non-SSO duplicate of
+# vault.marcpartensky.com for the same vault.
 
 [http.routers.nextcloud]
   rule = "Host(`cloud.vps.marcpartensky.com`)"

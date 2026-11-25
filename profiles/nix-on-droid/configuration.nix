@@ -39,7 +39,7 @@
     eza
     nano
     openssh
-    curl # relance du bootstrap par lien court (curl -fsSL https://x.gd/a6gpx | sh)
+    curl # re-run of the bootstrap via short link (curl -fsSL https://x.gd/a6gpx | sh)
     iproute2
     shadow
     neovim
@@ -57,7 +57,7 @@
     neofetch
     # gemini-cli-bin
     tmate
-    tmux # session visible par marc : l'agent tape dans `tmux -s hermes`, il attache
+    tmux # session visible to marc: the agent types into `tmux -s hermes`, it attaches
     bat
     ripgrep
     qemu
@@ -97,13 +97,13 @@
 
   user.shell = "${pkgs.zsh}/bin/zsh";
 
-  # --- CONFIGURATION GPG (OBLIGATOIRE SUR 25.11) ---
-  # Sans ça, git sign / gpg plantera car il ne trouvera pas pinentry
+  # --- GPG CONFIGURATION (MANDATORY ON 25.11) ---
+  # Without it, git sign / gpg will crash because it cannot find pinentry
   # environment.etc."gnupg/gpg-agent.conf".text = ''
   #   pinentry-program ${pkgs.pinentry-curses}/bin/pinentry
   # '';
 
-  # Ces options activent l'intégration Home Manager
+  # These options enable the Home Manager integration
   # home-manager.useGlobalPkgs = true;
   # home-manager.useUserPackages = true;
   home-manager.backupFileExtension = "hm-backup";

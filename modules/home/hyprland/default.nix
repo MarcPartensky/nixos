@@ -164,7 +164,7 @@
       };
 
       kb_options = "caps:escape,prior:shift_l";
-      # mapping personnalisé avec xkb
+      # custom mapping with xkb
       # kb_custom_rules = ''
       #   partial alphanumeric_keys
       #   xkb_symbols "prior" {

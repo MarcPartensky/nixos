@@ -1,8 +1,8 @@
-# Contrôles avant commit, dans l'ordre du projet : build du front (vite),
-# svelte-check, puis cargo check du backend et de l'ingest.
-# `npm run check` n'est pas appelé tel quel : son `tsc -p tsconfig.node.json`
-# échoue sur TS2688 (Cannot find type definition file for 'node', @types/node
-# absent de app/package.json), une dette antérieure au projet.
+# Checks before commit, in project order: frontend build (vite),
+# svelte-check, then cargo check of the backend and of ingest.
+# `npm run check` is not called as-is: its `tsc -p tsconfig.node.json`
+# fails on TS2688 (Cannot find type definition file for 'node', @types/node
+# absent from app/package.json), a debt predating the project.
 repo="$HOME/@REPO_REL@"
 cd "$repo/app"
 
@@ -11,10 +11,10 @@ if [ ! -d node_modules ]; then
   npm ci
 fi
 
-echo "[winnie-verify] front : vite build"
+echo "[winnie-verify] frontend: vite build"
 npm run build
 
-echo "[winnie-verify] front : svelte-check"
+echo "[winnie-verify] frontend: svelte-check"
 ./node_modules/.bin/svelte-check --tsconfig ./tsconfig.app.json
 
 cd "$repo"

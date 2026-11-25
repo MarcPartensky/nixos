@@ -1,31 +1,31 @@
-# services/tunnel-health : sante des alias SSH et des tunnels inverses de marc.
+# services/tunnel-health: health of marc's SSH aliases and reverse tunnels.
 #
-# Chaine : Pangolin (tunnel.marcpartensky.com, SSO) -> newt (site tower)
+# Chain: Pangolin (tunnel.marcpartensky.com, SSO) -> newt (site tower)
 #          -> 127.0.0.1:9144 (tunnel-health-web).
 #
-# Deux unites, deux utilisateurs :
+# Two units, two users:
 #
-#   tunnel-health-probe  (User=hermes, timer 60 s) : une seule connexion ssh
-#     vers le VPS pour lire la banniere SSH des ports inverses en loopback
-#     (2222/2223/2224/2226), plus les alias LAN directement. Ecrit
-#     /var/lib/tunnel-health/{status.json,index.html}. Tourne en hermes parce
-#     que c'est le compte qui a deja la cle root du VPS : aucune cle
-#     supplementaire ni ligne authorized_keys a ajouter cote VPS.
+#   tunnel-health-probe  (User=hermes, timer 60 s): a single ssh connection
+#     to the VPS to read the SSH banner of the reverse ports on loopback
+#     (2222/2223/2224/2226), plus the LAN aliases directly. Writes
+#     /var/lib/tunnel-health/{status.json,index.html}. Runs as hermes because
+#     it is the account that already has the VPS root key: no additional key
+#     nor authorized_keys line to add on the VPS side.
 #
-#   tunnel-health-web    (User=tunnel-health, lecture seule) : sert la page sur
-#     la loopback. Le serveur HTTP n'a donc aucun acces ssh : un bug de parsing
-#     ne donne pas le VPS.
+#   tunnel-health-web    (User=tunnel-health, read-only): serves the page on
+#     the loopback. The HTTP server therefore has no ssh access: a parsing bug
+#     does not give the VPS.
 #
-# Rien n'est ouvert au firewall : l'acces passe par newt + SSO Pangolin.
+# Nothing is opened in the firewall: access goes through newt + Pangolin SSO.
 { config, lib, pkgs, ... }:
 let
   port = 9144;
 
-  # `via` = chemin de la mesure :
-  #   lan    connexion directe depuis tower (LAN maison, sans mesh)
-  #   local  loopback de tower (points d'entree wstunnel)
-  #   rack   une seule session ssh vers le VPS, puis /dev/tcp sur sa loopback :
-  #          c'est le seul endroit d'ou les tunnels inverses sont visibles.
+  # `via` = measurement path:
+  #   lan    direct connection from tower (home LAN, no mesh)
+  #   local  tower loopback (wstunnel entry points)
+  #   rack   a single ssh session to the VPS, then /dev/tcp on its loopback:
+  #          it is the only place where the reverse tunnels are visible.
   endpoints = [
     {
       alias = "towerlocal";
@@ -34,7 +34,7 @@ let
       port = 22;
       target = "192.168.1.44:22";
       user = "marc";
-      purpose = "tower sur le LAN, si le mesh est down";
+      purpose = "tower on the LAN, if the mesh is down";
     }
     {
       alias = "maclan";
@@ -43,7 +43,7 @@ let
       port = 22;
       target = "192.168.1.48:22";
       user = "marc";
-      purpose = "Mac sur le LAN (IP DHCP, peut bouger)";
+      purpose = "Mac on the LAN (DHCP IP, may move)";
     }
     {
       alias = "mactun";
@@ -51,7 +51,7 @@ let
       port = 2223;
       target = "rack:2223";
       user = "marc";
-      purpose = "Mac par son tunnel inverse autossh (launchd)";
+      purpose = "Mac via its autossh reverse tunnel (launchd)";
     }
     {
       alias = "phonetun";
@@ -59,7 +59,7 @@ let
       port = 2224;
       target = "rack:2224";
       user = "nix-on-droid";
-      purpose = "telephone par son tunnel inverse (-> 8023)";
+      purpose = "phone via its reverse tunnel (-> 8023)";
     }
     {
       alias = "tunnel";
@@ -67,7 +67,7 @@ let
       port = 2222;
       target = "rack:2222";
       user = "marc";
-      purpose = "tower par son tunnel inverse autossh (-> 22), pas wstunnel";
+      purpose = "tower via its autossh reverse tunnel (-> 22), not wstunnel";
     }
     {
       alias = "vpsws";
@@ -75,7 +75,7 @@ let
       port = 2222;
       target = "127.0.0.1:2222 (tower)";
       user = "root";
-      purpose = "VPS par wstunnel : client absent de tower, alias mort";
+      purpose = "VPS via wstunnel: client absent from tower, dead alias";
     }
     {
       alias = "phonews";
@@ -83,7 +83,7 @@ let
       port = 2225;
       target = "127.0.0.1:2225 (tower)";
       user = "nix-on-droid";
-      purpose = "telephone par le meme wstunnel : client absent";
+      purpose = "phone via the same wstunnel: client absent";
     }
     {
       alias = "tablet";
@@ -91,14 +91,14 @@ let
       port = 2226;
       target = "rack:2226";
       user = "nix-on-droid";
-      purpose = "tablette nix-on-droid, son propre tunnel";
+      purpose = "nix-on-droid tablet, its own tunnel";
     }
   ];
 
   endpointsFile = pkgs.writeText "tunnel-health-endpoints.json" (builtins.toJSON endpoints);
   script = ./tunnel_health.py;
 
-  # Durcissement commun aux deux unites.
+  # Hardening common to both units.
   hardening = {
     NoNewPrivileges = true;
     ProtectSystem = "strict";
@@ -122,12 +122,12 @@ in
   users.users.tunnel-health = {
     isSystemUser = true;
     group = "tunnel-health";
-    description = "Sert la page de sante des tunnels (lecture seule)";
+    description = "Serves the tunnel health page (read-only)";
   };
   users.groups.tunnel-health = { };
 
   systemd.services.tunnel-health-probe = {
-    description = "Sonde de sante des alias SSH et des tunnels inverses";
+    description = "Health probe of SSH aliases and reverse tunnels";
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
     path = [ pkgs.openssh ];
@@ -136,7 +136,7 @@ in
       Type = "oneshot";
       User = "hermes";
       Group = "hermes";
-      # HOME est necessaire au client ssh ; la cle vit dans son ~/.ssh.
+      # HOME is required by the ssh client; the key lives in its ~/.ssh.
       Environment = [
         "HOME=/var/lib/hermes"
         "TUNNEL_HEALTH_DIR=/var/lib/tunnel-health"
@@ -146,18 +146,18 @@ in
         "TUNNEL_HEALTH_KNOWN_HOSTS=/var/lib/hermes/.ssh/known_hosts"
       ];
       StateDirectory = "tunnel-health";
-      # 0755 : l'unite web (autre utilisateur) doit pouvoir lire le snapshot.
+      # 0755: the web unit (another user) must be able to read the snapshot.
       StateDirectoryMode = "0755";
       ExecStart = "${pkgs.python3}/bin/python3 ${script} probe";
       TimeoutStartSec = "45s";
-      # Sortie non nulle = au moins un alias tombe ; ce n'est pas une panne de
-      # l'unite (le timer doit continuer a mesurer), donc pas de Restart.
+      # Non-zero exit = at least one alias down; this is not a failure of
+      # the unit (the timer must keep measuring), so no Restart.
       SuccessExitStatus = "0 1";
     };
   };
 
   systemd.timers.tunnel-health-probe = {
-    description = "Sonde de sante des tunnels toutes les 60 s";
+    description = "Tunnel health probe every 60 s";
     wantedBy = [ "timers.target" ];
     timerConfig = {
       OnBootSec = "20s";
@@ -168,7 +168,7 @@ in
   };
 
   systemd.services.tunnel-health-web = {
-    description = "Page de sante des tunnels (loopback, derriere Pangolin)";
+    description = "Tunnel health page (loopback, behind Pangolin)";
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     serviceConfig = hardening // {
@@ -182,13 +182,13 @@ in
       ExecStart = "${pkgs.python3}/bin/python3 ${script} web --host 127.0.0.1 --port ${toString port}";
       Restart = "always";
       RestartSec = 3;
-      # Lecture seule du snapshot ecrit par la sonde ; le "-" tolere le dossier
-      # absent au tout premier demarrage.
+      # Read-only of the snapshot written by the probe; the "-" tolerates the
+      # folder missing on the very first startup.
       ReadOnlyPaths = [ "-/var/lib/tunnel-health" ];
     };
   };
 
-  # La page n'est joignable que par newt (SSO Pangolin) : jamais en clair.
+  # The page is reachable only by newt (Pangolin SSO): never in clear.
   services.newt.blueprint.proxy-resources.tunnel-health = {
     name = "tunnel-health";
     protocol = "http";
@@ -220,7 +220,7 @@ in
   assertions = [
     {
       assertion = !(lib.elem port config.networking.firewall.allowedTCPPorts);
-      message = "tunnel-health : le port ${toString port} ne doit pas etre ouvert au firewall (newt + SSO uniquement).";
+      message = "tunnel-health: port ${toString port} must not be open in the firewall (newt + SSO only).";
     }
   ];
 }

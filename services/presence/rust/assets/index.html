@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!--SNAP-->
-<title>Présence · Hermes</title>
+<title>Presence · Hermes</title>
 <style>
   :root{
     --base:#1e1e2e; --mantle:#181825; --crust:#11111b; --surface0:#313244;
@@ -97,8 +97,8 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Présence <span>· Hermes</span></h1>
-    <div class="meta"><span class="dot" id="live"></span><span id="updated">chargement…</span></div>
+    <h1>Presence <span>· Hermes</span></h1>
+    <div class="meta"><span class="dot" id="live"></span><span id="updated">loading…</span></div>
   </header>
 
   <div class="card hero" style="margin-bottom:14px">
@@ -106,7 +106,7 @@
       <div class="orb" id="orb">·</div>
       <div>
         <div class="label" id="state">…</div>
-        <div class="why" id="why">lecture des signaux</div>
+        <div class="why" id="why">reading signals</div>
       </div>
     </div>
     <div class="clock">
@@ -116,87 +116,87 @@
   </div>
 
   <div class="card" style="margin-bottom:14px">
-    <h2>Appareils · qui a l'écran maintenant</h2>
-    <div class="devs" id="devs"><div class="dev"><div class="st">lecture des sondes…</div></div></div>
+    <h2>Devices · who has the screen right now</h2>
+    <div class="devs" id="devs"><div class="dev"><div class="st">reading probes…</div></div></div>
   </div>
 
   <div class="grid two">
     <div class="card">
-      <h2>Connecté à Hermes</h2>
-      <div class="row"><span class="k">État</span><span class="v" id="h-state">…</span></div>
-      <div class="row"><span class="k">Raison</span><span class="v" id="h-why" style="max-width:34ch">…</span></div>
-      <div class="row"><span class="k">Sessions actives &lt; 15 min</span><span class="v" id="h-sessions">…</span></div>
-      <div class="row"><span class="k">Messages user 15 min / 1 h</span><span class="v" id="h-msgs">…</span></div>
-      <div class="row"><span class="k">POST web UI récent</span><span class="v" id="h-webui">…</span></div>
+      <h2>Connected to Hermes</h2>
+      <div class="row"><span class="k">State</span><span class="v" id="h-state">…</span></div>
+      <div class="row"><span class="k">Reason</span><span class="v" id="h-why" style="max-width:34ch">…</span></div>
+      <div class="row"><span class="k">Active sessions &lt; 15 min</span><span class="v" id="h-sessions">…</span></div>
+      <div class="row"><span class="k">User messages 15 min / 1 h</span><span class="v" id="h-msgs">…</span></div>
+      <div class="row"><span class="k">Recent web UI POST</span><span class="v" id="h-webui">…</span></div>
       <div class="chips" id="chips"></div>
     </div>
 
     <div class="card">
-      <h2>Prochaines bornes</h2>
+      <h2>Upcoming boundaries</h2>
       <ul class="plain" id="windows"><li><span class="when">…</span></li></ul>
     </div>
   </div>
 
   <div class="card" style="margin-top:14px">
-    <h2>24 dernières heures <span class="hint" id="tl-hint">survol : détail minute par minute</span></h2>
+    <h2>Last 24 hours <span class="hint" id="tl-hint">hover: minute-by-minute detail</span></h2>
     <div class="stats" id="tl-stats"></div>
     <div class="cwrap"><canvas id="tl"></canvas><div class="tip" id="tl-tip"></div></div>
     <div class="legend" id="tl-legend">
-      <span><i style="background:#a6e3a1"></i>devant tower</span>
-      <span><i style="background:#cba6f7"></i>sur le Mac</span>
-      <span><i style="background:#94e2d5"></i>sur le téléphone</span>
-      <span><i style="background:#b4befe"></i>à la maison, inactif</span>
-      <span><i style="background:#fab387"></i>au bureau</span>
-      <span><i style="background:#f9e2af"></i>dehors</span>
-      <span><i style="background:#89b4fa"></i>dort</span>
-      <span><i style="background:#45475a"></i>pas de donnée</span>
-      <span><i style="background:#b4befe;opacity:.55"></i>jobs de fond (cœurs)</span>
-      <span><i style="background:#fab387;opacity:.8"></i>plus gros job</span>
+      <span><i style="background:#a6e3a1"></i>at tower</span>
+      <span><i style="background:#cba6f7"></i>on the Mac</span>
+      <span><i style="background:#94e2d5"></i>on the phone</span>
+      <span><i style="background:#b4befe"></i>at home, idle</span>
+      <span><i style="background:#fab387"></i>at the office</span>
+      <span><i style="background:#f9e2af"></i>out</span>
+      <span><i style="background:#89b4fa"></i>sleeping</span>
+      <span><i style="background:#45475a"></i>no data</span>
+      <span><i style="background:#b4befe;opacity:.55"></i>background jobs (cores)</span>
+      <span><i style="background:#fab387;opacity:.8"></i>biggest job</span>
     </div>
   </div>
 
   <div class="card" style="margin-top:14px">
-    <h2>Jobs automatiques <span class="hint">lancés pendant une absence · un run n'est jamais un signal de présence</span></h2>
+    <h2>Automatic jobs <span class="hint">started during an absence · a run is never a presence signal</span></h2>
     <div class="hint" id="auto-counts" style="margin:6px 0 8px">…</div>
     <ul class="plain" id="auto-list"><li><span class="when">…</span></li></ul>
   </div>
 
   <div class="card" style="margin-top:14px">
-    <h2>24 prochaines heures <span class="hint">prévision d'usage apprise sur l'historique · bandes vertes = créneaux calmes</span></h2>
+    <h2>Next 24 hours <span class="hint">usage forecast learned from history · green bands = calm slots</span></h2>
     <div class="cwrap"><canvas id="fc"></canvas><div class="tip" id="fc-tip"></div></div>
     <div class="legend">
-      <span><i style="background:#b4befe;opacity:.5"></i>probabilité que tu utilises la machine</span>
-      <span><i style="background:#a6e3a1;opacity:.55"></i>créneau calme (≥ 1 h)</span>
-      <span><i style="background:#fab387"></i>seuil de réservation (45 %)</span>
+      <span><i style="background:#b4befe;opacity:.5"></i>probability that you use the machine</span>
+      <span><i style="background:#a6e3a1;opacity:.55"></i>calm slot (≥ 1 h)</span>
+      <span><i style="background:#fab387"></i>reservation threshold (45 %)</span>
     </div>
   </div>
 
   <div class="card" style="margin-top:14px">
-    <h2>Semaine type <span class="hint" id="heat-hint">probabilité d'usage par jour et par heure, apprise sur l'historique</span></h2>
+    <h2>Typical week <span class="hint" id="heat-hint">usage probability per day and hour, learned from history</span></h2>
     <div class="cwrap"><canvas id="heat"></canvas><div class="tip" id="heat-tip"></div></div>
     <div class="legend">
-      <span>calme <i style="background:rgba(203,166,247,.10);width:34px;height:8px"></i>
+      <span>calm <i style="background:rgba(203,166,247,.10);width:34px;height:8px"></i>
             <i style="background:rgba(203,166,247,.45);width:34px;height:8px;margin-left:-14px"></i>
-            <i style="background:rgba(203,166,247,.95);width:34px;height:8px;margin-left:-14px"></i> tu es presque toujours là</span>
-      <span><i style="background:#a6e3a1"></i>case entourée = maintenant</span>
-      <span>au-dessus de 45 % : la machine te reste réservée, les jobs restent bridés</span>
+            <i style="background:rgba(203,166,247,.95);width:34px;height:8px;margin-left:-14px"></i> you are almost always there</span>
+      <span><i style="background:#a6e3a1"></i>boxed cell = now</span>
+      <span>above 45 %: the machine stays reserved for you, jobs stay throttled</span>
     </div>
   </div>
 
   <div class="grid two" style="margin-top:14px">
     <div class="card">
       <h2>Tower</h2>
-      <div class="row"><span class="k">CPU marc</span><span class="v" id="t-cpu">…</span></div>
-      <div class="row"><span class="k">Bureau Kasm</span><span class="v" id="t-kasm">…</span></div>
-      <div class="row"><span class="k">Shell de marc</span><span class="v" id="t-tty" style="max-width:34ch">…</span></div>
-      <div class="row"><span class="k">Modèle local</span><span class="v" id="t-model">…</span></div>
-      <div class="row"><span class="k">Load1 · RAM dispo</span><span class="v" id="t-load">…</span></div>
+      <div class="row"><span class="k">marc CPU</span><span class="v" id="t-cpu">…</span></div>
+      <div class="row"><span class="k">Kasm desktop</span><span class="v" id="t-kasm">…</span></div>
+      <div class="row"><span class="k">marc's shell</span><span class="v" id="t-tty" style="max-width:34ch">…</span></div>
+      <div class="row"><span class="k">Local model</span><span class="v" id="t-model">…</span></div>
+      <div class="row"><span class="k">Load1 · RAM free</span><span class="v" id="t-load">…</span></div>
     </div>
     <div class="card">
-      <h2>Gateway Hermes</h2>
+      <h2>Hermes gateway</h2>
       <div class="row"><span class="k">Process</span><span class="v" id="g-state">…</span></div>
-      <div class="row"><span class="k">Agents actifs</span><span class="v" id="g-agents">…</span></div>
-      <div class="row"><span class="k">Profils</span><span class="v" id="g-profiles">…</span></div>
+      <div class="row"><span class="k">Active agents</span><span class="v" id="g-agents">…</span></div>
+      <div class="row"><span class="k">Profiles</span><span class="v" id="g-profiles">…</span></div>
       <div class="chips" id="g-platforms"></div>
     </div>
   </div>
@@ -204,12 +204,12 @@
   <div class="err" id="err"></div>
 
   <footer>
-    Sondes : <code>HIDIdleTime</code> + assertion <code>powerd</code> (Mac, ssh LAN) ·
-    <code>debug.tracing.screen_state</code> (téléphone) · clients KasmVNC <code>:8443</code>
-    et idle des tty physiques (tower) · <code>state.db</code> (messages utilisateur seulement) ·
+    Probes: <code>HIDIdleTime</code> + <code>powerd</code> assertion (Mac, ssh LAN) ·
+    <code>debug.tracing.screen_state</code> (phone) · KasmVNC clients <code>:8443</code>
+    and idle of physical ttys (tower) · <code>state.db</code> (user messages only) ·
     <code>gateway_state.json</code> · <code>psql taskq</code> (overrides).
-    Les tâches <code>cron</code>/<code>oneshot</code>/<code>subagent</code> ne comptent jamais
-    comme présence : l'agent peut travailler à 04:00 sans rendre marc « connecté ».
+    The <code>cron</code>/<code>oneshot</code>/<code>subagent</code> tasks never count
+    as presence: the agent can work at 04:00 without making marc "connected".
   </footer>
 </div>
 
@@ -218,11 +218,11 @@ const COLORS = {at_tower:'#a6e3a1', at_mac:'#cba6f7', at_phone:'#94e2d5',
                 online_mac:'#b4befe', online_phone:'#b4befe', nearby:'#b4befe',
                 away_work:'#fab387', away_sleep:'#89b4fa', away_out:'#f9e2af',
                 home_idle:'#b4befe', unknown:'#45475a'};
-const LABELS = {at_tower:['Devant tower','🖥'], at_mac:['Sur le Mac','💻'],
-                at_phone:['Sur le téléphone','📱'], online_mac:['Mac joignable','💻'],
-                online_phone:['Téléphone joignable','📱'], nearby:['À proximité','🛋'],
-                away_work:['Au bureau','🏢'], away_sleep:['Dort','😴'], away_out:['Dehors','🚶'],
-                home_idle:['À la maison, inactif','🏠'], unknown:['Inconnu','?']};
+const LABELS = {at_tower:['At tower','🖥'], at_mac:['On the Mac','💻'],
+                at_phone:['On the phone','📱'], online_mac:['Mac reachable','💻'],
+                online_phone:['Phone reachable','📱'], nearby:['Nearby','🛋'],
+                away_work:['At the office','🏢'], away_sleep:['Sleeping','😴'], away_out:['Out','🚶'],
+                home_idle:['At home, idle','🏠'], unknown:['Unknown','?']};
 const SOURCE_NAMES = {desktop:'desktop', tui:'TUI', cli:'CLI', matrix:'Matrix',
                       local:'local', api_server:'API/mobile', oneshot:'oneshot', cron:'cron'};
 
@@ -230,20 +230,20 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 
 function ago(ts){
-  if(!ts) return 'jamais';
+  if(!ts) return 'never';
   const d = Math.max(0, Date.now()/1000 - ts);
   if(d < 60) return Math.round(d)+' s';
   if(d < 3600) return Math.round(d/60)+' min';
   if(d < 86400) return Math.round(d/3600)+' h';
-  return Math.round(d/86400)+' j';
+  return Math.round(d/86400)+' d';
 }
 function untilLabel(iso){
   if(!iso) return '';
   const d = new Date(iso).getTime() - Date.now();
-  if(d <= 0) return 'finie';
+  if(d <= 0) return 'done';
   const m = Math.round(d/60000);
-  return m >= 60 ? `jusqu'à ${new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} (${Math.floor(m/60)} h ${m%60} min)` :
-                   `jusqu'à ${new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} (${m} min)`;
+  return m >= 60 ? `until ${new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} (${Math.floor(m/60)} h ${m%60} min)` :
+                   `until ${new Date(iso).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} (${m} min)`;
 }
 function pill(on, text, clsOn='on', clsOff='off'){
   return `<span class="pill ${on?clsOn:clsOff}">${esc(text)}</span>`;
@@ -252,9 +252,9 @@ function pill(on, text, clsOn='on', clsOff='off'){
 
 // ---------------------------------------------------------------- 24 h graph
 const DEVCOL = {mac:'#cba6f7', phone:'#94e2d5', tower:'#a6e3a1'};
-const DEVLAB = {mac:'Mac', phone:'téléphone', tower:'tower'};
+const DEVLAB = {mac:'Mac', phone:'phone', tower:'tower'};
 const LOCCOL = {home:'#a6e3a1', work:'#fab387', out:'#f9e2af', 'out?':'#e5c890', unknown:'#585b70'};
-const LOCLAB = {home:'maison', work:'bureau', out:'dehors', 'out?':'dehors ?', unknown:'lieu inconnu'};
+const LOCLAB = {home:'home', work:'office', out:'out', 'out?':'out?', unknown:'unknown place'};
 const MONO = '11px ui-monospace, SFMono-Regular, Menlo, monospace';
 let TL = null, TL_HOVER = null, TL_HOVER_PT = null;
 
@@ -322,7 +322,7 @@ function drawTimeline(){
 
   if (!pts.length){
     ctx.fillStyle = '#7f849c'; ctx.font = MONO;
-    ctx.fillText('pas encore d\'historique : le service doit tourner pour accumuler', 10, H / 2);
+    ctx.fillText('no history yet: the service must run to accumulate', 10, H / 2);
     return;
   }
   nightBands(ctx, from, now, x0, x1, 14, H - 26);
@@ -368,7 +368,7 @@ function drawTimeline(){
   };
   if (!pts.some(p => p[5] != null)){
     ctx.fillStyle = '#7f849c'; ctx.font = MONO;
-    ctx.fillText('pas encore de mesure de charge (journal démarré aujourd\'hui)', x0 + 8, cpuBot - 26);
+    ctx.fillText('no load measurement yet (log started today)', x0 + 8, cpuBot - 26);
   }
   area(p => p[5], p => p[5], 'rgba(180,190,254,.45)');                    // you + agent
   area(p => p[5], p => p[5] + (p[6] || 0), 'rgba(250,179,135,.45)');     // biggest job
@@ -389,10 +389,10 @@ function drawTimeline(){
   // lane labels
   ctx.font = '600 10.5px ui-monospace, SFMono-Regular, Menlo, monospace';
   ctx.fillStyle = '#a6adc8';
-  ctx.fillText('PRÉSENCE', x0 + 4, 6);
-  ctx.fillText('APPAREIL', x0 + 4, 104);
-  ctx.fillText('LIEU', x0 + 4, 148);
-  ctx.fillText('JOBS (cœurs)', x0 + 4, 192);
+  ctx.fillText('PRESENCE', x0 + 4, 6);
+  ctx.fillText('DEVICE', x0 + 4, 104);
+  ctx.fillText('PLACE', x0 + 4, 148);
+  ctx.fillText('JOBS (cores)', x0 + 4, 192);
 
   // time axis, ticks every 3 h aligned on local time
   const H3 = 3 * 3600;
@@ -413,7 +413,7 @@ function drawTimeline(){
   // marker of the present instant (right edge)
   ctx.fillStyle = '#a6e3a1'; ctx.fillRect(x1 - 1.5, 8, 1.5, H - 34);
   ctx.fillStyle = '#a6e3a1'; ctx.font = MONO;
-  ctx.fillText('maintenant', Math.min(x1 - 46, w - 60), H - 12);
+  ctx.fillText('now', Math.min(x1 - 46, w - 60), H - 12);
 
   // statistics
   const st = TL.stats || {};
@@ -423,14 +423,14 @@ function drawTimeline(){
   for (const p of pts){ const s = p[1] >= 0 ? TL.states[p[1]] : 'unknown'; counts[s] = (counts[s] || 0) + 1; }
   const order = Object.entries(counts).sort((a,b) => b[1] - a[1]);
   $('tl-stats').innerHTML = `
-    <div class="statbox"><div class="lb">présent</div><div class="val">${dur(st.present_minutes || 0)}</div>
-      <div class="sub">${Math.round((st.present_minutes || 0) / windowMin * 100)} % des ${TL.hours} h · ${tot} min observées</div></div>
-    <div class="statbox" style="flex:1;min-width:220px"><div class="lb">répartition</div>
+    <div class="statbox"><div class="lb">present</div><div class="val">${dur(st.present_minutes || 0)}</div>
+      <div class="sub">${Math.round((st.present_minutes || 0) / windowMin * 100)} % of ${TL.hours} h · ${tot} min observed</div></div>
+    <div class="statbox" style="flex:1;min-width:220px"><div class="lb">breakdown</div>
       <div class="split">${order.map(([s, n]) =>
         `<div title="${esc((LABELS[s]||[s])[0])} ${Math.round(n/tot*100)} %" style="width:${n/tot*100}%;background:${COLORS[s]||COLORS.unknown}"></div>`).join('')}</div>
       <div class="sub">${order.slice(0,4).map(([s,n]) => `${(LABELS[s]||[s])[0]} ${Math.round(n/tot*100)} %`).join(' · ')}${order.length > 4 ? ` · +${order.length-4}` : ''}</div></div>
-    <div class="statbox"><div class="lb">jobs quand tu es là</div><div class="val">${st.cpu_present_avg == null ? '—' : st.cpu_present_avg.toFixed(2)}</div><div class="sub">cœurs moyens</div></div>
-    <div class="statbox"><div class="lb">jobs quand tu es absent</div><div class="val">${st.cpu_absent_avg == null ? '—' : st.cpu_absent_avg.toFixed(2)}</div><div class="sub">cœurs moyens</div></div>`;
+    <div class="statbox"><div class="lb">jobs while you are here</div><div class="val">${st.cpu_present_avg == null ? '—' : st.cpu_present_avg.toFixed(2)}</div><div class="sub">average cores</div></div>
+    <div class="statbox"><div class="lb">jobs while you are away</div><div class="val">${st.cpu_absent_avg == null ? '—' : st.cpu_absent_avg.toFixed(2)}</div><div class="sub">average cores</div></div>`;
 }
 
 function drawForecast(){
@@ -480,7 +480,7 @@ function drawForecast(){
   // now
   ctx.fillStyle = '#a6e3a1'; ctx.fillRect(x0, 14, 1.5, 86);
   ctx.fillStyle = '#7f849c'; ctx.font = MONO;
-  ctx.fillText('maintenant', x0 + 4, 106);
+  ctx.fillText('now', x0 + 4, 106);
   // axis
   const tzF = -new Date(now * 1000).getTimezoneOffset() * 60;
   const sF = now + tzF;
@@ -514,11 +514,11 @@ function tlHover(e){
   const cpu = best[5] == null ? '—' : `${best[5].toFixed(2)} c`;
   const top = best[6] == null ? '' : `${best[7]} ${best[6].toFixed(2)} c`;
   tip.innerHTML = `<b>${hmd(best[0])}</b><br>
-    <span class="k">état</span> ${esc((LABELS[st] || [st])[0])} ${(LABELS[st]||['',''])[1] || ''}<br>
-    ${dev ? `<span class="k">appareil</span> ${esc(DEVLAB[dev] || dev)}<br>` : ''}
-    ${loc ? `<span class="k">lieu</span> ${esc(LOCLAB[loc] || loc)}<br>` : ''}
+    <span class="k">state</span> ${esc((LABELS[st] || [st])[0])} ${(LABELS[st]||['',''])[1] || ''}<br>
+    ${dev ? `<span class="k">device</span> ${esc(DEVLAB[dev] || dev)}<br>` : ''}
+    ${loc ? `<span class="k">place</span> ${esc(LOCLAB[loc] || loc)}<br>` : ''}
     <span class="k">jobs</span> ${cpu}${top ? ' · ' + esc(top) : ''}
-    ${best[4] ? '<br><span class="k">machine réservée</span> 🟢' : ''}`;
+    ${best[4] ? '<br><span class="k">machine reserved</span> 🟢' : ''}`;
   tip.style.display = 'block';
   const tw = tip.offsetWidth;
   tip.style.left = Math.min(Math.max(4, x - tw / 2), rect.width - tw - 4) + 'px';
@@ -527,7 +527,7 @@ function tlHover(e){
 
 
 // ---------------------------------------------------------------- heatmap
-const DAYS = ['lun','mar','mer','jeu','ven','sam','dim'];
+const DAYS = ['mon','tue','wed','thu','fri','sat','sun'];
 let HEAT_HOVER = null;
 
 function drawHeat(){
@@ -579,8 +579,8 @@ function heatHover(e){
   drawHeat();
   const p = TL.heat[d][h];
   tip.innerHTML = `<b>${DAYS[d]} ${String(h).padStart(2,'0')} h</b><br>
-    <span class="k">probablement actif</span> ${Math.round(p * 100)} %<br>
-    <span class="k">créneau</span> ${p < 0.2 ? 'calme : bon pour un gros job' : p < 0.45 ? 'moyen' : 'tu es souvent là'}`;
+    <span class="k">probably active</span> ${Math.round(p * 100)} %<br>
+    <span class="k">slot</span> ${p < 0.2 ? 'calm: good for a big job' : p < 0.45 ? 'medium' : 'you are often there'}`;
   tip.style.display = 'block';
   const tw = tip.offsetWidth;
   tip.style.left = Math.min(Math.max(4, x - tw / 2), rect.width - tw - 4) + 'px';
@@ -595,14 +595,14 @@ async function loadTimeline(){
     const hb = TL.habit || {};
     if (hb.weekend_ratio){
       const x = Number(hb.weekend_ratio).toFixed(1).replace('.', ',');
-      $('heat-hint').textContent = `probabilité d'usage par jour et par heure · 8h-24h : `
-        + `${Math.round(hb.weekday * 100)} % en semaine, ${Math.round(hb.weekend * 100)} % le week-end (${x}×)`;
+      $('heat-hint').textContent = `usage probability per day and hour · 8h-24h: `
+        + `${Math.round(hb.weekday * 100)} % on weekdays, ${Math.round(hb.weekend * 100)} % on weekends (${x}×)`;
     }
     $('tl-hint').textContent = TL.pts?.length
-      ? `survol : détail minute par minute · ${TL.pts.length} points`
-      : 'aucune donnée sur 24 h';
+      ? `hover: minute-by-minute detail · ${TL.pts.length} points`
+      : 'no data over 24 h';
   }catch(e){
-    $('tl-hint').textContent = 'graphe indisponible';
+    $('tl-hint').textContent = 'graph unavailable';
   }
 }
 window.addEventListener('resize', () => { drawTimeline(); drawForecast(); drawHeat(); });
@@ -618,20 +618,20 @@ async function tick(){
   }catch(e){
     $('live').style.background = '#f38ba8';
     $('err').style.display = 'block';
-    $('err').textContent = 'injoignable: ' + e.message;
+    $('err').textContent = 'unreachable: ' + e.message;
   }
 }
 
 function renderDevices(d){
   const el = $('devs');
   if(!d || (!d.mac && !d.phone && !d.tower)){
-    el.innerHTML = '<div class="dev"><div class="st">sondes indisponibles</div></div>';
+    el.innerHTML = '<div class="dev"><div class="st">probes unavailable</div></div>';
     return;
   }
   const mac = d.mac || {}, ph = d.phone || {}, tw = d.tower || {}, act = d.active_device;
   const tile = (id, name, icon, dev, facts) => {
     const cls = act === id ? 'dev act' : (dev.online ? 'dev on' : 'dev');
-    const word = dev.active ? 'actif' : (dev.online ? 'inactif' : 'hors ligne');
+    const word = dev.active ? 'actif' : (dev.online ? 'inactif' : 'offline');
     return `<div class="${cls}">
       <div class="top"><span class="nm">${icon} ${name}</span>${pill(!!dev.active, word, 'on', '')}</div>
       <div class="st">${esc(dev.why || dev.state || '—')}</div>
@@ -645,44 +645,44 @@ function renderDevices(d){
   if(mac.host) macFacts.push(mac.host);
   const phFacts = [];
   phFacts.push('écran ' + (ph.screen_state === 1 ? 'allumé' : ph.screen_state === 0 ? 'éteint' : 'veille'));
-  if(ph.battery === '2') phFacts.push('en charge');
-  else if(ph.battery === '3') phFacts.push('sur batterie');
+  if(ph.battery === '2') phFacts.push('charging');
+  else if(ph.battery === '3') phFacts.push('on battery');
   const twFacts = ['Kasm ' + (tw.kasm_clients || 0) + ' client' + ((tw.kasm_clients || 0) > 1 ? 's' : '')];
   if(tw.kasm_tx_bps) twFacts.push('video ' + Math.round(tw.kasm_tx_bps / 1024) + ' Ko/s');
   if(tw.console_idle_s != null) twFacts.push('console idle ' + tw.console_idle_s + ' s');
   el.innerHTML = tile('mac', 'Mac', '💻', mac, macFacts)
-               + tile('phone', 'Téléphone', '📱', ph, phFacts)
+               + tile('phone', 'Phone', '📱', ph, phFacts)
                + tile('tower', 'tower', '🖥', tw, twFacts);
 }
 
 // Automatic jobs: they are logged apart from presence (a cron
 // is never proof that someone is there). We only display here the ones
 // that started during an absence, with their relevance verdict.
-const AUTO_LABELS = {pertinent:['on','pertinent'], a_revoir:['warn','à revoir'], sans_objet:['off','sans objet']};
+const AUTO_LABELS = {pertinent:['on','pertinent'], a_revoir:['warn','to review'], sans_objet:['off','pointless']};
 const AUTO_WHY = {
-  pertinent: "a tourné au bon moment",
-  a_revoir: "créneau discutable (trop tôt, pendant la présence, ou en échec)",
-  sans_objet: "rien à gagner à l'avoir lancé à ce moment",
+  pertinent: "ran at the right time",
+  a_revoir: "questionable slot (too early, during presence, or failed)",
+  sans_objet: "nothing to gain from running it at that time",
 };
 function renderAutomation(a){
   a = a || {};
   const c = a.counts || {};
-  $('auto-counts').textContent = (a.total || 0) + ' run(s) sur ' + (a.window_h || 24) + ' h · '
-    + (c.pertinent || 0) + ' pertinent(s) · ' + (c.a_revoir || 0) + ' à revoir · '
-    + (c.sans_objet || 0) + ' sans objet · affichés : ' + (a.during_absence || []).length
-    + ' (démarrés en absence, les autres ont tourné hors absence)';
+  $('auto-counts').textContent = (a.total || 0) + ' run(s) over ' + (a.window_h || 24) + ' h · '
+    + (c.pertinent || 0) + ' relevant · ' + (c.a_revoir || 0) + ' to review · '
+    + (c.sans_objet || 0) + ' pointless · shown: ' + (a.during_absence || []).length
+    + ' (started during absence, the others ran outside absence)';
   const rows = (a.during_absence || []).map(r => {
     const v = AUTO_LABELS[r.verdict] || ['off', r.verdict || '—'];
     const d = new Date((r.started || 0) * 1000);
     const when = isNaN(d) ? '—' : d.toLocaleDateString('fr-FR',{weekday:'short'}) + ' '
       + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    const tag = (r.class || '') + (r.needs_absence ? ' · exige absence' : '')
+    const tag = (r.class || '') + (r.needs_absence ? ' · requires absence' : '')
       + (r.exit ? ' · exit ' + r.exit : '');
     return '<li title="' + esc(AUTO_WHY[r.verdict] || '') + '"><span>'
       + esc(r.job) + ' <span class="hint">' + esc(tag) + '</span></span>'
       + '<span class="when">' + pill(true, v[1], v[0], v[0]) + ' ' + when + '</span></li>';
   }).join('');
-  $('auto-list').innerHTML = rows || '<li><span class="hint">aucun job automatique lancé pendant une absence sur la fenêtre</span></li>';
+  $('auto-list').innerHTML = rows || '<li><span class="hint">no automatic job started during an absence in the window</span></li>';
 }
 
 function render(s){
@@ -698,38 +698,38 @@ function render(s){
     $('why').textContent = p.why || '—';
     $('window').textContent = p.window ? `${p.window} · ${untilLabel(p.until)}` : '';
     $('clock').textContent = new Date(s.at).toLocaleTimeString('fr-FR');
-    $('updated').textContent = 'maj ' + new Date(s.at).toLocaleTimeString('fr-FR');
+    $('updated').textContent = 'upd ' + new Date(s.at).toLocaleTimeString('fr-FR');
 
     renderDevices(s.devices);
     renderAutomation(s.automation);
 
-    $('h-state').innerHTML = pill(h.connected, h.connected ? 'oui' : 'non');
-    $('h-why').textContent = h.why || 'aucune interaction récente';
-    $('h-sessions').textContent = h.ok ? (h.sessions_15m ?? '—') : 'état illisible';
+    $('h-state').innerHTML = pill(h.connected, h.connected ? 'yes' : 'no');
+    $('h-why').textContent = h.why || 'no recent interaction';
+    $('h-sessions').textContent = h.ok ? (h.sessions_15m ?? '—') : 'state unreadable';
     $('h-msgs').textContent = h.ok ? `${h.messages_15m ?? 0} / ${h.messages_60m ?? 0}` : '—';
-    $('h-webui').innerHTML = pill(!!h.webui_post, h.webui_post ? 'oui' : 'non');
+    $('h-webui').innerHTML = pill(!!h.webui_post, h.webui_post ? 'yes' : 'no');
     $('chips').innerHTML = (h.channels || []).map(c =>
-      `<span class="pill">${esc(SOURCE_NAMES[c.source] || c.source)} · ${ago(c.at)}</span>`).join('') || '<span class="pill">aucune interaction</span>';
+      `<span class="pill">${esc(SOURCE_NAMES[c.source] || c.source)} · ${ago(c.at)}</span>`).join('') || '<span class="pill">no interaction</span>';
 
     $('windows').innerHTML = (p.windows || []).map(w => {
       const d = new Date(typeof w === 'string' ? w : w.at);
-      const lab = (w && w.label) ? w.label : 'borne';
+      const lab = (w && w.label) ? w.label : 'boundary';
       return `<li><span>${esc(lab)}</span><span class="when">${isNaN(d) ? '—' : d.toLocaleDateString('fr-FR',{weekday:'short'}) + ' ' + d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</span></li>`;
-    }).join('') || '<li><span>aucune borne à venir</span></li>';
+    }).join('') || '<li><span>no upcoming boundary</span></li>';
 
-    $('t-cpu').textContent = `${t.marc_cpu_pct ?? 0} % (lissé ${t.marc_cpu_smooth ?? 0} %) · info, pas un signe de présence`;
+    $('t-cpu').textContent = `${t.marc_cpu_pct ?? 0} % (smoothed ${t.marc_cpu_smooth ?? 0} %) · info, not a presence signal`;
     const dev = s.devices || {}, kasm = dev.tower || {};
     $('t-kasm').innerHTML = pill(!!(kasm.kasm_clients > 0), `${kasm.kasm_clients || 0} client(s)` + (kasm.kasm_tx_bps ? ` · ${Math.round(kasm.kasm_tx_bps/1024)} Ko/s` : ''), 'on', '');
     const tty = (t.ttys || []).map(x => `${x.tty}${x.from ? ' ← ' + x.from : ''} (idle ${x.idle})`).join(', ');
-    $('t-tty').textContent = tty || 'aucun shell';
-    $('t-model').innerHTML = pill(!!t.local_model, t.local_model ? 'chargé' : 'aucun', 'warn', '');
+    $('t-tty').textContent = tty || 'no shell';
+    $('t-model').innerHTML = pill(!!t.local_model, t.local_model ? 'loaded' : 'none', 'warn', '');
     $('t-load').textContent = `${t.load1 ?? '—'} · ${t.mem_avail_mb ?? '—'}/${t.mem_total_mb ?? '—'} Mo · swap ${t.swap_used_mb ?? 0} Mo`;
 
     $('g-state').innerHTML = pill(g.state === 'running', g.state || 'inconnu');
     $('g-agents').textContent = g.active_agents ?? '—';
     $('g-profiles').textContent = (g.profiles || []).join(', ') || '—';
     $('g-platforms').innerHTML = Object.entries(g.platforms || {}).map(([n, v]) =>
-      pill(v.state === 'connected', `${n} · ${v.state || '?'}`)).join('') || '<span class="pill">aucune</span>';
+      pill(v.state === 'connected', `${n} · ${v.state || '?'}`)).join('') || '<span class="pill">none</span>';
 
     loadTimeline();
     const errs = [p.error && ('presence: ' + p.error), h.error && ('hermes: ' + h.error)].filter(Boolean);
@@ -738,7 +738,7 @@ function render(s){
     $('live').style.background = '#a6e3a1';
   }catch(e){
     $('err').style.display = 'block';
-    $('err').textContent = 'rendu: ' + e.message;
+    $('err').textContent = 'render: ' + e.message;
   }
 }
 loadTimeline();

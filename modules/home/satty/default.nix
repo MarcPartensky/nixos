@@ -4,7 +4,7 @@ let
   screenshotsDir = "media/screenshots/";
 in
 {
-  # Dossier de sortie des screenshots (créé automatiquement)
+  # Screenshots output directory (created automatically)
   # home.file."${screenshotsDir}/.ignore".source = "../../Justfile";
 
   programs.satty = {
@@ -16,16 +16,16 @@ in
         corner-roundness = 12;
         initial-tool = "brush";
 
-        # Format et chemin de sortie (relatif à $HOME)
+        # Output format and path (relative to $HOME)
         save-format = "png";
         output-filename =
           "${screenshotsDir}/%Y-%m-%d_%H:%M:%S.png";
 
-        # Notifications système
+        # System notifications
         notifications = true;
       };
 
-      # Actions après sauvegarde
+      # Actions after saving
       post-actions = [
         {
           command = "wl-copy < {file}";

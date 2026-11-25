@@ -5,17 +5,17 @@
 }: let
   musicPath = "${config.home.homeDirectory}/media/music/ytui-music";
 
-  # On crée UNIQUEMENT le binaire "ytui"
-  # Il va appeler le binaire original avec les bons paramètres
+  # We create ONLY the "ytui" binary
+  # It will call the original binary with the right parameters
   ytui-script = pkgs.writeShellScriptBin "ytui" ''
     export YTUI_MUSIC_DIR="${musicPath}"
     mkdir -p "${musicPath}"
-    # On lance la version originale avec 'run' par défaut
+    # We launch the original version with 'run' by default
     exec ${pkgs.ytui-music}/bin/ytui_music run "$@"
   '';
 
   conf = {
-    # Ta config JSON complète ici
+    # Your full JSON config here
     Colors = {
       border_idle = [100 100 100];
       border_highlight = [0 255 127];
@@ -32,18 +32,18 @@
     Downloads.path = musicPath;
   };
 in {
-  # 1. On installe le binaire original ET notre raccourci "ytui"
-  # Home Manager va fusionner les deux sans râler car les noms de fichiers sont différents
+  # 1. We install the original binary AND our "ytui" shortcut
+  # Home Manager will merge the two without complaining since the file names are different
   home.packages = [
     pkgs.ytui-music
     ytui-script
   ];
 
-  # 2. On s'assure que le JSON est là
+  # 2. We make sure the JSON is there
   xdg.configFile.".ytui-music/config.json".text = builtins.toJSON conf;
   xdg.configFile."config.json".text = builtins.toJSON conf;
 
-  # 3. Optionnel : On définit la variable globalement pour le binaire original aussi
+  # 3. Optional: We define the variable globally for the original binary too
   home.sessionVariables = {
     YTUI_MUSIC_DIR = musicPath;
   };

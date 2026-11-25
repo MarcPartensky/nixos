@@ -7,7 +7,7 @@ let
       cp -r ${config.system.build.source or ./../../.} repo
       cd repo || exit 1
 
-      # Résout HEAD (si clone shallow)
+      # Resolves HEAD (if shallow clone)
       git fetch --unshallow 2>/dev/null || true
 
       SHA="$(git rev-parse --short HEAD)"

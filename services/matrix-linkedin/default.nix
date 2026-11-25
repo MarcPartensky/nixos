@@ -1,9 +1,9 @@
 # services/matrix-linkedin/default.nix
-# Pont Matrix <-> LinkedIn (mautrix-linkedin).
-# Contrairement aux autres bridges, il n'existe PAS de module nixpkgs pour
-# mautrix-linkedin : paquet, unité systemd et registration sont donc câblés ici.
-# Le binaire amont est un binaire statique publié dans les releases GitHub
-# (les bridges Go de mautrix n'ont pas de build nixpkgs pour LinkedIn).
+# Matrix <-> LinkedIn bridge (mautrix-linkedin).
+# Unlike the other bridges, there is NO nixpkgs module for
+# mautrix-linkedin: package, systemd unit and registration are therefore wired here.
+# The upstream binary is a static binary published in the GitHub releases
+# (mautrix's Go bridges have no nixpkgs build for LinkedIn).
 {
   pkgs,
   lib,
@@ -45,9 +45,9 @@
     };
     appservice = {
       id = "linkedin";
-      # address = ce que synapse utilisera pour joindre l'appservice (et ce qui
-      # finit dans le champ url de la registration) : il DOIT correspondre au
-      # port écouté, sinon la registration annonce le défaut 29341.
+      # address = what synapse will use to reach the appservice (and what
+      # ends up in the url field of the registration): it MUST match the
+      # port listened on, otherwise the registration announces the default 29341.
       address = "http://127.0.0.1:${toString appservicePort}";
       hostname = "127.0.0.1";
       port = appservicePort;
@@ -59,9 +59,9 @@
       ephemeral_events = true;
       username_template = "linkedin_{{.}}";
     };
-    # ATTENTION (vérifié à la main) : en config "nouvelle génération", database
-    # et encryption sont au niveau RACINE, pas sous appservice/bridge. Les y
-    # mettre déclenche "Legacy bridge config detected" au démarrage.
+    # WARNING (checked by hand): in "new generation" config, database
+    # and encryption are at the ROOT level, not under appservice/bridge. Putting them
+    # there triggers "Legacy bridge config detected" on startup.
     database = {
       type = "sqlite3-fk-wal";
       uri = "file:${dataDir}/mautrix-linkedin.db?_txlock=immediate";
@@ -70,8 +70,8 @@
       allow = true;
       default = true;
       require = false;
-      # le défaut du bridge est "generate" (clé différente à chaque démarrage,
-      # donc DB crypto illisible après restart) : valeur stable hors du store.
+      # the bridge default is "generate" (different key on each startup,
+      # so crypto DB unreadable after restart): stable value outside the store.
       pickle_key = "$ENCRYPTION_PICKLE_KEY";
     };
     bridge = {
@@ -98,8 +98,8 @@ in {
   systemd.services.mautrix-linkedin = {
     description = "Mautrix-LinkedIn, a Matrix-LinkedIn puppeting bridge";
     wantedBy = ["multi-user.target"];
-    # pas de dépendance à synapse : c'est synapse qui nous attend, parce que la
-    # registration est générée dans notre preStart (cf. services/matrix).
+    # no dependency on synapse: it is synapse that waits for us, because the
+    # registration is generated in our preStart (cf. services/matrix).
     wants = ["network-online.target"];
     after = ["network-online.target"];
     path = [
@@ -116,8 +116,8 @@ in {
       fi
       export ENCRYPTION_PICKLE_KEY=$(cat ${dataDir}/pickle_key.txt)
 
-      # substitution des $VAR du store dans le vrai config.yaml (umask 0177 :
-      # il contient les tokens appservice)
+      # substitution of the store's $VAR into the real config.yaml (umask 0177:
+      # it contains the appservice tokens)
       rm -f '${settingsFile}'
       old_umask=$(umask)
       umask 0177
@@ -131,8 +131,8 @@ in {
       fi
       chmod 640 '${registrationFile}'
 
-      # remet les tokens de la registration dans le config : sans ça, un restart
-      # repartirait sur le placeholder du store et casserait le sync.
+      # puts the registration tokens back into the config: without it, a restart
+      # would fall back to the store placeholder and break the sync.
       ${pkgs.yq}/bin/yq -s '.[0].appservice.as_token = .[1].as_token
         | .[0].appservice.hs_token = .[1].hs_token
         | .[0]' \
@@ -152,7 +152,7 @@ in {
       Restart = "on-failure";
       RestartSec = 30;
 
-      # même durcissement que les modules nixpkgs
+      # same hardening as the nixpkgs modules
       NoNewPrivileges = true;
       PrivateDevices = true;
       PrivateTmp = true;
@@ -173,12 +173,12 @@ in {
     restartTriggers = [settingsFileUnsubstituted];
   };
 
-  # Lecture de la registration par synapse (fichier 0640, groupe du bridge).
+  # Reading of the registration by synapse (file 0640, bridge group).
   services.matrix-synapse = {
     settings.app_service_config_files = [registrationFile];
   };
   systemd.services.matrix-synapse.serviceConfig.SupplementaryGroups = ["mautrix-linkedin"];
 
-  # Après déploiement, connexion (à faire par marc) : DM à
-  # @linkedinbot:matrix.marcpartensky.com, `login`, puis identifiants LinkedIn.
+  # After deployment, login (to be done by marc): DM to
+  # @linkedinbot:matrix.marcpartensky.com, `login`, then LinkedIn credentials.
 }

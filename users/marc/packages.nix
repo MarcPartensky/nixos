@@ -4,7 +4,7 @@
   inputs,
   ...
 }: let
-  # herdr : pas encore dans nixos-26.05, présent dans unstable (0.9.0)
+  # herdr: not yet in nixos-26.05, present in unstable (0.9.0)
   herdrPkg = (import inputs.unstable {system = pkgs.stdenv.hostPlatform.system;}).herdr;
 
   pythonEnv =
@@ -60,12 +60,12 @@ in {
     spotdl
     bitwarden-cli
     typer
-    # ttyper : entrainement a la frappe au toucher en terminal (Rust/ratatui),
-    # version TUI de typer.macpartensky.com. Listes english200/french200/rust…
+    # ttyper: touch-typing practice in the terminal (Rust/ratatui),
+    # TUI version of typer.macpartensky.com. Lists english200/french200/rust...
     ttyper
     yazi
     eternal-terminal
-    # Anki + addon MCP, tous deux depuis le nixpkgs de l'upstream (cf flake.nix)
+    # Anki + MCP addon, both from the upstream nixpkgs (see flake.nix)
     inputs.anki-mcp.packages.${pkgs.stdenv.hostPlatform.system}.default
     libreoffice-fresh
     pw-volume

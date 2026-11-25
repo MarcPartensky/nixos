@@ -8,19 +8,19 @@
   cursorPackage = pkgs.catppuccin-cursors.mochaLavender;
   themeName = "catppuccin-mocha-lavender-standard+rimless,black";
 
-  # On définit le paquet explicitement pour être sûr
+  # Define the package explicitly to be sure
   catppuccinThemePkg = pkgs.catppuccin-gtk.override {
     accents = ["lavender"];
     size = "standard";
-    tweaks = ["rimless" "black"]; # Ajustez selon vos gouts
+    tweaks = ["rimless" "black"]; # Adjust to your taste
     variant = "mocha";
   };
 
-  # On récupère le dépôt catppuccin/libreoffice
+  # Fetch the catppuccin/libreoffice repo
   catppuccinLibreOffice = pkgs.fetchFromGitHub {
     owner = "catppuccin";
     repo = "libreoffice";
-    rev = "main"; # Vous pouvez épingler un commit spécifique pour la stabilité
+    rev = "main"; # You can pin a specific commit for stability
     hash = "sha256-NAQJPIbJVUZFkFfdyywv1A38N06gwdLd5Uge6eqPPJM=";
   };
 
@@ -28,38 +28,38 @@
   accent = "lavender";
 
   patchScript = pkgs.writeShellScriptBin "catppuccin-lo-patch" ''
-    # On crée un dossier de travail temporaire
+    # Create a temporary work directory
     WORK_DIR=$(mktemp -d)
 
-    echo "Copie des fichiers du thème..."
+    echo "Copying theme files..."
     cp -r ${catppuccinLibreOffice}/* "$WORK_DIR"
     chmod -R +w "$WORK_DIR"
 
     cd "$WORK_DIR"
 
-    echo "Application du thème Catppuccin (${flavor} ${accent}) pour LibreOffice..."
-    # On exécute le script officiel
+    echo "Applying the Catppuccin theme (${flavor} ${accent}) for LibreOffice..."
+    # Run the official script
     bash scripts/install_theme.sh "${flavor}" "${accent}"
 
-    # Nettoyage
+    # Cleanup
     rm -rf "$WORK_DIR"
-    echo "Terminé ! Relancez LibreOffice."
+    echo "Done! Restart LibreOffice."
   '';
 in {
   xdg.configFile."libreoffice/4/user/config/catppuccin-${flavor}-${accent}.soc".source = "${catppuccinLibreOffice}/themes/${flavor}/${accent}/catppuccin-${flavor}-${accent}.soc";
 
   home.packages = with pkgs; [
-    gnome-themes-extra # Base absolue pour GTK
+    gnome-themes-extra # Absolute base for GTK
 
-    arc-theme # Thème Arc (très standard)
-    dracula-theme # Thème Dracula (très contrasté)
+    arc-theme # Arc theme (very standard)
+    dracula-theme # Dracula theme (very high contrast)
 
     patchScript
   ];
 
   catppuccin = {
     enable = true;
-    # explicite : catppuccin/nix va basculer l'auto-enrôlement sur autoEnable
+    # explicit: catppuccin/nix will switch auto-enrollment to autoEnable
     autoEnable = true;
     flavor = "mocha";
     accent = "lavender";
@@ -77,7 +77,7 @@ in {
     iconTheme.package = lib.mkDefault pkgs.papirus-icon-theme;
     gtk3.extraConfig.gtk-application-prefer-dark-theme = 1;
     gtk4.extraConfig.gtk-application-prefer-dark-theme = 1;
-    # comportement historique (stateVersion < 26.05) : GTK4 suit le thème GTK
+    # legacy behavior (stateVersion < 26.05): GTK4 follows the GTK theme
     gtk4.theme = config.gtk.theme;
   };
 

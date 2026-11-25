@@ -1,38 +1,38 @@
-# services/uptime-kuma : moniteur de disponibilite bout en bout.
+# services/uptime-kuma: end-to-end availability monitor.
 #
-# Remplit le trou que Zabbix ne voit pas de la meme facon : il sonde les
-# domaines PUBLICS depuis l'exterieur (HTTP, TCP), donc il attrape une panne
-# d'exposition (tunnel newt tombe, ressource Pangolin en 502, certificat expire)
-# meme quand toutes les machines vont bien. C'est exactement la panne qui est
-# restee invisible 26 h le 10/11.
+# Fills the gap that Zabbix does not see the same way: it probes the
+# PUBLIC domains from the outside (HTTP, TCP), so it catches an exposure
+# failure (newt tunnel down, Pangolin resource in 502, expired certificate)
+# even when all the machines are fine. This is exactly the failure that
+# stayed invisible for 26 h on 10/11.
 #
-# Heberge sur le VPS, comme Zabbix : un moniteur qui vit sur la machine qu'il
-# surveille ne peut rien annoncer de sa panne. A savoir : Gotify et Matrix
-# tournent sur TOWER, donc leurs alertes sont muettes quand tower tombe ; pour
-# ce cas la, la sonde inverse est cote tower et l'alerte doit partir du VPS
-# (mail via stalwart, qui vit ici).
+# Hosted on the VPS, like Zabbix: a monitor that lives on the machine it
+# watches cannot announce its own failure. Note: Gotify and Matrix
+# run on TOWER, so their alerts are mute when tower goes down; for
+# that case, the reverse probe is on the tower side and the alert must leave from the VPS
+# (mail via stalwart, which lives here).
 #
-# Empreinte : Node, de l'ordre de 0,5 a 1% de CPU et 150 a 250 Mo. L'UI et les
-# sondes vivent dans SQLite (/var/lib/uptime-kuma) : ce n'est pas Postgres, mais
-# c'est un fichier unique, trivial a sauvegarder (et la demande Postgres en
-# amont est encore ouverte).
+# Footprint: Node, on the order of 0.5 to 1% CPU and 150 to 250 MB. The UI and the
+# probes live in SQLite (/var/lib/uptime-kuma): it is not Postgres, but
+# it is a single file, trivial to back up (and the upstream Postgres request
+# is still open).
 #
-# Le service tourne en DynamicUser avec un sandbox systemd strict et
-# AmbientCapabilities = "" : les sondes ICMP (ping) ne peuvent donc pas ouvrir
-# de socket brut. On surveille les machines par TCP (port 22 sur le tailnet),
-# ce qui est aussi informatif, et les domaines par HTTP.
+# The service runs as DynamicUser with a strict systemd sandbox and
+# AmbientCapabilities = "": the ICMP (ping) probes therefore cannot open
+# a raw socket. We monitor the machines via TCP (port 22 on the tailnet),
+# which is just as informative, and the domains via HTTP.
 #
-# Acces : ressource Pangolin `uptime.marcpartensky.com` vers 127.0.0.1:3001, en
-# cible locale du site rack, SANS SSO : le client Android (OpenKuma) et l'API ne
-# suivent pas une redirection de login. Uptime Kuma a son propre compte et son
-# 2FA pour compenser.
+# Access: Pangolin resource `uptime.marcpartensky.com` to 127.0.0.1:3001, as
+# a local target of the rack site, WITHOUT SSO: the Android client (OpenKuma) and the API do not
+# follow a login redirect. Uptime Kuma has its own account and its
+# 2FA to compensate.
 { ... }:
 {
   services.uptime-kuma = {
     enable = true;
 
     settings = {
-      # Loopback : c'est traefik (Pangolin) qui expose, pas le pare-feu.
+      # Loopback: it is traefik (Pangolin) that exposes, not the firewall.
       HOST = "127.0.0.1";
       PORT = "3001";
       DATA_DIR = "/var/lib/uptime-kuma/";

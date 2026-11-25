@@ -1,30 +1,30 @@
 # services/share-mcp/default.nix
-# MCP `share` (code dans ./server.py) : publie un fichier dans le bucket public
-# de Garage, crée le lien court Shlink dessus, et optionnellement une façade
-# x.gd de 4 caractères. Un seul appel fait les trois jambes.
+# MCP `share` (code in ./server.py): publishes a file into Garage's public
+# bucket, creates the Shlink short link on it, and optionally a 4-character
+# x.gd facade. A single call does all three legs.
 #
-# Répartition avec services/garage : Garage porte la capacité (section `web` de
-# garage.toml, bucket `public` marqué website, placeholder de santé). Ce module
-# porte la face PUBLIQUE de cette capacité : la ressource Pangolin
-# files.marcpartensky.com et l'outillage qui la consomme.
+# Split with services/garage: Garage carries the capability (`web` section of
+# garage.toml, `public` bucket marked website, health placeholder). This module
+# carries the PUBLIC face of that capability: the Pangolin resource
+# files.marcpartensky.com and the tooling that consumes it.
 #
-# SSO volontairement DÉSACTIVÉ sur files.marcpartensky.com : le domaine sert de
-# cible aux liens courts, donc un 302 vers Zitadel casserait tous les liens
-# partagés. Contrepartie assumée : tout objet du bucket `public` est lisible par
-# qui connaît son URL. Les buckets artifacts et photos-* ne sont pas marqués
-# website, donc Garage continue de les refuser en anonyme sur ce même endpoint.
+# SSO deliberately DISABLED on files.marcpartensky.com: the domain serves as
+# the target of the short links, so a 302 to Zitadel would break all the
+# shared links. Accepted trade-off: any object in the `public` bucket is readable by
+# whoever knows its URL. The artifacts and photos-* buckets are not marked
+# website, so Garage keeps refusing them anonymously on this same endpoint.
 {self, pkgs, config, ...}: let
-  # Port de l'endpoint web Garage (déclaré dans services/garage).
+  # Port of the Garage web endpoint (declared in services/garage).
   webPort = 3902;
 
-  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
-  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  # Binary built as a flake output (mcp/default.nix): buildable
+  # without evaluating this conf, and no longer rebuilt on every host eval.
   share-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.share-mcp;
 
-  # Wrapper : les identifiants S3 sont générés à l'activation par
-  # garage-bootstrap et vivent dans /var/lib/garage/s3-key.env (0400 hermes),
-  # jamais dans le store. Le binaire `aws` vient d'ici, pas de la config.
-  # Debug à la main (garder stdin ouvert, un EOF tue la requête) :
+  # Wrapper: the S3 credentials are generated at activation by
+  # garage-bootstrap and live in /var/lib/garage/s3-key.env (0400 hermes),
+  # never in the store. The `aws` binary comes from here, not from the config.
+  # Manual debug (keep stdin open, an EOF kills the request):
   #   { printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'; sleep 5; } \
   #     | /nix/store/.../bin/share-mcp-hermes
   wrapper = pkgs.writeShellScript "share-mcp-hermes" ''
@@ -43,21 +43,21 @@ in {
     args = [];
     env = {
       SHARE_BUCKET = "public";
-      # Domaine public servant le bucket (path-style /<bucket>/<cle>).
+      # Public domain serving the bucket (path-style /<bucket>/<key>).
       SHARE_PUBLIC_BASE = "https://files.marcpartensky.com/public";
       SHARE_S3_ENDPOINT = "http://127.0.0.1:3900";
       SHARE_ALLOW_WRITES = "1";
       SHLINK_URL = "http://127.0.0.1:8097";
       SHLINK_API_KEY_FILE = config.sops.secrets.shlink_api_key.path;
     };
-    # Les dépôts de fichiers dépassent les 60 s des autres serveurs MCP.
+    # File uploads exceed the 60 s of the other MCP servers.
     timeout = 900;
   };
 
-  # Ressource publique Pangolin : files.marcpartensky.com -> endpoint web
-  # Garage. Schéma `proxy-resources` + `protocol` (celui qui marche sur ce
-  # contrôleur). Healthcheck sur le placeholder déposé par le bootstrap :
-  # Garage répond 404 sur la racine d'un bucket sans index.html.
+  # Pangolin public resource: files.marcpartensky.com -> Garage web
+  # endpoint. `proxy-resources` + `protocol` schema (the one that works on this
+  # controller). Healthcheck on the placeholder deposited by the bootstrap:
+  # Garage answers 404 on the root of a bucket without index.html.
   services.newt.blueprint.proxy-resources.files = {
     name = "files";
     protocol = "http";
@@ -86,13 +86,13 @@ in {
     ];
   };
 
-  # Garde-fou : l'endpoint web ne doit jamais être ouvert au LAN, il n'est
-  # joignable que par la loopback (MCP, tests) et par newt (Pangolin).
+  # Guard rail: the web endpoint must never be opened to the LAN, it is only
+  # reachable through the loopback (MCP, tests) and through newt (Pangolin).
   assertions = [
     {
       assertion = !(builtins.elem webPort
         config.networking.firewall.allowedTCPPorts);
-      message = "share-mcp : le port ${toString webPort} de Garage ne doit pas être ouvert au firewall.";
+      message = "share-mcp: Garage port ${toString webPort} must not be opened to the firewall.";
     }
   ];
 }

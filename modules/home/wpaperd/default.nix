@@ -4,26 +4,26 @@ let
   wallpapers = pkgs.fetchFromGitHub {
     owner = "marcpartensky";
     repo = "wallpapers";
-    rev = "master"; # tu peux mettre un commit SHA précis pour la reproductibilité
-    sha256 = "sha256-byN9lbt0ErhCLPV8avfpoMlEbqVEn4HLCi0vWOISri8="; # remplacer après premier build avec nix
+    rev = "master"; # you can put a specific commit SHA for reproducibility
+    sha256 = "sha256-byN9lbt0ErhCLPV8avfpoMlEbqVEn4HLCi0vWOISri8="; # replace after the first build with nix
   };
   wallpapersDir = "/home/marc/.local/share/wallpapers";
 in
 {
   # ---------------------------------------
-  # Packages utilisateur
+  # User packages
   # ---------------------------------------
   home.packages = with pkgs; [
     wpaperd
   ];
 
   # ---------------------------------------
-  # Copier les wallpapers dans le home
+  # Copy the wallpapers into the home
   # ---------------------------------------
   home.file.".local/share/wallpapers".source = wallpapers;
 
   # ---------------------------------------
-  # Configuration de wpaperd
+  # wpaperd configuration
   # ---------------------------------------
   home.file.".config/wpaperd/config.toml".text = ''
     [default]
@@ -37,7 +37,7 @@ in
   '';
 
   # ---------------------------------------
-  # Service wpaperd
+  # wpaperd service
   # ---------------------------------------
   systemd.user.services.wpaperd = {
     Unit.Description = "wpaperd wallpaper daemon";

@@ -1,72 +1,72 @@
-"""Outils Costco Same-Day (sameday.costco.com) pour mcp-host.
+"""Costco Same-Day tools (sameday.costco.com) for mcp-host.
 
-Pourquoi ce module plutot qu'un serveur MCP dedie : sameday.costco.com est la
-vitrine Costco alimentee par Instacart, sans API documentee. Le front appelle
-un unique endpoint GraphQL `POST/GET https://sameday.costco.com/graphql` en
-PERSISTED QUERIES : le client n'envoie pas le document, seulement
-`operationName` + `variables` + `extensions.persistedQuery.sha256Hash`. Le
-serveur refuse tout document en clair (`PERSISTED_QUERY_HASH_REQUIRED`) et tout
-hash inconnu (`PersistedQueryNotSupported`). Les hashes sont donc des
-constantes ci-dessous, liees a une version du bundle front : quand ils
-meurent, il faut les re-capturer (procedure en fin de docstring).
+Why this module rather than a dedicated MCP server: sameday.costco.com is the
+Costco storefront powered by Instacart, with no documented API. The front end calls
+a single GraphQL endpoint `POST/GET https://sameday.costco.com/graphql` with
+PERSISTED QUERIES: the client does not send the document, only
+`operationName` + `variables` + `extensions.persistedQuery.sha256Hash`. The
+server refuses any cleartext document (`PERSISTED_QUERY_HASH_REQUIRED`) and any
+unknown hash (`PersistedQueryNotSupported`). The hashes are therefore the
+constants below, tied to a version of the front bundle: when they
+die, they must be re-captured (procedure at the end of the docstring).
 
-Chaine verifiee le 19/11/2026, entierement en HTTP, sans navigateur :
+Chain verified on 19/11/2026, entirely over HTTP, without a browser:
 
-1. SESSION INVITE. Le site est verrouille derriere une porte « Sign in via
-   Costco.com / Browse as a guest » : sans cookie de session, `/store/...`
-   redirige vers `/?next=...` et `searchResultsPlacements` repond
-   `Not Authenticated`. Le cookie `__Host-instacart_sid` (httpOnly) est emis
-   par une seule mutation :
+1. GUEST SESSION. The site is locked behind a gate "Sign in via
+   Costco.com / Browse as a guest": without a session cookie, `/store/...`
+   redirects to `/?next=...` and `searchResultsPlacements` answers
+   `Not Authenticated`. The cookie `__Host-instacart_sid` (httpOnly) is issued
+   by a single mutation:
      POST /graphql  HomepagePbiCreateGuestUserWithPostalCodeMutation
      {"postalCode": "<ZIP>"}
-   Elle cree un utilisateur invite pour ce code postal et rend
-   `createGuestUser.token`. Aucun compte, aucun mot de passe, aucun anti-bot
-   sur ce chemin (UA generique accepte). Le cookie suffit ensuite pour toutes
-   les lectures ; il n'existe PAS d'autres cookies requis.
+   It creates a guest user for this postal code and returns
+   `createGuestUser.token`. No account, no password, no anti-bot
+   on this path (generic UA accepted). The cookie then suffices for all
+   the reads; there is NO other required cookie.
 
-2. MAGASIN + ZONE. `shopId` et `zoneId` ne sortent d'aucune requete : ils sont
-   dans le HTML SSR de la page de recherche, bloc
-   `<script id="ssr-query-perf-data">` (JSON url-encode listant les requetes
-   executees cote serveur, avec leurs variables). On y lit le couple
-   (shopId, zoneId) le plus frequent ; c'est exactement ce que la page
-   utilise pour chercher. Les deux dependent du code postal de la session
-   invite : 11231 -> (195197, 973), 11211 -> (198521, 973), 90210 et 60601
-   ne rendent rien (pas de service Same-Day la-bas). Un `shopId` faux ou un
-   `zoneId` faux ne leve pas d'erreur : il rend des prix vides, donc on ne
-   devine jamais ces deux valeurs.
+2. STORE + ZONE. `shopId` and `zoneId` do not come out of any request: they are
+   in the SSR HTML of the search page, block
+   `<script id="ssr-query-perf-data">` (url-encoded JSON listing the requests
+   executed server-side, with their variables). There we read the most
+   frequent (shopId, zoneId) pair; it is exactly what the page
+   uses to search. The two depend on the postal code of the guest
+   session: 11231 -> (195197, 973), 11211 -> (198521, 973), 90210 and 60601
+   return nothing (no Same-Day service there). A wrong `shopId` or a
+   wrong `zoneId` does not raise an error: it returns empty prices, so we never
+   guess these two values.
 
-3. RECHERCHE. GET /graphql?operationName=SearchResultsPlacements avec
-   `query`, `shopId`, `postalCode`, `zoneId`, `first`, et surtout l'entete
-   `x-ic-view-layer: true` : sans elle, la reponse est un squelette de mise en
-   page sans aucun prix (mesure : 0 `priceString` contre 12 avec). Les articles
-   sont dans `placements[].content.items[]` (les placements sans `items` sont
-   des emplacements publicitaires). `orderBy` n'accepte que `bestMatch`;
-   `priceLowToHigh` passe sur certaines requetes puis echoue sur d'autres, donc
-   le tri par prix se fait ici, en local.
+3. SEARCH. GET /graphql?operationName=SearchResultsPlacements with
+   `query`, `shopId`, `postalCode`, `zoneId`, `first`, and above all the header
+   `x-ic-view-layer: true`: without it, the response is a layout
+   skeleton with no price at all (measurement: 0 `priceString` versus 12 with). The items
+   are in `placements[].content.items[]` (placements without `items` are
+   ad slots). `orderBy` only accepts `bestMatch`;
+   `priceLowToHigh` works on some requests then fails on others, so
+   the price sort is done here, locally.
 
-4. FICHE ARTICLE. GET /graphql?operationName=Items avec
-   `ids` = ["items_<prefixe>-<productId>"] (l'id rendu par la recherche, pas le
-   productId seul) + shopId/zoneId/postalCode. Rend le meme objet article.
-   URL publique : /store/costco/products/<evergreenUrl>.
+4. ITEM PAGE. GET /graphql?operationName=Items with
+   `ids` = ["items_<prefix>-<productId>"] (the id returned by the search, not the
+   productId alone) + shopId/zoneId/postalCode. Returns the same item object.
+   Public URL: /store/costco/products/<evergreenUrl>.
 
-Prix : ce sont les prix Same-Day (Instacart), majores par rapport a
-l'entrepot, et ils varient par magasin : 11231 et 11211 sont deux magasins
-Costco differents avec des prix differents pour le meme article.
+Prices: these are the Same-Day (Instacart) prices, marked up compared to
+the warehouse, and they vary per store: 11231 and 11211 are two different
+Costco stores with different prices for the same item.
 
-Etat : sessions et localisations dans COSTCO_SAMEDAY_STATE_DIR (defaut
-~/.local/state/costco-sameday-mcp/state.json). Les localisations sont cachees
-LOC_TTL secondes (defaut 24 h) ; une session morte est re-creee
-automatiquement au premier `Not Authenticated`.
+State: sessions and locations in COSTCO_SAMEDAY_STATE_DIR (default
+~/.local/state/costco-sameday-mcp/state.json). The locations are cached
+LOC_TTL seconds (default 24 h); a dead session is re-created
+automatically on the first `Not Authenticated`.
 
-Env : COSTCO_SAMEDAY_BASE, COSTCO_SAMEDAY_POSTAL (defaut 11231),
-COSTCO_SAMEDAY_STATE_DIR, COSTCO_SAMEDAY_TIMEOUT (defaut 30),
-COSTCO_SAMEDAY_LOC_TTL (defaut 86400), COSTCO_SAMEDAY_UA.
+Env: COSTCO_SAMEDAY_BASE, COSTCO_SAMEDAY_POSTAL (default 11231),
+COSTCO_SAMEDAY_STATE_DIR, COSTCO_SAMEDAY_TIMEOUT (default 30),
+COSTCO_SAMEDAY_LOC_TTL (default 86400), COSTCO_SAMEDAY_UA.
 
-Re-capturer les hashes quand une reponse dit PersistedQueryNotSupported :
-ouvrir une page du site dans un navigateur, onglet Reseau, et relever
-`extensions.persistedQuery.sha256Hash` des operations citees ci-dessus (le
-hash est dans l'URL de la requete). Les memes hashes apparaissent dans les
-URLs du bloc `ssr-query-perf-data` pour les operations rendues cote serveur.
+Re-capture the hashes when a response says PersistedQueryNotSupported:
+open a page of the site in a browser, Network tab, and note
+`extensions.persistedQuery.sha256Hash` of the operations cited above (the
+hash is in the request URL). The same hashes appear in the
+URLs of the `ssr-query-perf-data` block for the operations rendered server-side.
 """
 
 import json
@@ -81,7 +81,7 @@ import uuid
 
 try:
     from fastmcp.tools import tool
-except Exception:  # test hors mcp-host : decorateur neutre
+except Exception:  # test outside mcp-host: neutral decorator
 
     def tool(fn=None, **_kw):
         if fn is not None:
@@ -103,12 +103,12 @@ DEFAULT_POSTAL = os.environ.get("COSTCO_SAMEDAY_POSTAL", "11231")
 TIMEOUT = float(os.environ.get("COSTCO_SAMEDAY_TIMEOUT", "30"))
 LOC_TTL = float(os.environ.get("COSTCO_SAMEDAY_LOC_TTL", "86400"))
 
-# UA generique, sans le nom de marc : le site ne demande rien de plus.
+# Generic UA, without marc's name: the site asks for nothing more.
 UA = os.environ.get(
     "COSTCO_SAMEDAY_UA", "hermes-research/1.0 (+https://marcpartensky.com)"
 )
 
-# Hashes persisted query, lies a la version du bundle front (19/11/2026).
+# Persisted query hashes, tied to the version of the front bundle (19/11/2026).
 HASH_GUEST = "60933aab54d6b3f2add1fec396506dae6ef9b6a1891effbdaf39db129e787446"
 HASH_SEARCH = "b8684a2645982222458942525893edc8db68dcacfdbec44ec31125fb3d81bf22"
 HASH_ITEMS = "c508afc5ec327c479a58ec7c2b1137d421c99757a33a8f662ded27eee594fc52"
@@ -121,11 +121,11 @@ PERF_RE = re.compile(
 _lock = threading.Lock()
 
 
-# ------------------------------------------------------------------- etat
+# ------------------------------------------------------------------- state
 
 
 def _state():
-    """Lit l'etat (sessions, localisations) ; dict vide si illisible."""
+    """Reads the state (sessions, locations); empty dict if unreadable."""
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as fh:
             data = json.load(fh)
@@ -148,17 +148,17 @@ def _postal(postal_code):
     code = (postal_code or "").strip() or DEFAULT_POSTAL
     if not re.fullmatch(r"\d{5}", code):
         raise RuntimeError(
-            "code postal invalide : %r (5 chiffres attendus, ex 11231)"
+            "invalid postal code: %r (5 digits expected, e.g. 11231)"
             % (code,)
         )
     return code
 
 
-# ------------------------------------------------------------------ reseau
+# ------------------------------------------------------------------ network
 
 
 def _request(url, sid=None, data=None, view=False, method=None):
-    """Appelle le site et rend (statut, corps texte, entetes)."""
+    """Calls the site and returns (status, text body, headers)."""
     headers = {
         "user-agent": UA,
         "accept": "*/*",
@@ -187,12 +187,12 @@ def _request(url, sid=None, data=None, view=False, method=None):
         return exc.code, body, exc
     except urllib.error.URLError as exc:
         raise RuntimeError(
-            "reseau injoignable sur %s : %s" % (url, exc.reason)
+            "network unreachable on %s: %s" % (url, exc.reason)
         ) from None
 
 
 def _mint(postal):
-    """Cree une session invitee pour ce code postal et rend le cookie."""
+    """Creates a guest session for this postal code and returns the cookie."""
     body = {
         "operationName": (
             "HomepagePbiCreateGuestUserWithPostalCodeMutation"
@@ -204,7 +204,7 @@ def _mint(postal):
     status, text, res = _request(BASE + "/graphql", data=body)
     if status != 200:
         raise RuntimeError(
-            "creation de session invitee refusee (HTTP %s sur %s) : %s"
+            "guest session creation refused (HTTP %s on %s): %s"
             % (status, "/graphql", text[:300])
         )
     cookies = []
@@ -220,12 +220,12 @@ def _mint(postal):
             if sid:
                 return sid
     raise RuntimeError(
-        "session invitee sans cookie __Host-instacart_sid : %s" % text[:200]
+        "guest session without __Host-instacart_sid cookie: %s" % text[:200]
     )
 
 
 def _sid(postal, force=False):
-    """Rend un cookie de session valide pour ce code postal."""
+    """Returns a valid session cookie for this postal code."""
     with _lock:
         state = _state()
         if not force:
@@ -239,7 +239,7 @@ def _sid(postal, force=False):
 
 
 def _gql(op, variables, sha, sid, view=True):
-    """Appelle une persisted query et rend `data` (ou leve RuntimeError)."""
+    """Calls a persisted query and returns `data` (or raises RuntimeError)."""
     query = urllib.parse.urlencode(
         {
             "operationName": op,
@@ -257,30 +257,30 @@ def _gql(op, variables, sha, sid, view=True):
         payload = json.loads(text)
     except ValueError:
         raise RuntimeError(
-            "reponse non JSON (HTTP %s) sur %s : %s" % (status, op, text[:200])
+            "non-JSON response (HTTP %s) on %s: %s" % (status, op, text[:200])
         ) from None
     errors = payload.get("errors") or []
     if errors:
         blob = json.dumps(errors)[:400]
         if "PERSISTED_QUERY" in blob.upper():
             raise RuntimeError(
-                "hash persisted query perime pour %s (%s) : re-capturer les "
-                "hashes du module costco_sameday.py" % (op, blob)
+                "stale persisted query hash for %s (%s): re-capture the "
+                "hashes of the costco_sameday.py module" % (op, blob)
             )
         if "NOT AUTHENTICATED" in blob.upper() or status == 401:
             raise PermissionError(blob)
-        raise RuntimeError("erreur GraphQL sur %s : %s" % (op, blob))
+        raise RuntimeError("GraphQL error on %s: %s" % (op, blob))
     data = payload.get("data")
     if not isinstance(data, dict):
         raise RuntimeError(
-            "reponse sans donnees sur %s (HTTP %s) : %s"
+            "response without data on %s (HTTP %s): %s"
             % (op, status, text[:200])
         )
     return data
 
 
 def _gql_auth(op, variables, sha, postal, view=True):
-    """Comme _gql, mais recree la session invitee si elle est morte."""
+    """Like _gql, but re-creates the guest session if it is dead."""
     sid = _sid(postal)
     try:
         return _gql(op, variables, sha, sid, view=view)
@@ -289,11 +289,11 @@ def _gql_auth(op, variables, sha, postal, view=True):
         return _gql(op, variables, sha, sid, view=view)
 
 
-# --------------------------------------------------------------- magasin
+# --------------------------------------------------------------- store
 
 
 def _perf_entries(html):
-    """Rend les entrees du bloc ssr-query-perf-data (URLs GraphQL SSR)."""
+    """Returns the entries of the ssr-query-perf-data block (SSR GraphQL URLs)."""
     match = PERF_RE.search(html)
     if not match:
         return []
@@ -305,7 +305,7 @@ def _perf_entries(html):
 
 
 def _parse_shop_zone(html):
-    """Lit le couple (shopId, zoneId) que la page utilise reellement."""
+    """Reads the (shopId, zoneId) pair that the page actually uses."""
     shops = {}
     pairs = {}
     zones = {}
@@ -338,7 +338,7 @@ def _parse_shop_zone(html):
 
 
 def _city_state(postal, sid):
-    """Ville/etat du code postal (best effort, ne bloque jamais)."""
+    """City/state of the postal code (best effort, never blocks)."""
     try:
         data = _gql(
             "Locality", {"code": postal}, HASH_LOCALITY, sid, view=False
@@ -351,7 +351,7 @@ def _city_state(postal, sid):
 
 
 def _location(postal_code):
-    """Magasin + zone + ville pour un code postal (cache disque)."""
+    """Store + zone + city for a postal code (disk cache)."""
     postal = _postal(postal_code)
     state = _state()
     cached = state["locations"].get(postal) or {}
@@ -363,13 +363,13 @@ def _location(postal_code):
     )
     if status != 200:
         raise RuntimeError(
-            "page magasin illisible (HTTP %s) pour %s" % (status, postal)
+            "unreadable store page (HTTP %s) for %s" % (status, postal)
         )
     shop, zone = _parse_shop_zone(html)
     if not (shop and zone):
         raise RuntimeError(
-            "aucun magasin Costco Same-Day pour le code postal %s "
-            "(page sans donnees de magasin : zone non desservie, ou bloc "
+            "no Costco Same-Day store for postal code %s "
+            "(page without store data: zone not served, or block "
             "ssr-query-perf-data absent)" % postal
         )
     loc = {
@@ -386,11 +386,11 @@ def _location(postal_code):
     return loc
 
 
-# --------------------------------------------------------- articles
+# --------------------------------------------------------------- items
 
 
 def _item_row(item):
-    """Aplatit un noeud ItemsItem en dict court et stable."""
+    """Flattens an ItemsItem node into a short, stable dict."""
     price = (item.get("price") or {}).get("viewSection") or {}
     card = price.get("itemCard") or {}
     weight = (price.get("parWeightTotalEstimate") or {}).get("viewSection")
@@ -414,7 +414,7 @@ def _item_row(item):
 
 
 def _search_items(query, first, postal):
-    """Rend (localisation, liste d'articles) pour une recherche."""
+    """Returns (location, list of items) for a search."""
     loc = _location(postal)
     sid = _sid(postal)
     variables = {
@@ -453,15 +453,15 @@ def _search_items(query, first, postal):
     return loc, rows
 
 
-# ----------------------------------------------------------------- outils
+# ------------------------------------------------------------------ tools
 
 
 @tool
 def costco_sameday_status() -> str:
-    """Etat du module Costco Same-Day : session, magasin, zone, disque.
+    """Costco Same-Day module state: session, store, zone, disk.
 
-    Sert de smoke test (aucune recherche) : il cree/reutilise une session
-    invitee pour le code postal par defaut et rend le magasin resolu.
+    Serves as a smoke test (no search): it creates/reuses a guest
+    session for the default postal code and returns the resolved store.
     """
     out: dict = {
         "base": BASE,
@@ -479,11 +479,11 @@ def costco_sameday_status() -> str:
 
 @tool
 def costco_sameday_location(postal_code: str = "") -> str:
-    """Magasin Costco Same-Day, zone tarifaire et ville d'un code postal.
+    """Costco Same-Day store, pricing zone and city of a postal code.
 
-    postal_code : 5 chiffres (defaut : COSTCO_SAMEDAY_POSTAL, sinon 11231).
-    Rend shop_id et zone_id reellement utilises par le site : sans eux les
-    prix sortent vides. Un code postal non desservi leve une erreur explicite.
+    postal_code: 5 digits (default: COSTCO_SAMEDAY_POSTAL, otherwise 11231).
+    Returns shop_id and zone_id actually used by the site: without them the
+    prices come out empty. A postal code that is not served raises an explicit error.
     """
     try:
         return json.dumps(
@@ -501,28 +501,28 @@ def costco_sameday_search(
     sort: str = "default",
     in_stock_only: bool = False,
 ) -> str:
-    """Cherche des produits Costco Same-Day (prix de livraison Instacart).
+    """Searches Costco Same-Day products (Instacart delivery prices).
 
-    query : mots cles ('pork chop', 'paper towels'). first : nombre d'articles
-    demandes (le site en rend souvent moins, et pas de pagination connue).
-    postal_code : zone de livraison (defaut 11231, Brooklyn). sort :
-    'default' (pertinence), 'price_asc' ou 'price_desc' (tri local, l'API
-    n'accepte que bestMatch). in_stock_only : masque les ruptures.
+    query: keywords ('pork chop', 'paper towels'). first: number of items
+    requested (the site often returns fewer, and no known pagination).
+    postal_code: delivery zone (default 11231, Brooklyn). sort:
+    'default' (relevance), 'price_asc' or 'price_desc' (local sort, the API
+    only accepts bestMatch). in_stock_only: hides out-of-stock items.
 
-    Les prix sont ceux de la livraison Same-Day, majores par rapport a
-    l'entrepot, et propres au magasin du code postal : ne pas les presenter
-    comme le prix Costco en magasin.
+    The prices are those of Same-Day delivery, marked up compared to
+    the warehouse, and specific to the store of the postal code: do not present them
+    as the in-store Costco price.
     """
     name = (query or "").strip()
     if not name:
-        raise RuntimeError("query vide : donner des mots cles")
+        raise RuntimeError("empty query: give some keywords")
     limit = max(1, min(int(first or 12), 60))
     try:
         loc, rows = _search_items(name, limit, _postal(postal_code))
     except RuntimeError as exc:
         raise RuntimeError(str(exc)) from None
     except PermissionError as exc:
-        raise RuntimeError("session refusee : %s" % (exc,)) from None
+        raise RuntimeError("session refused: %s" % (exc,)) from None
     if in_stock_only:
         rows = [row for row in rows if row["in_stock"]]
     if sort == "price_asc":
@@ -542,25 +542,25 @@ def costco_sameday_search(
 
 
 def _price_value(text):
-    """Nombre utilisable pour trier un prix texte ('$16.27' -> 16.27)."""
+    """Usable number to sort a text price ('$16.27' -> 16.27)."""
     match = re.search(r"(\d+(?:\.\d+)?)", text or "")
     return float(match.group(1)) if match else float("inf")
 
 
 @tool
 def costco_sameday_product(ids: str, postal_code: str = "") -> str:
-    """Fiche complete d'un ou plusieurs articles, par identifiant de recherche.
+    """Full record of one or more items, by search identifier.
 
-    ids : identifiants rendus par costco_sameday_search (champ `id`, forme
-    'items_283-32645'), separes par des virgules. Le `product_id` seul ne
-    suffit pas. postal_code : zone de livraison (defaut 11231).
+    ids: identifiers returned by costco_sameday_search (`id` field, form
+    'items_283-32645'), separated by commas. The `product_id` alone is not
+    enough. postal_code: delivery zone (default 11231).
     """
     wanted = [
         part.strip() for part in (ids or "").replace("\n", ",").split(",")
         if part.strip()
     ]
     if not wanted:
-        raise RuntimeError("ids vide : passer des identifiants de recherche")
+        raise RuntimeError("empty ids: pass some search identifiers")
     postal = _postal(postal_code)
     try:
         loc = _location(postal)

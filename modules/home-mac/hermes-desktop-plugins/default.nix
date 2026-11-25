@@ -1,43 +1,43 @@
-# Plugins desktop Hermes : pose des `plugin.js` dans le « disk door » du renderer
-# Desktop, <HERMES_HOME>/desktop-plugins/<nom>/plugin.js.
+# Hermes desktop plugins: places `plugin.js` into the renderer's "disk door"
+# of Desktop, <HERMES_HOME>/desktop-plugins/<name>/plugin.js.
 #
-# Un plugin desktop étend l'APP (panes, pages de réglages, thèmes), pas un agent :
-# il vit côté machine de l'app (le Mac) même quand la session tourne sur un backend
-# distant (SSH vers tower). Le loader résout toujours le home LOCAL de l'app, et
-# scanne le dossier en le surveillant : un fichier posé là se charge à chaud, sans
-# redémarrage.
+# A desktop plugin extends the APP (panes, settings pages, themes), not an agent:
+# it lives on the app's machine side (the Mac) even when the session runs on a remote
+# backend (SSH to tower). The loader always resolves the app's LOCAL home, and
+# scans the folder while watching it: a file dropped there loads hot, without
+# a restart.
 #
-# Rien d'autre que plugin.js n'est requis : l'inventaire (nom, description,
-# capacités) vient du default-export du module JS, pas d'un plugin.yaml.
+# Nothing other than plugin.js is required: the inventory (name, description,
+# capabilities) comes from the default-export of the JS module, not from a plugin.yaml.
 #
-# NON DÉCLARABLE : l'activation (enable/disable) et les réglages d'un plugin
-# (ctx.storage) vivent dans le localStorage du renderer, pas dans un fichier.
-# Un plugin sans décision enregistrée s'active par défaut, d'où l'intérêt de
-# poser ici les valeurs par défaut du plugin plutôt que de compter sur un clic.
+# NOT DECLARABLE: a plugin's activation (enable/disable) and settings
+# (ctx.storage) live in the renderer's localStorage, not in a file.
+# A plugin with no recorded decision activates by default, hence the interest of
+# setting the plugin's default values here rather than relying on a click.
 { lib, config, ... }:
 let
   cfg = config.my.hermesDesktopPlugins;
 in {
   options.my.hermesDesktopPlugins = {
-    enable = lib.mkEnableOption "les plugins desktop Hermes (~/.hermes/desktop-plugins)";
+    enable = lib.mkEnableOption "Hermes desktop plugins (~/.hermes/desktop-plugins)";
 
     dir = lib.mkOption {
       type = lib.types.str;
       default = ".hermes/desktop-plugins";
-      description = "Dossier des plugins desktop, relatif à $HOME.";
+      description = "Desktop plugins folder, relative to $HOME.";
     };
 
     plugins = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
       default = { };
       example = { claude-code-theme = ./plugin.js; };
-      description = "Un plugin.js par entrée (nom du dossier -> fichier JS).";
+      description = "One plugin.js per entry (folder name -> JS file).";
     };
   };
 
   config = lib.mkIf cfg.enable {
-    # force = true : le plugin peut déjà exister en fichier réel (install depuis
-    # l'app, ou copie pour tester à chaud) ; le switch reprend la main dessus.
+    # force = true: the plugin may already exist as a real file (installed from
+    # the app, or copied to test live); the switch takes over it.
     home.file = lib.mapAttrs' (name: src: {
       name = "${cfg.dir}/${name}/plugin.js";
       value = {

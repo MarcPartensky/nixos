@@ -25,7 +25,7 @@ in {
     port = lib.mkOption {
       type = lib.types.port;
       default = 9146;
-      description = "Port loopback du serveur HTTP/WebSocket.";
+      description = "Loopback port of the HTTP/WebSocket server.";
     };
 
     package = lib.mkOption {
@@ -33,15 +33,15 @@ in {
       default = pkgs.callPackage ./package.nix {};
       defaultText = lib.literalExpression "pkgs.callPackage ./package.nix {}";
       description = ''
-        Paquet typer : `typer-server` et `typer-race`, plus le front-end
-        statique sous share/typer/web.
+        typer package: `typer-server` and `typer-race`, plus the static
+        front-end under share/typer/web.
       '';
     };
   };
 
   config = lib.mkIf cfg.enable {
     systemd.services.typer = {
-      description = "typer : entrainement a la frappe (web + salons de course)";
+      description = "typer: typing practice (web + race rooms)";
       wantedBy = ["multi-user.target"];
       after = ["network.target"];
 
@@ -52,8 +52,8 @@ in {
         Restart = "always";
         RestartSec = 3;
 
-        # Le service ne lit que son propre repertoire du store et sert du HTTP
-        # en clair derriere newt.
+        # The service only reads its own store directory and serves plain HTTP
+        # behind newt.
         NoNewPrivileges = true;
         ProtectSystem = "strict";
         ProtectHome = true;
@@ -73,10 +73,10 @@ in {
       };
     };
 
-    # `typer-race` : client terminal des salons, meme serveur /ws que le
-    # navigateur. ttyper (nixpkgs) reste l'exercice solo.
+    # `typer-race`: terminal client for the rooms, same /ws server as the
+    # browser. ttyper (nixpkgs) remains the solo exercise.
     environment.systemPackages = [cfg.package];
 
-    # Pas d'ouverture au firewall : l'acces reseau passe par newt (loopback).
+    # No firewall opening: network access goes through newt (loopback).
   };
 }

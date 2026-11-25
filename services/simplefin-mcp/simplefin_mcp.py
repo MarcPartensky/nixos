@@ -1,13 +1,13 @@
-"""Serveur MCP SimpleFIN (lecture seule) pour hermes.
+"""SimpleFIN MCP server (read-only) for hermes.
 
-Expose les comptes et transactions Chase (via le SimpleFIN Bridge) en tools
-stdio. L'access URL du Bridge, identifiants Basic compris, est lue dans
-SIMPLEFIN_ACCESS_URL (valeur, pratique pour tester) puis
-SIMPLEFIN_ACCESS_URL_FILE (chemin, posé par le module depuis /run/secrets).
+Exposes Chase accounts and transactions (via the SimpleFIN Bridge) as stdio
+tools. The Bridge access URL, Basic credentials included, is read from
+SIMPLEFIN_ACCESS_URL (value, handy for testing) then
+SIMPLEFIN_ACCESS_URL_FILE (path, set by the module from /run/secrets).
 
-Limites du Bridge : 24 requêtes par jour, fenêtre de 90 jours maximum, et
-l'abonnement doit être réglé (sinon /accounts répond 402 « Payment
-required »). Le protocole est en lecture seule :
+Bridge limits: 24 requests per day, 90-day maximum window, and
+the subscription must be paid (otherwise /accounts responds 402 "Payment
+required"). The protocol is read-only:
 https://www.simplefin.org/protocol.html
 """
 
@@ -27,7 +27,7 @@ except ImportError:
 
 mcp = MCPServer("simplefin")
 
-# Le Cloudflare du Bridge renvoie 403 au User-Agent par défaut d'urllib.
+# The Bridge's Cloudflare returns 403 for urllib's default User-Agent.
 UA = {"User-Agent": "hermes-simplefin-mcp/1.0"}
 MAX_WINDOW_DAYS = 90
 DEFAULT_DAYS = 30
@@ -35,7 +35,7 @@ MAX_TX = 1000
 
 
 def _access_url():
-    """Access URL du Bridge : env SIMPLEFIN_ACCESS_URL puis fichier secret."""
+    """Bridge access URL: env SIMPLEFIN_ACCESS_URL then secret file."""
     url = os.environ.get("SIMPLEFIN_ACCESS_URL", "").strip()
     if not url:
         path = os.environ.get("SIMPLEFIN_ACCESS_URL_FILE", "")
@@ -44,14 +44,14 @@ def _access_url():
                 url = fh.read().strip()
     if not url or "@" not in url:
         raise RuntimeError(
-            "access URL SimpleFIN absente : SIMPLEFIN_ACCESS_URL (valeur) "
-            "ou SIMPLEFIN_ACCESS_URL_FILE (chemin) non configurés."
+            "SimpleFIN access URL missing: SIMPLEFIN_ACCESS_URL (value) "
+            "or SIMPLEFIN_ACCESS_URL_FILE (path) not configured."
         )
     return url
 
 
 def _fetch(start=None, end=None, pending=False, balances_only=False):
-    """GET /accounts sur le Bridge ; RuntimeError lisible en cas d'échec."""
+    """GET /accounts on the Bridge; readable RuntimeError on failure."""
     url = _access_url()
     scheme, rest = url.split("//", 1)
     auth, host = rest.rsplit("@", 1)
@@ -76,19 +76,19 @@ def _fetch(start=None, end=None, pending=False, balances_only=False):
         body = err.read().decode(errors="replace")[:400]
         if err.code == 402:
             raise RuntimeError(
-                "Bridge SimpleFIN : abonnement non réglé (402 Payment "
-                f"required) : {body}"
+                "SimpleFIN Bridge: subscription not paid (402 Payment "
+                f"required): {body}"
             ) from None
-        raise RuntimeError(f"HTTP {err.code} du Bridge SimpleFIN : {body}") from None
+        raise RuntimeError(f"HTTP {err.code} from the SimpleFIN Bridge: {body}") from None
     except urllib.error.URLError as err:
-        raise RuntimeError(f"Bridge SimpleFIN injoignable ({err.reason})") from None
+        raise RuntimeError(f"SimpleFIN Bridge unreachable ({err.reason})") from None
 
 
 def _epoch(date_str, end=False):
-    """'AAAA-MM-JJ' (UTC) -> epoch ; end=True inclut la journée entière.
+    """'YYYY-MM-DD' (UTC) -> epoch; end=True includes the whole day.
 
-    Le paramètre end-date du protocole est EXCLUSIF : on décale d'un jour
-    pour que la date demandée soit dans les résultats.
+    The protocol's end-date parameter is EXCLUSIVE: we shift by one day
+    so that the requested date is in the results.
     """
     try:
         day = dt.datetime.strptime(date_str, "%Y-%m-%d").replace(
@@ -96,7 +96,7 @@ def _epoch(date_str, end=False):
         )
     except ValueError:
         raise RuntimeError(
-            f"Date « {date_str} » invalide (format attendu : AAAA-MM-JJ)."
+            f"Invalid date '{date_str}' (expected format: YYYY-MM-DD)."
         ) from None
     if end:
         day += dt.timedelta(days=1)
@@ -104,7 +104,7 @@ def _epoch(date_str, end=False):
 
 
 def _window(start_date="", days=DEFAULT_DAYS, end_date=""):
-    """Bornes epoch (UTC) d'une fenêtre, refusée au-delà de 90 jours."""
+    """Epoch bounds (UTC) of a window, refused beyond 90 days."""
     today = dt.datetime.now(dt.timezone.utc)
     midnight = today.replace(hour=0, minute=0, second=0, microsecond=0)
     days = max(1, min(int(days), MAX_WINDOW_DAYS))
@@ -120,11 +120,11 @@ def _window(start_date="", days=DEFAULT_DAYS, end_date=""):
     )
     span_days = (end - start) / 86400
     if span_days <= 0:
-        raise RuntimeError("Fenêtre vide : start_date est après end_date.")
+        raise RuntimeError("Empty window: start_date is after end_date.")
     if span_days > MAX_WINDOW_DAYS:
         raise RuntimeError(
-            f"Fenêtre de {span_days:.0f} jours : le Bridge limite à "
-            f"{MAX_WINDOW_DAYS} jours. Réduire start_date ou days."
+            f"Window of {span_days:.0f} days: the Bridge limits to "
+            f"{MAX_WINDOW_DAYS} days. Reduce start_date or days."
         )
     return start, end
 
@@ -172,7 +172,7 @@ def _tx(tx, acc, conns):
 
 
 def _keep_account(acc, account):
-    """Filtre account : id exact ou fragment de nom (insensible à la casse)."""
+    """account filter: exact id or name fragment (case-insensitive)."""
     if not account:
         return True
     return account == str(acc.get("id")) or account.lower() in str(
@@ -201,11 +201,11 @@ def _clamp_limit(limit):
 
 @mcp.tool()
 def status() -> dict:
-    """État du Bridge SimpleFIN : joignable, abonnement réglé, comptes vus.
+    """SimpleFIN Bridge status: reachable, subscription paid, accounts seen.
 
-    Test de vie (1 requête, soldes seulement). C'est aussi ici que
-    remontent les erreurs du Bridge : abonnement non payé (402), connexion
-    Chase à réautoriser (con.auth), transaction incomplete (act.failed).
+    Liveness test (1 request, balances only). This is also where the
+    Bridge errors surface: unpaid subscription (402), Chase connection
+    to reauthorize (con.auth), incomplete transaction (act.failed).
     """
     data = _fetch(balances_only=True)
     conns = _conn_names(data)
@@ -231,10 +231,10 @@ def status() -> dict:
 
 @mcp.tool()
 def list_accounts() -> dict:
-    """Comptes liés au Bridge (Chase) : nom, solde, devise, dispo, date.
+    """Accounts linked to the Bridge (Chase): name, balance, currency, available, date.
 
-    Soldes uniquement (1 requête, pas de transactions) : la lecture la moins
-    chère pour « combien j'ai sur Chase ». Totaux par devise en bonus.
+    Balances only (1 request, no transactions): the cheapest read
+    for "how much do I have on Chase". Totals per currency as a bonus.
     """
     data = _fetch(balances_only=True)
     conns = _conn_names(data)
@@ -263,13 +263,13 @@ def get_transactions(
     account: str = "",
     limit: int = 200,
 ) -> dict:
-    """Transactions sur une fenêtre bornée (90 jours max), tous comptes.
+    """Transactions over a bounded window (90 days max), all accounts.
 
-    start_date/end_date : « AAAA-MM-JJ » UTC ; défaut : les `days` derniers
-    jours (30). end_date inclus (le protocole est exclusif, décalé d'un
-    jour ici). Les transactions en attente (pending) ne sortent que si
-    pending=True. account : id exact ou fragment de nom pour filtrer.
-    limit : borne haute du nombre renvoyé (max 1000), tri antéchronologique.
+    start_date/end_date: "YYYY-MM-DD" UTC; default: the last `days`
+    days (30). end_date included (the protocol is exclusive, shifted by one
+    day here). Pending transactions only come out if
+    pending=True. account: exact id or name fragment to filter.
+    limit: upper bound on the number returned (max 1000), reverse-chronological order.
     """
     start, end = _window(start_date, days, end_date)
     data = _fetch(start=start, end=end, pending=pending)
@@ -284,17 +284,17 @@ def get_transactions(
 
 @mcp.tool()
 def search_transactions(query: str, days: int = MAX_WINDOW_DAYS, account: str = "") -> dict:
-    """Cherche un texte dans les descriptions de transactions.
+    """Searches for text in transaction descriptions.
 
-    Filtre côté MCP (insensible à la casse) sur la fenêtre `days` (90 jours
-    max, 1 requête) : utile pour retrouver un paiement (« amazon »,
-    « airbnb », « loyer »). account filtre par id ou nom.
+    Filter on the MCP side (case-insensitive) over the `days` window (90 days
+    max, 1 request): useful to find a payment ("amazon",
+    "airbnb", "loyer"). account filters by id or name.
     """
     start, end = _window("", days, "")
     data = _fetch(start=start, end=end)
     needle = query.strip().lower()
     if not needle:
-        raise RuntimeError("query vide : donner un texte à chercher.")
+        raise RuntimeError("empty query: give some text to search for.")
     rows = [r for r in _rows(data, account) if needle in (r["description"] or "").lower()]
     total = len(rows)
     return {
@@ -306,12 +306,12 @@ def search_transactions(query: str, days: int = MAX_WINDOW_DAYS, account: str = 
 
 @mcp.tool()
 def spending_summary(days: int = DEFAULT_DAYS, account: str = "") -> dict:
-    """Résumé des flux sur la fenêtre : débits, crédits, net, top marchands.
+    """Summary of the flows over the window: debits, credits, net, top merchants.
 
-    Par compte et par devise : total des débits (montants négatifs), des
-    crédits, net et nombre de transactions. Top 5 marchands par total
-    débité (description brute du Bridge, aucune catégorisation). account
-    filtre par id ou nom.
+    Per account and per currency: total debits (negative amounts), credits,
+    net and number of transactions. Top 5 merchants by total
+    debited (raw Bridge description, no categorization). account
+    filters by id or name.
     """
     start, end = _window("", days, "")
     data = _fetch(start=start, end=end)

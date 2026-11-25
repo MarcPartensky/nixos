@@ -1,35 +1,35 @@
 # services/ibkr-mcp/default.nix
-# Serveur MCP Interactive Brokers en LECTURE SEULE, adosse au Flex Web Service
-# (HTTPS, sans session IBKR, sans 2FA, sans gateway local a faire tourner).
+# Interactive Brokers MCP server in READ-ONLY, backed by the Flex Web Service
+# (HTTPS, no IBKR session, no 2FA, no local gateway to run).
 #
-# Perimetre : positions, soldes, NAV, transactions, comptes. Les rapports sont
-# generes a la demande (quelques secondes de latence), donc pas de cotation
-# temps reel ni de carnet d'ordres. Pour du temps reel il faudrait un IB
-# Gateway local (socket TWS 4001) pilote par IBC : hors perimetre ici, voir
-# la note en bas de fichier.
+# Scope: positions, balances, NAV, transactions, accounts. The reports are
+# generated on demand (a few seconds of latency), so no real-time
+# quote nor order book. For real time an IB
+# Gateway local (TWS socket 4001) driven by IBC would be needed: out of scope here, see
+# the note at the bottom of the file.
 #
-# Actions humaines requises une fois (Client Portal, connexion obligatoire) :
-#  1. Performance & Reports > Flex Queries > Flex Web Service Configuration :
-#     cocher Flex Web Service Status, Save, puis Generate New Token (duree
-#     jusqu'a 1 an ; laisser le champ IP vide, l'IP domestique change).
-#  2. Performance & Reports > Flex Queries > creer une *Activity Flex Query*
-#     avec au moins : Account Information, Open Positions, Cash Report,
-#     Net Asset Value (NAV) in Base, Trades. Noter les identifiants (Query ID).
-#  3. Poser token + identifiants dans secrets/ibkr.yml (voir le placeholder
-#     ci-dessous), puis reactiver : tout ce qui n'est pas encore rempli reste
-#     en erreur explicite cote tool `status`.
+# One-time human actions required (Client Portal, login mandatory):
+#  1. Performance & Reports > Flex Queries > Flex Web Service Configuration:
+#     check Flex Web Service Status, Save, then Generate New Token (validity
+#     up to 1 year; leave the IP field empty, the home IP changes).
+#  2. Performance & Reports > Flex Queries > create an *Activity Flex Query*
+#     with at least: Account Information, Open Positions, Cash Report,
+#     Net Asset Value (NAV) in Base, Trades. Note the identifiers (Query ID).
+#  3. Put the token + identifiers in secrets/ibkr.yml (see the placeholder
+#     below), then re-activate: anything not yet filled in stays
+#     in explicit error on the `status` tool side.
 #
-# Le token Flex est INDEPENDANT du mot de passe IBKR et revocable depuis le
-# portail : le serveur ne detient aucun identifiant de compte, donc aucun
-# pouvoir de passer un ordre.
+# The Flex token is INDEPENDENT of the IBKR password and revocable from the
+# portal: the server holds no account credentials, therefore no
+# power to place an order.
 {self, pkgs, config, ...}: let
-  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
-  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  # Binary built as a flake output (mcp/default.nix): buildable
+  # without evaluating this conf, and no longer rebuilt on every host eval.
   ibkr-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.ibkr-mcp;
 in {
-  # Dotenv genere depuis sops et relu a chaque appel par le serveur : ni le
-  # token ni les identifiants de requetes ne sont dans le nix store (les `env`
-  # du module sont world-readable dans la closure, donc jamais de secret ici).
+  # Dotenv generated from sops and re-read on each call by the server: neither the
+  # token nor the query identifiers are in the nix store (the module's `env`
+  # are world-readable in the closure, so never a secret here).
   sops.templates."ibkr-flex.env" = {
     content = ''
       IBKR_FLEX_TOKEN=${config.sops.placeholder."ibkr/flex_token"}
@@ -40,10 +40,10 @@ in {
     mode = "0400";
   };
 
-  # TODO(marc) : remplacer les 3 valeurs de secrets/ibkr.yml (encore des
-  # placeholders aujourd'hui) par le token et les Query ID reels, sinon le
-  # serveur est deploye mais inerte : les tools existent et echouent en
-  # "placeholder" a chaque appel. Verifier avec le tool `status`.
+  # TODO(marc): replace the 3 values of secrets/ibkr.yml (still
+  # placeholders today) with the real token and Query IDs, otherwise the
+  # server is deployed but inert: the tools exist and fail with
+  # "placeholder" on each call. Check with the `status` tool.
   sops.secrets."ibkr/flex_token" = {
     key = "flex_token";
     sopsFile = ../../secrets/ibkr.yml;
@@ -60,15 +60,15 @@ in {
     owner = "hermes";
   };
 
-  # Sur le PATH pour pouvoir sonder le serveur a la main (stdio).
+  # On the PATH to be able to probe the server by hand (stdio).
   environment.systemPackages = [ibkr-mcp];
 
 }
 
-# Phase 2 (non faite) : temps reel + carnet d'ordres. Exige IB Gateway (paquet
-# absent de nixpkgs : telechargement IBKR a epingler), un X virtuel (xvfb),
-# Java, un compte IBKR dont les identifiants vivent dans un fichier, et une
-# validation 2FA sur telephone tous les dimanches apres 01:00 ET (IBKR
-# l'impose au niveau du compte, IBC ne la contourne pas ; IBC est par ailleurs
-# annonce deprecie depuis septembre 2026, remplacant = ibg-controller). A ne
-# faire que si le besoin de cotation live est reel.
+# Phase 2 (not done): real time + order book. Requires IB Gateway (package
+# absent from nixpkgs: IBKR download to pin), a virtual X (xvfb),
+# Java, an IBKR account whose credentials live in a file, and a
+# 2FA validation on phone every Sunday after 01:00 ET (IBKR
+# imposes it at the account level, IBC does not bypass it; IBC is besides
+# announced deprecated since September 2026, replacement = ibg-controller). Only
+# do it if the need for live quotes is real.

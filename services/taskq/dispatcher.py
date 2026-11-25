@@ -3,8 +3,8 @@
 
 24/7 scheduler for tower. It owns one question: *may this task run right now,
 and if not, when?* It watches the machine (load, RAM, GPU, whether marc is
-using the box -- cpu, tty, Hermes activity, plus les fenetres sommeil/travail
-de presence.py), the queue, and the money (paid LLM budget), then starts tasks
+using the box -- cpu, tty, Hermes activity, plus the sleep/work windows
+of presence.py), the queue, and the money (paid LLM budget), then starts tasks
 when they fit -- and writes down why it did or did not.
 
 No third-party dependency: metrics from /proc, queue access through psql.
@@ -27,27 +27,27 @@ import sys
 import time
 from pathlib import Path
 
-import presence  # meme dossier que ce script (copie par le module Nix)
+import presence  # same folder as this script (copied by the Nix module)
 
 DB = os.environ.get("TASKQ_DATABASE_URL", "postgresql://taskq@127.0.0.1/taskq")
 WINNIE_DB = os.environ.get("TASKQ_WINNIE_DATABASE_URL", "")
 POLL_SECONDS = int(os.environ.get("TASKQ_POLL_SECONDS", "20"))
-MARC_UID = int(os.environ.get("TASKQ_MARC_UID") or "1000")  # vide -> 1000
+MARC_UID = int(os.environ.get("TASKQ_MARC_UID") or "1000")  # empty -> 1000
 RESERVE_MB = int(os.environ.get("TASKQ_RESERVE_MB", "4096"))
 BUSY_CPU_PCT = float(os.environ.get("TASKQ_BUSY_CPU_PCT", "25"))
-# Fenetre d'inactivite (minutes) pour `needs_absence` : aucune interaction de
-# marc (shell ssh/local, session Hermes interactive, web UI) depuis ce delai
-# => les taches de fond peuvent demarrer; sa premiere interaction les coupe.
-# S'y ajoutent les fenetres d'absence previsionnelles (sommeil / travail,
-# presence.py) et une hysteresis de calme pour le redemarrage en fenetre.
+# Inactivity window (minutes) for `needs_absence`: no interaction from
+# marc (ssh/local shell, interactive Hermes session, web UI) for this delay
+# => background tasks may start; his first interaction cuts them.
+# To this are added the predictive absence windows (sleep / work,
+# presence.py) and a calm hysteresis for restart within a window.
 ABSENCE_MINUTES = int(os.environ.get("TASKQ_ABSENCE_MINUTES", "15"))
 WINDOW_CALM_SECONDS = int(os.environ.get("TASKQ_WINDOW_CALM_SECONDS", "90"))
 HERMES_STATE_DB = os.environ.get("TASKQ_HERMES_STATE_DB", "/var/lib/hermes/.hermes/state.db")
 PRESENCE_CFG = presence.load_config()
-# Dernier instant ou marc touchait vraiment la machine (cpu ou tty), None au
-# demarrage : sert a exiger WINDOW_CALM_SECONDS de calme avant de relancer une
-# tache de fond dans une fenetre d'absence (l'activite d'un telephone au
-# bureau ne compte pas, seul l'usage de tower compte).
+# Last moment when marc really touched the machine (cpu or tty), None at
+# startup: used to require WINDOW_CALM_SECONDS of calm before restarting a
+# background task within an absence window (a phone at the
+# office does not count, only tower usage counts).
 _calm: dict = {"last_busy": None}
 # Load ceilings, per class, as a fraction of the thread count.
 LOAD_CEILING = {"light": 1.2, "medium": 0.9, "heavy": 0.6}
@@ -81,7 +81,7 @@ def exec_(sql: str, db: str = DB) -> None:
 
 
 def q(value) -> str:
-    """Literal SQL pour une chaine (echappe les quotes)."""
+    """SQL literal for a string (escapes the quotes)."""
     if value is None:
         return "null"
     return "'" + str(value).replace("'", "''") + "'"
@@ -112,8 +112,8 @@ def _jiffies(pid: int):
 
 
 def marc_cpu_pct(now_sample: dict, now: float) -> float:
-    """CPU % (une unite = un coeur) consomme par les process de marc depuis le
-    dernier echantillon."""
+    """CPU % (one unit = one core) consumed by marc's processes since the
+    last sample."""
     pct = 0.0
     if _prev_cpu["at"]:
         dt_s = max(now - _prev_cpu["at"], 1e-3)
@@ -129,7 +129,7 @@ def marc_cpu_pct(now_sample: dict, now: float) -> float:
 
 
 def proc_scan():
-    """Retourne (jiffies de marc, kasm actif, ollama actif, nom du GPU utilisable)."""
+    """Returns (marc's jiffies, kasm active, ollama active, name of a usable GPU)."""
     marc, kasm, ollama = {}, False, False
     for entry in Path("/proc").iterdir():
         if not entry.name.isdigit():
@@ -142,7 +142,7 @@ def proc_scan():
             j = _jiffies(int(entry.name))
             if j is not None:
                 marc[entry.name] = j
-        if owner in (MARC_UID, 0):  # Xvnc tourne chez marc, ollama chez ollama
+        if owner in (MARC_UID, 0):  # Xvnc runs as marc, ollama as ollama
             try:
                 cmd = (entry / "cmdline").read_bytes().decode(errors="replace")
             except OSError:
@@ -169,38 +169,38 @@ def gpu_name() -> str:
 
 
 def marc_tty_active() -> str | None:
-    """Un shell de marc recemment utilise (ssh depuis le Mac, tty local)."""
+    """A recently used marc shell (ssh from the Mac, local tty)."""
     try:
         out = subprocess.run(["who", "-u"], capture_output=True, text=True, timeout=30).stdout
     except (OSError, subprocess.SubprocessError):
-        return "who indisponible (suppose connecte)"
+        return "who unavailable (assumed connected)"
     for line in out.splitlines():
         f = line.split()
         if len(f) < 5 or f[0] != "marc":
             continue
         idle = f[4]
         if idle == ".":
-            return "shell marc actif a l'instant"
+            return "marc shell active right now"
         if ":" in idle:
             try:
                 h, m = idle.split(":")[:2]
                 if int(h) * 60 + int(m) < ABSENCE_MINUTES:
-                    return f"shell marc utilise il y a {idle}"
+                    return f"marc shell used {idle} ago"
             except ValueError:
                 continue
     return None
 
 
 def hermes_interactive_active() -> str | None:
-    """Une session Hermes interactive recente (app desktop, CLI, matrix).
+    """A recent interactive Hermes session (desktop app, CLI, matrix).
 
-    Les sources autonomes (cron, oneshot, subagent) ne comptent pas : elles
-    tournent sans marc. Deux lectures independantes (sessions + messages
-    joints aux sources interactives) : un lecteur WAL qui ne verrait qu'un
-    etat perime ne peut pas mettre les deux a zero en meme temps (vecu : un
-    `sqlite3 -readonly` a renvoye 0 pendant que 552 messages s'ecrivaient).
-    Toute erreur de lecture => 'connecte' : on ne lance jamais une tache de
-    fond dans le doute.
+    Autonomous sources (cron, oneshot, subagent) do not count: they
+    run without marc. Two independent reads (sessions + messages
+    joined to interactive sources): a WAL reader that would only see a
+    stale state cannot zero both at the same time (observed: a
+    `sqlite3 -readonly` returned 0 while 552 messages were being written).
+    Any read error => 'connected': we never start a background task
+    when in doubt.
     """
     since = time.time() - ABSENCE_MINUTES * 60
     queries = (
@@ -220,16 +220,16 @@ def hermes_interactive_active() -> str | None:
         finally:
             con.close()
     except sqlite3.Error as e:
-        return f"etat hermes illisible ({e}) (suppose connecte)"
+        return f"hermes state unreadable ({e}) (assumed connected)"
     if max(hits) > 0:
-        return f"activite hermes recente < {ABSENCE_MINUTES} min (sessions {hits[0]}, messages {hits[1]})"
+        return f"recent hermes activity < {ABSENCE_MINUTES} min (sessions {hits[0]}, messages {hits[1]})"
     return None
 
 
 def webui_active() -> str | None:
-    """Un POST recent sur la web UI Hermes : une action de marc.
+    """A recent POST on the Hermes web UI: an action by marc.
 
-    Le GET /login du probe (toutes les 30 s) ne compte pas.
+    The probe's GET /login (every 30 s) does not count.
     """
     try:
         out = subprocess.run(
@@ -239,11 +239,11 @@ def webui_active() -> str | None:
         ).stdout
     except (OSError, subprocess.SubprocessError):
         return None
-    return "requete POST recente sur hermes-webui" if '"method": "POST"' in out else None
+    return "recent POST request on hermes-webui" if '"method": "POST"' in out else None
 
 
 def read_overrides() -> dict:
-    """Overrides par date de la config presence (table state)."""
+    """Per-date overrides of the presence config (state table)."""
     value = one("select value from state where key='presence_overrides'")
     return value if isinstance(value, dict) else {}
 
@@ -268,13 +268,13 @@ def read_metrics() -> dict:
     marc_cpu = marc_cpu_pct(marc_procs, now)
     mem_avail = mem.get("MemAvailable", 0)
     gpu = gpu_name()
-    # marc "present" = bureau Kasm ouvert; "busy" = il tape/regarde vraiment
-    # quelque chose, ou l'agent tourne fort pour lui.
+    # marc "present" = Kasm desktop open; "busy" = he is really typing/watching
+    # something, or the agent is running hard for him.
     busy = marc_cpu > BUSY_CPU_PCT or (kasm and marc_cpu > 5.0)
-    # `tty` prouve en plus que marc EST devant tower (shell recent) : c'est le
-    # signal d'usage reel que les fenetres d'absence respectent. 'connecte' :
-    # interaction recente par n'importe quel canal (shell, session hermes
-    # interactive, web UI), la porte reactive historique.
+    # `tty` additionally proves that marc IS in front of tower (recent shell): it is the
+    # real-usage signal that the absence windows respect. 'connected':
+    # recent interaction through any channel (shell, interactive hermes
+    # session, web UI), the historical reactive gate.
     tty_why = marc_tty_active()
     connected_why = tty_why or hermes_interactive_active() or webui_active() or ""
     connected = bool(connected_why)
@@ -306,7 +306,7 @@ def read_metrics() -> dict:
 # ---------------------------------------------------------------------- policy
 
 def budget(m: dict) -> dict:
-    """Budget LLM payant du jour (UTC, comme la fenetre gratuite d'OpenRouter)."""
+    """Paid LLM budget of the day (UTC, like OpenRouter's free window)."""
     day = dt.datetime.now(dt.timezone.utc).date().isoformat()
     spent = one("select value from state where key = 'paid_spent_today'") or {}
     cap = one("select value from state where key = 'paid_budget_cents_per_day'")
@@ -320,7 +320,7 @@ def budget(m: dict) -> dict:
 
 
 def refuse(task: dict, m: dict, b: dict) -> str | None:
-    """Raison de ne pas demarrer maintenant, ou None si c'est bon."""
+    """Reason not to start now, or None if it is fine."""
     ceiling = LOAD_CEILING[task["cpu_class"]] * m["threads"]
     heavy_running = int(one("select count(*) from tasks where status='running' and cpu_class='heavy'") or 0)
     need = task["mem_min_mb"] + RESERVE_MB
@@ -329,45 +329,45 @@ def refuse(task: dict, m: dict, b: dict) -> str | None:
         deadline = dt.datetime.fromisoformat(task["deadline"])
         eta = dt.timedelta(minutes=int(task["est_minutes"] or 30))
         if dt.datetime.now(dt.timezone.utc) + eta >= deadline:
-            forced = True  # il faut demarrer pour tenir l'echeance
+            forced = True  # must start to meet the deadline
     if task["requires_gpu"] and not m["gpu"]:
-        return "aucun GPU utilisable sur cette machine"
-    # `needs_absence` : la porte la plus stricte, et meme une echeance ne la
-    # franchit pas (tache de fond pure). L'absence est devinee (presence.py) :
-    # fenetre sommeil/travail + machine au repos, ou inactivite reactive.
+        return "no usable GPU on this machine"
+    # `needs_absence`: the strictest gate, and even a deadline does not
+    # cross it (pure background task). The absence is inferred (presence.py):
+    # sleep/work window + machine at rest, or reactive inactivity.
     if task.get("needs_absence"):
         ok, why = presence.may_start(
             m.get("presence"), bool(m.get("presence_absent_confident")),
             bool(m.get("marc_connected")), m.get("marc_calm_seconds"),
             WINDOW_CALM_SECONDS)
         if not ok:
-            return f"attend une absence de marc ({why})"
+            return f"waiting for an absence of marc ({why})"
     if m["mem_avail_mb"] < need:
-        return f"RAM libre {m['mem_avail_mb']} Mo < {task['mem_min_mb']}+{RESERVE_MB} requis"
+        return f"free RAM {m['mem_avail_mb']} MB < {task['mem_min_mb']}+{RESERVE_MB} required"
     if forced:
-        return None if m["mem_avail_mb"] >= need else "echeance mais RAM insuffisante"
+        return None if m["mem_avail_mb"] >= need else "deadline but insufficient RAM"
     if m["paused"] and task["priority"] > 50:
-        return "file en pause"
+        return "queue paused"
     if m["marc_busy"] and not task["while_busy"] and task["priority"] > 50:
-        return f"marc travaille (cpu marc {m['marc_cpu_pct']}%, load {m['load1']})"
+        return f"marc is working (marc cpu {m['marc_cpu_pct']}%, load {m['load1']})"
     if task["cpu_class"] == "heavy" and (m["load1"] > ceiling or heavy_running >= 1):
-        return f"load {m['load1']} > {ceiling:.1f} (ou une tache lourde deja en cours)"
+        return f"load {m['load1']} > {ceiling:.1f} (or a heavy task already running)"
     if task["cpu_class"] == "medium" and m["load1"] > ceiling:
         return f"load {m['load1']} > {ceiling:.1f}"
     if task["cpu_class"] == "light" and m["load1"] > ceiling:
         return f"load {m['load1']} > {ceiling:.1f}"
     if task["llm_cost"] == "paid":
         if b["left_cents"] <= 0:
-            return f"budget payant epuise ({b['spent_cents']}/{b['cap_cents']} centimes)"
+            return f"paid budget exhausted ({b['spent_cents']}/{b['cap_cents']} cents)"
         if m["local_model_running"] and m["gpu"]:
-            return None  # un modele local tourne: tokens payants inutiles
+            return None  # a local model is running: paid tokens useless
     return None
 
 
 # ------------------------------------------------------------------- execution
 
 def start(task: dict, m: dict, b: dict, dry: bool) -> bool:
-    """Lance la tache; False si le demarrage a echoue (la ligne est deja mise a jour)."""
+    """Starts the task; False if the start failed (the row is already updated)."""
     tid = task["id"]
     unit = f"taskq-{tid}"
     if not dry:
@@ -376,8 +376,8 @@ def start(task: dict, m: dict, b: dict, dry: bool) -> bool:
                 subprocess.run(["systemctl", "start", task["target"]], check=True, timeout=60)
                 unit = task["target"]
             else:
-                # Root -> unite systeme; sinon unite du gestionnaire utilisateur
-                # (meme effet, pas de polkit a demander).
+                # Root -> system unit; otherwise user manager unit
+                # (same effect, no polkit to ask).
                 cmd = ["systemd-run", "--collect", "--quiet", "--unit", unit]
                 if os.geteuid() != 0:
                     cmd.append("--user")
@@ -391,12 +391,12 @@ def start(task: dict, m: dict, b: dict, dry: bool) -> bool:
                 cmd += ["/bin/sh", "-lc", task["target"]]
                 subprocess.run(cmd, check=True, timeout=120)
         except subprocess.SubprocessError as e:
-            decision(tid, "fail", f"demarrage impossible: {e}", m)
-            exec_(f"update tasks set status='failed', note={q(f'demarrage impossible: {e}')}, "
+            decision(tid, "fail", f"start impossible: {e}", m)
+            exec_(f"update tasks set status='failed', note={q(f'start impossible: {e}')}, "
                   f"finished_at=now(), updated_at=now() where id={tid}")
             return False
     else:
-        # Mode rapport : annonce seulement, aucune ecriture (ni base ni systemd).
+        # Report mode: announce only, no write (neither db nor systemd).
         return True
     exec_(
         "update tasks set status='running', unit=" + q(unit) + ", started_at=now(), "
@@ -412,13 +412,13 @@ def start(task: dict, m: dict, b: dict, dry: bool) -> bool:
 
 def start_reason(task: dict, m: dict) -> str:
     bits = [f"{task['cpu_class']}", f"load {m['load1']}/{m['threads']} thr",
-            f"ram libre {m['mem_avail_mb']} Mo"]
+            f"free ram {m['mem_avail_mb']} MB"]
     if not m["marc_busy"]:
-        bits.append("marc inactif" if not m["marc_present"] else "marc present mais calme")
+        bits.append("marc inactive" if not m["marc_present"] else "marc present but calm")
     if task.get("needs_absence"):
-        bits.append(f"marc absent ({m.get('presence')}, tache de fond)")
+        bits.append(f"marc absent ({m.get('presence')}, background task)")
     if task["deadline"]:
-        bits.append("echeance proche")
+        bits.append("deadline close")
     if task["llm_cost"] != "none":
         bits.append(f"tokens {task['llm_cost']}")
     return ", ".join(bits)
@@ -443,31 +443,31 @@ def poll_running(m: dict, dry: bool) -> None:
         if state == "failed" or (state in ("inactive", "dead") and sub in ("dead", "exited", "failed")):
             code = int(info.get("ExecMainStatus") or 0)
             ok = state != "failed" and code == 0
-            note = f"termine en {int(t['minutes'] or 0)} min"
+            note = f"finished in {int(t['minutes'] or 0)} min"
             if ok:
                 exec_(f"update tasks set status='done', exit_code={code}, finished_at=now(), "
                       f"updated_at=now(), note={q(note)} where id={t['id']}")
                 decision(t["id"], "finish", f"{t['target']} {note}", m)
             elif t["attempts"] < t["max_attempts"]:
-                exec_(f"update tasks set status='queued', exit_code={code}, note={q('echec, nouvelle tentative')}, "
+                exec_(f"update tasks set status='queued', exit_code={code}, note={q('failure, new attempt')}, "
                       f"not_before=now() + interval '5 minutes', updated_at=now() where id={t['id']}")
-                decision(t["id"], "fail", f"{t['target']} a echoue (code {code}), nouvel essai", m)
+                decision(t["id"], "fail", f"{t['target']} failed (code {code}), new attempt", m)
             else:
                 exec_(f"update tasks set status='failed', exit_code={code}, finished_at=now(), "
                       f"updated_at=now() where id={t['id']}")
-                decision(t["id"], "fail", f"{t['target']} a echoue definitivement (code {code})", m)
+                decision(t["id"], "fail", f"{t['target']} failed permanently (code {code})", m)
 
 
 # ------------------------------------------------------------------------ pass
 
 def stop_absent_running(m: dict, dry: bool) -> list[int]:
-    """Interrompt les taches `needs_absence` en cours des que marc revient.
+    """Interrupts the running `needs_absence` tasks as soon as marc comes back.
 
-    Pendant une fenetre d'absence confirmee, seul l'usage reel de la machine
-    coupe le job (un message depuis le telephone au bureau ne compte pas) ;
-    hors fenetre, la premiere interaction le coupe. La tache repart toute
-    seule a sa prochaine absence : elle est remise en file (pas comptee comme
-    un echec, attempts intouche).
+    During a confirmed absence window, only real machine usage
+    cuts the job (a message from the phone at the office does not count);
+    outside a window, the first interaction cuts it. The task restarts on its
+    own at its next absence: it is requeued (not counted as
+    a failure, attempts untouched).
     """
     stop, why = presence.must_stop(
         m.get("presence"), bool(m.get("presence_absent_confident")),
@@ -484,16 +484,16 @@ def stop_absent_running(m: dict, dry: bool) -> list[int]:
         unit = t["unit"] or t["target"]
         if not dry:
             try:
-                # systemctl stop est bloquant : au retour, l'unite est arretee.
+                # systemctl stop is blocking: on return, the unit is stopped.
                 subprocess.run(["systemctl", "stop", unit], capture_output=True, timeout=180)
             except subprocess.SubprocessError as e:
-                log(f"arret impossible de {unit}: {e!r}")
+                log(f"stop impossible for {unit}: {e!r}")
             exec_(f"update tasks set status='queued', exit_code=null, note="
-                  f"{q('interrompu: marc est revenu')}, not_before=now(), updated_at=now() "
+                  f"{q('interrupted: marc came back')}, not_before=now(), updated_at=now() "
                   f"where id={t['id']}")
             decision(t["id"], "pause",
-                     f"marc est revenu ({why}): tache de fond interrompue, "
-                     "reprise a la prochaine absence", m)
+                     f"marc came back ({why}): background task interrupted, "
+                     "resumed at the next absence", m)
         stopped.append(t["id"])
     return stopped
 
@@ -510,17 +510,17 @@ def pass_once(dry: bool = False) -> dict:
     poll_running(m, dry)
 
     started, deferred = [], []
-    seen: set = set()  # taches deja examinees dans CETTE passe : sans ca, une
-    # tache qui reste `queued` (report, ou dry-run qui n'ecrit rien) serait
-    # rejouee a chaque tour de la boucle, a l'infini.
+    seen: set = set()  # tasks already examined in THIS pass: without that, a
+    # task that stays `queued` (deferral, or dry-run that writes nothing) would be
+    # replayed on every loop turn, forever.
     while True:
         tasks = one(
             "select coalesce(json_agg(row_to_json(x)), '[]') from ("
             "  select id, key, kind, target, run_as, workdir, env, cpu_class, mem_min_mb, gpu,"
             "         llm_cost, est_minutes, paid_cap_cents, priority, while_busy, needs_absence, requires_gpu,"
             "         deadline::text, attempts, max_attempts"
-            # `requires` non vide = tache de flotte : elle appartient aux workers
-            # distants (/worker/beat la remet a un hote), pas au dispatcher local.
+            # non-empty `requires` = fleet task: it belongs to the remote
+            # workers (/worker/beat assigns it to a host), not to the local dispatcher.
             "  from tasks where status='queued' and not_before <= now()"
             "   and requires = '{}'::text[]"
             "  order by priority, not_before limit 20) x"
@@ -534,14 +534,14 @@ def pass_once(dry: bool = False) -> dict:
             seen.add(t["id"])
             if t["requires_gpu"] and not m["gpu"]:
                 if not dry:
-                    exec_(f"update tasks set status='blocked', note='GPU requis, absent', updated_at=now() where id={t['id']}")
-                    decision(t["id"], "block", "GPU requis mais aucun GPU sur tower", m)
+                    exec_(f"update tasks set status='blocked', note='GPU required, absent', updated_at=now() where id={t['id']}")
+                    decision(t["id"], "block", "GPU required but no GPU on tower", m)
                 progressed = True
                 continue
             why = refuse(t, m, b)
             if why:
                 deferred.append((t["id"], why))
-                # on n'ecrit une decision de report qu'une fois par heure et par tache
+                # a deferral decision is written only once per hour and per task
                 if not dry:
                     exec_(
                         "insert into decisions (task_id, action, reason, metrics) "
@@ -553,7 +553,7 @@ def pass_once(dry: bool = False) -> dict:
             if start(t, m, b, dry):
                 started.append(t["id"])
             progressed = True
-            if len(started) >= 2:  # pas plus de deux demarrages par tour
+            if len(started) >= 2:  # no more than two starts per turn
                 break
         if not progressed:
             break
@@ -562,7 +562,7 @@ def pass_once(dry: bool = False) -> dict:
               "stopped_absent": stopped_absent}
     state = one("select value from state where key='last_metrics'") or {}
     if started:
-        log(f"demarre {started}; reporte {[d[0] for d in deferred]}")
+        log(f"started {started}; deferred {[d[0] for d in deferred]}")
     return report
 
 
@@ -573,20 +573,20 @@ def main() -> int:
     args = ap.parse_args()
 
     if not Path("/run/systemd/system").exists():
-        log("pas de systemd, mode simulation")
+        log("no systemd, simulation mode")
         args.dry_run = True
 
     if args.once:
         print(json.dumps(pass_once(args.dry_run), indent=2, default=str))
         return 0
 
-    log(f"taskq dispatcher demarre (poll {POLL_SECONDS}s, reserve {RESERVE_MB} Mo, "
+    log(f"taskq dispatcher started (poll {POLL_SECONDS}s, reserve {RESERVE_MB} MB, "
         f"busy>{BUSY_CPU_PCT}% marc)")
     while True:
         try:
             pass_once(args.dry_run)
-        except Exception as e:  # une erreur ne doit jamais tuer la boucle
-            log(f"erreur de tour: {e!r}")
+        except Exception as e:  # an error must never kill the loop
+            log(f"turn error: {e!r}")
         time.sleep(POLL_SECONDS)
 
 

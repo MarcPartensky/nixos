@@ -1,6 +1,6 @@
 # services/hermes/roku.nix
-# Serveur MCP minimal pour piloter la TV Roku (ECP, réseau local).
-# À importer depuis services/hermes/default.nix : imports = [ ./roku.nix ];
+# Minimal MCP server to drive the Roku TV (ECP, local network).
+# To import from services/hermes/default.nix: imports = [ ./roku.nix ];
 {pkgs, ...}: let
   roku-mcp =
     pkgs.writers.writePython3Bin "roku-mcp" {
@@ -19,8 +19,8 @@
 
       TV = os.environ.get("ROKU_URL", "http://192.168.1.167:8060")
 
-      # Touches pour atteindre le réglage de luminosité depuis l'entrée HDMI.
-      # À relever une fois à la télécommande (touche ✱ = Info).
+      # Keys to reach the brightness setting from the HDMI input.
+      # To be recorded once on the remote (the * key = Info).
       TO_BRIGHTNESS = ["Info", "Down"]
       CLOSE = ["Back"]
 
@@ -45,9 +45,9 @@
 
       @mcp.tool()
       def press(keys: list[str]) -> str:
-          """Appuie sur des touches de la télécommande Roku, dans l'ordre.
+          """Press keys on the Roku remote, in order.
 
-          Touches : Home, Back, Select, Up, Down, Left, Right, Info (✱),
+          Keys: Home, Back, Select, Up, Down, Left, Right, Info (*),
           Play, Rev, Fwd, InstantReplay, VolumeUp, VolumeDown, VolumeMute,
           PowerOn, PowerOff, InputHDMI1, InputHDMI2, InputHDMI3, InputTuner.
           """
@@ -57,7 +57,7 @@
 
       @mcp.tool()
       def brightness(direction: Literal["up", "down"], steps: int = 1) -> str:
-          """Monte ou baisse la luminosité de la TV de quelques crans."""
+          """Raise or lower the TV brightness by a few steps."""
           arrow = "Right" if direction == "up" else "Left"
           _keys(TO_BRIGHTNESS + [arrow] * steps + CLOSE)
           return "ok"
@@ -65,7 +65,7 @@
 
       @mcp.tool()
       def status() -> dict:
-          """État de la TV : alimentation et app ou entrée active."""
+          """TV state: power and active app or input."""
           info = _get("query/device-info")
           app = _get("query/active-app").find("app")
           return {
@@ -76,13 +76,13 @@
 
       @mcp.tool()
       def apps() -> dict:
-          """Apps installées, nom vers id (à passer à launch)."""
+          """Installed apps, name to id (to pass to launch)."""
           return {a.text: a.get("id") for a in _get("query/apps")}
 
 
       @mcp.tool()
       def launch(app_id: str) -> str:
-          """Lance une app par son id (voir apps)."""
+          """Launch an app by its id (see apps)."""
           _post(f"launch/{app_id}")
           return "ok"
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1e1e2e">
-<title>Hermes vocal</title>
+<title>Hermes voice</title>
 <style>
   :root{
     --base:#1e1e2e; --mantle:#181825; --crust:#11111b;
@@ -63,7 +63,7 @@
   #login button{background:var(--lavender);color:var(--crust);border:none;border-radius:.7rem;padding:.7rem;font-weight:700;font-size:1rem}
   #login .err{color:var(--red);font-size:.82rem;min-height:1.1em}
   .hidden{display:none!important}
-  /* --- panneau réglages de voix --- */
+  /* --- voice settings panel --- */
   #sheet{position:fixed;inset:0;background:rgba(17,17,27,.72);display:flex;align-items:flex-end;z-index:20}
   #sheet .panel{background:var(--base);border-top-left-radius:1.2rem;border-top-right-radius:1.2rem;
     width:100%;max-height:86vh;display:flex;flex-direction:column;border-top:1px solid var(--surface1)}
@@ -86,24 +86,24 @@
 <body>
 <header>
   <span id="dot" class="dot"></span>
-  <h1>Hermes vocal</h1>
+  <h1>Hermes voice</h1>
   <span class="grow"></span>
-  <button id="btnVoice">Voix</button>
-  <button id="btnToggle">Couper</button>
+  <button id="btnVoice">Voice</button>
+  <button id="btnToggle">Mute</button>
 </header>
 
 <div id="sheet" class="hidden">
   <div class="panel">
     <header>
-      <h2>Voix</h2>
+      <h2>Voice</h2>
       <span class="grow" style="flex:1"></span>
-      <button id="btnSheetClose">Fermer</button>
+      <button id="btnSheetClose">Close</button>
     </header>
     <div class="body">
-      <div class="row"><label>Vitesse</label><input id="rate" type="range" min="-40" max="40" step="5" value="0"><output id="rateOut">0 %</output></div>
-      <div class="row"><label>Hauteur</label><input id="pitch" type="range" min="-20" max="20" step="2" value="0"><output id="pitchOut">0 Hz</output></div>
-      <button id="btnTest" style="background:var(--surface0);border:none;color:var(--text);border-radius:.7rem;padding:.6rem">▶ Tester la voix sélectionnée</button>
-      <div class="hintline" id="sheetHint">Les aperçus utilisent la voix et les réglages affichés. Le choix est enregistré sur la tour et vaut pour toutes tes sessions vocales.</div>
+      <div class="row"><label>Speed</label><input id="rate" type="range" min="-40" max="40" step="5" value="0"><output id="rateOut">0 %</output></div>
+      <div class="row"><label>Pitch</label><input id="pitch" type="range" min="-20" max="20" step="2" value="0"><output id="pitchOut">0 Hz</output></div>
+      <button id="btnTest" style="background:var(--surface0);border:none;color:var(--text);border-radius:.7rem;padding:.6rem">▶ Test the selected voice</button>
+      <div class="hintline" id="sheetHint">Previews use the displayed voice and settings. The choice is saved on the tower and applies to all your voice sessions.</div>
       <div id="voiceList"></div>
     </div>
   </div>
@@ -112,22 +112,22 @@
 <div id="log"></div>
 
 <div id="stage">
-  <div id="hint">Appuie pour parler</div>
-  <button id="orb" class="off">PARLER</button>
+  <div id="hint">Tap to talk</div>
+  <button id="orb" class="off">TALK</button>
   <div id="meter"></div>
   <form id="type">
-    <input id="typed" placeholder="ou écris ici" autocomplete="off" autocapitalize="sentences">
+    <input id="typed" placeholder="or type here" autocomplete="off" autocapitalize="sentences">
     <button type="submit">↑</button>
   </form>
 </div>
 
 <div id="login" class="hidden">
   <div class="card">
-    <h2>Connexion</h2>
-    <input id="u" placeholder="utilisateur" autocapitalize="none" autocomplete="username">
-    <input id="p" type="password" placeholder="mot de passe" autocomplete="current-password">
+    <h2>Sign in</h2>
+    <input id="u" placeholder="username" autocapitalize="none" autocomplete="username">
+    <input id="p" type="password" placeholder="password" autocomplete="current-password">
     <div class="err" id="loginErr"></div>
-    <button id="btnLogin">Entrer</button>
+    <button id="btnLogin">Sign in</button>
   </div>
 </div>
 
@@ -144,7 +144,7 @@ const state = {
   buf: "", wakeLock: null, stopPhrase: true,
 };
 
-/* ---------- journal ---------- */
+/* ---------- log ---------- */
 function addMsg(kind, text) {
   const d = document.createElement("div");
   d.className = "msg " + kind;
@@ -176,7 +176,7 @@ async function api(path, body, method) {
   return data;
 }
 
-/* ---------- connexion ---------- */
+/* ---------- sign-in ---------- */
 async function login() {
   const u = $("#u").value.trim(), p = $("#p").value;
   $("#loginErr").textContent = "";
@@ -186,7 +186,7 @@ async function login() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ provider: "basic", username: u, password: p, next: "" }),
     });
-    if (!r.ok) { $("#loginErr").textContent = "Identifiants refusés"; return; }
+    if (!r.ok) { $("#loginErr").textContent = "Credentials refused"; return; }
     $("#p").value = "";
     $("#login").classList.add("hidden");
     connect();
@@ -196,19 +196,19 @@ async function login() {
 }
 function showLogin() {
   $("#login").classList.remove("hidden");
-  state.running = false; setOrb("off", "HORS LIGNE"); setDot("bad");
+  state.running = false; setOrb("off", "OFFLINE"); setDot("bad");
 }
 
 /* ---------- WebSocket JSON-RPC ---------- */
 function rpc(method, params) {
   return new Promise((resolve, reject) => {
-    if (!state.ws || state.ws.readyState !== 1) return reject(new Error("ws fermé"));
+    if (!state.ws || state.ws.readyState !== 1) return reject(new Error("ws closed"));
     const id = String(++rpc.seq);
     const onMsg = (ev) => {
       let m; try { m = JSON.parse(ev.data); } catch { return; }
       if (m.id !== id) return;
       state.ws.removeEventListener("message", onMsg);
-      m.error ? reject(new Error(m.error.message || "erreur rpc")) : resolve(m.result);
+      m.error ? reject(new Error(m.error.message || "rpc error")) : resolve(m.result);
     };
     state.ws.addEventListener("message", onMsg);
     state.ws.send(JSON.stringify({ jsonrpc: "2.0", id, method, params: params || {} }));
@@ -223,42 +223,42 @@ async function connect() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(proto + "//" + location.host + "/api/ws?ticket=" + encodeURIComponent(t.ticket));
     state.ws = ws;
-    ws.onclose = () => { setDot("bad"); setOrb("off", "COUPÉ"); state.running = false; };
+    ws.onclose = () => { setDot("bad"); setOrb("off", "MUTED"); state.running = false; };
     ws.onerror = () => setDot("bad");
     ws.onmessage = onFrame;
     await new Promise((res, rej) => { ws.onopen = res; setTimeout(rej, 8000, new Error("timeout ws")); });
     await rpc("client.capabilities", { server_requests: false });
     const s = await rpc("session.create", {});
     state.sid = s.session_id;
-    try { await rpc("session.title", { session_id: state.sid, title: "vocal téléphone" }); } catch {}
+    try { await rpc("session.title", { session_id: state.sid, title: "phone voice" }); } catch {}
     setDot("ok");
     if (!state.audioCtx) {
       try { await startMic(); }
       catch (e) {
-        addMsg("sys", "micro indisponible (" + (e.message || e) + ") : mode texte seulement");
+        addMsg("sys", "microphone unavailable (" + (e.message || e) + "): text mode only");
       }
     }
     state.running = true;
-    setOrb("listening", "PARLER");
-    setHint(state.micStream ? "Parle, je t'écoute" : "écris ta question ci-dessous");
-    sys("session " + state.sid + " · modèle " + (s.info && s.info.model || "?"));
+    setOrb("listening", "TALK");
+    setHint(state.micStream ? "Speak, I'm listening" : "type your question below");
+    sys("session " + state.sid + " · model " + (s.info && s.info.model || "?"));
     requestWakeLock();
     warmVoice();
     setInterval(() => { if (document.visibilityState === "visible") warmVoice(); }, 300000);
   } catch (e) {
     console.error(e);
-    setDot("bad"); setOrb("off", "ERREUR");
-    setHint("Connexion impossible : " + (e.message || e));
+    setDot("bad"); setOrb("off", "ERROR");
+    setHint("Connection failed: " + (e.message || e));
   }
 }
 
-/* ---------- trames serveur ---------- */
+/* ---------- server frames ---------- */
 function onFrame(ev) {
   let m; try { m = JSON.parse(ev.data); } catch { return; }
-  // requête serveur -> client : on refuse proprement (pas de UI ici)
+  // server request -> client: we refuse cleanly (no UI here)
   if (m.method && m.id !== undefined && m.id !== null) {
     state.ws.send(JSON.stringify({ jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "not supported by voice client" } }));
-    sys("demande « " + m.method + " » ignorée (réponds sur le desktop)");
+    sys("request '" + m.method + "' ignored (answer on the desktop)");
     return;
   }
   if (m.method !== "event") return;
@@ -270,23 +270,23 @@ function onFrame(ev) {
       break;
     }
     case "tool.start":
-      addMsg("tool", "⚙ " + (p.name || p.tool || "outil"));
+      addMsg("tool", "⚙ " + (p.name || p.tool || "tool"));
       break;
     case "message.complete": {
       const full = p.text || "";
       if (full) finishText(full);
       state.busy = false;
-      if (state.running && !state.speaking) { setOrb("listening", "PARLER"); setHint("Parle, je t'écoute"); }
+      if (state.running && !state.speaking) { setOrb("listening", "TALK"); setHint("Speak, I'm listening"); }
       break;
     }
     case "error":
-      sys("erreur agent : " + (p.message || JSON.stringify(p).slice(0, 120)));
+      sys("agent error: " + (p.message || JSON.stringify(p).slice(0, 120)));
       state.busy = false;
       break;
   }
 }
 
-/* ---------- texte -> parole ---------- */
+/* ---------- text -> speech ---------- */
 let liveEl = null, fullText = "";
 function feed(t) {
   fullText += t;
@@ -319,14 +319,14 @@ function flushSentences(force) {
   }
 }
 
-/* file d'attente audio */
+/* audio queue */
 function speakable(t) {
   return String(t)
     .replace(/```[\s\S]*?```/g, " code ")
     .replace(/`([^`]*)`/g, "$1")
     .replace(/^\s*\|.*\|\s*$/gm, " ")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/https?:\/\/\S+/g, " lien ")
+    .replace(/https?:\/\/\S+/g, " link ")
     .replace(/[*_#>~|]+/g, " ")
     .replace(/[•·]/g, " ")
     .replace(/\s+/g, " ")
@@ -338,8 +338,8 @@ function enqueue(text) {
   state.queue.push(clean);
   pump();
 }
-/* cache d'anticipation : la phrase suivante est synthétisée pendant que la
-   précédente se joue (le premier appel à froid coûte ~4 s, les suivants ~0,5 s) */
+/* prefetch cache: the next sentence is synthesized while the
+   previous one plays (the first cold call costs ~4 s, the next ones ~0.5 s) */
 const speechCache = new Map();
 function cachedSpeech(text) {
   let entry = speechCache.get(text);
@@ -361,7 +361,7 @@ async function pump() {
   state.playing = true;
   if (!state.speaking) { state.speaking = true; }
   const ac = new AbortController(); state.playAbort = ac;
-  setOrb("speaking", "PARLE"); setHint("je réponds");
+  setOrb("speaking", "SPEAKING"); setHint("answering");
   try {
     const pending = cachedSpeech(text);
     prefetchQueued();
@@ -377,7 +377,7 @@ async function pump() {
   }
 }
 
-/* ---------- synthèse (service de réglages de voix) ---------- */
+/* ---------- synthesis (voice settings service) ---------- */
 function voiceParams() {
   return { engine: settings.engine, voice: settings.voice, rate: settings.rate, pitch: settings.pitch };
 }
@@ -391,11 +391,11 @@ async function fetchSpeech(text, signal) {
     });
     if (!r.ok) throw new Error("voice-api " + r.status);
     const blob = await r.blob();
-    if (!blob.size) throw new Error("audio vide");
+    if (!blob.size) throw new Error("empty audio");
     return blob;
   } catch (e) {
     if (e.name === "AbortError") throw e;
-    console.warn("voice-api indisponible, repli sur le TTS Hermes", e);
+    console.warn("voice-api unavailable, falling back to Hermes TTS", e);
     const r = await fetch("/api/audio/speak", {
       method: "POST", credentials: "same-origin",
       headers: { "content-type": "application/json" },
@@ -421,7 +421,7 @@ function playBlob(blob, signal) {
 function onSpeechDone() {
   if (!state.speaking) return;
   state.speaking = false;
-  if (state.running) { setOrb("listening", "PARLER"); setHint("Parle, je t'écoute"); }
+  if (state.running) { setOrb("listening", "TALK"); setHint("Speak, I'm listening"); }
 }
 function playDataUrl(url, signal) {
   return new Promise((resolve) => {
@@ -453,7 +453,7 @@ async function startMic() {
   src.connect(an);
   state.analyser = an;
   state.data = new Float32Array(an.fftSize);
-  // niveau visuel + décisions VAD
+  // visual level + VAD decisions
   meter.innerHTML = "";
   for (let i = 0; i < 9; i++) meter.appendChild(document.createElement("i"));
   const bars = [...meter.children];
@@ -477,7 +477,7 @@ function onLevel(rms) {
   const speech = Math.max(state.noiseFloor * 3.2, 0.02);
   const loud = rms > speech;
 
-  // barge-in : on parle pendant la réponse
+  // barge-in: speaking during the answer
   if (state.speaking && loud) {
     if (!loudSince) loudSince = now;
     if (now - loudSince > 260) { loudSince = 0; bargeIn(); beginRecording(); }
@@ -486,7 +486,7 @@ function onLevel(rms) {
   loudSince = 0;
 
   if (!state.recording) {
-    // calibration du bruit de fond quand tout est calme
+    // background noise calibration when everything is quiet
     if (!state.speaking && !state.busy && rms < 0.02) state.noiseFloor = state.noiseFloor * 0.97 + rms * 0.03;
     return;
   }
@@ -495,18 +495,18 @@ function onLevel(rms) {
     lastLoudAt = now;
     return;
   }
-  // fin de prise : on a entendu de la voix, puis 1,1 s de silence
+  // end of capture: we heard a voice, then 1.1 s of silence
   if (speechAboveAt && now - lastLoudAt > 1100 && now - speechAboveAt > 350) stopRecording();
 }
 
-/* ---------- enregistrement ---------- */
+/* ---------- recording ---------- */
 function beginRecording() {
   if (state.recording || !state.micStream) return;
   const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
     : (MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "");
   let rec;
   try { rec = new MediaRecorder(state.micStream, mime ? { mimeType: mime } : undefined); }
-  catch (e) { sys("enregistrement impossible : " + e.message); return; }
+  catch (e) { sys("recording failed: " + e.message); return; }
   state.chunks = [];
   rec.ondataavailable = (e) => { if (e.data && e.data.size) state.chunks.push(e.data); };
   rec.onstop = () => transcribe(rec.mimeType || mime || "audio/webm");
@@ -514,8 +514,8 @@ function beginRecording() {
   state.mediaRec = rec;
   state.recording = true;
   state.speechAboveAt = 0; state.silenceSince = 0;
-  setOrb("listening", "J'ÉCOUTE");
-  setHint("je t'écoute…");
+  setOrb("listening", "LISTENING");
+  setHint("listening…");
   clearTimeout(state.maxTimer);
   state.maxTimer = setTimeout(() => { if (state.recording) stopRecording(); }, 60000);
 }
@@ -523,7 +523,7 @@ function stopRecording() {
   if (!state.recording) return;
   state.recording = false;
   clearTimeout(state.maxTimer);
-  setOrb("thinking", "…"); setHint("transcription");
+  setOrb("thinking", "…"); setHint("transcribing");
   try { state.mediaRec.stop(); } catch {}
 }
 function blobToDataUrl(blob) {
@@ -537,32 +537,32 @@ function blobToDataUrl(blob) {
 async function transcribe(mime) {
   const blob = new Blob(state.chunks, { type: mime });
   state.chunks = [];
-  if (blob.size < 1200) { setOrb("listening", "PARLER"); setHint("Parle, je t'écoute"); return; }
+  if (blob.size < 1200) { setOrb("listening", "TALK"); setHint("Speak, I'm listening"); return; }
   try {
     const dataUrl = await blobToDataUrl(blob);
     const r = await api("/api/audio/transcribe", { data_url: dataUrl, mime_type: mime.split(";")[0] });
     const text = (r.transcript || "").trim();
-    if (!text) { setOrb("listening", "PARLER"); setHint("rien entendu, réessaie"); return; }
+    if (!text) { setOrb("listening", "TALK"); setHint("nothing heard, try again"); return; }
     addMsg("user", text);
-    if (state.stopPhrase && /^(stop|arrete|arrête|silence)[.!]?$/i.test(text)) { sys("arrêt demandé"); return; }
+    if (state.stopPhrase && /^(stop|arrete|arrête|silence)[.!]?$/i.test(text)) { sys("stop requested"); return; }
     submit(text);
   } catch (e) {
-    sys("transcription : " + (e.message || e));
-    setOrb("listening", "PARLER"); setHint("Parle, je t'écoute");
+    sys("transcription: " + (e.message || e));
+    setOrb("listening", "TALK"); setHint("Speak, I'm listening");
   }
 }
 
-/* ---------- tour agent ---------- */
+/* ---------- agent turn ---------- */
 async function submit(text) {
-  if (!state.ws || state.ws.readyState !== 1) { sys("hors ligne"); return; }
+  if (!state.ws || state.ws.readyState !== 1) { sys("offline"); return; }
   state.busy = true;
-  setOrb("thinking", "…"); setHint("Hermes réfléchit");
+  setOrb("thinking", "…"); setHint("Hermes is thinking");
   liveEl = null; fullText = ""; state.buf = "";
   try { await rpc("prompt.submit", { session_id: state.sid, text }); }
-  catch (e) { sys("envoi : " + (e.message || e)); state.busy = false; }
+  catch (e) { sys("send: " + (e.message || e)); state.busy = false; }
 }
 
-/* ---------- veille ---------- */
+/* ---------- wake lock ---------- */
 async function requestWakeLock() {
   try { if ("wakeLock" in navigator) state.wakeLock = await navigator.wakeLock.request("screen"); } catch {}
 }
@@ -570,7 +570,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && state.running) requestWakeLock();
 });
 
-/* ---------- réglages de voix ---------- */
+/* ---------- voice settings ---------- */
 const settings = { engine: "edge", voice: "", rate: 0, pitch: 0 };
 let catalogue = null;
 let saveTimer = null;
@@ -599,14 +599,14 @@ function scheduleSave() {
       });
       const j = await r.json();
       if (j.state) Object.assign(settings, j.state);
-      setHint("voix enregistrée");
-    } catch (e) { setHint("enregistrement impossible"); }
+      setHint("voice saved");
+    } catch (e) { setHint("save failed"); }
   }, 400);
 }
 async function loadVoices() {
   const list = $("#voiceList");
   if (catalogue) { renderVoices(); return; }
-  list.innerHTML = '<div class="hintline">chargement du catalogue…</div>';
+  list.innerHTML = '<div class="hintline">loading the catalog…</div>';
   try {
     const r = await fetch("/voice/api/voices", { credentials: "same-origin" });
     const j = await r.json();
@@ -617,7 +617,7 @@ async function loadVoices() {
     if (!settings.voice && catalogue.length) settings.voice = catalogue[0].id;
     renderVoices();
   } catch (e) {
-    list.innerHTML = '<div class="hintline">catalogue indisponible (service de voix injoignable)</div>';
+    list.innerHTML = '<div class="hintline">catalog unavailable (voice service unreachable)</div>';
   }
 }
 function renderVoices() {
@@ -642,11 +642,11 @@ function renderVoices() {
     name.appendChild(small);
     const play = document.createElement("button");
     play.textContent = "▶";
-    play.title = "écouter";
+    play.title = "listen";
     play.onclick = () => previewVoice(v.id);
     const pick = document.createElement("button");
     pick.className = "pick";
-    pick.textContent = v.id === settings.voice ? "✓" : "Choisir";
+    pick.textContent = v.id === settings.voice ? "✓" : "Choose";
     pick.onclick = () => {
       settings.voice = v.id;
       settings.engine = v.engine || "edge";
@@ -677,7 +677,7 @@ async function previewVoice(voiceId) {
     text: "Salut Marc, voilà ma voix. Elle te va ?",
   };
   try {
-    setHint("aperçu…");
+    setHint("preview…");
     const r = await fetch("/voice/api/preview", {
       method: "POST", credentials: "same-origin",
       headers: { "content-type": "application/json" },
@@ -687,9 +687,9 @@ async function previewVoice(voiceId) {
     const blob = await r.blob();
     bargeIn();
     await playBlob(blob, null);
-    setHint("aperçu terminé");
+    setHint("preview finished");
   } catch (e) {
-    setHint("aperçu impossible : " + (e.message || e));
+    setHint("preview failed: " + (e.message || e));
   }
 }
 
@@ -714,9 +714,9 @@ $("#btnToggle").addEventListener("click", () => {
     state.running = false;
     if (state.recording) stopRecording();
     bargeIn();
-    setOrb("off", "COUPÉ"); setHint("appuie sur le bouton pour reprendre");
+    setOrb("off", "MUTED"); setHint("tap the button to resume");
   } else {
-    setOrb("listening", "PARLER"); setHint("Parle, je t'écoute");
+    setOrb("listening", "TALK"); setHint("Speak, I'm listening");
     state.running = true;
   }
 });
@@ -742,7 +742,7 @@ $("#pitch").addEventListener("input", (e) => {
   scheduleSave();
 });
 
-/* ---------- démarrage ---------- */
+/* ---------- startup ---------- */
 loadSettings();
 (async () => {
   try {
@@ -754,7 +754,7 @@ loadSettings();
     }
     connect();
   } catch (e) {
-    addMsg("sys", "serveur injoignable : " + (e.message || e));
+    addMsg("sys", "server unreachable: " + (e.message || e));
     showLogin();
   }
 })();

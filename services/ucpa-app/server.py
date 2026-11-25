@@ -1,29 +1,29 @@
-"""ucpa.marcpartensky.com : interface de recherche des sejours UCPA.
+"""ucpa.marcpartensky.com: UCPA stays search interface.
 
-But : repondre a une question que le site UCPA rend penible. Il faut choisir
-une date dans un menu pour voir un prix, les prix affiches sont des minima de
-saison, les formules (Mini / Mi-temps / Plein-temps) ne sont pas filtrables, et
-l'age est un critere d'eligibilite cache dans la fiche.
+Goal: answer a question that the UCPA site makes painful. You must choose
+a date in a menu to see a price, the displayed prices are season
+minima, the formulas (Mini / Half-time / Full-time) are not filterable, and
+age is an eligibility criterion hidden in the listing.
 
-Ici : un catalogue unique, toutes sessions datees avec prix, places et statut
-de depart, filtre et trie cote navigateur.
+Here: a single catalog, all sessions dated with price, spots and departure
+status, filtered and sorted on the browser side.
 
-Architecture : un serveur HTTP stdlib qui sert une page statique et un JSON.
-Le catalogue est construit AVEC le client du serveur MCP (`mcp/modules/ucpa.py`,
-importe par chemin) : une seule implementation de l'API UCPA dans le depot.
-Le catalogue est mis en cache sur disque par fenetre de dates (TTL 3 h) et
-reconstruit en tache de fond quand il est perime, donc une requete ne bloque
-jamais 70 s sur un balayage UCPA.
+Architecture: a stdlib HTTP server that serves a static page and a JSON.
+The catalog is built WITH the MCP server's client (`mcp/modules/ucpa.py`,
+imported by path): a single implementation of the UCPA API in the repo.
+The catalog is cached on disk per date window (TTL 3 h) and
+rebuilt in a background task when it is stale, so a request never blocks
+70 s on a UCPA sweep.
 
-Endpoints :
-  GET  /                 la page (index.html, a cote de ce fichier)
-  GET  /healthz          sonde de sante pour Pangolin
-  GET  /api/catalog      catalogue (from, to, activities en query, optionnels)
-  GET  /api/meta         etat du cache et de la derniere construction
-  POST /api/refresh      force une reconstruction (rend tout de suite, async)
+Endpoints:
+  GET  /                 the page (index.html, next to this file)
+  GET  /healthz          health probe for Pangolin
+  GET  /api/catalog      catalog (from, to, activities in query, optional)
+  GET  /api/meta         cache and last build status
+  POST /api/refresh      forces a rebuild (returns immediately, async)
 
-Env : UCPA_MODULE, UCPA_APP_STATE (defaut /var/lib/ucpa-app), UCPA_APP_HOST,
-UCPA_APP_PORT (defaut 9175), UCPA_APP_TTL (defaut 10800).
+Env: UCPA_MODULE, UCPA_APP_STATE (default /var/lib/ucpa-app), UCPA_APP_HOST,
+UCPA_APP_PORT (default 9175), UCPA_APP_TTL (default 10800).
 """
 
 import importlib.util
@@ -37,8 +37,8 @@ from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# En Nix, server.py est copie seul dans le store : la page est donc passee par
-# UCPA_APP_INDEX (chemin du store), avec repli sur le fichier voisin en dev.
+# In Nix, server.py is copied alone into the store: the page is therefore passed via
+# UCPA_APP_INDEX (store path), with a fallback on the neighboring file in dev.
 INDEX = os.environ.get("UCPA_APP_INDEX") or os.path.join(HERE, "index.html")
 MODULE = os.environ.get(
     "UCPA_MODULE", "/home/marc/git/nixos/mcp/modules/ucpa.py"
@@ -63,7 +63,7 @@ _status = {}
 def _load_client():
     spec = importlib.util.spec_from_file_location("ucpa_client", MODULE)
     if spec is None or spec.loader is None:
-        raise RuntimeError(f"module UCPA introuvable : {MODULE}")
+        raise RuntimeError(f"UCPA module not found: {MODULE}")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -72,18 +72,18 @@ def _load_client():
 ucpa = _load_client()
 
 
-# --------------------------------------------------------------- vocabulaire
+# ----------------------------------------------------------------- vocabulary
 
 FORMULAS = [
-    ("mini", "Mini", "sans cours"),
-    ("mi-temps", "Mi-temps", "12 h de cours"),
-    ("plein-temps", "Plein-temps", "23 h de cours"),
-    ("decouverte", "Découverte", "initiation"),
-    ("apprendre", "Apprendre", "cours débutant"),
-    ("hors-piste", "Hors-piste", "hors piste encadré"),
-    ("rando", "Rando", "peaux de phoque"),
-    ("nordique", "Nordique", "ski de fond"),
-    ("autre", "Autre", ""),
+    ("mini", "Mini", "no lessons"),
+    ("mi-temps", "Half-time", "12 h of lessons"),
+    ("plein-temps", "Full-time", "23 h of lessons"),
+    ("decouverte", "Discovery", "intro"),
+    ("apprendre", "Learn", "beginner lessons"),
+    ("hors-piste", "Off-piste", "guided off-piste"),
+    ("rando", "Touring", "climbing skins"),
+    ("nordique", "Nordic", "cross-country skiing"),
+    ("autre", "Other", ""),
 ]
 
 
@@ -124,7 +124,7 @@ def _family(activity, name):
 
 
 def _image_url(path, width=240):
-    """Chemin relatif rendu par le CDN image d'UCPA, ou None."""
+    """Relative path returned by the UCPA image CDN, or None."""
     if not path:
         return None
     if path.startswith("http"):
@@ -154,7 +154,7 @@ def _load_cached(key):
 
 
 def _build(key, date_from, date_to, activities):
-    """Balayage UCPA complet : une entree par sejour, toutes ses sessions."""
+    """Full UCPA sweep: one entry per stay, all its sessions."""
     started = time.time()
     filters = ucpa._build_filters(activities, date_from, date_to)
     total, products = ucpa._collect(filters, sortby="prix_sort_asc", max_items=5000)
@@ -164,7 +164,7 @@ def _build(key, date_from, date_to, activities):
     def work(entry):
         try:
             detail = ucpa._detail(entry["uuid"])
-        except Exception as exc:  # noqa: BLE001 (un sejour en echec ne bloque pas)
+        except Exception as exc:  # noqa: BLE001 (a failing stay does not block)
             failures.append({"uuid": entry["uuid"], "error": str(exc)[:160]})
             return None
         sessions = ucpa._sessions_from(detail, date_from, date_to)
@@ -299,7 +299,7 @@ def get_catalog(date_from, date_to, activities, force=False):
     return key, cached, stale
 
 
-# ------------------------------------------------------------------ serveur
+# ------------------------------------------------------------------ server
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -361,7 +361,7 @@ class Handler(BaseHTTPRequestHandler):
                         {
                             "building": True,
                             "key": key,
-                            "message": "premier balayage UCPA en cours",
+                            "message": "first UCPA sweep in progress",
                         }
                     ),
                 )
@@ -386,12 +386,12 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    # Premier demarrage : si aucun catalogue n'existe, on le construit en
-    # tache de fond tout de suite, la page affiche l'attente.
+    # First startup: if no catalog exists, we build it in a
+    # background task right away, the page shows the wait.
     get_catalog(DEFAULT_FROM, DEFAULT_TO, DEFAULT_ACTIVITIES)
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     server.daemon_threads = True
-    print(f"ucpa-app sur http://{HOST}:{PORT}", flush=True)
+    print(f"ucpa-app on http://{HOST}:{PORT}", flush=True)
     server.serve_forever()
 
 

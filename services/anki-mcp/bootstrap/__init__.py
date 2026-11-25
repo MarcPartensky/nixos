@@ -1,23 +1,23 @@
-"""Amorce le compte du serveur de sync pour l'instance headless AnkiMCP.
+"""Bootstraps the sync server account for the headless AnkiMCP instance.
 
-Anki n'expose aucun chemin non interactif pour renseigner « serveur de sync
-personnalisé + compte + mot de passe » : la saisie passe par l'interface
-graphique. Ce module le fait une fois au chargement du profil, puis persiste
-la clé de sync (hkey) dans le profil, exactement comme le ferait
-`aqt.sync` après un login réussi : c'est ce que lit ensuite `mw.pm.sync_auth()`,
-donc l'outil `sync` de l'addon AnkiMCP.
+Anki exposes no non-interactive path to set "custom sync server
++ account + password": the entry goes through the graphical
+interface. This module does it once when the profile loads, then persists
+the sync key (hkey) into the profile, exactly as `aqt.sync` would
+after a successful login: this is what `mw.pm.sync_auth()` reads next,
+hence the `sync` tool of the AnkiMCP addon.
 
-Variables d'environnement attendues (posées par le service systemd) :
-  ANKI_SYNC_USER           compte sur le serveur de sync
-  ANKI_SYNC_ENDPOINT       URL du serveur, ex. https://anki.marcpartensky.com
-  ANKI_SYNC_PASSWORD_FILE  fichier contenant le mot de passe (LoadCredential)
+Expected environment variables (set by the systemd service):
+  ANKI_SYNC_USER           account on the sync server
+  ANKI_SYNC_ENDPOINT       server URL, e.g. https://anki.marcpartensky.com
+  ANKI_SYNC_PASSWORD_FILE  file containing the password (LoadCredential)
 
-Idempotent : si le profil a déjà une clé de sync, rien n'est fait. La sync
-automatique au démarrage est désactivée : la première mise en accord avec le
-serveur (collection locale vide) demande une sync unidirectionnelle, et
-l'assistant Anki l'affiche en boîte de dialogue modale, intenable sans écran.
-C'est l'outil `sync` du serveur MCP qui pilote la sync, avec un choix de
-direction explicite.
+Idempotent: if the profile already has a sync key, nothing is done. Automatic
+sync at startup is disabled: the first reconciliation with the
+server (empty local collection) requires a one-way sync, and
+the Anki wizard shows it in a modal dialog, unmanageable without a screen.
+It is the `sync` tool of the MCP server that drives the sync, with an explicit
+direction choice.
 """
 
 import os
@@ -26,7 +26,7 @@ from aqt import gui_hooks, mw
 
 _TAG = "[ankimcp-sync-bootstrap]"
 
-# Évite d'empiler les tentatives si le profil est rouvert dans le même run.
+# Avoids stacking attempts if the profile is reopened in the same run.
 _done = False
 
 # Retries after a failure: in a headless service the profile_did_open hook never
@@ -47,13 +47,13 @@ def _bootstrap() -> None:
     _done = True
 
     try:
-        # Sans écran, une sync automatique qui tombe sur un conflit ouvre un
-        # dialogue modal : on la désactive, l'agent déclenche la sync lui-même.
+        # Without a screen, an automatic sync that hits a conflict opens a
+        # modal dialog: we disable it, the agent triggers the sync itself.
         if mw.pm.profile.get("autoSync"):
             mw.pm.profile["autoSync"] = False
 
         if mw.pm.profile.get("syncKey"):
-            _log("profil déjà rattaché au serveur de sync, rien à faire")
+            _log("profile already attached to the sync server, nothing to do")
             return
 
         user = os.environ.get("ANKI_SYNC_USER", "")
@@ -61,7 +61,7 @@ def _bootstrap() -> None:
         password_file = os.environ.get("ANKI_SYNC_PASSWORD_FILE", "")
         if not (user and endpoint and password_file):
             _log("ANKI_SYNC_USER/ANKI_SYNC_ENDPOINT/ANKI_SYNC_PASSWORD_FILE "
-                 "incomplets, amorçage ignoré")
+                 "incomplete, bootstrap skipped")
             return
 
         with open(password_file, encoding="utf-8") as handle:
@@ -71,10 +71,10 @@ def _bootstrap() -> None:
         mw.pm.set_sync_key(auth.hkey)
         mw.pm.set_sync_username(user)
         mw.pm.set_custom_sync_url(endpoint)
-        _log(f"compte {user} rattaché à {endpoint}")
-    except Exception as exc:  # réseau, identifiants, schéma : on réessaiera
+        _log(f"account {user} attached to {endpoint}")
+    except Exception as exc:  # network, credentials, schema: we will retry
         _done = False
-        _log(f"amorçage échoué ({type(exc).__name__}: {exc})")
+        _log(f"bootstrap failed ({type(exc).__name__}: {exc})")
         if _retries_left > 0:
             _retries_left -= 1
             _log(f"retry in {_retry_delay_ms // 1000} s "

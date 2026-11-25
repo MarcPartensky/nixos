@@ -1,29 +1,29 @@
 # services/vaultwarden-mcp/default.nix
-# Serveur MCP Vaultwarden (jr2804/vaultwarden-mcp) : binaire Rust, stdio.
-# Binaire téléchargé depuis GitHub releases (plus simple que crate2nix).
+# Vaultwarden MCP server (jr2804/vaultwarden-mcp): Rust binary, stdio.
+# Binary downloaded from GitHub releases (simpler than crate2nix).
 #
-# PÉRIMÈTRE (décision marc, 10/11/2026) : ce serveur pointe sur le compte
-# TECHNIQUE hermes@marcpartensky.com, pas sur le compte de marc. Le mot de
-# passe maître de ce compte vit dans secrets/vaultwarden-agent.yml (âge vers
-# la seule clé de tower) parce qu'il faut l'ouvrir sans intervention humaine.
-# La séparation est donc de PRIVILÈGE, pas de surface : elle garantit que le
-# navigateur piloté en CDP ne voit jamais le coffre principal, elle ne protège
-# pas contre une compromission de tower.
+# SCOPE (marc's decision, 10/11/2026): this server points to the
+# TECHNICAL account hermes@marcpartensky.com, not marc's account. The master
+# password of this account lives in secrets/vaultwarden-agent.yml (age toward
+# tower's only key) because it must be opened without human intervention.
+# The separation is therefore of PRIVILEGE, not of surface: it guarantees that the
+# browser driven over CDP never sees the main vault, it does not protect
+# against a compromise of tower.
 #
-# RÈGLE DE CONTENU : ce coffre ne reçoit que des capacités révocables ou sans
-# pouvoir financier (portails en lecture, comptes d'outils, API révocables).
-# JAMAIS : IBKR, Caisse d'Épargne, Chase, Wise, Bangkok Bank, la messagerie
-# (pivot de réinitialisation), le code de récupération du coffre principal,
-# ni les graines 2FA.
+# CONTENT RULE: this vault only receives revocable capabilities or ones without
+# financial power (read-only portals, tool accounts, revocable APIs).
+# NEVER: IBKR, Caisse d'Epargne, Chase, Wise, Bangkok Bank, the mail
+# (reset pivot), the recovery code of the main vault,
+# nor the 2FA seeds.
 #
-# Le compte a été créé via POST /identity/accounts/register (crypto cliente
-# PBKDF2 600k + HKDF-Expand enc/mac, RSA 2048, EncString type 2), puis la
-# dérivation a été VÉRIFIÉE en se connectant avec le CLI officiel `bw login`
-# (2026.4.2) : c'est ce test qui prouve que le compte est utilisable par un
-# client officiel et pas seulement par le script de création.
+# The account was created via POST /identity/accounts/register (client crypto
+# PBKDF2 600k + HKDF-Expand enc/mac, RSA 2048, EncString type 2), then the
+# derivation was VERIFIED by logging in with the official CLI `bw login`
+# (2026.4.2): it is this test that proves the account is usable by an
+# official client and not only by the creation script.
 #
-# Aucun pouvoir de passer un ordre ou de virer de l'argent : le coffre ne sert
-# qu'à restituer des identifiants de connexion.
+# No power to place an order or to transfer money: the vault only serves
+# to return login credentials.
 {
   pkgs,
   lib,
@@ -35,7 +35,7 @@
     version = "0.1.0";
     src = pkgs.fetchurl {
       url = "https://github.com/jr2804/vaultwarden-mcp/releases/latest/download/vaultwarden-mcp-linux-x86_64";
-      # Vérifié le 10/11/2026 : le binaire servi par `latest` donne bien ce hash
+      # Verified on 10/11/2026: the binary served by `latest` does give this hash
       # (sha256 hex cb8eff7a2678dd03b8661eac79ca4f7a677e86be17ff16323bc53318b8497fc4).
       sha256 = "sha256-y47/eiZ43QO4Zh6secpPemd+hr4X/xYyO8UzGLhJf8Q=";
     };
@@ -51,9 +51,9 @@
     };
   };
 
-  # Wrapper : le secret est lu AU LANCEMENT depuis le fichier sops (comme
-  # wise-mcp), donc il n'apparaît ni dans la closure nix ni dans un fichier
-  # d'environnement lisible par tous.
+  # Wrapper: the secret is read AT STARTUP from the sops file (like
+  # wise-mcp), so it appears neither in the nix closure nor in an
+  # environment file readable by everyone.
   wrapper = pkgs.writeShellScript "vaultwarden-mcp-hermes" ''
     set -euo pipefail
     export VAULTWARDEN_SERVER="https://vault.marcpartensky.com"

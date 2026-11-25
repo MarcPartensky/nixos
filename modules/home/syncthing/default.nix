@@ -1,10 +1,10 @@
-# Module home-manager : Syncthing de marc (tower, laptop, deck, Mac).
+# home-manager module: Marc's Syncthing (tower, laptop, deck, Mac).
 #
-# Le même fichier est importé par users/marc/home.nix (Linux, partagé par
-# tower/laptop/deck) et par users/mac/home.nix (Mac, via nix-darwin). La liste
-# des pairs, les dossiers partagés et le durcissement réseau viennent de
-# services/syncthing/{mesh,settings}.nix ; settings.nix ne retient que les
-# dossiers qui ont un chemin pour l'OS courant (le Mac n'a pas les photos).
+# The same file is imported by users/marc/home.nix (Linux, shared by
+# tower/laptop/deck) and by users/mac/home.nix (Mac, via nix-darwin). The list
+# of peers, the shared folders and the network hardening come from
+# services/syncthing/{mesh,settings}.nix ; settings.nix keeps only the
+# folders that have a path for the current OS (the Mac does not have the photos).
 {
   pkgs,
   lib,
@@ -21,17 +21,17 @@ in {
 
     settings =
       {
-        # `options` (pluriel) est la clé attendue par le module home-manager,
-        # qui fait PUT /rest/config/options. `option` (singulier) n'existe pas
-        # côté API : Syncthing répond 404/405 et le réglage est perdu.
+        # `options` (plural) is the key expected by the home-manager module,
+        # which does PUT /rest/config/options. `option` (singular) does not exist
+        # on the API side: Syncthing answers 404/405 and the setting is lost.
         options = fleet.options;
         devices = fleet.devices;
         folders = fleet.folders;
       }
       // lib.optionalAttrs (!isDarwin) {
-        # L'UI est derrière la ressource Pangolin syncthing.marcpartensky.com :
-        # le proxy conserve le Host public, que Syncthing refuse par défaut
-        # (403 « Host check error »). Sans objet sur le Mac.
+        # The UI is behind the Pangolin resource syncthing.marcpartensky.com:
+        # the proxy keeps the public Host, which Syncthing refuses by default
+        # (403 "Host check error"). Not relevant on the Mac.
         gui.insecureSkipHostCheck = true;
       };
 

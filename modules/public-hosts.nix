@@ -1,16 +1,16 @@
-# Noms PUBLICS servis par le proxy interne de tower avec un certificat
-# Let's Encrypt : `<hote> = "<nom court du backend>"`.
+# PUBLIC names served by tower's internal proxy with a Let's Encrypt
+# certificate: `<host> = "<backend short name>"`.
 #
-# Pourquoi un domaine public alors que le nom ne sert que dans le tailnet :
-# aucun CA public ne signe un nom a label unique (`jellyfin`), et Let's Encrypt
-# exige un domaine reel pour DNS-01. L'interet est la CONFIANCE : un certificat
-# public est accepte par tout appareil (Mac, Android et son app Jellyfin, TV)
-# sans installer de racine privee.
+# Why a public domain when the name is only used in the tailnet:
+# no public CA signs a single-label name (`jellyfin`), and Let's Encrypt
+# requires a real domain for DNS-01. The interest is TRUST: a public certificate
+# is accepted by any device (Mac, Android and its Jellyfin app, TV)
+# without installing a private root.
 #
-# La RESOLUTION reste celle du tailnet : le nom n'existe que dans le DNS interne
-# (rewrites AdGuard des deux instances, plus /etc/hosts des postes macOS et
-# NixOS). Aucun enregistrement public ne pointe vers l'IP mesh, donc rien de ce
-# reseau n'apparait dans une zone publique.
+# The RESOLUTION remains that of the tailnet: the name only exists in the internal DNS
+# (AdGuard rewrites of the two instances, plus /etc/hosts of the macOS and
+# NixOS machines). No public record points to the mesh IP, so nothing of this
+# network appears in a public zone.
 {
   "jf.marcpartensky.com" = "jellyfin";
 }

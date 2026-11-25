@@ -28,18 +28,18 @@
     </header>
 
     <main>
-      <section class="config" id="config" aria-label="Réglages du test">
+      <section class="config" id="config" aria-label="Test settings">
         <div class="group" id="group-mode"></div>
         <span class="config-sep" aria-hidden="true"></span>
         <div class="group" id="group-amount"></div>
         <span class="config-sep" aria-hidden="true"></span>
         <label class="select-group">
           <span class="sr-only" data-i18n="config.lang">Langue</span>
-          <select id="lang-select" aria-label="Langue"></select>
+          <select id="lang-select" aria-label="Language"></select>
         </label>
         <label class="select-group">
           <span class="sr-only" data-i18n="config.layout">Disposition</span>
-          <select id="layout-select" aria-label="Disposition du clavier">
+          <select id="layout-select" aria-label="Keyboard layout">
             <option value="qwerty">QWERTY</option>
             <option value="azerty">AZERTY</option>
             <option value="bepo">BÉPO</option>
@@ -98,7 +98,7 @@
           autocorrect="off"
           autocapitalize="off"
           spellcheck="false"
-          aria-label="Zone de frappe"
+          aria-label="Typing area"
         />
 
         <div class="stage-actions">
@@ -132,7 +132,7 @@
         </div>
       </section>
 
-      <section class="keyboard" id="keyboard" aria-label="Clavier visuel"></section>
+      <section class="keyboard" id="keyboard" aria-label="On-screen keyboard"></section>
       <p class="foot">
         <span id="foot-lang">—</span> ·
         <span data-i18n="foot.private">Aucune donnée ne quitte ce navigateur</span> ·
@@ -143,7 +143,7 @@
     <dialog id="dlg-stats" class="dialog">
       <form method="dialog" class="dialog-head">
         <h2 data-i18n="stats.title">Historique</h2>
-        <button class="close" value="close" aria-label="Fermer">✕</button>
+        <button class="close" value="close" aria-label="Close">✕</button>
       </form>
       <div class="dialog-body">
         <h3 data-i18n="stats.records">Records</h3>
@@ -157,7 +157,7 @@
     <dialog id="dlg-custom" class="dialog">
       <form method="dialog" class="dialog-head">
         <h2 data-i18n="custom.title">Texte libre</h2>
-        <button class="close" value="close" aria-label="Fermer">✕</button>
+        <button class="close" value="close" aria-label="Close">✕</button>
       </form>
       <div class="dialog-body">
         <p class="muted" data-i18n="custom.hint">
@@ -173,7 +173,7 @@
     <dialog id="dlg-race" class="dialog">
       <form method="dialog" class="dialog-head">
         <h2 data-i18n="race.title">Course à plusieurs</h2>
-        <button class="close" value="close" aria-label="Fermer">✕</button>
+        <button class="close" value="close" aria-label="Close">✕</button>
       </form>
       <div class="dialog-body">
         <p class="muted" data-i18n="race.hint">
@@ -216,21 +216,21 @@
     <dialog id="dlg-tui" class="dialog">
       <form method="dialog" class="dialog-head">
         <h2 data-i18n="tui.title">Version terminal</h2>
-        <button class="close" value="close" aria-label="Fermer">✕</button>
+        <button class="close" value="close" aria-label="Close">✕</button>
       </form>
       <div class="dialog-body prose">
         <p data-i18n="tui.intro">
           Cette page est la version web. Le client terminal se connecte aux mêmes salles.
         </p>
-        <pre><code>typer-race                          # choisit une salle au hasard
-typer-race --room ABCD              # rejoint la salle ABCD
+        <pre><code>typer-race                          # picks a random room
+typer-race --room ABCD              # joins room ABCD
 typer-race --room ABCD --name marc
 typer-race --url ws://127.0.0.1:9146/ws</code></pre>
         <p data-i18n="tui.ttyper">Pour un exercice solo hors ligne, <code>ttyper</code> reste installé :</p>
-        <pre><code>ttyper                       # 50 mots anglais
-ttyper -w 25                 # 25 mots
-ttyper -t 30                 # 30 secondes
-ttyper -l french200          # liste française</code></pre>
+        <pre><code>ttyper                       # 50 English words
+ttyper -w 25                 # 25 words
+ttyper -t 30                 # 30 seconds
+ttyper -l french200          # French list</code></pre>
         <p>
           <span data-i18n="tui.web">Dans le navigateur d'une autre machine :</span>
           <a href="https://terminal.marcpartensky.com" target="_blank" rel="noreferrer noopener">terminal.marcpartensky.com</a>

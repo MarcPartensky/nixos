@@ -1,29 +1,29 @@
 # services/arena-elo-mcp/default.nix
-# Serveur MCP `arena-elo` pour hermes : les classements Elo d'Arena (ex-LMArena,
-# ex-Chatbot Arena) SANS AUTHENTIFICATION, code dans ./arena-elo.py.
+# `arena-elo` MCP server for hermes: Arena's Elo rankings (ex-LMArena,
+# ex-Chatbot Arena) WITHOUT AUTHENTICATION, code in ./arena-elo.py.
 #
-# Source unique : le dataset public lmarena-ai/leaderboard-dataset sur
-# Hugging Face (CC BY 4.0), lu via l'API publique datasets-server. Aucune cle,
-# aucun compte : les notes sont des fit Bradley-Terry de votes humains aveugles,
-# affichees sur l'echelle Elo d'Arena avec intervalle a 95%.
+# Single source: the public dataset lmarena-ai/leaderboard-dataset on
+# Hugging Face (CC BY 4.0), read via the public datasets-server API. No key,
+# no account: the scores are Bradley-Terry fits of blind human votes,
+# displayed on Arena's Elo scale with a 95% interval.
 #
-# Pourquoi ce detour par le dataset : arena.ai n'expose ni MCP ni API publique
-# et sa page leaderboard repond 403 aux clients non navigateur ; l'endpoint
-# /filter de datasets-server exige une auth pour tout WHERE sur une colonne
-# texte. On page donc /rows (5-6 pages par board) et on met en cache disque 6 h
-# sous ARENA_ELO_CACHE. Les lignes arrivent groupees par categorie et triees par
-# rang, ce qui permet d'arreter des qu'une page n'apporte plus rien.
+# Why this detour through the dataset: arena.ai exposes neither MCP nor a public API
+# and its leaderboard page returns 403 to non-browser clients; the
+# /filter endpoint of datasets-server requires auth for any WHERE on a
+# text column. So we page /rows (5-6 pages per board) and cache to disk for 6 h
+# under ARENA_ELO_CACHE. The rows arrive grouped by category and sorted by
+# rank, which lets us stop as soon as a page adds nothing more.
 #
-# L'historique est LOCAL par construction : le split "full" upstream fait 1,1 M
-# de lignes pour le texte, impossible a pager anonymement. Chaque snapshot
-# publie est journalise une fois (history.jsonl) au moment ou le board est lu,
-# donc la serie demarre au premier appel et grandit a chaque mise a jour.
+# The history is LOCAL by construction: the upstream "full" split has 1.1 M
+# rows for text, impossible to page anonymously. Each published
+# snapshot is logged once (history.jsonl) when the board is read,
+# so the series starts at the first call and grows with each update.
 #
-# Le serveur parle JSON-RPC 2.0 sur stdio lui-meme (stdlib seule, pas de SDK
-# mcp) : stdin ligne par ligne, stdout reserve au protocole, logs sur stderr.
+# The server speaks JSON-RPC 2.0 over stdio itself (stdlib only, no
+# mcp SDK): stdin line by line, stdout reserved for the protocol, logs on stderr.
 {self, pkgs, ...}: let
-  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
-  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  # Binary built as a flake output (mcp/default.nix): buildable
+  # without evaluating this config, and no longer rebuilt on every host eval.
   arena-elo-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.arena-elo-mcp;
 in {
   environment.systemPackages = [arena-elo-mcp];
@@ -34,7 +34,7 @@ in {
     env = {
       ARENA_ELO_CACHE = "/var/lib/hermes/.hermes/cache/arena-elo";
     };
-    # Un board froid coute 5-6 pages espacees de 0,5 s ; arena=all en scanne six.
+    # A cold board costs 5-6 pages spaced 0.5 s apart; arena=all scans six of them.
     timeout = 180;
   };
 }

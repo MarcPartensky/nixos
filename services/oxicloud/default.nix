@@ -18,13 +18,13 @@
       ExecStart = "${pkgs.oxicloud}/bin/oxicloud";
       EnvironmentFile = config.sops.secrets.oxicloud_env.path;
 
-      # user transient nommé "oxicloud" -> auth peer sur le socket PG OK
+      # transient user named "oxicloud" -> peer auth on the PG socket OK
       DynamicUser = true;
       User = "oxicloud";
       StateDirectory = "oxicloud";
       WorkingDirectory = "/var/lib/oxicloud";
 
-      # durcissement
+      # hardening
       ProtectSystem = "strict";
       ProtectHome = true;
       NoNewPrivileges = true;

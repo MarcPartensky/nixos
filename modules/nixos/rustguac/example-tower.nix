@@ -27,7 +27,7 @@
   };
 
   # ========================================================================
-  # RUSTGUAC - Gateway centralisée (multi-protocole, OIDC, audit)
+  # RUSTGUAC - Centralized gateway (multi-protocol, OIDC, audit)
   # ========================================================================
   services.rustguac = {
     enable = true;
@@ -88,7 +88,7 @@
   };
 
   # ========================================================================
-  # KASMVNC - Bureau personnel Wayland haute perf (LXQt + kwin_wayland)
+  # KASMVNC - High-performance personal Wayland desktop (LXQt + kwin_wayland)
   # ========================================================================
   services.kasmvnc = {
     enable = true;
@@ -116,7 +116,7 @@
   };
 
   # ========================================================================
-  # RUSTDESK - P2P relay pour accès natif
+  # RUSTDESK - P2P relay for native access
   # ========================================================================
   services.rustdesk = {
     enable = true;
@@ -127,7 +127,7 @@
   };
 
   # ========================================================================
-  # NGINX - Reverse proxy avec ACME pour les deux services
+  # NGINX - Reverse proxy with ACME for both services
   # ========================================================================
   services.nginx.rustguac = {
     enable = true;
@@ -148,7 +148,7 @@
   };
 
   # ========================================================================
-  # SECRETS (sops-nix) - À configurer dans ton flake
+  # SECRETS (sops-nix) - To configure in your flake
   # ========================================================================
   # sops.secrets = {
   #   rustguac-oidc-secret = { ... };
@@ -159,13 +159,13 @@
   # };
 
   # ========================================================================
-  # USER LINGERING (pour systemd user services KasmVNC)
+  # USER LINGERING (for KasmVNC systemd user services)
   # ========================================================================
   systemd.user.enable = true;
   systemd.user.lingerUsers = [ "marc" ];
 
   # ========================================================================
-  # FIREWALL (ports additionnels si needed)
+  # FIREWALL (additional ports if needed)
   # ========================================================================
   networking.firewall.allowedTCPPorts = [ 22 80 443 ];  # SSH, HTTP, HTTPS
   networking.firewall.allowedUDPPorts = [ ];  # WebRTC UDP handled by KasmVNC directly

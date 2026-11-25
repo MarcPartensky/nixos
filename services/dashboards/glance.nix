@@ -1,4 +1,4 @@
-# Glance : un binaire Go, page unique de signets groupés (le plus épuré).
+# Glance: a Go binary, a single page of grouped bookmarks (the most minimal).
 {
   lib,
   pkgs,
@@ -27,7 +27,7 @@ in {
                   type = "bookmarks";
                   groups = [
                   {
-                    title = "Média";
+                    title = "Media";
                     links = [
                     {
                       title = "Jellyfin";
@@ -57,7 +57,7 @@ in {
                     ];
                   }
                   {
-                    title = "Fichiers";
+                    title = "Files";
                     links = [
                     {
                       title = "Nextcloud";
@@ -80,7 +80,7 @@ in {
                       icon = "si:minio";
                     }
                     {
-                      title = "Fichier";
+                      title = "File";
                       url = "https://fichier.marcpartensky.com";
                       icon = "si:filebrowser";
                     }
@@ -137,7 +137,7 @@ in {
                     ];
                   }
                   {
-                    title = "Développement";
+                    title = "Development";
                     links = [
                     {
                       title = "Gitea";
@@ -182,7 +182,7 @@ in {
                     ];
                   }
                   {
-                    title = "Bureaux distants";
+                    title = "Remote desktops";
                     links = [
                     {
                       title = "Kasm";
@@ -207,7 +207,7 @@ in {
                     ];
                   }
                   {
-                    title = "Système";
+                    title = "System";
                     links = [
                     {
                       title = "Glances";
@@ -271,8 +271,8 @@ in {
     };
   };
 
-  # systemd ne surveille pas /run/glance/glance.yaml (config écrite par le
-  # pre-start) : une empreinte en store path force le redémarrage quand la
+  # systemd does not watch /run/glance/glance.yaml (config written by the
+  # pre-start): a store-path fingerprint forces the restart when the
   # configuration change.
   systemd.services.glance.restartTriggers = [
     (pkgs.writeText "glance-settings-fingerprint" (builtins.toJSON config.services.glance.settings))

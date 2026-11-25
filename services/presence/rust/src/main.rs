@@ -204,7 +204,7 @@ async fn main() {
                             eprintln!("[presence] postgres (forecast) : {e}");
                         }
                     }
-                    // sante de la base, pour la page et le diagnostic
+                    // database health, for the page and diagnostics
                     if let Ok(mut h) = sh.pg_health.lock() {
                         *h = store::health();
                     }
@@ -242,7 +242,7 @@ async fn main() {
 async fn page(State(sh): State<Arc<Shared>>) -> impl IntoResponse {
     let html = sh.cached.read().unwrap().html.clone();
     if html.is_empty() {
-        return (StatusCode::SERVICE_UNAVAILABLE, Html("<p>démarrage…</p>".to_string()));
+        return (StatusCode::SERVICE_UNAVAILABLE, Html("<p>starting...</p>".to_string()));
     }
     (StatusCode::OK, Html(html))
 }
@@ -265,8 +265,8 @@ async fn api_forecast(State(sh): State<Arc<Shared>>) -> impl IntoResponse {
 }
 
 async fn api_timeline(State(sh): State<Arc<Shared>>) -> impl IntoResponse {
-    // Le ticker rafraichit ce corps toutes les 30 s : aucune requete SQL dans
-    // le runtime tokio (un client Postgres bloquant y panique).
+    // The ticker refreshes this body every 30 s: no SQL query in
+    // the tokio runtime (a blocking Postgres client panics there).
     let body = sh.timeline_body.lock().map(|b| b.clone()).unwrap_or_default();
     if body.is_empty() {
         return (

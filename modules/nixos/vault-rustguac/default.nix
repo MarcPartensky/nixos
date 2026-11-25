@@ -5,12 +5,12 @@ with lib;
 let
   cfg = config.services.vault-rustguac;
 
-  # Le mode dev de Vault est pilote par les DRAPEAUX CLI (`vault server -dev`),
-  # pas par le fichier de config : `dev_root_token_id` / `dev_listen_address`
-  # poses dans un HCL ne declenchent PAS le mode dev. Consequence vecue : vault
-  # demarrait avec storage inmem mais restait SEALED et non initialise
-  # (`/v1/sys/health` -> initialized:false, sealed:true), donc rustguac ne
-  # pouvait rien lire ni ecrire.
+  # Vault dev mode is driven by the CLI FLAGS (`vault server -dev`),
+  # not by the config file: `dev_root_token_id` / `dev_listen_address`
+  # set in an HCL do NOT trigger dev mode. Observed consequence: vault
+  # started with inmem storage but stayed SEALED and uninitialized
+  # (`/v1/sys/health` -> initialized:false, sealed:true), so rustguac
+  # could neither read nor write anything.
   devScript = pkgs.writeShellScript "vault-dev" ''
     set -euo pipefail
     token=$(cat ${cfg.devRootToken})
@@ -99,7 +99,7 @@ in {
       "d /etc/vault 0750 ${cfg.user} ${cfg.group} - -"
     ];
 
-    # Config : uniquement utile en mode "ha" (le mode dev ignore un HCL).
+    # Config: only useful in "ha" mode (dev mode ignores an HCL).
     environment.etc = lib.mkIf (cfg.mode == "ha") {
       "vault/config.hcl".text = ''
         storage "raft" {
@@ -144,8 +144,8 @@ in {
       };
     };
 
-    # Le listener est en loopback (cfg.address par defaut) : rien a ouvrir au
-    # firewall, et surtout pas pour un Vault en mode dev qui detient un root
+    # The listener is on loopback (cfg.address by default): nothing to open on the
+    # firewall, and especially not for a Vault in dev mode that holds a root
     # token.
 
     # Auto-unseal for dev mode (already unsealed)

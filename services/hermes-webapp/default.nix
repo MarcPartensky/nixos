@@ -1,34 +1,34 @@
 # services/hermes-webapp/default.nix
-# Webapp Hermes : le front de l'app DESKTOP servi dans un navigateur.
+# Hermes Webapp: the front of the DESKTOP app served in a browser.
 #
-# Ce n'est pas le dashboard (services/hermes-dashboard, dash.marcpartensky.com)
-# ni le WebUI tiers (services/hermes-webui) : c'est le renderer React du desktop,
-# servi par le GATEWAY du profil default sur son propre listener
-# (`gateway/webapp_listener.py`, `webapp:` dans config.yaml). Une seule
-# conversation, partagée avec le CLI, le desktop natif et Matrix, puisque c'est
-# le même process gateway qui sert tout le monde.
+# This is not the dashboard (services/hermes-dashboard, dash.marcpartensky.com)
+# nor the third-party WebUI (services/hermes-webui): it is the desktop's React renderer,
+# served by the default profile's GATEWAY on its own listener
+# (`gateway/webapp_listener.py`, `webapp:` in config.yaml). A single
+# conversation, shared with the CLI, the native desktop and Matrix, since it is
+# the same gateway process serving everyone.
 #
-# Chaîne : Pangolin (hermes.marcpartensky.com, ressource `hermes-webui` du
-#          blueprint newt, cible retargetée vers ce proxy)
+# Chain: Pangolin (hermes.marcpartensky.com, `hermes-webui` resource of the
+#          newt blueprint, target retargeted to this proxy)
 #          -> 127.0.0.1:9124 (nginx)
-#          -> 127.0.0.1:9123 (listener Webapp du gateway, profil default)
+#          -> 127.0.0.1:9123 (gateway Webapp listener, default profile)
 #
-# Pourquoi nginx ne réécrit PAS Host ici (contrairement à hermes-dashboard) :
-# `webapp.public_url` déclare l'hôte public comme hôte de confiance du listener
-# (`web_server_boundary._is_accepted_host`), donc le garde anti-DNS-rebinding et
-# la validation d'Origin des WebSockets (`/api/ws`) acceptent le vrai Host. Le
-# réécrire en 127.0.0.1:9123 ferait rejeter l'Origin par le garde WS.
+# Why nginx does NOT rewrite Host here (unlike hermes-dashboard):
+# `webapp.public_url` declares the public host as a trusted host of the listener
+# (`web_server_boundary._is_accepted_host`), so the anti-DNS-rebinding guard and
+# the WebSocket Origin validation (`/api/ws`) accept the real Host. Rewriting it
+# to 127.0.0.1:9123 would make the WS guard reject the Origin.
 #
-# Auth : `public_url` ENGAGE la porte de connexion du dashboard même sur un bind
-# loopback (`listener_auth_required` + `public_hosts_engage_gate`). Le provider
-# est le mot de passe simple (plugins/dashboard_auth/basic), alimenté par le
-# fichier sops `hermes_webapp_gate_env` (identifiant, mot de passe, clé de
-# signature des sessions). Aucune valeur secrète n'entre dans le store nix.
+# Auth: `public_url` ENGAGES the dashboard login gate even on a loopback
+# bind (`listener_auth_required` + `public_hosts_engage_gate`). The provider
+# is the simple password (plugins/dashboard_auth/basic), fed by the
+# sops file `hermes_webapp_gate_env` (identifier, password, session
+# signing key). No secret value enters the nix store.
 #
-# Isolation : la Webapp sert UN profil, donc UN agent. Toute personne qui passe
-# la porte voit TOUTES les sessions de ce profil (pas de cloisonnement par
-# compte). D'où un gate mono-utilisateur tant qu'il n'y a qu'un profil ; un
-# utilisateur par personne = un profil + un gateway standalone par personne.
+# Isolation: the Webapp serves ONE profile, so ONE agent. Anyone who passes
+# the gate sees ALL the sessions of that profile (no partitioning per
+# account). Hence a single-user gate as long as there is only one profile; one
+# user per person = one profile + one standalone gateway per person.
 {
   config,
   lib,
@@ -39,9 +39,9 @@
   webappHost = "127.0.0.1:${toString webappPort}";
   publicUrl = "https://hermes.marcpartensky.com";
 in {
-  # Le gateway relit `webapp` à son démarrage : un switch ne fait que poser la
-  # config (restartIfChanged = false côté unité), le listener apparaît au
-  # prochain redémarrage du gateway.
+  # The gateway re-reads `webapp` at startup: a switch only sets the
+  # config (restartIfChanged = false on the unit side), the listener appears at the
+  # next gateway restart.
   services.hermes-agent.settings.webapp = {
     enabled = true;
     host = "127.0.0.1";
@@ -49,8 +49,8 @@ in {
     public_url = publicUrl;
   };
 
-  # Gate : identifiant + mot de passe (hashé en mémoire au démarrage) + clé de
-  # signature. Contenu dotenv, concaténé dans $HERMES_HOME/.env à l'activation.
+  # Gate: identifier + password (hashed in memory at startup) + signing
+  # key. dotenv content, concatenated into $HERMES_HOME/.env at activation.
   sops.secrets."hermes_webapp_gate_env" = lib.mkIf config.services.hermes.enableAgent {
     key = "hermes_webapp_gate_env";
     sopsFile = ../../secrets/hermes-webapp.yml;
@@ -84,15 +84,15 @@ in {
     };
   };
 
-  # Garde-fou : jamais de port au firewall (la Webapp donne un shell complet).
+  # Safeguard: never a port at the firewall (the Webapp gives a full shell).
   assertions = [
     {
       assertion = !(lib.elem webappPort config.networking.firewall.allowedTCPPorts);
-      message = "hermes-webapp : le port ${toString webappPort} (front desktop, outils et terminal) ne doit pas être ouvert au firewall.";
+      message = "hermes-webapp: port ${toString webappPort} (desktop front, tools and terminal) must not be opened at the firewall.";
     }
     {
       assertion = !(lib.elem proxyPort config.networking.firewall.allowedTCPPorts);
-      message = "hermes-webapp : le port ${toString proxyPort} (proxy du listener Webapp) ne doit pas être ouvert au firewall.";
+      message = "hermes-webapp: port ${toString proxyPort} (Webapp listener proxy) must not be opened at the firewall.";
     }
   ];
 }

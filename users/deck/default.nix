@@ -8,7 +8,7 @@
     inputs.sops.homeManagerModules.sops
     ../marc/packages.nix
 
-    # CLI, aucun impact sur la session
+    # CLI, no impact on the session
     ../../modules/home/git
     ../../modules/home/zsh
     ../../modules/home/ssh
@@ -25,7 +25,7 @@
     ../../modules/home/tewi
     ../../modules/home/ytui-music
 
-    # GUI en simple paquet : utile en Desktop Mode, inerte en Gaming Mode
+    # GUI as a plain package: useful in Desktop Mode, inert in Gaming Mode
     ../../modules/home/kitty
     ../../modules/home/alacritty
     ../../modules/home/mpv
@@ -39,7 +39,7 @@
     nix-direnv.enable = true;
   };
 
-  # spécifique deck, n'a rien à faire dans home.nix
+  # deck-specific, has no place in home.nix
   home.file."Desktop/return-to-gaming-mode.desktop" = {
     executable = true;
     text = ''

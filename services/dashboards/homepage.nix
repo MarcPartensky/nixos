@@ -1,4 +1,4 @@
-# Homepage (gethomepage.dev) : Next.js, widgets, config YAML dans le flake.
+# Homepage (gethomepage.dev): Next.js, widgets, YAML config in the flake.
 {
   lib,
   pkgs,
@@ -14,18 +14,18 @@ in {
     allowedHosts = "*";
     settings = {
       title = "Homelab";
-      description = "tower, services auto-hébergés";
+      description = "tower, self-hosted services";
       theme = "dark";
       color = "slate";
       statusStyle = "dot";
       hideVersion = true;
       layout = {
-        "Média" = { style = "row"; columns = 4; };
-        "Fichiers" = { style = "row"; columns = 4; };
+        "Media" = { style = "row"; columns = 4; };
+        "Files" = { style = "row"; columns = 4; };
         "Agent" = { style = "row"; columns = 4; };
-        "Développement" = { style = "row"; columns = 4; };
-        "Bureaux distants" = { style = "row"; columns = 4; };
-        "Système" = { style = "row"; columns = 4; };
+        "Development" = { style = "row"; columns = 4; };
+        "Remote desktops" = { style = "row"; columns = 4; };
+        "System" = { style = "row"; columns = 4; };
       };
     };
     widgets = [
@@ -49,46 +49,46 @@ in {
     ];
     services = [
       {
-        "Média" = [
+        "Media" = [
           {
             "Jellyfin" = {
               href = "https://jellyfin.marcpartensky.com";
-              description = "Films et séries";
+              description = "Movies and series";
               icon = "jellyfin.png";
             };
           }
           {
             "Audiobookshelf" = {
               href = "https://audiobookshelf.marcpartensky.com";
-              description = "Livres audio";
+              description = "Audiobooks";
               icon = "audiobookshelf.png";
             };
           }
           {
             "Sonarr" = {
               href = "https://sonarr.marcpartensky.com";
-              description = "Séries";
+              description = "Series";
               icon = "sonarr.png";
             };
           }
           {
             "Radarr" = {
               href = "https://radarr.marcpartensky.com";
-              description = "Films";
+              description = "Movies";
               icon = "radarr.png";
             };
           }
           {
             "qBittorrent" = {
               href = "https://torrent.marcpartensky.com";
-              description = "Téléchargements";
+              description = "Downloads";
               icon = "qbittorrent.png";
             };
           }
           {
             "Navidrome" = {
               href = "https://navidrome.marcpartensky.com";
-              description = "Serveur musical";
+              description = "Music server";
               icon = "navidrome.png";
             };
           }
@@ -96,7 +96,7 @@ in {
           {
             "Aonsoku" = {
               href = "https://music.marcpartensky.com";
-              description = "Client web musical";
+              description = "Music web client";
               icon = "musicbrainz.png";
             };
           }
@@ -104,53 +104,53 @@ in {
         ];
       }
       {
-        "Fichiers" = [
+        "Files" = [
           {
             "Nextcloud" = {
               href = "https://cloud.marcpartensky.com";
-              description = "Fichiers et calendrier";
+              description = "Files and calendar";
               icon = "nextcloud.png";
             };
           }
           {
             "Syncthing" = {
               href = "https://syncthing.marcpartensky.com";
-              description = "Synchro appareils";
+              description = "Device sync";
               icon = "syncthing.png";
             };
           }
           {
             "RustFS" = {
               href = "https://rustfs.marcpartensky.com";
-              description = "Stockage objet S3";
+              description = "S3 object storage";
               icon = "rustfs.png";
             };
           }
           {
             "MinIO" = {
               href = "https://store.marcpartensky.com";
-              description = "Stockage objet hérité";
+              description = "Legacy object storage";
               icon = "minio.png";
             };
           }
           {
             "Fichier" = {
               href = "https://fichier.marcpartensky.com";
-              description = "Partage de fichiers";
+              description = "File sharing";
               icon = "filebrowser.png";
             };
           }
           {
             "Droplify" = {
               href = "https://drop.marcpartensky.com";
-              description = "Dépôt de fichiers";
+              description = "File drop";
               icon = "dropbox.png";
             };
           }
           {
             "Shlink" = {
               href = "https://s.marcpartensky.com";
-              description = "Liens courts et partage";
+              description = "Short links and sharing";
               icon = "shlink.png";
             };
           }
@@ -158,7 +158,7 @@ in {
           {
             "Shlink admin" = {
               href = "https://shlink.marcpartensky.com";
-              description = "Console des liens";
+              description = "Links console";
               icon = "shlink.png";
             };
           }
@@ -170,21 +170,21 @@ in {
           {
             "Hermes" = {
               href = "https://hermes.marcpartensky.com";
-              description = "Interface web";
+              description = "Web interface";
               icon = "open-webui.png";
             };
           }
           {
             "Terminal" = {
               href = "https://terminal.marcpartensky.com";
-              description = "Terminal Hermes";
+              description = "Hermes terminal";
               icon = "terminal.png";
             };
           }
           {
             "Dashboard Hermes" = {
               href = "https://dash.marcpartensky.com";
-              description = "Panneau d'admin";
+              description = "Admin panel";
               icon = "open-webui.png";
             };
           }
@@ -198,42 +198,42 @@ in {
           {
             "Hermes Anna" = {
               href = "https://hermes-anna.marcpartensky.com";
-              description = "Invitée";
+              description = "Guest";
               icon = "chatgpt.png";
             };
           }
           {
             "Hermes Yves" = {
               href = "https://hermes-yves.marcpartensky.com";
-              description = "Invité";
+              description = "Guest";
               icon = "chatgpt.png";
             };
           }
           {
             "Open Notebook" = {
               href = "https://notebook.marcpartensky.com";
-              description = "Notebooks IA";
+              description = "AI notebooks";
               icon = "jupyter.png";
             };
           }
           {
             "n8n" = {
               href = "https://n8n.marcpartensky.com";
-              description = "Automatisations";
+              description = "Automations";
               icon = "n8n.png";
             };
           }
           {
             "Matrix" = {
               href = "https://matrix.marcpartensky.com";
-              description = "Messagerie";
+              description = "Messaging";
               icon = "matrix.png";
             };
           }
           {
             "Usage LLM" = {
               href = "https://usage.marcpartensky.com";
-              description = "Coûts OpenRouter";
+              description = "OpenRouter costs";
               icon = "si-openrouter";
             };
           }
@@ -241,11 +241,11 @@ in {
         ];
       }
       {
-        "Développement" = [
+        "Development" = [
           {
             "Gitea" = {
               href = "https://git.marcpartensky.com";
-              description = "Forge git";
+              description = "Git forge";
               icon = "gitea.png";
             };
           }
@@ -259,7 +259,7 @@ in {
           {
             "Taskq" = {
               href = "https://taskq.marcpartensky.com";
-              description = "File de tâches";
+              description = "Task queue";
               icon = "link.png";
             };
           }
@@ -287,42 +287,42 @@ in {
           {
             "RentScout" = {
               href = "https://rentscout.marcpartensky.com";
-              description = "Annonces de location";
+              description = "Rental listings";
               icon = "link.png";
             };
           }
           {
             "Backtest" = {
               href = "https://backtest.marcpartensky.com";
-              description = "Backtest boursier";
+              description = "Stock backtest";
               icon = "chart.png";
             };
           }
           {
             "Option Pricer" = {
               href = "https://option-pricer.marcpartensky.com";
-              description = "Pricing d'options";
+              description = "Option pricing";
               icon = "chart.png";
             };
           }
           {
             "Portfolio Optimizer" = {
               href = "https://portfolio-optimizer.marcpartensky.com";
-              description = "Optimisation";
+              description = "Optimization";
               icon = "chart.png";
             };
           }
           {
             "CV" = {
               href = "https://cv.marcpartensky.com";
-              description = "Réactive Resume";
+              description = "Reactive Resume";
               icon = "reactive-resume.png";
             };
           }
           {
             "Windmill" = {
               href = "https://windmill.marcpartensky.com";
-              description = "Jobs et scripts";
+              description = "Jobs and scripts";
               icon = "windmill.png";
             };
           }
@@ -330,11 +330,11 @@ in {
         ];
       }
       {
-        "Bureaux distants" = [
+        "Remote desktops" = [
           {
             "Kasm" = {
               href = "https://kasm.marcpartensky.com";
-              description = "Bureau distant";
+              description = "Remote desktop";
               icon = "kasm.png";
             };
           }
@@ -348,25 +348,25 @@ in {
           {
             "VNC" = {
               href = "https://vnc.marcpartensky.com";
-              description = "Session niri";
+              description = "niri session";
               icon = "vnc.png";
             };
           }
           {
             "Guacamole" = {
               href = "https://guac.marcpartensky.com";
-              description = "RDV web";
+              description = "Web remote desktop";
               icon = "guacamole.png";
             };
           }
         ];
       }
       {
-        "Système" = [
+        "System" = [
           {
             "Glances" = {
               href = "https://proc.marcpartensky.com";
-              description = "Métriques hôte";
+              description = "Host metrics";
               icon = "glances.png";
             };
           }
@@ -380,7 +380,7 @@ in {
           {
             "Pangolin" = {
               href = "https://pangolin.marcpartensky.com";
-              description = "Tunnel réseau";
+              description = "Network tunnel";
               icon = "pangolin.png";
             };
           }
@@ -408,14 +408,14 @@ in {
           {
             "Anki" = {
               href = "https://anki.marcpartensky.com";
-              description = "Synchro cartes";
+              description = "Card sync";
               icon = "anki.png";
             };
           }
           {
             "Vaultwarden" = {
               href = "https://vault.marcpartensky.com";
-              description = "Mots de passe";
+              description = "Passwords";
               icon = "vaultwarden.png";
             };
           }
@@ -429,21 +429,21 @@ in {
           {
             "Kanidm" = {
               href = "https://idm.vps.marcpartensky.com";
-              description = "Annuaire VPS";
+              description = "VPS directory";
               icon = "keycloak.png";
             };
           }
           {
             "Legal" = {
               href = "https://legal.marcpartensky.com";
-              description = "Pages légales";
+              description = "Legal pages";
               icon = "link.png";
             };
           }
           {
             "Mesh" = {
               href = "https://mesh.marcpartensky.com";
-              description = "Nœuds du tailnet";
+              description = "Tailnet nodes";
               icon = "tailscale.png";
             };
           }

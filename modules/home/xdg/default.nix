@@ -13,7 +13,7 @@
     exec = "steam-run /home/marc/Jts/tws";
     terminal = false;
     categories = ["Application" "Network" "Finance"];
-    icon = "utilities-terminal"; # Pareil, à remplacer si tu as une belle icône
+    icon = "utilities-terminal"; # Same, replace it if you have a nice icon
   };
 
   # xdg.portal = {

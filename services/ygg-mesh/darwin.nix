@@ -1,25 +1,25 @@
 # services/ygg-mesh/darwin.nix
 #
-# Côté macOS (nix-darwin) du réseau ygg-mesh : paquet + client Tor + daemon.
-# Importé par profiles/macos/configuration.nix. Le module NixOS de ce réseau
-# vit dans services/ygg-mesh/default.nix ; le fichier de config Yggdrasil
-# (/etc/yggdrasil.conf) est décrit dans son en-tête et n'est PAS posé par le
-# nix store (il contient le mot de passe partagé).
+# macOS side (nix-darwin) of the ygg-mesh network: package + Tor client + daemon.
+# Imported by profiles/macos/configuration.nix. The NixOS module of this network
+# lives in services/ygg-mesh/default.nix; the Yggdrasil config file
+# (/etc/yggdrasil.conf) is described in its header and is NOT set by the
+# nix store (it contains the shared password).
 #
-# Ce que ce module installe :
-#   - yggdrasil + tor (paquets nixpkgs, 0.5.13 / 0.4.9 comme les nœuds Linux) ;
-#   - tor en client SOCKS (127.0.0.1:9050) : sortie vers les onions du mesh et
-#     des nœuds quand le Mac est hors du LAN ;
-#   - le daemon yggdrasil qui lit /etc/yggdrasil.conf (à créer une fois,
-#     root:wheel 0600). Sur le LAN, le lien direct multicast prend le relais.
+# What this module installs:
+#   - yggdrasil + tor (nixpkgs packages, 0.5.13 / 0.4.9 like the Linux nodes);
+#   - tor as a SOCKS client (127.0.0.1:9050): exit towards the mesh onions and
+#     the nodes when the Mac is outside the LAN;
+#   - the yggdrasil daemon that reads /etc/yggdrasil.conf (to create once,
+#     root:wheel 0600). On the LAN, the direct multicast link takes over.
 #
-# Le torrc ne contient aucun secret (juste des ports) : il peut vivre dans le
-# store, contrairement à /etc/yggdrasil.conf.
+# The torrc contains no secret (just ports): it can live in the
+# store, unlike /etc/yggdrasil.conf.
 #
-# Config minimale de /etc/yggdrasil.conf (voir l'en-tête du module NixOS pour
-# les valeurs à jour) : Listen = [], Peers = les URIs socks://…@127.0.0.1:9050
-# vers les onions des nœuds, MulticastInterfaces { Beacon=false; Listen=true;
-# Port=12346; Password=<mot de passe> }, AllowedPublicKeys = les clés des nœuds.
+# Minimal config of /etc/yggdrasil.conf (see the NixOS module header for
+# up-to-date values): Listen = [], Peers = the socks://...@127.0.0.1:9050 URIs
+# to the node onions, MulticastInterfaces { Beacon=false; Listen=true;
+# Port=12346; Password=<password> }, AllowedPublicKeys = the nodes' keys.
 
 { pkgs, lib, ... }:
 
@@ -33,9 +33,9 @@ in
 {
   environment.systemPackages = [ pkgs.yggdrasil pkgs.tor ];
 
-  # Daemons système (root) : yggdrasil crée une interface utun, tor ouvre le
-  # SOCKS en loopback. nix-darwin attend le montage du store au boot avant de
-  # lancer la commande (wait4path).
+  # System daemons (root): yggdrasil creates a utun interface, tor opens the
+  # SOCKS on loopback. nix-darwin waits for the store mount at boot before
+  # launching the command (wait4path).
   launchd.daemons.ygg-mesh-tor = {
     command = "${pkgs.tor}/bin/tor -f ${torrc}";
     serviceConfig = {

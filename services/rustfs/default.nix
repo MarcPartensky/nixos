@@ -1,26 +1,26 @@
 # services/rustfs/default.nix
-# RustFS : serveur de stockage objet S3 (remplaçant de MinIO, abandonné en
-# amont) pour les artifacts de build (APK, IPA, archives) + le MCP rustfs-mcp
-# qui les pilote depuis hermes.
+# RustFS: S3 object storage server (replacement for MinIO, abandoned
+# upstream) for build artifacts (APK, IPA, archives) + the rustfs-mcp MCP
+# that drives them from hermes.
 #
-# Serveur : module NixOS upstream (github:rustfs/rustfs, nix/rustfs-module.nix)
-# épinglé sur le tag 1.0.3 (rev 331fb89). Le package par défaut de l'upstream
-# compile tout depuis les sources (rust-overlay + nixpkgs-unstable, très long) :
-# remplacé par le binaire musl statique de la release 1.0.3 (fetchurl).
+# Server: upstream NixOS module (github:rustfs/rustfs, nix/rustfs-module.nix)
+# pinned to tag 1.0.3 (rev 331fb89). The upstream default package
+# compiles everything from sources (rust-overlay + nixpkgs-unstable, very long):
+# replaced by the static musl binary from release 1.0.3 (fetchurl).
 #
-# Ports (loopback seul, jamais exposés au firewall) :
-#   - 127.0.0.1:9000 : API S3
-#   - 127.0.0.1:9001 : console web (admin)
+# Ports (loopback only, never exposed to the firewall):
+#   - 127.0.0.1:9000: S3 API
+#   - 127.0.0.1:9001: web console (admin)
 #
-# Credentials racine : secrets/rustfs.yml (sops, clés access_key/secret_key),
-# lus par le service via LoadCredential et par le wrapper MCP au démarrage.
+# Root credentials: secrets/rustfs.yml (sops, keys access_key/secret_key),
+# read by the service via LoadCredential and by the MCP wrapper at startup.
 #
-# Bucket `artifacts` (préfixes par projet : winnie/, hermes-mobile/, ...) créé
-# par une unité oneshot idempotente après le démarrage du serveur.
+# Bucket `artifacts` (prefixes per project: winnie/, hermes-mobile/, ...) created
+# by an idempotent oneshot unit after the server starts.
 #
-# MCP : rustfs-mcp (github:rustfs/mcp, rev 5126e9a) en stdio, spawné par
-# hermes ; c'est un MCP S3 générique (--endpoint-url), il marcherait aussi
-# contre Garage. Le crate n'est pas dans nixpkgs, d'où le buildRustPackage.
+# MCP: rustfs-mcp (github:rustfs/mcp, rev 5126e9a) over stdio, spawned by
+# hermes; it is a generic S3 MCP (--endpoint-url), it would also work
+# against Garage. The crate is not in nixpkgs, hence the buildRustPackage.
 {
   config,
   lib,
@@ -29,8 +29,8 @@
 }: let
   rustfsFlake = builtins.getFlake "github:rustfs/rustfs/331fb896285a7686f927baf8d9d4dc2d3d3a10a9";
 
-  # Binaire officiel de la release 1.0.3 (musl statique, x86_64) ; le zip
-  # contient un seul fichier `rustfs`.
+  # Official binary of release 1.0.3 (static musl, x86_64); the zip
+  # contains a single file `rustfs`.
   rustfs = pkgs.stdenvNoCC.mkDerivation {
     pname = "rustfs";
     version = "1.0.3";
@@ -46,7 +46,7 @@
       runHook postInstall
     '';
     meta = {
-      description = "RustFS object storage server (binaire musl officiel)";
+      description = "RustFS object storage server (official musl binary)";
       homepage = "https://rustfs.com";
       license = lib.licenses.asl20;
       platforms = ["x86_64-linux"];
@@ -54,9 +54,9 @@
     };
   };
 
-  # MCP officiel RustFS (crate `rustfs-mcp`). Features par défaut (io-uring) :
-  # l'upstream les construit avec tokio_unstable (cf. son Dockerfile).
-  # doCheck = false : la CI amont couvre les tests, on ne compile que le binaire.
+  # Official RustFS MCP (crate `rustfs-mcp`). Default features (io-uring):
+  # upstream builds them with tokio_unstable (cf. its Dockerfile).
+  # doCheck = false: upstream CI covers the tests, we only compile the binary.
   rustfs-mcp = pkgs.rustPlatform.buildRustPackage {
     pname = "rustfs-mcp";
     version = "0.1.0";
@@ -77,9 +77,9 @@
     };
   };
 
-  # Wrapper stdio : hermes spawn ce script ; il lit les clés sops (jamais dans
-  # le store nix) et pointe le MCP sur l'API S3 locale (path-style automatique
-  # pour un endpoint custom).
+  # stdio wrapper: hermes spawns this script; it reads the sops keys (never in
+  # the nix store) and points the MCP at the local S3 API (automatic path-style
+  # for a custom endpoint).
   mcpWrapper = pkgs.writeShellScript "rustfs-mcp-hermes" ''
     set -euo pipefail
     export AWS_ACCESS_KEY_ID="$(cat ${config.sops.secrets."rustfs/access_key".path})"
@@ -104,8 +104,8 @@ in {
     mode = "0400";
     restartUnits = ["rustfs.service"];
   };
-  # Client secret de l'app OIDC Zitadel (SSO de la console) : fichier d'env
-  # systemd, donc une seule ligne `RUSTFS_IDENTITY_OPENID_CLIENT_SECRET=...`.
+  # Client secret of the Zitadel OIDC app (console SSO): systemd env
+  # file, so a single line `RUSTFS_IDENTITY_OPENID_CLIENT_SECRET=...`.
   sops.secrets."rustfs/oidc_env" = {
     sopsFile = ../../secrets/rustfs.yml;
     key = "oidc_env";
@@ -122,12 +122,12 @@ in {
     accessKeyFile = config.sops.secrets."rustfs/access_key".path;
     secretKeyFile = config.sops.secrets."rustfs/secret_key".path;
     extraEnvironmentVariables = {
-      # Origine publique (scheme + autorité, sans chemin) : redirect de succès
-      # de la console et fallback de logout.
+      # Public origin (scheme + authority, without path): console success
+      # redirect and logout fallback.
       RUSTFS_BROWSER_REDIRECT_URL = "https://rustfs.marcpartensky.com";
-      # SSO console via Zitadel (app "RustFS Console" du projet Zitadel
-      # "rustfs"). redirect_uri fixe : la console est derrière newt/traefik,
-      # la valeur dérivée de la requête serait fausse (piège hermes-webui).
+      # Console SSO via Zitadel (app "RustFS Console" of the Zitadel project
+      # "rustfs"). Fixed redirect_uri: the console is behind newt/traefik,
+      # the value derived from the request would be wrong (hermes-webui trap).
       RUSTFS_IDENTITY_OPENID_ENABLE = "on";
       RUSTFS_IDENTITY_OPENID_CONFIG_URL = "https://auth.marcpartensky.com/.well-known/openid-configuration";
       RUSTFS_IDENTITY_OPENID_CLIENT_ID = "396704864681394476";
@@ -135,24 +135,24 @@ in {
       RUSTFS_IDENTITY_OPENID_REDIRECT_URI = "https://rustfs.marcpartensky.com/rustfs/admin/v3/oidc/callback/default";
       RUSTFS_IDENTITY_OPENID_REDIRECT_URI_DYNAMIC = "off";
       RUSTFS_IDENTITY_OPENID_DISPLAY_NAME = "Zitadel";
-      # Zitadel met l'ID du PROJET (pas le client_id) dans le claim `aud` de
-      # l'ID token : sans cette liste, la vérification échoue en
-      # « Invalid audiences: <projectId> is not a trusted audience ».
+      # Zitadel puts the PROJECT ID (not the client_id) in the `aud` claim of
+      # the ID token: without this list, the check fails with
+      # "Invalid audiences: <projectId> is not a trusted audience".
       RUSTFS_IDENTITY_OPENID_OTHER_AUDIENCES = "396704857517457708";
-      # Policy RustFS assignée à tout compte authentifié par ce provider
-      # (mono-utilisateur : le role check Zitadel restreint qui peut s'authentifier).
+      # RustFS policy assigned to any account authenticated by this provider
+      # (single-user: the Zitadel role check restricts who can authenticate).
       RUSTFS_IDENTITY_OPENID_ROLE_POLICY = "consoleAdmin";
       RUSTFS_IDENTITY_OPENID_EMAIL_CLAIM = "email";
       RUSTFS_IDENTITY_OPENID_USERNAME_CLAIM = "preferred_username";
     };
   };
 
-  # Le client secret OIDC arrive par fichier d'env systemd (sops), pas par le store nix.
+  # The OIDC client secret arrives via a systemd env file (sops), not via the nix store.
   systemd.services.rustfs.serviceConfig.EnvironmentFile = config.sops.secrets."rustfs/oidc_env".path;
 
-  # Création idempotente du bucket `artifacts` une fois l'API S3 debout.
+  # Idempotent creation of the `artifacts` bucket once the S3 API is up.
   systemd.services.rustfs-bucket = {
-    description = "RustFS : création idempotente du bucket artifacts";
+    description = "RustFS: idempotent creation of the artifacts bucket";
     wantedBy = ["multi-user.target"];
     after = ["rustfs.service"];
     wants = ["rustfs.service"];
@@ -182,12 +182,12 @@ in {
     timeout = 60;
   };
 
-  # Console exposée via Pangolin (newt, site "tower") : PAS de SSO Pangolin,
-  # une seule couche d'auth = l'OIDC Zitadel de la console (comme git/hermes).
-  # Cible 127.0.0.1:9001 (loopback : seul newt, qui tourne sur tower, la joint ;
-  # rien d'ouvert au firewall). Schéma `proxy-resources` + `protocol` (l'ancien
-  # schéma de ce contrôleur Pangolin, cf. skill selfhosted-remote-access /
-  # references/pangolin-blueprint.md). Domaine libre vérifié le 24/10/2026.
+  # Console exposed via Pangolin (newt, site "tower"): NO Pangolin SSO,
+  # a single auth layer = the console's Zitadel OIDC (like git/hermes).
+  # Target 127.0.0.1:9001 (loopback: only newt, which runs on tower, reaches it;
+  # nothing open on the firewall). Schema `proxy-resources` + `protocol` (the old
+  # schema of this Pangolin controller, cf. skill selfhosted-remote-access /
+  # references/pangolin-blueprint.md). Free domain verified on 24/10/2026.
   services.newt.blueprint.proxy-resources.rustfs-console = {
     name = "rustfs-console";
     protocol = "http";

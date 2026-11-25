@@ -1,19 +1,19 @@
-# Module KasmVNC Chrome CDP : lance Chromium avec le Chrome DevTools Protocol
-# (remote debugging) dans la session Plasma de KasmVNC, pour Playwright MCP.
+# KasmVNC Chrome CDP module: launches Chromium with the Chrome DevTools Protocol
+# (remote debugging) in the KasmVNC Plasma session, for Playwright MCP.
 #
-# POURQUOI un module separe et pas du code inline dans le profil : un module NixOS
-# ne doit PAS lire `config.<ses propres options>` dans son `let` au niveau racine
-# (ca part en « infinite recursion »). La forme correcte est options + `config =
-# mkIf cfg.enable { ... }`, comme ici.
+# WHY a separate module and not inline code in the profile: a NixOS module
+# must NOT read `config.<its own options>` in its root-level `let`
+# (that turns into "infinite recursion"). The correct form is options + `config =
+# mkIf cfg.enable { ... }`, like here.
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.kasmvnc.chrome-cdp;
   kasmUser = config.services.kasmvnc.user;
   browserPkg = if cfg.browser == "google-chrome" then pkgs.google-chrome else pkgs.chromium;
   browserBin = if cfg.browser == "google-chrome" then "google-chrome-stable" else "chromium";
-  # NixOS ne connait PAS users.users.<u>.xdg.autostart (c'est du home-manager, et
-  # le home de marc n'est pas gere par cette nixosConfiguration) : on ecrit le
-  # .desktop via tmpfiles, pointant sur un lanceur.
+  # NixOS does NOT know users.users.<u>.xdg.autostart (that is home-manager, and
+  # marc's home is not managed by this nixosConfiguration): we write the
+  # .desktop via tmpfiles, pointing to a launcher.
   chromeCdpLauncher = pkgs.writeShellScript "chrome-cdp-launch" ''
     exec ${browserPkg}/bin/${browserBin} \
       --remote-debugging-port=${toString cfg.port} \
@@ -34,46 +34,46 @@ let
   '';
 in {
   options.services.kasmvnc.chrome-cdp = {
-    enable = lib.mkEnableOption "Chrome/Chromium avec CDP dans la session KasmVNC";
+    enable = lib.mkEnableOption "Chrome/Chromium with CDP in the KasmVNC session";
     browser = lib.mkOption {
       type = lib.types.enum [ "chromium" "google-chrome" ];
       default = "chromium";
-      description = "Navigateur a installer et lancer";
+      description = "Browser to install and launch";
     };
     port = lib.mkOption {
       type = lib.types.port;
       default = 9222;
-      description = "Port de debug CDP";
+      description = "CDP debug port";
     };
     bindAddress = lib.mkOption {
       type = lib.types.str;
       default = "127.0.0.1";
-      description = "Adresse d'ecoute CDP (loopback par defaut : jamais au LAN)";
+      description = "CDP listen address (loopback by default: never on the LAN)";
     };
     profileDir = lib.mkOption {
       type = lib.types.str;
       default = "/home/${kasmUser}/chrome-cdp-profile";
-      description = "Repertoire de profil Chrome persistant";
+      description = "Persistent Chrome profile directory";
     };
     extraFlags = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
-      description = "Flags Chrome supplementaires";
+      description = "Additional Chrome flags";
     };
     openFirewall = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Ouvrir le port CDP au firewall (deconseille : CDP = controle total)";
+      description = "Open the CDP port to the firewall (not advised: CDP = full control)";
     };
     exposePublic = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Exposer CDP via Pangolin (SSO requis)";
+      description = "Expose CDP via Pangolin (SSO required)";
     };
     publicDomain = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      description = "Domaine public CDP";
+      description = "CDP public domain";
     };
   };
 

@@ -3,7 +3,7 @@
     "$mod" = "SUPER";
 
     bind = [
-      # --- Applications & Utilitaires ---
+      # --- Applications & Utilities ---
       "$mod, d, exec, wofi --show drun"
       "$mod, return, exec, alacritty"
       "$mod, f, exec, librewolf"
@@ -11,7 +11,7 @@
       "alt, l, exec, nautilus"
       "alt, w, exec, auto-wallpaper"
 
-      # --- Gestion des Fenêtres ---
+      # --- Window Management ---
       "$mod, c, killactive"
       "$mod, v, togglefloating"
       "$mod, m, fullscreen"
@@ -19,18 +19,18 @@
       "supershift, c, exec, xdotool getwindowfocus windowkill"
       "supershift, q, exit,"
 
-      # --- Navigation style VIM (Fenêtres) ---
+      # --- VIM-style navigation (Windows) ---
       "$mod, h, movefocus, l"
       "$mod, l, movefocus, r"
       "$mod, k, movefocus, u"
       "$mod, j, movefocus, d"
 
-      # --- Navigation style VIM (Espaces de travail) ---
-      # Navigation relative (Suivant/Précédent)
+      # --- VIM-style navigation (Workspaces) ---
+      # Relative navigation (Next/Previous)
       "ALT, j, workspace, e+1"
       "ALT, k, workspace, e-1"
 
-      # --- Multimédia & Audio ---
+      # --- Media & Audio ---
       "alt, d, exec, playerctl -p spotify next"
       "alt, s, exec, playerctl -p spotify previous"
       "alt, k, exec, playerctl -p spotify play-pause"
@@ -38,20 +38,20 @@
       ", XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%-"
       ", XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
 
-      # --- Luminosité ---
+      # --- Brightness ---
       ", XF86MonBrightnessUp, exec, brightnessctl s +1%"
       ", XF86MonBrightnessDown, exec, brightnessctl s 1%-"
 
-      # --- Captures d'écran ---
+      # --- Screenshots ---
       ", Print, exec, grimblast copysave area"
       "$mod, Print, exec, grimblast copysave output"
 
-      # --- Presse-papiers ---
+      # --- Clipboard ---
       ", Prior, exec, wl-copy"
       ", Next, exec, wl-paste"
     ];
 
-    # --- Souris & Navigation ---
+    # --- Mouse & Navigation ---
     bindm = [
       "$mod, mouse:272, movewindow"
       "$mod, mouse:273, resizewindow"
@@ -62,9 +62,9 @@
       "$mod, mouse_up, workspace, e-1"
     ];
 
-    # --- Workspaces dynamiques (1 à 9) ---
-    # $mod + [1-9] pour changer de workspace
-    # $alt + [1-9] pour déplacer la fenêtre vers le workspace
+    # --- Dynamic workspaces (1 to 9) ---
+    # $mod + [1-9] to change workspace
+    # $alt + [1-9] to move the window to the workspace
     binds = builtins.concatLists (builtins.genList (i:
       let ws = i + 1;
       in [

@@ -4,7 +4,7 @@ let
   aerospaceConfig = {
     config-version = 2;
     after-startup-command = [ ];
-    start-at-login = false;  # Paneru gere la bande scrollable (niri-like) ; AeroSpace reste installe en secours
+    start-at-login = false;  # Paneru handles the scrollable strip (niri-like); AeroSpace stays installed as a fallback
     enable-normalization-flatten-containers = true;
     enable-normalization-opposite-orientation-for-nested-containers = true;
     accordion-padding = 30;
@@ -31,10 +31,10 @@ let
 
     mode.main.binding = {
       "cmd-m"           = "fullscreen";
-      # AeroSpace 0.20 : le sous-commande est `exec-and-forget` (pas `exec`).
-      # Un `exec` nu fait echouer le parsing du fichier ENTIER, et AeroSpace
-      # retombe silencieusement sur default-config.toml (toutes les touches
-      # de marc ignorees, start-at-login perdu).
+      # AeroSpace 0.20: the subcommand is `exec-and-forget` (not `exec`).
+      # A bare `exec` makes parsing of the ENTIRE file fail, and AeroSpace
+      # silently falls back to default-config.toml (all of marc's keys
+      # ignored, start-at-login lost).
       "cmd-enter"       = "exec-and-forget /Applications/Alacritty.app/Contents/MacOS/alacritty";
       "cmd-slash"       = "layout tiles horizontal vertical";
       "cmd-comma"       = "layout accordion horizontal vertical";
@@ -74,10 +74,10 @@ let
       "cmd-shift-l" = [ "join-with right" "mode main" ];
     };
 
-    # Motifs de moniteur, pas des noms figes : "Mi Monitor" n'existe plus
-    # (l'externe s'appelle maintenant 32S331) et un nom fige casse au moindre
-    # changement de cable/ecran. "built-in" = regex sur le nom interne,
-    # "secondary" = l'ecran externe quand il n'y en a qu'un.
+    # Monitor patterns, not fixed names: "Mi Monitor" no longer exists
+    # (the external one is now called 32S331) and a fixed name breaks on the slightest
+    # cable/screen change. "built-in" = regex on the internal name,
+    # "secondary" = the external screen when there is only one.
     workspace-to-monitor-force-assignment = {
       "1" = "built-in";
       "2" = "built-in";

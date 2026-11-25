@@ -1,10 +1,10 @@
 { config, pkgs, ... }:
 
 {
-  # Assure-toi que Tor Browser est installé
+  # Make sure Tor Browser is installed
   home.packages = [ pkgs.tor-browser ];
 
-  # Création forcée du fichier de politique
+  # Forced creation of the policy file
   home.file.".tor-browser/app/distribution/policies.json".text = builtins.toJSON {
     policies = {
       ExtensionSettings = {
@@ -13,7 +13,7 @@
           install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
         };
       };
-      # Optionnel : Empêcher la désactivation de l'extension
+      # Optional: Prevent disabling the extension
       DisableAppUpdate = true;
     };
   };

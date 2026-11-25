@@ -16,15 +16,15 @@
 
   programs.nixvim = {
     enable = true;
-    # Construire nixvim sur le nixpkgs du système (au lieu de l'input nixpkgs
-    # interne de nixvim) : une seule éval de nixpkgs et ça supprime
-    # définitivement le warning "nixpkgs.source affected by your flake follows"
-    # (qui compare la rev à celle testée par la CI de nixvim).
+    # Build nixvim on the system nixpkgs (instead of nixvim's internal
+    # nixpkgs input): a single nixpkgs eval and it permanently
+    # removes the warning "nixpkgs.source affected by your flake follows"
+    # (which compares the rev to the one tested by nixvim's CI).
     nixpkgs.source = inputs.nixpkgs;
     # # colorschemes.catppuccin.enable = true;
     opts = import ./options.nix;
     keymaps = import ./keymaps.nix;
-    clipboard.register = "unnamedplus"; # yank => presse-papier direct
+    clipboard.register = "unnamedplus"; # yank => direct clipboard
 
     filetype = {
       extension = {
@@ -37,7 +37,7 @@
       lsp.servers.nil_ls = {
         enable = true;
         settings."nil".nix.flake = {
-          autoArchive = false; # ou true pour fetch en silence
+          autoArchive = false; # or true to fetch silently
           # autoEvalInputs = false;
         };
       };
@@ -45,12 +45,12 @@
         enable = true;
         settings = {
           provider = "claude";
-          # On déplace tout dans providers.claude
+          # We move everything into providers.claude
           providers = {
             claude = {
               endpoint = "https://api.anthropic.com";
               model = "claude-3-5-sonnet-20241022";
-              # Température et tokens vont maintenant dans extra_request_body
+              # Temperature and tokens now go into extra_request_body
               extra_request_body = {
                 temperature = 0;
                 max_tokens = 4096;
@@ -78,15 +78,15 @@
         enable = true;
         settings = {
           ui.border = "rounded";
-          lightbulb.enable = false; # évite le spam si pas de LSP actif
+          lightbulb.enable = false; # avoids spam if no LSP is active
         };
       };
       treesitter = {
         enable = true;
-        # Assure-toi que le parser yuck est bien chargé
-        nixGrammars = true; # Utilise les paquets Nix pour les grammaires
+        # Make sure the yuck parser is properly loaded
+        nixGrammars = true; # Uses the Nix packages for the grammars
         settings = {
-          ensure_installed = ["yuck" "nix" "lua" "bash" "markdown"]; # Ajoute "yuck" ici
+          ensure_installed = ["yuck" "nix" "lua" "bash" "markdown"]; # Add "yuck" here
           highlight.enable = true;
         };
       };

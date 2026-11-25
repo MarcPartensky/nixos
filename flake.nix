@@ -137,13 +137,14 @@
     };
 
     # typer: typing + race rooms (Rust server typer-server, terminal client
-    # typer-race). Standalone flake, vendored under projects/typer so
-    # that the input resolves on tower AND on macOS: a single absolute path
-    # cannot exist on both machines. follows nixpkgs to avoid
-    # evaluating a second nixpkgs; the package is built with the host's
-    # pkgs (see users/mac/home.nix, and the nixos module of the typer flake).
+    # typer-race). Standalone flake consumed from its public Codeberg repo, so
+    # the system repo no longer vendors a copy and one URL resolves on tower
+    # AND on macOS. follows nixpkgs to avoid evaluating a second nixpkgs; the
+    # package is built with the host's pkgs (see users/mac/home.nix, and the
+    # nixos module of the typer flake).
+    # Bump the deployed build with: nix flake lock --update-input typer
     typer = {
-      url = "path:./projects/typer";
+      url = "git+https://codeberg.org/mazex/typer";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

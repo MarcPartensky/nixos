@@ -1,35 +1,35 @@
-"""Outils transport (train + car + navette) pour mcp-host.
+"""Transport tools (train + coach + shuttle) for mcp-host.
 
-Pourquoi ce module : pour aller a un centre UCPA, l'API SNCF (Navitia) ne
-suffit pas. Elle ne connait que le rail : le dernier tronçon (car regional,
-navette de station, car interurbain) manque, et c'est justement celui qui
-dessert les stations. Un serveur MCP adosse a Navitia seul oblige donc a
-recoller a la main train et car.
+Why this module: to reach a UCPA center, the SNCF API (Navitia) is not
+enough. It only knows rail: the last leg (regional coach,
+resort shuttle, intercity coach) is missing, and that is exactly the one that
+serves the resorts. An MCP server backed by Navitia alone therefore forces you to
+stitch train and coach back together by hand.
 
-Ici tout passe par Transitous (https://transitous.org), une instance MOTIS
-publique qui agrege les GTFS de toute l'Europe : horaires SNCF (feed
-fr-horaires-sncf), cars regionaux (Savoie, Hautes-Alpes, Occitanie...),
-navettes de station (Bourg-Saint-Maurice, Tignes, Val d'Isere), FlixBus et
-BlaBlaCar Bus. Un seul appel rend l'itineraire porte a porte, train et car
-melanges, avec les correspondances calculees.
+Here everything goes through Transitous (https://transitous.org), a public
+MOTIS instance that aggregates the GTFS of all of Europe: SNCF timetables (feed
+fr-horaires-sncf), regional coaches (Savoie, Hautes-Alpes, Occitanie...),
+resort shuttles (Bourg-Saint-Maurice, Tignes, Val d'Isere), FlixBus and
+BlaBlaCar Bus. A single call returns the door-to-door itinerary, train and coach
+mixed, with the connections computed.
 
-Pourquoi pas de graphe local (OpenTripPlanner / MOTIS auto-heberge) : le
-graphe France entiere pese plusieurs Go de RAM et coute des heures de CPU a
-construire, pour un resultat identique. Ici le cout local est nul : un GET
-JSON de ~1 s, aucune dependance hors stdlib, aucun cache de graphe.
+Why no local graph (OpenTripPlanner / self-hosted MOTIS): the
+whole-France graph weighs several GB of RAM and costs hours of CPU to
+build, for an identical result. Here the local cost is zero: a JSON
+GET of ~1 s, no dependency outside the stdlib, no graph cache.
 
-Limites mesurees le 18/11/2026 :
-- Aucun prix. Ni Transitous ni Navitia ne vendent des billets ; les prix
-  SNCF Connect sont derriere une API privee non officielle.
-- Temps reel partiel : chaque feed expose ou non du GTFS-RT. Le champ
-  realTime de chaque tronçon dit ce qui est confirme (NO_RT_DATA sinon).
-- Trou de couverture constate depuis Paris : Les Orres 1650 et Val Cenis
-  Lanslebourg ne rendent aucun itineraire (car de rabattement absent des
-  feeds) alors que 18 autres centres UCPA passent.
+Limits measured on 18/11/2026:
+- No price. Neither Transitous nor Navitia sell tickets; SNCF Connect
+  prices are behind a private unofficial API.
+- Partial real time: each feed exposes GTFS-RT or not. The
+  realTime field of each leg says what is confirmed (NO_RT_DATA otherwise).
+- Coverage gap observed from Paris: Les Orres 1650 and Val Cenis
+  Lanslebourg return no itinerary (feeder coach missing from the
+  feeds) whereas 18 other UCPA centers work.
 
-Env : TRANSPORT_BASE (defaut https://api.transitous.org/api/v1),
-TRANSPORT_TIMEOUT (defaut 40), TRANSPORT_STATE_DIR (cache geocodage),
-TRANSPORT_TZ (defaut Europe/Paris).
+Env: TRANSPORT_BASE (default https://api.transitous.org/api/v1),
+TRANSPORT_TIMEOUT (default 40), TRANSPORT_STATE_DIR (geocoding cache),
+TRANSPORT_TZ (default Europe/Paris).
 """
 
 import json
@@ -44,7 +44,7 @@ import urllib.request
 
 try:
     from fastmcp.tools import tool
-except Exception:  # test hors mcp-host : decorateur neutre
+except Exception:  # test outside mcp-host: neutral decorator
 
     def tool(fn=None, **_kw):
         if fn is not None:
@@ -61,145 +61,145 @@ STATE_DIR = os.environ.get(
 GEO_CACHE = os.path.join(STATE_DIR, "geocode.json")
 GEO_TTL = 30 * 24 * 3600
 
-# Transitous demande un UA identifiable ; jamais le nom de marc dedans.
+# Transitous requires an identifiable UA; never marc's name in it.
 UA = os.environ.get("TRANSPORT_UA", "hermes-transport-mcp/1.0 (+self-hosted)")
 
-# Centres UCPA atteignables, coordonnees de l'arret le plus proche verifiees
-# par un itineraire reel depuis Paris le 18/11/2026. `note` dit ce qui a ete
-# constate, `gap` signale un centre ou le car de rabattement manque.
+# Reachable UCPA centers, coordinates of the nearest stop verified
+# by a real itinerary from Paris on 18/11/2026. `note` says what was
+# observed, `gap` flags a center where the feeder coach is missing.
 UCPA_CENTERS = {
     "val-thorens": {
         "label": "UCPA Val Thorens",
         "lat": 45.29965,
         "lon": 6.569263,
-        "note": "arret 'VAL THORENS UCPA' du car regional Savoie (S63 depuis Moutiers)",
+        "note": "stop 'VAL THORENS UCPA' of the regional Savoie coach (S63 from Moutiers)",
     },
     "valloire": {
         "label": "UCPA Valloire",
         "lat": 45.15585,
         "lon": 6.42073,
-        "note": "arret 'VALLOIRE UCPA' du car regional Savoie (S40 depuis Saint-Michel)",
+        "note": "stop 'VALLOIRE UCPA' of the regional Savoie coach (S40 from Saint-Michel)",
     },
     "val-d-isere": {
         "label": "UCPA Val d'Isere",
         "lat": 45.459877,
         "lon": 6.965673,
-        "note": "car S82 depuis Bourg-Saint-Maurice",
+        "note": "coach S82 from Bourg-Saint-Maurice",
     },
     "tignes": {
         "label": "UCPA Tignes",
         "lat": 45.4694,
         "lon": 6.9049,
-        "note": "car S83 depuis Bourg-Saint-Maurice",
+        "note": "coach S83 from Bourg-Saint-Maurice",
     },
     "les-arcs": {
         "label": "UCPA Les Arcs (Arc 1600)",
         "lat": 45.59905,
         "lon": 6.79973,
-        "note": "funiculaire depuis Bourg-Saint-Maurice (gare dans le graphe)",
+        "note": "funicular from Bourg-Saint-Maurice (station in the graph)",
     },
     "la-plagne": {
         "label": "UCPA La Plagne Le France",
         "lat": 45.506763,
         "lon": 6.675743,
-        "note": "car S71 depuis Aime-la-Plagne ; coordonnees de Plagne Centre, centre a ~1 km",
+        "note": "coach S71 from Aime-la-Plagne; coordinates of Plagne Centre, center ~1 km away",
     },
     "chamonix": {
         "label": "UCPA Chamonix",
         "lat": 45.92277,
         "lon": 6.87363,
-        "note": "TGV jusqu'a Saint-Gervais ou Sallanches, puis BlaBlaCar Bus / TER",
+        "note": "TGV to Saint-Gervais or Sallanches, then BlaBlaCar Bus / TER",
     },
     "argentiere": {
         "label": "UCPA Argentiere (Vallee du Mont-Blanc)",
         "lat": 45.981944,
         "lon": 6.926484,
-        "note": "TER Chamonix puis marche ; le car BlaBlaCar Bus s'arrete a Chamonix",
+        "note": "TER Chamonix then walk; the BlaBlaCar Bus coach stops at Chamonix",
     },
     "les-contamines": {
         "label": "UCPA Les Contamines",
         "lat": 45.82238,
         "lon": 6.72685,
-        "note": "car Y84 depuis Sallanches / Saint-Gervais",
+        "note": "coach Y84 from Sallanches / Saint-Gervais",
     },
     "flaine": {
         "label": "UCPA Flaine",
         "lat": 46.005558,
         "lon": 6.692669,
-        "note": "navette LCFE depuis Cluses (arret 'FLAINE - FORUM')",
+        "note": "LCFE shuttle from Cluses (stop 'FLAINE - FORUM')",
     },
     "pralognan": {
         "label": "UCPA Pralognan",
         "lat": 45.388622,
         "lon": 6.716409,
-        "note": "car S66 depuis Moutiers",
+        "note": "coach S66 from Moutiers",
     },
     "les-orres": {
         "label": "UCPA Les Orres",
         "lat": 44.49429,
         "lon": 6.55675,
-        "note": "car de rabattement absent des feeds : 0 itineraire mesure, viser Embrun puis car local",
+        "note": "feeder coach missing from the feeds: 0 itineraries measured, aim for Embrun then local coach",
         "gap": True,
     },
     "les-deux-alpes": {
         "label": "UCPA Les Deux Alpes (Venosc)",
         "lat": 45.0105,
         "lon": 6.1246,
-        "note": "car depuis Grenoble puis Venosc ; coordonnees de la station (la telecabine de Venosc n'est pas dans le graphe)",
+        "note": "coach from Grenoble then Venosc; coordinates of the resort (the Venosc cable car is not in the graph)",
     },
     "val-cenis": {
         "label": "UCPA Val Cenis",
         "lat": 45.28539,
         "lon": 6.8755,
-        "note": "car de rabattement absent des feeds : 0 itineraire mesure, viser Modane puis car local",
+        "note": "feeder coach missing from the feeds: 0 itineraries measured, aim for Modane then local coach",
         "gap": True,
     },
     "serre-chevalier": {
         "label": "UCPA Serre Chevalier (Monetier)",
         "lat": 44.9763,
         "lon": 6.507302,
-        "note": "TER jusqu'a Briancon puis car ZOU / lignes locales",
+        "note": "TER to Briancon then ZOU coach / local lines",
     },
     "saint-lary": {
         "label": "UCPA Saint-Lary-Soulan",
         "lat": 42.818394,
         "lon": 0.322091,
-        "note": "train jusqu'a Lannemezan ou Tarbes puis car regional",
+        "note": "train to Lannemezan or Tarbes then regional coach",
     },
     "guchen": {
         "label": "UCPA Guchen (Vallee de Saint-Lary)",
         "lat": 42.86289,
         "lon": 0.338455,
-        "note": "meme acces que Saint-Lary, arret amont",
+        "note": "same access as Saint-Lary, upstream stop",
     },
     "valmeinier": {
         "label": "UCPA Valmeinier",
         "lat": 45.17964,
         "lon": 6.48492,
-        "note": "car S41 depuis Saint-Michel - Valloire",
+        "note": "coach S41 from Saint-Michel - Valloire",
     },
     "chapelle-vercors": {
         "label": "UCPA La Chapelle-en-Vercors",
         "lat": 44.964764,
         "lon": 5.414576,
-        "note": "TGV jusqu'a Valence puis car D05",
+        "note": "TGV to Valence then coach D05",
     },
     "vallouise": {
         "label": "UCPA Vallouise (Ecrins)",
         "lat": 44.84532,
         "lon": 6.4899,
-        "note": "TER jusqu'a Briancon puis car L1",
+        "note": "TER to Briancon then coach L1",
     },
 }
 
 _FRENCH = {"FR", "MC"}
 
 
-# ------------------------------------------------------------------ reseau
+# ------------------------------------------------------------------ network
 
 
 def _get(path, params=None):
-    """GET JSON sur Transitous. Leve RuntimeError avec le corps d'erreur."""
+    """GET JSON from Transitous. Raises RuntimeError with the error body."""
     url = f"{BASE}/{path}"
     if params:
         url += "?" + urllib.parse.urlencode(params)
@@ -211,15 +211,15 @@ def _get(path, params=None):
             return json.loads(resp.read())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode(errors="replace")[:300]
-        raise RuntimeError(f"Transitous HTTP {exc.code} sur /{path} : {detail}") from None
+        raise RuntimeError(f"Transitous HTTP {exc.code} on /{path}: {detail}") from None
     except urllib.error.URLError as exc:
-        raise RuntimeError(f"Transitous injoignable (/{path}) : {exc.reason}") from None
+        raise RuntimeError(f"Transitous unreachable (/{path}): {exc.reason}") from None
     except ValueError:
-        raise RuntimeError(f"Transitous /{path} : reponse non JSON") from None
+        raise RuntimeError(f"Transitous /{path}: non-JSON response") from None
 
 
 def _fold(text):
-    """Minuscule sans accents, pour comparer 'Moutiers' et 'Moutiers'."""
+    """Lowercase without accents, to compare 'Moutiers' and 'Moutiers'."""
     raw = unicodedata.normalize("NFKD", str(text or ""))
     return "".join(c for c in raw if not unicodedata.combining(c)).lower().strip()
 
@@ -261,7 +261,7 @@ def _geocode_raw(query, limit=8, kind="STOP"):
 
 
 def _rank(places, query):
-    """Trie les candidats : nom qui colle, puis France, puis type arret."""
+    """Sorts the candidates: matching name, then France, then stop type."""
     wanted = _fold(query)
 
     def score(place):
@@ -313,7 +313,7 @@ def _haversine_km(lat1, lon1, lat2, lon2):
 
 
 def _point(text):
-    """Coordonnees (lat, lon) d'un nom libre, via un geocodage type=PLACE."""
+    """Coordinates (lat, lon) of a free-form name, via a type=PLACE geocoding."""
     wanted = _fold(text)
     candidates = _geocode_raw(text, limit=10, kind="PLACE")
     ranked = _rank(candidates or [], text)
@@ -327,15 +327,15 @@ def _point(text):
 
 
 def _stop_candidates(text, limit=3, radius_km=30.0):
-    """Arrets plausibles pour un nom libre, tries par pertinence.
+    """Plausible stops for a free-form name, sorted by relevance.
 
-    Deux requetes de geocodage : le nom seul, puis le nom + ' gare' (les
-    grands noms de ville ne rendent pas les gares SNCF tout seuls : 'Paris'
-    rend 'Paris Est' et 'Paris-Nord' d'autres feeds, alors que 'Paris gare'
-    rend 'Paris Gare du Nord' et 'Paris-Gare-de-Lyon' du feed SNCF).
-    Le plan est ensuite tente sur les meilleurs candidats et on garde le plus
-    rapide : l'arret le plus proche du centre-ville n'est pas forcement celui
-    d'ou part le bon train.
+    Two geocoding requests: the name alone, then the name + ' gare' (large
+    city names do not return SNCF stations by themselves: 'Paris'
+    returns 'Paris Est' and 'Paris-Nord' from other feeds, whereas 'Paris gare'
+    returns 'Paris Gare du Nord' and 'Paris-Gare-de-Lyon' from the SNCF feed).
+    The plan is then tried on the best candidates and the fastest is kept:
+    the stop closest to the city center is not necessarily the one
+    the right train departs from.
     """
     point = _point(text)
     if point is None:
@@ -361,7 +361,7 @@ def _stop_candidates(text, limit=3, radius_km=30.0):
             elif name.startswith(wanted) or wanted in name:
                 score += 1.5
             if str(ident).startswith("fr-horaires-sncf"):
-                score += 2.5  # gare SNCF : la ou partent les TGV et TER
+                score += 2.5  # SNCF station: where the TGV and TER depart from
             if distance <= 3:
                 score += 1
             seen[ident] = {
@@ -375,14 +375,14 @@ def _stop_candidates(text, limit=3, radius_km=30.0):
 
 
 def _resolve(place, prefer_country=True):
-    """Rend de quoi interroger MOTIS : id d'arret, ou coordonnees explicites."""
+    """Returns what is needed to query MOTIS: stop id, or explicit coordinates."""
     text = str(place or "").strip()
     if not text:
-        raise RuntimeError("lieu vide")
+        raise RuntimeError("empty place")
     if re.fullmatch(r"\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*", text):
         lat, lon = [x.strip() for x in text.split(",")]
         return f"{float(lat):.5f},{float(lon):.5f}"
-    if ":" in text:  # id d'arret ou de lieu rendu par transport_places
+    if ":" in text:  # stop or place id returned by transport_places
         return text
     candidates = _stop_candidates(text, limit=1)
     if candidates:
@@ -391,16 +391,16 @@ def _resolve(place, prefer_country=True):
     if point:
         return f"{point[0]:.5f},{point[1]:.5f}"
     raise RuntimeError(
-        f"lieu introuvable : {text!r} ; essayer transport_places pour trouver "
-        "le nom exact d'une gare ou d'un arret"
+        f"place not found: {text!r}; try transport_places to find "
+        "the exact name of a station or stop"
     )
 
 
 def _places_to_try(place, limit=2):
-    """Liste [(valeur MOTIS, libelle)] a essayer pour un cote de l'itineraire."""
+    """List of [(MOTIS value, label)] to try for one side of the itinerary."""
     text = str(place or "").strip()
     if not text:
-        raise RuntimeError("lieu vide")
+        raise RuntimeError("empty place")
     if re.fullmatch(r"\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*", text):
         return [(re.sub(r"\s", "", text), None)]
     if ":" in text:
@@ -412,8 +412,8 @@ def _places_to_try(place, limit=2):
     if point:
         return [(f"{point[0]:.5f},{point[1]:.5f}", text)]
     raise RuntimeError(
-        f"lieu introuvable : {text!r} ; essayer transport_places pour trouver "
-        "le nom exact d'une gare ou d'un arret"
+        f"place not found: {text!r}; try transport_places to find "
+        "the exact name of a station or stop"
     )
 
 
@@ -421,7 +421,7 @@ def _places_to_try(place, limit=2):
 
 
 def _to_utc(when):
-    """'2026-12-19 08:00' (heure de Paris) ou ISO avec fuseau -> ISO UTC."""
+    """'2026-12-19 08:00' (Paris time) or ISO with timezone -> ISO UTC."""
     text = str(when or "").strip()
     if not text:
         return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -438,7 +438,7 @@ def _to_utc(when):
             )
             return local.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         except Exception:
-            raise RuntimeError(f"date illisible : {when!r}") from None
+            raise RuntimeError(f"unreadable date: {when!r}") from None
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", text):
         return text
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}", text):
@@ -451,14 +451,14 @@ def _to_utc(when):
                 .strftime("%Y-%m-%dT%H:%M:%SZ")
             )
         except Exception:
-            raise RuntimeError(f"date illisible : {when!r}") from None
+            raise RuntimeError(f"unreadable date: {when!r}") from None
     raise RuntimeError(
-        f"date attendue en AAAA-MM-JJ[THH:MM] (heure de Paris) ou ISO, recu {when!r}"
+        f"date expected as YYYY-MM-DD[THH:MM] (Paris time) or ISO, got {when!r}"
     )
 
 
 def _local(iso):
-    """ISO UTC de Transitous -> 'HH:MM' heure de Paris."""
+    """Transitous ISO UTC -> 'HH:MM' Paris time."""
     if not iso:
         return None
     try:
@@ -477,29 +477,29 @@ def _hhmm(iso):
 
 
 def _line(leg):
-    """Etiquette lisible d'un tronçon : 'TGV INOUI 6435', 'Car S63', 'Marche'."""
+    """Readable label of a leg: 'TGV INOUI 6435', 'Coach S63', 'Walk'."""
     short = leg.get("routeShortName") or ""
     long_name = leg.get("routeLongName") or ""
     mode = leg.get("mode") or ""
     labels = {
         "HIGHSPEED_RAIL": "TGV",
         "REGIONAL_RAIL": "TER",
-        "REGIONAL": "Car",
-        "BUS": "Car",
-        "COACH": "Car",
+        "REGIONAL": "Coach",
+        "BUS": "Coach",
+        "COACH": "Coach",
         "SUBWAY": "Metro",
         "TRAM": "Tram",
         "FERRY": "Ferry",
-        "LONG_DISTANCE": "Grande ligne",
-        "NIGHT_RAIL": "Train de nuit",
-        "FUNICULAR": "Funiculaire",
-        "WALK": "Marche",
-        "BIKE": "Velo",
-        "CAR": "Voiture",
+        "LONG_DISTANCE": "Long distance",
+        "NIGHT_RAIL": "Night train",
+        "FUNICULAR": "Funicular",
+        "WALK": "Walk",
+        "BIKE": "Bike",
+        "CAR": "Car",
     }
     label = labels.get(mode, mode.title() or "?")
     if mode == "WALK":
-        return "Marche"
+        return "Walk"
     if short and label.lower() in short.lower():
         return short
     text = " ".join(x for x in (label, short or long_name) if x).strip()
@@ -519,12 +519,12 @@ def _leg_summary(leg, keep_walk=True):
         "realTime": bool(leg.get("realTime")),
     }
     tracks = []
-    for key, label in (("from", "depart"), ("to", "arrivee")):
+    for key, label in (("from", "depart"), ("to", "arrival")):
         platform = (leg.get(key) or {}).get("track") or (leg.get(key) or {}).get(
             "scheduledTrack"
         )
         if platform:
-            tracks.append(f"{label} voie {platform}")
+            tracks.append(f"{label} track {platform}")
     if tracks:
         item["platforms"] = tracks
     if leg.get("mode") == "WALK":
@@ -561,10 +561,10 @@ def _itinerary(it):
 
 
 def _resolve_stop(place):
-    """Id d'arret pour un nom, un id ou 'lat,lon' (via l'arret le plus proche)."""
+    """Stop id for a name, an id or 'lat,lon' (via the nearest stop)."""
     text = str(place or "").strip()
     if not text:
-        raise RuntimeError("lieu vide")
+        raise RuntimeError("empty place")
     if ":" in text:
         return text
     if re.fullmatch(r"\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*", text):
@@ -573,12 +573,12 @@ def _resolve_stop(place):
         for candidate in candidates:
             if candidate and candidate.get("id"):
                 return str(candidate["id"])
-        raise RuntimeError(f"aucun lieu autour de {text}")
+        raise RuntimeError(f"no place around {text}")
     candidates = _stop_candidates(text, limit=1)
     if candidates:
         return candidates[0]["id"]
     raise RuntimeError(
-        f"arret introuvable pour {text!r} ; transport_places donne les noms exacts"
+        f"stop not found for {text!r}; transport_places gives the exact names"
     )
 
 
@@ -630,7 +630,7 @@ def _plan_payload(origin, destination, when, arrive_by, results, modes, max_tran
             "itineraries_found": 0,
             "itineraries": [],
             "attempts": tried[:6],
-            "note": "horaires theoriques + temps reel quand le feed en publie ; aucun prix",
+            "note": "theoretical timetables + real time when the feed publishes it; no price",
         }
     _, itineraries, origin_label, dest_label = best
     return {
@@ -645,7 +645,7 @@ def _plan_payload(origin, destination, when, arrive_by, results, modes, max_tran
         },
         "itineraries_found": len(itineraries),
         "itineraries": [_itinerary(it) for it in itineraries],
-        "note": "horaires theoriques + temps reel quand le feed en publie ; aucun prix",
+        "note": "theoretical timetables + real time when the feed publishes it; no price",
     }
 
 
@@ -654,10 +654,10 @@ def _plan_payload(origin, destination, when, arrive_by, results, modes, max_tran
 
 @tool
 def transport_status() -> str:
-    """Etat du service de calcul d'itineraire (Transitous/MOTIS).
+    """Status of the itinerary computation service (Transitous/MOTIS).
 
-    Smoke test : geocode un lieu connu et verifie que l'API repond. Rend la
-    base utilisee, le fuseau et le nombre de centres UCPA connus.
+    Smoke test: geocodes a known place and checks that the API responds. Returns the
+    base used, the timezone and the number of known UCPA centers.
     """
     out = {"base": BASE, "tz": TZ, "state_dir": STATE_DIR}
     try:
@@ -668,21 +668,21 @@ def transport_status() -> str:
         out["api_ok"] = False
         out["api_error"] = str(exc)[:200]
     out["ucpa_centers"] = len(UCPA_CENTERS)
-    out["sources"] = "GTFS SNCF + cars regionaux + navettes de station + FlixBus/BlaBlaCar Bus"
+    out["sources"] = "GTFS SNCF + regional coaches + resort shuttles + FlixBus/BlaBlaCar Bus"
     return json.dumps(out, ensure_ascii=False, separators=(",", ":"))
 
 
 @tool
 def transport_places(query: str, limit: int = 8) -> str:
-    """Cherche des gares, arrets de car, stations ou adresses par nom.
+    """Searches stations, coach stops, resorts or addresses by name.
 
-    A appeler avant transport_plan quand un nom est ambigu : 'Moutiers' rend
-    plusieurs arrets (car Savoie, BlaBlaCar, IDFM). Les candidats sont tries
-    par ressemblance du nom puis par pays FR.
+    Call before transport_plan when a name is ambiguous: 'Moutiers' returns
+    several stops (Savoie coach, BlaBlaCar, IDFM). The candidates are sorted
+    by name similarity then by country FR.
     """
     payload = _geocode_raw(query, limit=limit)
     if not isinstance(payload, list):
-        raise RuntimeError("reponse de geocodage illisible")
+        raise RuntimeError("unreadable geocoding response")
     ranked = _rank(payload, query)
     return json.dumps(
         {
@@ -705,43 +705,43 @@ def transport_plan(
     modes: str = "",
     max_transfers: int = -1,
 ) -> str:
-    """Itineraire porte a porte train + car + navette, avec correspondances.
+    """Door-to-door train + coach + shuttle itinerary, with connections.
 
-    Un seul appel rend le trajet complet : TGV/TER, cars regionaux, navettes
-    de station, FlixBus et BlaBlaCar Bus, plus la marche. C'est l'outil a
-    utiliser pour rejoindre un centre UCPA, la ou une API ferroviaire seule
-    s'arrete a la gare.
+    A single call returns the full trip: TGV/TER, regional coaches, resort
+    shuttles, FlixBus and BlaBlaCar Bus, plus walking. This is the tool to
+    use to reach a UCPA center, where a rail API alone
+    stops at the station.
 
-    origin / destination : nom libre ('Paris Gare de Lyon', 'Val Thorens'),
-    'lat,lon', ou id d'arret rendu par transport_places.
-    when : '' = maintenant ; 'AAAA-MM-JJ' (9 h par defaut) ; 'AAAA-MM-JJTHH:MM'
-    interprete en heure de Paris ; ISO avec fuseau accepte tel quel.
-    arrive_by : True pour arriver avant `when` au lieu de partir apres.
-    results : nombre d'itineraires (1 a 8).
-    modes : filtre MOTIS optionnel, ex 'TRANSIT,WALK' (seuls les transports en
-    commun) ou 'WALK'. Vide = tout.
-    max_transfers : -1 = libre, sinon nombre max de correspondances.
+    origin / destination: free-form name ('Paris Gare de Lyon', 'Val Thorens'),
+    'lat,lon', or a stop id returned by transport_places.
+    when: '' = now; 'YYYY-MM-DD' (9:00 by default); 'YYYY-MM-DDTHH:MM'
+    interpreted in Paris time; ISO with timezone accepted as is.
+    arrive_by: True to arrive before `when` instead of departing after.
+    results: number of itineraries (1 to 8).
+    modes: optional MOTIS filter, e.g. 'TRANSIT,WALK' (public transport
+    only) or 'WALK'. Empty = everything.
+    max_transfers: -1 = free, otherwise max number of connections.
 
-    Aucun prix : ni Transitous ni Navitia ne donnent de tarif. Pour un prix,
-    passer par SNCF Connect (UC) ou FlixBus (site).
+    No price: neither Transitous nor Navitia give a fare. For a price,
+    go through SNCF Connect (UC) or FlixBus (site).
     """
     payload = _plan_payload(
         origin, destination, when, arrive_by, results, modes, max_transfers
     )
     if not payload["itineraries"]:
         payload["hint"] = (
-            "aucun itineraire a cette heure : essayer une autre heure, un arret "
-            "plus proche (transport_places), ou elargir modes"
+            "no itinerary at this time: try another time, a closer "
+            "stop (transport_places), or widen modes"
         )
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 
 @tool
 def transport_departures(place: str, when: str = "", results: int = 8) -> str:
-    """Prochains departs (trains et cars) autour d'un arret.
+    """Next departures (trains and coaches) around a stop.
 
-    Utile pour verifier la derniere navette ou un car unique par jour.
-    place : nom libre ou id d'arret ; when : voir transport_plan.
+    Useful to check the last shuttle or a coach that runs once a day.
+    place: free-form name or stop id; when: see transport_plan.
     """
     resolved = _resolve_stop(place)
     stop_id = resolved
@@ -778,11 +778,11 @@ def transport_departures(place: str, when: str = "", results: int = 8) -> str:
 
 @tool
 def transport_ucpa_centers() -> str:
-    """Centres UCPA atteignables en train et car, avec l'acces constate.
+    """UCPA centers reachable by train and coach, with the observed access.
 
-    Chaque centre porte les coordonnees de l'arret le plus proche, verifiees
-    par un itineraire reel depuis Paris. `gap` signale les centres ou le car
-    de rabattement manque dans les feeds ouverts.
+    Each center carries the coordinates of the nearest stop, verified
+    by a real itinerary from Paris. `gap` flags the centers where the feeder
+    coach is missing from the open feeds.
     """
     rows = []
     for key, center in UCPA_CENTERS.items():
@@ -811,17 +811,17 @@ def transport_ucpa_plan(
     arrive_by: bool = False,
     results: int = 3,
 ) -> str:
-    """Itineraire vers un centre UCPA, par nom ou cle, depuis une ville.
+    """Itinerary to a UCPA center, by name or key, from a city.
 
-    center : cle ('val-thorens'), nom approche ('Val Thorens', 'serre
-    chevalier') ou 'lat,lon'. origin : ville de depart ('Paris', 'Lyon',
-    'Bourg-Saint-Maurice'). when : voir transport_plan. arrive_by : True pour
-    arriver avant l'heure donnee, ce qui est le cas d'usage (arriver avant le
-    debut du sejour).
+    center: key ('val-thorens'), approximate name ('Val Thorens', 'serre
+    chevalier') or 'lat,lon'. origin: departure city ('Paris', 'Lyon',
+    'Bourg-Saint-Maurice'). when: see transport_plan. arrive_by: True to
+    arrive before the given time, which is the use case (arrive before the
+    start of the stay).
     """
     text = _fold(center)
     if not text:
-        raise RuntimeError("centre vide")
+        raise RuntimeError("empty center")
     match = None
     for key, value in UCPA_CENTERS.items():
         haystacks = (_fold(key), _fold(value["label"]))
@@ -835,7 +835,7 @@ def transport_ucpa_plan(
             return transport_plan(origin, center, when, arrive_by, results)
         known = ", ".join(sorted(k for k, v in UCPA_CENTERS.items() if not v.get("gap")))
         raise RuntimeError(
-            f"centre UCPA inconnu : {center!r} ; cles disponibles : {known}"
+            f"unknown UCPA center: {center!r}; available keys: {known}"
         )
     key, value = match
     payload = json.loads(
@@ -855,8 +855,8 @@ def transport_ucpa_plan(
     }
     if not payload["itineraries"]:
         payload["hint"] = (
-            "aucun itineraire : ce centre a un trou de couverture connu"
+            "no itinerary: this center has a known coverage gap"
             if value.get("gap")
-            else "aucun itineraire a cette heure : essayer une autre heure de depart"
+            else "no itinerary at this time: try another departure time"
         )
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))

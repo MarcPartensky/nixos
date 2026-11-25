@@ -1,34 +1,34 @@
-# services/tuptime : historique LOCAL de disponibilite de la machine.
+# services/tuptime: LOCAL availability history of the machine.
 #
-# Chaque machine tient son propre journal : demarrages, uptime cumule, DOWNTIME
-# cumule (le trou entre l'arret et le boot suivant), ratio de disponibilite, et
-# detection des arrets sales. Une base SQLite dans /var/lib/tuptime, un oneshot
-# au demarrage et un timer toutes les 5 min : le cout CPU est nul (quelques
-# millisecondes par tick).
+# Each machine keeps its own log: boots, cumulative uptime, cumulative DOWNTIME
+# (the gap between shutdown and the next boot), availability ratio, and
+# detection of unclean shutdowns. An SQLite database in /var/lib/tuptime, a oneshot
+# at boot and a timer every 5 min: the CPU cost is nil (a few
+# milliseconds per tick).
 #
-# C'est la couche qu'un moniteur central ne peut PAS fournir : elle survit a une
-# coupure reseau et a une panne du VPS, et elle donne des chiffres par machine
-# plutot qu'une impression (« est ce que tower tombe souvent ? »).
+# It is the layer a central monitor CANNOT provide: it survives a
+# network outage and a VPS failure, and it gives figures per machine
+# rather than an impression ("does tower go down often?").
 #
-# Lecture : `tuptime` (resume), `tuptime -t 10` (dix derniers evts).
+# Reading: `tuptime` (summary), `tuptime -t 10` (last ten events).
 { ... }:
 {
   services.tuptime = {
     enable = true;
 
-    # Le timer est ce qui compte : sans point regulier pendant que la machine
-    # tourne, un arret sale est compte comme si elle avait tourne jusqu'au boot
-    # suivant, et le downtime disparait du total.
+    # The timer is what matters: without a regular point while the machine
+    # runs, an unclean shutdown is counted as if it had run until the next
+    # boot, and the downtime disappears from the total.
     timer.enable = true;
   };
 
-  # PIEGE (releve le 17/11/2026, deux boots de suite) : au demarrage,
-  # tuptime.service (oneshot de boot) et tuptime-sync.service (timer 5 min)
-  # peuvent partir dans la MEME seconde. SQLite pose alors un verrou, le
-  # oneshot sort en « database is locked » / status=1, et comme il est
-  # RemainAfterExit sans Restart, l'evenement de boot de ce demarrage-la est
-  # PERDU (le downtime est compte faux). `after=` ne suffit pas : il faut que
-  # tuptime.service soit TERMINE avant que le timer ne declenche le sync.
+  # PITFALL (observed on 17/11/2026, two boots in a row): at startup,
+  # tuptime.service (boot oneshot) and tuptime-sync.service (5 min timer)
+  # can start in the SAME second. SQLite then sets a lock, the
+  # oneshot exits with "database is locked" / status=1, and since it is
+  # RemainAfterExit without Restart, the boot event of that startup is
+  # LOST (the downtime is counted wrong). `after=` is not enough:
+  # tuptime.service must be FINISHED before the timer triggers the sync.
   systemd.services.tuptime.before = [ "tuptime-sync.service" ];
   systemd.services.tuptime-sync.after = [ "tuptime.service" ];
 }

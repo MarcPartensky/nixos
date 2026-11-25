@@ -23,7 +23,7 @@
   nixpkgs.config.allowUnfree = true;
   networking.hostName = "macos";
 
-  # services.nix-daemon.enable = true;  <- supprime cette ligne
+  # services.nix-daemon.enable = true;  <- delete this line
 
   home-manager = {
     useGlobalPkgs = true;
@@ -46,12 +46,12 @@
     enable = false;
     onActivation = {
       autoUpdate = true;
-      cleanup = "zap"; # supprime les packages non listés
+      cleanup = "zap"; # removes packages not listed
       upgrade = true;
     };
 
     brews = [
-      "mas" # packages CLI homebrew
+      "mas" # homebrew CLI packages
     ];
 
     casks = [
@@ -60,7 +60,7 @@
     ];
 
     masApps = {
-      # App Store (nécessite mas)
+      # App Store (requires mas)
       "Xcode" = 497799835;
     };
   };

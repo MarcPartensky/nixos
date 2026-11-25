@@ -1,8 +1,8 @@
-# VM de dev « dev » : `just vm` (ou `nix run .#dev`).
+# Dev VM "dev": `just vm` (or `nix run .#dev`).
 #
-# Pour créer une autre VM :
-#   1. cp vms/dev.nix vms/app2.nix, changer networking.hostName (et les ports)
-#   2. flake.nix : dupliquer le bloc nixosConfigurations.dev en .app2, et
+# To create another VM:
+#   1. cp vms/dev.nix vms/app2.nix, change networking.hostName (and the ports)
+#   2. flake.nix: duplicate the nixosConfigurations.dev block into .app2, and
 #      packages.x86_64-linux.app2 = self.nixosConfigurations.app2.config.microvm.declaredRunner;
 #   3. just vm app2
 {
@@ -15,13 +15,13 @@
   networking.hostName = "dev";
 
   microvm = {
-    # tower : 16 cœurs / 62 Go mais machine bien chargée, rester raisonnable.
+    # tower: 16 cores / 62 GB but a heavily loaded machine, stay reasonable.
     vcpu = 6;
     mem = 6144;
 
-    # Code de l'hôte visible dans la VM, en lecture/écriture (9p). Le montage
-    # est à l'uid de marc (1000 = le même que dans la VM), donc les fichiers
-    # restent à lui. Réduire à un projet précis si besoin.
+    # Host code visible in the VM, read/write (9p). The mount
+    # is at marc's uid (1000 = the same as in the VM), so the files
+    # stay his. Reduce to a specific project if needed.
     shares = [
       {
         tag = "git";
@@ -31,10 +31,10 @@
       }
     ];
 
-    # Ports de dev : le serveur lancé DANS la VM est joignable depuis tower.
-    # Décalés de +10000 pour ne pas entrer en conflit avec un service de tower
-    # (3000 = gitea par ex.) : qemu refuse de démarrer si le port hôte est déjà
-    # pris. Ici : VM:3000 -> tower:13000, VM:5173 -> tower:15173, etc.
+    # Dev ports: the server launched INSIDE the VM is reachable from tower.
+    # Shifted by +10000 to avoid conflicting with a tower service
+    # (3000 = gitea for ex.): qemu refuses to start if the host port is already
+    # taken. Here: VM:3000 -> tower:13000, VM:5173 -> tower:15173, etc.
     forwardPorts = [
       {
         from = "host";
@@ -65,10 +65,10 @@
         host.address = "127.0.0.1";
         host.port = 18080;
         guest.port = 8080;
-      } # divers
+      } # misc
     ];
   };
 
-  # Paquets propres à cette VM (la base est dans vms/default.nix) :
+  # Packages specific to this VM (the base is in vms/default.nix):
   # environment.systemPackages = with pkgs; [python3 postgresql];
 }

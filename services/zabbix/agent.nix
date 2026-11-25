@@ -1,17 +1,17 @@
-# services/zabbix/agent.nix : agent Zabbix des machines surveillees.
+# services/zabbix/agent.nix: Zabbix agent of the monitored machines.
 #
-# Le serveur vit sur le VPS (services/zabbix/server.nix, importe uniquement par
-# profiles/anywhere). Les agents le joignent par le TAILNET (100.64.0.1), pas
-# par l'exterieur : `networking.firewall.trustedInterfaces = [ "tailscale0" ]`
-# (services/tailscale) suffit, aucun port a ouvrir, et le trafic est deja
-# chiffre par WireGuard.
+# The server lives on the VPS (services/zabbix/server.nix, imported only by
+# profiles/anywhere). The agents reach it over the TAILNET (100.64.0.1), not
+# from the outside: `networking.firewall.trustedInterfaces = [ "tailscale0" ]`
+# (services/tailscale) is enough, no port to open, and the traffic is already
+# encrypted by WireGuard.
 { config, pkgs, ... }:
 let
-  # anywhere (le VPS), adresse tailnet. Le serveur ecoute sur 0.0.0.0:10051.
+  # anywhere (the VPS), tailnet address. The server listens on 0.0.0.0:10051.
   server = "100.64.0.1";
-  # Meme serie que le serveur (7.4 LTS) : un agent plus vieux que le serveur
-  # fonctionne, un agent plus recent casse, donc on aligne les deux pour ne
-  # jamais avoir a y penser lors d'une montee de version.
+  # Same series as the server (7.4 LTS): an agent older than the server
+  # works, a newer agent breaks, so we align the two to
+  # never have to think about it during a version upgrade.
   package = pkgs.zabbix74.agent;
 in
 {
@@ -19,17 +19,17 @@ in
     enable = true;
     inherit package;
 
-    # Checks passifs : c'est le serveur qui interroge l'agent, en revenant par le
-    # tailnet. L'option `server` du module alimente la ligne `Server` du fichier
-    # de conf, elle accepte une liste separee par des virgules.
+    # Passive checks: the server queries the agent, coming back over the
+    # tailnet. The module's `server` option feeds the `Server` line of the
+    # config file, it accepts a comma-separated list.
     server = server;
 
     settings = {
-      # Checks actifs : l'agent pousse vers le serveur.
+      # Active checks: the agent pushes to the server.
       ServerActive = "${server}:10051";
-      # Nom de l'hote cote serveur. C'est ce nom qui doit exister dans Zabbix
-      # (les hotes sont crees par l'API : Zabbix garde son inventaire dans sa
-      # base, pas dans le nix).
+      # Host name on the server side. It is this name that must exist in Zabbix
+      # (hosts are created by the API: Zabbix keeps its inventory in its
+      # database, not in nix).
       Hostname = config.networking.hostName;
     };
   };

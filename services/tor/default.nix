@@ -49,15 +49,15 @@
     };
   };
 
-# snowflake-proxy : RETIRE DEFINITIVEMENT le 13/11/2026, ne pas le remettre.
-# Mesure : 1,6 coeur en continu, 34 % d'un coeur en moyenne depuis le boot
-# (2 h 27 de CPU par boot), pour un service benevole sur une machine deja sous
-# pression. Marc n'a jamais demande ce proxy : il est arrive embarque dans le
-# commit f1a63ca du 02/01/2026 (module "tor" ecrit d'un bloc, relais + snowflake),
-# avec un simple commentaire "Safe to run". Aucun arbitrage, aucune mesure, et
-# personne n'y a retouche pendant dix mois. Si un jour marc demande explicitement
-# a relayer, le plafonner : CPUQuota = "50%" sur snowflake-proxy.service, jamais
-# plus. Et rediscuter du relais Tor ci-dessus, qui ne publie meme pas.
+# snowflake-proxy: PERMANENTLY REMOVED on 13/11/2026, do not add it back.
+# Measured: 1.6 cores continuously, 34% of a core on average since boot
+# (2 h 27 of CPU per boot), for a volunteer service on a machine already under
+# pressure. Marc never asked for this proxy: it came bundled in
+# commit f1a63ca of 02/01/2026 (module "tor" written in one go, relay + snowflake),
+# with a simple comment "Safe to run". No tradeoff, no measurement, and
+# nobody touched it for ten months. If marc ever explicitly asks
+# to relay, cap it: CPUQuota = "50%" on snowflake-proxy.service, never
+# more. And reconsider the Tor relay above, which does not even publish.
 
 }
 

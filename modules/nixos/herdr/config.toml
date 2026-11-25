@@ -1,19 +1,19 @@
-# Config herdr (multiplexeur d'agents, github:ogulcancelik/herdr).
-# But : voir le modele Hermes de chaque pane dans la sidebar, sans rien taper.
+# herdr config (agent multiplexer, github:ogulcancelik/herdr).
+# Goal: see the Hermes model of each pane in the sidebar, without typing anything.
 #
-# Principe : le TUI hermes ecrit son titre OSC sous la forme
-#   <etat> <session> . <modele> . <cwd>      (⚠ bloqué, ⏳ travaille, ✓ idle)
-# herdr lit ce titre (il s'en sert deja pour l'etat blocked/working/done, cf
-# ~/.local/state/herdr/agent-detection/remote/hermes.toml) et l'expose aux
-# lignes de la sidebar via le token terminal_title_stripped.
+# Principle: the hermes TUI writes its OSC title in the form
+#   <state> <session> . <model> . <cwd>      (blocked, working, idle)
+# herdr reads this title (it already uses it for the blocked/working/done state, cf
+# ~/.local/state/herdr/agent-detection/remote/hermes.toml) and exposes it to the
+# sidebar lines via the terminal_title_stripped token.
 [ui]
-# Label d'agent sur les bordures de panes splittees (le titre du pane porte deja le modele).
+# Agent label on the borders of split panes (the pane title already carries the model).
 show_agent_labels_on_pane_borders = true
-# Titre ecrit dans le terminal hote : les barres d'onglets du WM suivent le pane actif.
+# Title written to the host terminal: the WM's tab bars follow the active pane.
 window_title = "{hostname}: {workspace} · {terminal_title}"
 
-# Rows par agent : par defaut herdr n'affiche pas le titre du terminal, seulement
-# l'agent ("hermes"), ce qui ne dit pas quel modele tourne dans le pane.
+# Rows per agent: by default herdr does not show the terminal title, only
+# the agent ("hermes"), which does not say which model runs in the pane.
 [ui.sidebar.agents.rows_by_agent]
 hermes = [
   ["state_icon", "machine", "tab"],

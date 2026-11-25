@@ -1,41 +1,41 @@
 # services/app-publish-mcp/default.nix
-# Serveur MCP de publication mobile pour hermes : App Store Connect (Apple) et
-# Google Play Console (mikusnuz/app-publish-mcp). Transport stdio : hermes
-# spawn le subprocess (mcpServers), donc pas d'unite systemd dediee.
+# Mobile publishing MCP server for hermes: App Store Connect (Apple) and
+# Google Play Console (mikusnuz/app-publish-mcp). stdio transport: hermes
+# spawns the subprocess (mcpServers), so no dedicated systemd unit.
 #
-# Surface verifiee par sonde stdio le 25/10/2026 : 188 tools (135 apple_*,
-# 53 google_*) — le README annonce "91 tools", c'est faux (compte reel mesure,
-# pas la doc). Le serveur demarre SANS credentials ("Apple: N/A, Google: N/A")
-# et sert toute la liste.
+# Surface verified by stdio probe on 25/10/2026: 188 tools (135 apple_*,
+# 53 google_*) -- the README advertises "91 tools", which is wrong (real count measured,
+# not the doc). The server starts WITHOUT credentials ("Apple: N/A, Google: N/A")
+# and serves the whole list.
 #
-# Ce qu'il ne fait PAS (important pour winnie) : il ne cree pas les fiches
-# (premiere mise en ligne manuelle dans Play Console / App Store Connect) et
-# ne signe rien — lui livrer l'AAB signe (tauri android build --aab) ou l'IPA.
-# Compte Play personnel cree apres le 13/11/2023 : closed test 12 testeurs
-# opt-in 14 jours consecutifs avant de pouvoir demander l'acces production.
-# Compte Apple payant requis pour TestFlight/App Store (voir skill wingy-nix).
+# What it does NOT do (important for winnie): it does not create the listings
+# (first publish is manual in Play Console / App Store Connect) and
+# signs nothing -- hand it the signed AAB (tauri android build --aab) or the IPA.
+# Personal Play account created after 13/11/2023: closed test 12 testers
+# opt-in 14 consecutive days before being able to request production access.
+# Paid Apple account required for TestFlight/App Store (see skill wingy-nix).
 #
-# Auth (deux canaux independants, l'un peut vivre sans l'autre) :
-#  - Google : service account JSON (API Play Android Developer activee +
-#    compte de service invite dans Play Console > Utilisateurs et permissions,
-#    droits "Versions").
-#  - Apple : cle .p8 role App Manager + Key ID + Issuer ID (reports/finance :
-#    cle "Sales and Reports" Admin en plus, via APPLE_REPORTS_* / APPLE_ADMIN_*,
-#    non cable ici).
+# Auth (two independent channels, one can live without the other):
+#  - Google: service account JSON (Play Android Developer API enabled +
+#    service account invited in Play Console > Users and permissions,
+#    "Releases" rights).
+#  - Apple: .p8 key role App Manager + Key ID + Issuer ID (reports/finance:
+#    "Sales and Reports" Admin key in addition, via APPLE_REPORTS_* / APPLE_ADMIN_*,
+#    not wired here).
 #
-# Secrets : secrets/app-publish.yml (sops, cles apple_key_id, apple_issuer_id,
-# apple_p8, google_service_account_json). PLACEHOLDERS aujourd'hui : le fichier
-# existe pour que le wiring soit verifie de bout en bout, mais les valeurs sont
-# factices. Recette quand marc a les vrais comptes :
-#   1. remplacer le contenu en recreant le fichier (la cle age de hermes ne
-#      peut pas editer un sops existant) :
+# Secrets: secrets/app-publish.yml (sops, keys apple_key_id, apple_issuer_id,
+# apple_p8, google_service_account_json). PLACEHOLDERS today: the file
+# exists so the wiring is verified end to end, but the values are
+# fake. Recipe when marc has the real accounts:
+#   1. replace the content by recreating the file (hermes's age key cannot
+#      edit an existing sops file):
 #      nix run nixpkgs#sops -- -e --filename-override secrets/app-publish.yml \
-#        --output secrets/app-publish.yml <fichier-plain.yml>
-#   2. nixos-rebuild switch (ou laisser le prochain switch le prendre),
-#   3. sonder le serveur (sonde stdio) : les tools doivent remonter une erreur
-#      du fournisseur (401/invalid_grant) et non plus "placeholder".
-# Tant que les placeholders sont en place, les tools existent mais chaque
-# appel echoue cote fournisseur : ne pas promettre une publication possible.
+#        --output secrets/app-publish.yml <plain-file.yml>
+#   2. nixos-rebuild switch (or let the next switch pick it up),
+#   3. probe the server (stdio probe): the tools must return an error
+#      from the provider (401/invalid_grant) and no longer "placeholder".
+# As long as the placeholders are in place, the tools exist but every
+# call fails on the provider side: do not promise a possible publication.
 { pkgs, config, ... }:
 let
   app-publish = pkgs.callPackage ./package.nix { };
@@ -46,10 +46,10 @@ let
   googleSaFile =
     config.sops.secrets."app-publish/google_service_account_json".path;
 
-  # Wrapper : le serveur attend des VALEURS dans l'env (Key ID, Issuer ID) qui
-  # n'ont rien a faire dans le nix store (world-readable) ; le wrapper les lit
-  # dans les fichiers sops a chaque lancement. Le .p8 et le JSON Google sont
-  # passes par CHEMIN, le serveur les relit lui-meme.
+  # Wrapper: the server expects VALUES in the env (Key ID, Issuer ID) which
+  # have no business in the nix store (world-readable); the wrapper reads them
+  # from the sops files at each launch. The .p8 and the Google JSON are
+  # passed by PATH, the server re-reads them itself.
   wrapper = pkgs.writeShellScript "app-publish-mcp-hermes" ''
     set -euo pipefail
     export APPLE_KEY_TYPE=TEAM
@@ -85,12 +85,12 @@ in {
     mode = "0400";
   };
 
-  # Sur le PATH pour sonder le serveur a la main (stdio).
+  # On the PATH to probe the server by hand (stdio).
   environment.systemPackages = [ app-publish ];
 
   services.hermes-agent.mcpServers.app-publish = {
     command = "${wrapper}";
-    # Les uploads (AAB/IPA) et les rapports Apple peuvent prendre des minutes.
+    # Uploads (AAB/IPA) and Apple reports can take minutes.
     timeout = 600;
   };
 }

@@ -5,18 +5,18 @@
     enable = true;
 
     daemonSettings = {
-      # OBLIGATOIRE : false pour que systemd gère le processus sans erreur
+      # MANDATORY: false so systemd manages the process without error
       daemonize = false;
       max_history = 50;
 
-      # SUPPRIME 'path = null'. 
-      # Par défaut, sans chemin spécifié, Clipcat log vers stdout (donc journalctl).
+      # REMOVE 'path = null'. 
+      # By default, with no path specified, Clipcat logs to stdout (so journalctl).
       log = {
         level = "info";
       };
     };
 
-    # Configuration minimale pour le menu
+    # Minimal configuration for the menu
     menuSettings = {
       print_command = "rofi -dmenu -p 'Clipcat'";
     };
@@ -26,7 +26,7 @@
 
   systemd.user.services.clip-notify = {
     Unit = {
-      Description = "Notification copie presse-papier";
+      Description = "Clipboard copy notification";
       After = [ "graphical-session.target" ];
     };
 

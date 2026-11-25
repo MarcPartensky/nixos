@@ -2,13 +2,13 @@
 
 let
   user = "marc";
-  # On crée un script de lancement propre
+  # We create a clean launch script
   niri-session = pkgs.writeShellScriptBin "niri-session" ''
-    # 1. On exporte les variables cruciales vers le bus systemd
-    # Cela permet à Spotify de "voir" le bus D-Bus déjà lancé par NixOS
+    # 1. We export the crucial variables to the systemd bus
+    # This lets Spotify "see" the D-Bus bus already started by NixOS
     dbus-update-activation-environment --systemd --all
     
-    # 2. On lance Niri
+    # 2. We start Niri
     exec niri
   '';
 in
@@ -27,6 +27,6 @@ in
     };
   };
 
-  # Optionnel mais recommandé : débloquer le keyring GNOME sans mot de passe à l'autologin
+  # Optional but recommended: unlock the GNOME keyring without a password on autologin
   security.pam.services.greetd.enableGnomeKeyring = true;
 }

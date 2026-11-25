@@ -17,13 +17,13 @@ pub fn url() -> String {
 }
 
 fn connect() -> Result<postgres::Client, String> {
-    // `Client::connect` et pas `Config::connect` : la construction manuelle
-    // d'une Config paniquait dans postgres 0.19 (config.rs:465) et, avec
-    // panic=abort, tuait le service a chaque lecture du graphe.
+    // `Client::connect` and not `Config::connect`: the manual construction
+    // of a Config panicked in postgres 0.19 (config.rs:465) and, with
+    // panic=abort, killed the service on every graph read.
     let mut cli = std::panic::catch_unwind(|| {
         postgres::Client::connect(&url(), postgres::NoTls)
     })
-    .map_err(|_| "postgres: panique a la connexion".to_string())?
+    .map_err(|_| "postgres: panic on connection".to_string())?
     .map_err(|e| e.to_string())?;
     // never block the tick on a lock
     let _ = cli.simple_query("set statement_timeout = '4s'");
@@ -128,9 +128,9 @@ pub fn health() -> Value {
                     (select extract(epoch from max(t))::float8 from samples)",
             &[],
         ) {
-            // try_get partout : une colonne NULL ou d'un type inattendu doit
-            // donner une valeur absente, jamais une panique (un panic dans le
-            // thread du ticker arretait toutes les sondes).
+            // try_get everywhere: a NULL column or one of an unexpected type must
+            // give a missing value, never a panic (a panic in the
+            // ticker thread stopped all the probes).
             Ok(r) => serde_json::json!({
                 "ok": true,
                 "samples_total": r.try_get::<_, i64>(0).unwrap_or(0),

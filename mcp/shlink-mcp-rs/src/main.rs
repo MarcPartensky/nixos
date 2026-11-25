@@ -1,13 +1,13 @@
-// shlink-mcp-rs : portage Rust minimal du serveur MCP shlink du flake.
+// shlink-mcp-rs: minimal Rust port of the flake's shlink MCP server.
 //
-// Objectif : mesurer ce que la couche MCP coute vraiment, en gardant
-// strictement le meme contrat JSON-RPC et les memes appels HTTP que
+// Goal: measure what the MCP layer really costs, keeping
+// strictly the same JSON-RPC contract and the same HTTP calls as
 // services/shlink-mcp/server.py (FastMCP).
 //
-// Zero dependance hors serde_json : transport stdio, client HTTP/1.1 maison
-// (l'API Shlink visee est en clair sur loopback). Un vrai portage garderait
-// ureq+rustls pour le HTTPS ; ca ne change rien aux mesures, le temps part
-// dans le reseau et dans le backend, pas dans le parseur.
+// Zero dependency beyond serde_json: stdio transport, homemade HTTP/1.1 client
+// (the target Shlink API is cleartext on loopback). A real port would keep
+// ureq+rustls for HTTPS; it changes nothing for the measurements, time goes
+// into the network and the backend, not into the parser.
 
 use serde_json::{json, Map, Value};
 use std::io::{self, BufRead, Read, Write};
@@ -39,7 +39,7 @@ fn api_key() -> String {
     }
     let k = env_or("SHLINK_API_KEY", "");
     if k.is_empty() {
-        eprintln!("cle d'API Shlink absente");
+        eprintln!("Shlink API key missing");
     }
     k
 }
@@ -79,7 +79,7 @@ fn pct(s: &str) -> String {
     out
 }
 
-/// urlencode facon urllib.parse.urlencode(..., doseq=True) sur une map deja nettoyee.
+/// urlencode like urllib.parse.urlencode(..., doseq=True) on an already-cleaned map.
 fn encode_query(q: &[(&str, Value)]) -> String {
     let mut parts: Vec<String> = Vec::new();
     for (k, v) in q {
@@ -129,21 +129,21 @@ fn http(c: &Cfg, method: &str, path: &str, query: &str, body: Option<&Value>) ->
     head.push_str("\r\n");
     head.push_str(&payload);
 
-    let mut s = TcpStream::connect((c.host.as_str(), c.port)).map_err(|e| format!("injoignable: {}", e))?;
+    let mut s = TcpStream::connect((c.host.as_str(), c.port)).map_err(|e| format!("unreachable: {}", e))?;
     let timeout = env_or("SHLINK_TIMEOUT", "30").parse::<u64>().unwrap_or(30);
     let _ = s.set_read_timeout(Some(std::time::Duration::from_secs(timeout)));
-    s.write_all(head.as_bytes()).map_err(|e| format!("injoignable: {}", e))?;
+    s.write_all(head.as_bytes()).map_err(|e| format!("unreachable: {}", e))?;
     let mut raw = Vec::new();
-    s.read_to_end(&mut raw).map_err(|e| format!("injoignable: {}", e))?;
+    s.read_to_end(&mut raw).map_err(|e| format!("unreachable: {}", e))?;
 
-    let sep = raw.windows(4).position(|w| w == b"\r\n\r\n").ok_or("reponse HTTP vide")?;
+    let sep = raw.windows(4).position(|w| w == b"\r\n\r\n").ok_or("empty HTTP response")?;
     let head_txt = String::from_utf8_lossy(&raw[..sep]).to_string();
     let mut body_bytes = raw[sep + 4..].to_vec();
     let status: u16 = head_txt
         .split_whitespace()
         .nth(1)
         .and_then(|s| s.parse().ok())
-        .ok_or("statut HTTP illisible")?;
+        .ok_or("unreadable HTTP status")?;
     let chunked = head_txt.to_lowercase().contains("transfer-encoding: chunked");
     if chunked {
         body_bytes = dechunk(&body_bytes);
@@ -211,7 +211,7 @@ fn write_guard(c: &Cfg, action: &str, payload: Value) -> Value {
     } else {
         json!({
             "dry_run": true,
-            "reason": "SHLINK_ALLOW_WRITES=0 : écritures désactivées dans la config du serveur MCP",
+            "reason": "SHLINK_ALLOW_WRITES=0: writes disabled in the MCP server config",
             "action": action,
             "payload": payload,
         })
@@ -281,7 +281,7 @@ fn dispatch(c: &Cfg, name: &str, args: &Map<String, Value>) -> Value {
             if !confirm {
                 let g = write_guard(c, "create", body.clone());
                 if g.is_null() {
-                    // rien
+                    // nothing
                 } else {
                     return g;
                 }
@@ -363,7 +363,7 @@ fn dispatch(c: &Cfg, name: &str, args: &Map<String, Value>) -> Value {
         "shlink_request" => {
             let method = scalar(&sarg(args, "method")).to_uppercase();
             if !matches!(method.as_str(), "GET" | "POST" | "PATCH" | "PUT" | "DELETE") {
-                return json!({"error": format!("methode non supportee: {}", method)});
+                return json!({"error": format!("unsupported method: {}", method)});
             }
             let mut path = scalar(&sarg(args, "path"));
             if !path.starts_with('/') {
@@ -385,7 +385,7 @@ fn dispatch(c: &Cfg, name: &str, args: &Map<String, Value>) -> Value {
             }
             call_checked(c, &method, &path, &q, body.as_ref())
         }
-        other => json!({"error": format!("outil inconnu: {}", other)}),
+        other => json!({"error": format!("unknown tool: {}", other)}),
     }
 }
 
@@ -408,7 +408,7 @@ fn main() {
         let id = msg.get("id").cloned().unwrap_or(Value::Null);
         let method = msg.get("method").and_then(|m| m.as_str()).unwrap_or("");
         if id.is_null() {
-            continue; // notification : pas de reponse
+            continue; // notification: no response
         }
         let result = match method {
             "initialize" => json!({
@@ -437,7 +437,7 @@ fn main() {
             }
             "ping" => json!({}),
             other => {
-                let err = json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32601, "message": format!("methode inconnue: {}", other)}});
+                let err = json!({"jsonrpc": "2.0", "id": id, "error": {"code": -32601, "message": format!("unknown method: {}", other)}});
                 let _ = writeln!(out, "{}", err);
                 let _ = out.flush();
                 continue;

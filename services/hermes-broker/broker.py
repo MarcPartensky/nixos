@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""hermes-broker: la seule porte vers root pour l'agent Hermes.
+"""hermes-broker: the single door to root for the Hermes agent.
 
-L'agent (utilisateur `hermes`) depose une demande sur un socket unix. Le broker
-la publie sur une page HTTPS et arme en meme temps tous les canaux de preuve :
+The agent (user `hermes`) drops a request on a unix socket. The broker
+publishes it on an HTTPS page and simultaneously arms all the proof channels:
 
-  - mot de passe  : PAM sur le compte de marc (pamtester), rien de nouveau a retenir
-  - touch-id      : popup natif sur le Mac de marc. Le broker (root) joint le Mac
-                    par SSH et lance un helper du store Nix (root-owned, immuable)
-                    qui ne rend 0 qu'apres un vrai match d'empreinte
-  - passkey       : WebAuthn, n'importe quel authentificateur (Touch ID du Mac via
-                    Chrome, empreinte du telephone, Bitwarden, cle materielle)
+  - password      : PAM on marc's account (pamtester), nothing new to remember
+  - touch-id      : native popup on marc's Mac. The broker (root) reaches the Mac
+                    over SSH and runs a helper from the Nix store (root-owned, immutable)
+                    that only returns 0 after a real fingerprint match
+  - passkey       : WebAuthn, any authenticator (Mac Touch ID via
+                    Chrome, phone fingerprint, Bitwarden, hardware key)
 
-La premiere preuve valide gagne ; les autres deviennent inutilisables parce que
-la demande est retiree de la table. Toute execution root est journalisee.
+The first valid proof wins; the others become unusable because
+the request is removed from the table. Every root execution is logged.
 
-Ce que ce fichier ne fait PAS : parler Matrix (l'agent previent marc lui-meme),
-ni stocker de secret (PAM verifie le mot de passe du systeme, les cles publiques
-WebAuthn sont dans creds.json).
+What this file does NOT do: talk Matrix (the agent notifies marc itself),
+nor store a secret (PAM verifies the system password, the WebAuthn
+public keys are in creds.json).
 """
 
 import base64
@@ -45,7 +45,7 @@ TTL = int(os.environ.get("BROKER_TTL", "300"))
 EXEC_TIMEOUT = int(os.environ.get("BROKER_EXEC_TIMEOUT", "900"))
 PAM_USER = os.environ.get("BROKER_PAM_USER", "marc")
 PAMTESTER = os.environ.get("BROKER_PAMTESTER", "pamtester")
-# Canal Touch ID : commande ssh (root) vers le Mac, helper distant, delai.
+# Touch ID channel: ssh command (root) to the Mac, remote helper, delay.
 TOUCHID_SSH = shlex.split(os.environ.get("BROKER_TOUCHID_SSH", ""))
 TOUCHID_REMOTE = os.environ.get("BROKER_TOUCHID_REMOTE", "/run/current-system/sw/bin/hermes-touch-id")
 TOUCHID_TIMEOUT = int(os.environ.get("BROKER_TOUCHID_TIMEOUT", "110"))
@@ -63,7 +63,7 @@ REQUESTS = {}
 ENROLLMENTS = {}
 
 
-# --- petits utilitaires ------------------------------------------------------
+# --- small utilities --------------------------------------------------------
 
 
 def b64u_encode(raw):
@@ -80,18 +80,18 @@ def now():
 
 
 def requested_attachment(body):
-    """Restriction d'authentificateur demandee par la page.
+    """Authenticator restriction requested by the page.
 
-    "platform" = materiel de la machine uniquement (Touch ID du Mac, empreinte du
-    telephone). Absent = tout, y compris Bitwarden ou une cle USB. C'est ce qui
-    evite que Chrome propose Bitwarden quand marc veut son doigt sur le Mac.
+    "platform" = machine hardware only (Mac Touch ID, phone
+    fingerprint). Absent = everything, including Bitwarden or a USB key. This is what
+    prevents Chrome from offering Bitwarden when marc wants his finger on the Mac.
     """
     value = (body or {}).get("attachment")
     return value if value in ("platform", "cross-platform") else None
 
 
 def prune_challenges(store):
-    """Un challenge WebAuthn ne vaut que 10 min ; on oublie les autres."""
+    """A WebAuthn challenge is only valid for 10 min; we forget the others."""
     cutoff = now()
     for key in [k for k, exp in store.items() if exp < cutoff]:
         store.pop(key, None)
@@ -101,10 +101,10 @@ def client_data_challenge(raw):
     try:
         data = json.loads(raw.decode())
     except (ValueError, UnicodeDecodeError):
-        raise ValueError("clientDataJSON illisible")
+        raise ValueError("unreadable clientDataJSON")
     challenge = data.get("challenge")
     if not isinstance(challenge, str) or not challenge:
-        raise ValueError("challenge absente du clientDataJSON")
+        raise ValueError("challenge missing from clientDataJSON")
     return challenge
 
 
@@ -133,7 +133,7 @@ def save_creds(creds):
 
 
 def check_password(password):
-    """Verifie le mot de passe systeme de marc via PAM. Aucun secret stocke ici."""
+    """Verifies marc's system password via PAM. No secret stored here."""
     try:
         proc = subprocess.run(
             [PAMTESTER, "login", PAM_USER, "authenticate"],
@@ -152,7 +152,7 @@ def check_password(password):
 
 def auth_data_parse(raw):
     if len(raw) < 37:
-        raise ValueError("authData trop court")
+        raise ValueError("authData too short")
     parsed = {
         "rp_id_hash": raw[:32],
         "flags": raw[32],
@@ -174,11 +174,11 @@ def auth_data_parse(raw):
 def verify_client_data(raw, expected_type, challenge, origin):
     data = json.loads(raw.decode())
     if data.get("type") != expected_type:
-        raise ValueError("type clientData invalide: %r" % data.get("type"))
+        raise ValueError("invalid clientData type: %r" % data.get("type"))
     if data.get("challenge") != b64u_encode(challenge):
-        raise ValueError("challenge different")
+        raise ValueError("challenge mismatch")
     if data.get("origin") != origin:
-        raise ValueError("origine refusee: %r" % data.get("origin"))
+        raise ValueError("origin refused: %r" % data.get("origin"))
     return data
 
 
@@ -187,16 +187,16 @@ def webauthn_register(challenge, client_data_raw, attestation_raw, name):
     attestation, _ = p256.cbor_decode(attestation_raw)
     auth_data = auth_data_parse(attestation["authData"])
     if auth_data["rp_id_hash"] != hashlib.sha256(RP_ID.encode()).digest():
-        raise ValueError("rpIdHash ne correspond pas")
+        raise ValueError("rpIdHash does not match")
     if not auth_data["flags"] & 0x01:
-        raise ValueError("flag user-present absent")
+        raise ValueError("user-present flag absent")
     if not auth_data["flags"] & 0x04:
-        raise ValueError("verification utilisateur absente (biometrie/PIN requis)")
+        raise ValueError("user verification absent (biometry/PIN required)")
     if "cose" not in auth_data:
-        raise ValueError("pas de cle publique dans l'attestation")
+        raise ValueError("no public key in the attestation")
     point = p256.cose_to_point(auth_data["cose"])
     if not p256.on_curve(point):
-        raise ValueError("cle publique hors courbe")
+        raise ValueError("public key off curve")
     creds = load_creds()
     cred_id = b64u_encode(auth_data["cred_id"])
     creds = [c for c in creds if c["id"] != cred_id]
@@ -218,21 +218,21 @@ def webauthn_assert(challenge, cred_id, client_data_raw, auth_data_raw, signatur
     creds = load_creds()
     cred = next((c for c in creds if c["id"] == cred_id), None)
     if cred is None:
-        raise ValueError("credential inconnu")
+        raise ValueError("unknown credential")
     verify_client_data(client_data_raw, "webauthn.get", challenge, ORIGIN)
     auth_data = auth_data_parse(auth_data_raw)
     if auth_data["rp_id_hash"] != hashlib.sha256(RP_ID.encode()).digest():
-        raise ValueError("rpIdHash ne correspond pas")
+        raise ValueError("rpIdHash does not match")
     if not auth_data["flags"] & 0x01:
-        raise ValueError("flag user-present absent")
+        raise ValueError("user-present flag absent")
     if not auth_data["flags"] & 0x04:
-        raise ValueError("verification utilisateur absente")
+        raise ValueError("user verification absent")
     point = p256.point_from_bytes(bytes.fromhex(cred["pubkey"]))
     message = auth_data_raw + hashlib.sha256(client_data_raw).digest()
     if not p256.verify_ecdsa_sha256(point, message, signature_der):
-        raise ValueError("signature invalide")
+        raise ValueError("invalid signature")
     if auth_data["sign_count"] and cred.get("sign_count") and auth_data["sign_count"] <= cred["sign_count"]:
-        print("webauthn: compteur non croissant pour %s (tolere)" % cred_id, flush=True)
+        print("webauthn: non-increasing counter for %s (tolerated)" % cred_id, flush=True)
     cred["sign_count"] = auth_data["sign_count"]
     save_creds(creds)
     return cred
@@ -269,7 +269,7 @@ def execute(request):
 
 
 def finish_request(token, proof, who):
-    """Premiere preuve valide : consomme la demande."""
+    """First valid proof: consumes the request."""
     with _lock:
         request = REQUESTS.get(token)
         if request is None or request.get("done"):
@@ -282,13 +282,13 @@ def finish_request(token, proof, who):
 
 
 def touch_id_worker(token, request):
-    """Popup Touch ID natif sur le Mac, en parallele du lien et du mot de passe.
+    """Native Touch ID popup on the Mac, in parallel with the link and the password.
 
-    Le broker tourne en root et joint le Mac par SSH : l'agent n'a aucun moyen de
-    fabriquer cette preuve. Le helper est un binaire du store Nix (root-owned,
-    immuable), donc pas remplacable par un "exit 0" cote Mac.
+    The broker runs as root and reaches the Mac over SSH: the agent has no way to
+    fabricate this proof. The helper is a binary from the Nix store (root-owned,
+    immutable), so not replaceable by an "exit 0" on the Mac side.
     """
-    text = "Hermes veut executer: %s" % " ".join(request["argv"])
+    text = "Hermes wants to execute: %s" % " ".join(request["argv"])
     if request.get("reason"):
         text += " | " + request["reason"]
     payload = "b64:" + base64.b64encode(text[:400].encode()).decode()
@@ -325,12 +325,12 @@ def touch_id_worker(token, request):
         audit({"event": "touchid_refused", "id": request["id"], "rc": proc.returncode, "detail": detail})
 
 
-# --- page d'approbation ------------------------------------------------------
+# --- approval page ----------------------------------------------------------
 
 PAGE = """<!doctype html>
-<html lang="fr"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Approbation root</title>
+<title>Root approval</title>
 <style>
   :root{--bg:#1e1e2e;--ink:#cdd6f4;--mute:#a6adc8;--line:#313244;--acc:#b4befe;--ok:#a6e3a1;--bad:#f38ba8;--warn:#f9e2af}
   *{box-sizing:border-box}
@@ -358,13 +358,13 @@ PAGE = """<!doctype html>
   <pre id="cmd">__COMMAND__</pre>
   <div class="meta" id="meta">__META__</div>
   <div class="row" id="passkey-row" style="display:none">
-    <button id="passkey">Touch ID de ce Mac</button>
-    <button class="ghost" id="passkey-other">Autre passkey (telephone, Bitwarden)</button>
+    <button id="passkey">Touch ID of this Mac</button>
+    <button class="ghost" id="passkey-other">Other passkey (phone, Bitwarden)</button>
   </div>
-  <div class="sep">ou mot de passe</div>
+  <div class="sep">or password</div>
   <div class="row">
-    <input type="password" id="pw" placeholder="mot de passe de marc sur tower" autocomplete="current-password">
-    <button class="ghost" id="submit-pw">Valider</button>
+    <input type="password" id="pw" placeholder="marc's password on tower" autocomplete="current-password">
+    <button class="ghost" id="submit-pw">Submit</button>
   </div>
   <div class="msg" id="msg"></div>
 </div>
@@ -382,23 +382,23 @@ async function post(path, body) {
 }
 async function approve(proof) {
   const out = await post(MODE === 'enroll' ? '/enroll/wa/attest' : '/r/' + TOKEN + '/wa/assert', proof);
-  if (out.status === 'ok') { msg('Approuve. Tu peux fermer cette page.', 'ok'); document.getElementById('cmd').textContent=''; return true; }
-  msg(out.error || 'refuse', 'bad'); return false;
+  if (out.status === 'ok') { msg('Approved. You can close this page.', 'ok'); document.getElementById('cmd').textContent=''; return true; }
+  msg(out.error || 'refused', 'bad'); return false;
 }
 document.getElementById('submit-pw').onclick = async () => {
   const pw = document.getElementById('pw').value;
   if (!pw) return;
   const out = await post(MODE === 'enroll' ? '/enroll/pw' : '/r/' + TOKEN + '/pw', {password: pw});
-  if (out.status === 'enrolled') { window.ENROLL = out.enroll; msg('Mot de passe valide. Choisis le Touch ID de ce Mac, ou une autre passkey.', 'ok'); prefetch(true); return; }
-  if (out.status === 'ok') { msg('Approuve. Tu peux fermer cette page.', 'ok'); document.getElementById('cmd').textContent=''; return; }
-  msg(out.error || 'refuse', 'bad');
+  if (out.status === 'enrolled') { window.ENROLL = out.enroll; msg('Password valid. Choose the Touch ID of this Mac, or another passkey.', 'ok'); prefetch(true); return; }
+  if (out.status === 'ok') { msg('Approved. You can close this page.', 'ok'); document.getElementById('cmd').textContent=''; return; }
+  msg(out.error || 'refused', 'bad');
 };
 document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('submit-pw').click(); });
 
 async function fetchOptions(attachment) {
   const path = MODE === 'enroll' ? '/enroll/wa/options' : '/r/' + TOKEN + '/wa/options';
   const out = await post(path, {enroll: window.ENROLL, attachment: attachment});
-  if (out.status !== 'ok') throw new Error(out.error || 'options indisponibles');
+  if (out.status !== 'ok') throw new Error(out.error || 'options unavailable');
   return out.publicKey;
 }
 function hydrate(pk, creation) {
@@ -417,29 +417,29 @@ function report(kind, err) {
       body: JSON.stringify({kind: kind, name: (err && err.name) || '', message: String((err && err.message) || err).slice(0,300), where: location.pathname, ua: navigator.userAgent.slice(0,120)})});
   } catch (e) {}
 }
-// Les options doivent etre pre-chargees : Chrome exige une activation utilisateur
-// au moment exact de create()/get(), et un fetch intercale la consomme.
+// The options must be pre-loaded: Chrome requires a user activation
+// at the exact moment of create()/get(), and an interposed fetch consumes it.
 window.OPTS = {};
 async function prefetch(creation) {
   for (const att of ['platform', 'any']) {
     try { window.OPTS[att] = hydrate(await fetchOptions(att === 'any' ? undefined : att), creation); }
     catch (e) { report('prefetch', e); }
   }
-  if (!window.OPTS.platform) msg('Aucun authentificateur de la machine disponible, utilise l autre bouton.', 'bad');
+  if (!window.OPTS.platform) msg('No machine authenticator available, use the other button.', 'bad');
 }
 async function doAssert(att) {
   if (att === 'platform' && window.UV === 'false') {
-    msg('Cet onglet ne peut pas faire Touch ID: aucun authentificateur de plateforme dans ce navigateur. Ouvre ce lien dans Chrome ou Safari.', 'bad');
-    report('assert-click', {name: att, message: 'uvpaa false: refus local, pas de popup possible'});
+    msg('This tab cannot do Touch ID: no platform authenticator in this browser. Open this link in Chrome or Safari.', 'bad');
+    report('assert-click', {name: att, message: 'uvpaa false: local refusal, no popup possible'});
     return;
   }
-  report('assert-click', {name: att, message: (window.OPTS[att] ? 'options pre-chargees' : 'pas d options')});
+  report('assert-click', {name: att, message: (window.OPTS[att] ? 'options pre-loaded' : 'no options')});
   let pk = window.OPTS[att];
   if (!pk) { try { pk = hydrate(await fetchOptions(att === 'any' ? undefined : att), false); } catch (e) { msg(e.message, 'bad'); report('assert', e); return; } }
   let cred;
-  const stall = setTimeout(() => report('stall', {name: att, message: 'create/get sans reponse depuis 30s'}), 30000);
+  const stall = setTimeout(() => report('stall', {name: att, message: 'create/get without response for 30s'}), 30000);
   try { cred = await navigator.credentials.get({publicKey: pk}); }
-  catch (e) { clearTimeout(stall); msg('refus navigateur: ' + ((e && e.name) || '') + ' ' + ((e && e.message) || ''), 'bad'); report('assert', e); return; }
+  catch (e) { clearTimeout(stall); msg('browser refusal: ' + ((e && e.name) || '') + ' ' + ((e && e.message) || ''), 'bad'); report('assert', e); return; }
   clearTimeout(stall);
   window.OPTS = {};
   await approve({
@@ -450,14 +450,14 @@ async function doAssert(att) {
   });
 }
 async function doCreate(att) {
-  if (!window.ENROLL) { msg('valide ton mot de passe d abord', 'bad'); report('create-click', {name: att, message: 'sans session d enrolement'}); return; }
-  report('create-click', {name: att, message: (window.OPTS[att] ? 'options pre-chargees' : 'pas d options')});
+  if (!window.ENROLL) { msg('validate your password first', 'bad'); report('create-click', {name: att, message: 'no enrollment session'}); return; }
+  report('create-click', {name: att, message: (window.OPTS[att] ? 'options pre-loaded' : 'no options')});
   let pk = window.OPTS[att];
   if (!pk) { try { pk = hydrate(await fetchOptions(att === 'any' ? undefined : att), true); } catch (e) { msg(e.message, 'bad'); report('create', e); return; } }
   let cred;
-  const stall = setTimeout(() => report('stall', {name: att, message: 'create sans reponse depuis 30s'}), 30000);
+  const stall = setTimeout(() => report('stall', {name: att, message: 'create without response for 30s'}), 30000);
   try { cred = await navigator.credentials.create({publicKey: pk}); }
-  catch (e) { clearTimeout(stall); msg('creation refusee: ' + ((e && e.name) || '') + ' ' + ((e && e.message) || ''), 'bad'); report('create', e); return; }
+  catch (e) { clearTimeout(stall); msg('creation refused: ' + ((e && e.name) || '') + ' ' + ((e && e.message) || ''), 'bad'); report('create', e); return; }
   clearTimeout(stall);
   window.OPTS = {};
   const out = await post('/enroll/wa/attest', {
@@ -467,17 +467,17 @@ async function doCreate(att) {
     clientDataJSON: B64U.enc(cred.response.clientDataJSON),
     attestationObject: B64U.enc(cred.response.attestationObject),
   });
-  if (out.status === 'ok') { msg('Passkey enregistree: ' + out.name + '. Tu peux refaire la meme chose pour un autre appareil.', 'ok'); prefetch(true); }
-  else { msg(out.error || 'refuse', 'bad'); report('attest-http', out); }
+  if (out.status === 'ok') { msg('Passkey registered: ' + out.name + '. You can do the same again for another device.', 'ok'); prefetch(true); }
+  else { msg(out.error || 'refused', 'bad'); report('attest-http', out); }
 }
 document.getElementById('passkey-row').style.display = 'flex';
-window.UV = 'inconnu';
-report('load', {name: MODE, message: 'uvpaa en cours'});
+window.UV = 'unknown';
+report('load', {name: MODE, message: 'uvpaa in progress'});
 if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
   PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-    .then(v => { window.UV = String(v); report('uvpaa', {name: String(v), message: ''}); if (!v) msg('Ce navigateur ne propose pas de passkey de plateforme (Touch ID). Ouvre cette page dans Chrome ou Safari.', 'bad'); })
-    .catch(e => { window.UV = 'erreur'; report('uvpaa', e); });
-} else { window.UV = 'absent'; report('uvpaa', {name: 'absent', message: 'API WebAuthn indisponible'}); }
+    .then(v => { window.UV = String(v); report('uvpaa', {name: String(v), message: ''}); if (!v) msg('This browser does not offer a platform passkey (Touch ID). Open this page in Chrome or Safari.', 'bad'); })
+    .catch(e => { window.UV = 'error'; report('uvpaa', e); });
+} else { window.UV = 'absent'; report('uvpaa', {name: 'absent', message: 'WebAuthn API unavailable'}); }
 if (MODE !== 'enroll') {
   document.getElementById('passkey').onclick = () => doAssert('platform');
   document.getElementById('passkey-other').onclick = () => doAssert('any');
@@ -506,7 +506,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "hermes-broker"
     protocol_version = "HTTP/1.1"
 
-    def log_message(self, fmt, *args):  # journal compact, sans bruit par requete
+    def log_message(self, fmt, *args):  # compact log, no per-request noise
         sys.stderr.write("%s %s\n" % (self.address_string(), fmt % args))
 
     # --- helpers ---
@@ -526,7 +526,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self.wfile.write(raw)
         except (BrokenPipeError, ConnectionResetError):
-            # le navigateur a ferme l'onglet : rien a signaler
+            # the browser closed the tab: nothing to report
             self.close_connection = True
 
     def read_json(self):
@@ -544,10 +544,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(
                 200,
                 render_page(
-                    "Enroler une passkey",
-                    "Valide une fois avec ton mot de passe, puis enregistre l'empreinte.",
-                    "Aucune commande (enrolement)",
-                    "Les passkeys enregistrees servent ensuite a approuver n'importe quelle demande.",
+                    "Enroll a passkey",
+                    "Validate once with your password, then register the fingerprint.",
+                    "No command (enrollment)",
+                    "The registered passkeys are then used to approve any request.",
                     mode="enroll",
                 ),
                 "text/html; charset=utf-8",
@@ -557,9 +557,9 @@ class Handler(BaseHTTPRequestHandler):
             with _lock:
                 request = REQUESTS.get(token)
             if request is None or request.get("done"):
-                return self.send(404, {"status": "unknown", "error": "demande inconnue ou deja traitee"})
+                return self.send(404, {"status": "unknown", "error": "unknown request or already processed"})
             command = " ".join(request["argv"])
-            meta = "cwd %s · expire %+ds · demande %s" % (
+            meta = "cwd %s | expires %+ds | request %s" % (
                 request.get("cwd") or "/",
                 request["exp"] - now(),
                 request["created_human"],
@@ -567,27 +567,27 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(
                 200,
                 render_page(
-                    "Hermes demande root",
-                    request.get("reason") or "Aucune raison fournie.",
+                    "Hermes requests root",
+                    request.get("reason") or "No reason provided.",
                     command,
                     meta,
                     token=token,
                 ),
                 "text/html; charset=utf-8",
             )
-        return self.send(404, {"status": "error", "error": "inconnu"})
+        return self.send(404, {"status": "error", "error": "unknown"})
 
     def do_POST(self):
         path = self.path.split("?")[0]
         try:
             body = self.read_json()
         except ValueError:
-            return self.send(400, {"status": "error", "error": "json invalide"})
+            return self.send(400, {"status": "error", "error": "invalid json"})
 
-        # Journal des erreurs cote navigateur : sans ca, un refus WebAuthn cote
-        # client (activation utilisateur consommee, authentificateur absent,
-        # annulation) ne laisse AUCUNE trace serveur et on diagnostique a
-        # l'aveugle. Taille bornee, contenu tronque.
+        # Browser-side error log: without it, a client-side WebAuthn refusal
+        # (consumed user activation, missing authenticator,
+        # cancellation) leaves NO server trace and we diagnose
+        # blindly. Bounded size, truncated content.
         if path == "/client-log":
             print(
                 "client-log %s %s %r %r ua=%r"
@@ -623,25 +623,25 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/enroll/wa/attest":
             return self.handle_attestation(body)
 
-        return self.send(404, {"status": "error", "error": "inconnu"})
+        return self.send(404, {"status": "error", "error": "unknown"})
 
     # --- canaux ---
     def handle_password(self, token, body):
         with _lock:
             request = REQUESTS.get(token)
             if request is None or request.get("done"):
-                return self.send(404, {"status": "error", "error": "demande inconnue"})
+                return self.send(404, {"status": "error", "error": "unknown request"})
             request["attempts"] += 1
             if request["attempts"] > MAX_ATTEMPTS:
-                return self.send(429, {"status": "error", "error": "trop de tentatives, demande abandonnee"})
+                return self.send(429, {"status": "error", "error": "too many attempts, request abandoned"})
         password = body.get("password") or ""
         if not password:
-            return self.send(400, {"status": "error", "error": "mot de passe vide"})
+            return self.send(400, {"status": "error", "error": "empty password"})
         if not check_password(password):
             audit({"event": "pw_fail", "id": request["id"], "src": self.client_address[0]})
-            return self.send(403, {"status": "error", "error": "mot de passe refuse"})
+            return self.send(403, {"status": "error", "error": "password refused"})
         if not finish_request(token, "password", "marc@pam"):
-            return self.send(409, {"status": "error", "error": "deja approuvee par un autre canal"})
+            return self.send(409, {"status": "error", "error": "already approved by another channel"})
         audit({"event": "approved", "id": request["id"], "proof": "password"})
         return self.send(200, {"status": "ok", "proof": "password"})
 
@@ -649,14 +649,14 @@ class Handler(BaseHTTPRequestHandler):
         with _lock:
             request = REQUESTS.get(token)
             if request is None or request.get("done"):
-                return self.send(404, {"status": "error", "error": "demande inconnue"})
+                return self.send(404, {"status": "error", "error": "unknown request"})
             challenge = secrets.token_bytes(32)
             store = request.setdefault("challenges", {})
             prune_challenges(store)
             store[b64u_encode(challenge)] = now() + TTL
         creds = load_creds()
         if not creds:
-            return self.send(409, {"status": "error", "error": "aucune passkey enregistree: ouvre /enroll"})
+            return self.send(409, {"status": "error", "error": "no registered passkey: open /enroll"})
         public_key = {
             "challenge": b64u_encode(challenge),
             "rpId": RP_ID,
@@ -673,11 +673,11 @@ class Handler(BaseHTTPRequestHandler):
         with _lock:
             request = REQUESTS.get(token)
             if request is None or request.get("done"):
-                return self.send(404, {"status": "error", "error": "demande inconnue"})
+                return self.send(404, {"status": "error", "error": "unknown request"})
             request["attempts"] += 1
             over = request["attempts"] > MAX_ATTEMPTS
         if over:
-            return self.send(429, {"status": "error", "error": "trop de tentatives"})
+            return self.send(429, {"status": "error", "error": "too many attempts"})
         try:
             client_data_raw = b64u_decode(body["clientDataJSON"])
             challenge_b64 = client_data_challenge(client_data_raw)
@@ -685,7 +685,7 @@ class Handler(BaseHTTPRequestHandler):
                 store = request.setdefault("challenges", {})
                 prune_challenges(store)
                 if challenge_b64 not in store:
-                    raise ValueError("challenge inconnu ou expire")
+                    raise ValueError("unknown or expired challenge")
             cred = webauthn_assert(
                 b64u_decode(challenge_b64),
                 body.get("id", ""),
@@ -695,11 +695,11 @@ class Handler(BaseHTTPRequestHandler):
             )
         except (ValueError, KeyError) as exc:
             audit({"event": "passkey_fail", "id": request["id"], "reason": str(exc)[:120]})
-            return self.send(403, {"status": "error", "error": "passkey refusee: %s" % exc})
+            return self.send(403, {"status": "error", "error": "passkey refused: %s" % exc})
         with _lock:
             request.get("challenges", {}).pop(challenge_b64, None)
         if not finish_request(token, "passkey", cred["name"]):
-            return self.send(409, {"status": "error", "error": "deja approuvee"})
+            return self.send(409, {"status": "error", "error": "already approved"})
         audit({"event": "approved", "id": request["id"], "proof": "passkey", "cred": cred["name"], "aaguid": cred["aaguid"]})
         return self.send(200, {"status": "ok", "proof": "passkey", "cred": cred["name"]})
 
@@ -707,7 +707,7 @@ class Handler(BaseHTTPRequestHandler):
         password = body.get("password") or ""
         if not check_password(password):
             audit({"event": "enroll_pw_fail", "src": self.client_address[0]})
-            return self.send(403, {"status": "error", "error": "mot de passe refuse"})
+            return self.send(403, {"status": "error", "error": "password refused"})
         token = secrets.token_urlsafe(18)
         with _lock:
             ENROLLMENTS[token] = {"exp": now() + 600, "challenges": {}}
@@ -720,7 +720,7 @@ class Handler(BaseHTTPRequestHandler):
         with _lock:
             session = ENROLLMENTS.get(token)
             if not session or session["exp"] < now():
-                return self.send(403, {"status": "error", "error": "session d'enrolement expiree"})
+                return self.send(403, {"status": "error", "error": "enrollment session expired"})
             session["exp"] = now() + 600
             prune_challenges(session["challenges"])
             session["challenges"][b64u_encode(challenge)] = now() + 600
@@ -759,14 +759,14 @@ class Handler(BaseHTTPRequestHandler):
             client_data_raw = b64u_decode(body["clientDataJSON"])
             challenge_b64 = client_data_challenge(client_data_raw)
         except (ValueError, KeyError) as exc:
-            return self.send(400, {"status": "error", "error": "clientDataJSON invalide: %s" % exc})
+            return self.send(400, {"status": "error", "error": "invalid clientDataJSON: %s" % exc})
         with _lock:
             session = ENROLLMENTS.get(token)
             if not session or session["exp"] < now():
-                return self.send(403, {"status": "error", "error": "session d'enrolement expiree"})
+                return self.send(403, {"status": "error", "error": "enrollment session expired"})
             prune_challenges(session["challenges"])
             if challenge_b64 not in session["challenges"]:
-                return self.send(403, {"status": "error", "error": "challenge inconnu ou expire, recharge la page"})
+                return self.send(403, {"status": "error", "error": "unknown or expired challenge, reload the page"})
         try:
             cred = webauthn_register(
                 b64u_decode(challenge_b64),
@@ -776,14 +776,14 @@ class Handler(BaseHTTPRequestHandler):
             )
         except (ValueError, KeyError) as exc:
             audit({"event": "attest_fail", "src": self.client_address[0], "reason": str(exc)[:160]})
-            return self.send(403, {"status": "error", "error": "attestation refusee: %s" % exc})
+            return self.send(403, {"status": "error", "error": "attestation refused: %s" % exc})
         with _lock:
             session["challenges"].pop(challenge_b64, None)
         audit({"event": "credential_enrolled", "name": cred["name"], "aaguid": cred["aaguid"]})
         return self.send(200, {"status": "ok", "name": cred["name"]})
 
 
-# --- socket local (cote agent) ----------------------------------------------
+# --- local socket (agent side) ----------------------------------------------
 
 
 def serve_client(conn, peercred=(-1, -1, -1)):
@@ -798,7 +798,7 @@ def serve_client(conn, peercred=(-1, -1, -1)):
         payload = json.loads(buffer.split(b"\n")[0].decode())
         argv = payload.get("argv") or []
         if not isinstance(argv, list) or not argv or not all(isinstance(a, str) for a in argv):
-            conn.sendall(b'{"status":"error","error":"argv invalide"}\n')
+            conn.sendall(b'{"status":"error","error":"invalid argv"}\n')
             return
         token = secrets.token_urlsafe(24)
         request = {
@@ -816,7 +816,7 @@ def serve_client(conn, peercred=(-1, -1, -1)):
             REQUESTS[token] = request
         url = "%s/r/%s" % (ORIGIN, token)
         print(
-            "demande %s de uid %d: %s (approbation: %s)"
+            "request %s from uid %d: %s (approval: %s)"
             % (request["id"], peercred[0], " ".join(argv), url),
             flush=True,
         )
@@ -841,7 +841,7 @@ def serve_client(conn, peercred=(-1, -1, -1)):
             REQUESTS.pop(token, None)
         if not approved:
             audit({"event": "expired", "id": request["id"], "argv": argv})
-            conn.sendall(b'{"status":"expired","error":"aucune preuve dans le delai"}\n')
+            conn.sendall(b'{"status":"expired","error":"no proof within the deadline"}\n')
             return
         result = execute(request)
         entry = {
@@ -891,10 +891,10 @@ def unix_server():
     except (KeyError, PermissionError):
         pass
     server.listen(16)
-    print("broker: socket %s pret" % SOCK_PATH, flush=True)
+    print("broker: socket %s ready" % SOCK_PATH, flush=True)
     while True:
         conn, _ = server.accept()
-        # authentification du pair par le noyau : uid/gid du processus appelant
+        # peer authentication by the kernel: uid/gid of the calling process
         try:
             import struct
 
@@ -905,7 +905,7 @@ def unix_server():
             peercred = (-1, -1, -1)
         if peercred[0] not in (0, os.stat("/var/lib/hermes").st_uid):
             try:
-                conn.sendall(b'{"status":"error","error":"uid non autorise"}\n')
+                conn.sendall(b'{"status":"error","error":"unauthorized uid"}\n')
                 conn.close()
             except OSError:
                 pass
@@ -937,9 +937,9 @@ def client_main(argv):
             cwd = options[index + 1]
             index += 2
         else:
-            sys.exit("option inconnue: %s" % options[index])
+            sys.exit("unknown option: %s" % options[index])
     if not command:
-        sys.exit("aucune commande")
+        sys.exit("no command")
     payload = {"argv": command, "cwd": cwd or os.getcwd(), "reason": reason}
     conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     conn.settimeout(TTL + 90)
@@ -960,9 +960,9 @@ def client_main(argv):
                 return 1
             if message.get("status") == "pending":
                 if message.get("touch_id"):
-                    sys.stderr.write("popup: Touch ID demande sur le Mac de marc (repli: %s)\n" % message["url"])
+                    sys.stderr.write("popup: Touch ID requested on marc's Mac (fallback: %s)\n" % message["url"])
                 else:
-                    sys.stderr.write("approbation: %s\n" % message["url"])
+                    sys.stderr.write("approval: %s\n" % message["url"])
                 chunks = [rest] if rest else []
                 continue
             if message.get("status") == "executed":
@@ -978,7 +978,7 @@ def main():
     os.makedirs(STATE_DIR, exist_ok=True)
     runtime_dir = os.path.dirname(SOCK_PATH)
     os.makedirs(runtime_dir, exist_ok=True)
-    # le socket vit dans un dossier que l'appelant doit pouvoir traverser
+    # the socket lives in a directory the caller must be able to traverse
     try:
         import grp
 

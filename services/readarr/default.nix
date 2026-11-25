@@ -3,10 +3,10 @@
   pkgs,
   ...
 }:
-# Readarr = livres. Son dossier de données est sous /home (comme Sonarr) et son
-# module ne masque pas /home, donc il fonctionne tel quel (vérifié : service
-# actif, port 8088 répond 200). Seule la bibliothèque change : /srv/media/books
-# (groupe `media`, cf. services/media), à sélectionner dans l'UI.
+# Readarr = books. Its data directory is under /home (like Sonarr) and its
+# module does not mask /home, so it works as-is (verified: service
+# active, port 8088 responds 200). Only the library changes: /srv/media/books
+# (`media` group, cf. services/media), to be selected in the UI.
 {
   services.readarr = {
     enable = true;
@@ -16,15 +16,15 @@
     settings = {
       # update.mechanism = "internal";
       server = {
-        # Pas de urlbase (voir services/radarr) : une base non vide fait
-        # rediriger en 307 tout chemin hors base, /api/v3/... compris.
+        # No urlbase (see services/radarr): a non-empty base makes
+        # any path outside the base redirect with 307, /api/v3/... included.
         port = 8088;
         bindaddress = "*";
       };
     };
   };
 
-  # Média partagé : les fichiers importés doivent rester modifiables par les
-  # autres membres du groupe `media`.
+  # Shared media: imported files must remain writable by the
+  # other members of the `media` group.
   systemd.services.readarr.serviceConfig.UMask = lib.mkForce "0002";
 }

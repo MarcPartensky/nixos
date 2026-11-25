@@ -96,8 +96,8 @@ pub struct Shared {
     pub history: Mutex<Vec<Value>>,
     pub timeline: Mutex<Option<(i64, String)>>,
     pub heat: Mutex<Value>,
-    // JSON du graphe, calcule par le ticker : le handler HTTP ne touche jamais
-    // Postgres lui-meme (un client bloquant dans le runtime tokio panique).
+    // Graph JSON, computed by the ticker: the HTTP handler never touches
+    // Postgres itself (a blocking client in the tokio runtime panics).
     pub timeline_body: Mutex<String>,
     pub pg_health: Mutex<Value>,
     pub cached: RwLock<Cached>,

@@ -1,20 +1,20 @@
-"""Serveur MCP Termix : pilote le panel serveur de tower par son API HTTP.
+"""MCP server Termix: drives tower's server panel through its HTTP API.
 
-Termix n'a pas de MCP en amont et son API couvre surtout l'inventaire du
-panel (hotes, plugins, audit, comptes). Deux capacites interessent l'agent :
+Termix has no upstream MCP and its API mostly covers the panel's
+inventory (hosts, plugins, audit, accounts). Two capabilities interest the agent:
 
-- l'inventaire et l'etat des hotes, sans jamais lire les identifiants
-  stockes (`/host/db/host/:id/password` n'est PAS expose ici) ;
-- l'execution de commandes, par le plugin Snippets : Termix ouvre lui-meme
-  la session SSH et rend stdout/stderr/code de sortie. Aucune cle SSH ne
-  circule dans l'appel, mais cela suppose que Termix detienne deja un
-  identifiant utilisable pour l'hote vise.
+- the inventory and state of the hosts, without ever reading the stored
+  credentials (`/host/db/host/:id/password` is NOT exposed here);
+- command execution, via the Snippets plugin: Termix itself opens
+  the SSH session and returns stdout/stderr/exit code. No SSH key
+  travels in the call, but this assumes Termix already holds a
+  usable credential for the target host.
 
-Auth : cle d'API Termix (`tmx_...`) relue a chaque appel depuis
-TERMIX_API_KEY_FILE (secret sops) ou TERMIX_API_KEY.
+Auth: Termix API key (`tmx_...`) re-read on each call from
+TERMIX_API_KEY_FILE (sops secret) or TERMIX_API_KEY.
 
-Politique d'ecriture : les tools mutants exigent `confirm=True`, sinon ils
-rendent l'apercu de l'appel sans rien envoyer. Les lectures ne demandent rien.
+Write policy: mutating tools require `confirm=True`, otherwise they
+return the call preview without sending anything. Reads require nothing.
 """
 
 import json
@@ -45,13 +45,13 @@ def _api_key():
     key = key or os.environ.get("TERMIX_API_KEY", "")
     if not key:
         raise RuntimeError(
-            "Cle API Termix absente : " + (KEY_FILE or "TERMIX_API_KEY_FILE")
-            + " illisible et TERMIX_API_KEY vide")
+            "Termix API key missing: " + (KEY_FILE or "TERMIX_API_KEY_FILE")
+            + " unreadable and TERMIX_API_KEY empty")
     return key
 
 
 def _call(method, path, body=None, query=None, timeout=None):
-    """Appel HTTP brut. Leve une RuntimeError avec le corps d'erreur."""
+    """Raw HTTP call. Raises a RuntimeError with the error body."""
     url = BASE_URL + path
     if query:
         clean = {k: v for k, v in query.items() if v is not None}
@@ -74,23 +74,23 @@ def _call(method, path, body=None, query=None, timeout=None):
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode(errors="replace")
         raise RuntimeError(
-            "HTTP %s sur %s %s : %s"
+            "HTTP %s on %s %s : %s"
             % (exc.code, method, path, detail[:600]))
     except OSError as exc:
         raise RuntimeError(
-            "%s %s injoignable : %s" % (method, url, exc))
+            "%s %s unreachable : %s" % (method, url, exc))
     if not raw:
         return None
     return json.loads(raw.decode(errors="replace"))
 
 
 def _preview(method, path, body):
-    return ("DRY RUN, rien n'a ete envoye : %s %s\n%s"
+    return ("DRY RUN, nothing was sent : %s %s\n%s"
             % (method, path, json.dumps(body, indent=1, ensure_ascii=False)))
 
 
 def _host_summary(host):
-    """Vue courte d'un hote : jamais de secret ni de blob de cle."""
+    """Short view of a host: never a secret or a key blob."""
     return {
         "id": host.get("id"),
         "name": host.get("name"),
@@ -108,22 +108,22 @@ def _host_summary(host):
 
 @mcp.tool()
 def status() -> str:
-    """Smoke test : auth, version, nombre d'hotes et de plugins.
+    """Smoke test: auth, version, number of hosts and plugins.
 
-    A appeler en premier quand un autre outil echoue : un 401 ici signifie
-    que la cle d'API est absente, revoquee ou pointee vers le mauvais hote.
+    Call this first when another tool fails: a 401 here means
+    that the API key is missing, revoked or pointed at the wrong host.
     """
     try:
         me = _call("GET", "/users/me")
     except RuntimeError as exc:
-        return "ECHEC auth : " + str(exc)
+        return "auth FAILED : " + str(exc)
     out = {"url": BASE_URL, "me": me}
     for label, path in (("version", "/version"), ("hosts", "/host/db/host"),
                         ("plugins", "/plugins")):
         try:
             value = _call("GET", path)
         except RuntimeError as exc:
-            out[label] = "erreur : " + str(exc)[:200]
+            out[label] = "error : " + str(exc)[:200]
             continue
         if isinstance(value, list):
             out[label] = "%d elements" % len(value)
@@ -134,10 +134,10 @@ def status() -> str:
 
 @mcp.tool()
 def list_hosts(search: str = "", tag: str = "") -> str:
-    """Liste les hotes de Termix (id, nom, ip, user, tags, type d'auth).
+    """Lists Termix hosts (id, name, ip, user, tags, auth type).
 
-    `search` filtre sur le nom, l'IP et le user (insensible a la casse) ;
-    `tag` filtre sur un tag exact. Ne rend jamais de mot de passe ni de cle.
+    `search` filters on the name, the IP and the user (case-insensitive);
+    `tag` filters on an exact tag. Never returns a password or a key.
     """
     hosts = _call("GET", "/host/db/host") or []
     needle = search.strip().lower()
@@ -156,10 +156,10 @@ def list_hosts(search: str = "", tag: str = "") -> str:
 
 @mcp.tool()
 def get_host(host_id: int) -> str:
-    """Detail d'un hote : config SSH, options, defaults par plugin.
+    """Details of a host: SSH config, options, per-plugin defaults.
 
-    Le mot de passe stocke est retire de la reponse ; utiliser l'UI Termix
-    pour le consulter, pas l'agent.
+    The stored password is removed from the response; use the Termix UI
+    to view it, not the agent.
     """
     host = _call("GET", "/host/db/host/%d" % host_id)
     if isinstance(host, dict):
@@ -170,18 +170,18 @@ def get_host(host_id: int) -> str:
 @mcp.tool()
 def update_host(host_id: int, fields: str = "{}",
                 confirm: bool = False) -> str:
-    """Modifie un hote existant (PUT partiel).
+    """Modifies an existing host (partial PUT).
 
-    `fields` est un objet JSON des champs a changer, par exemple
-    {"name": "deck", "tags": ["deck"], "port": 22}. Sans `confirm=True`,
-    rend seulement l'apercu de l'appel.
+    `fields` is a JSON object of the fields to change, for example
+    {"name": "deck", "tags": ["deck"], "port": 22}. Without `confirm=True`,
+    only returns the call preview.
     """
     try:
         payload = json.loads(fields or "{}")
     except ValueError as exc:
-        return "fields n'est pas du JSON valide : %s" % exc
+        return "fields is not valid JSON : %s" % exc
     if not isinstance(payload, dict) or not payload:
-        return "fields doit etre un objet JSON non vide."
+        return "fields must be a non-empty JSON object."
     path = "/host/db/host/%d" % host_id
     if not confirm:
         return _preview("PUT", path, payload)
@@ -191,9 +191,9 @@ def update_host(host_id: int, fields: str = "{}",
 
 @mcp.tool()
 def delete_host(host_id: int, confirm: bool = False) -> str:
-    """Supprime un hote de l'inventaire Termix. IRREVERSIBLE.
+    """Deletes a host from the Termix inventory. IRREVERSIBLE.
 
-    Ne touche pas la machine distante, seulement l'entree Termix. Exige
+    Does not touch the remote machine, only the Termix entry. Requires
     `confirm=True`.
     """
     path = "/host/db/host/%d" % host_id
@@ -205,10 +205,10 @@ def delete_host(host_id: int, confirm: bool = False) -> str:
 
 @mcp.tool()
 def host_status(host_id: int = 0, refresh: bool = False) -> str:
-    """Etat en ligne/hors ligne des hotes (sonde TCP du plugin Host Status).
+    """Online/offline state of the hosts (TCP probe of the Host Status plugin).
 
-    `host_id=0` rend tous les hotes. `refresh=True` force une nouvelle sonde
-    au lieu du dernier resultat connu.
+    `host_id=0` returns all hosts. `refresh=True` forces a new probe
+    instead of the last known result.
     """
     if refresh:
         _call("POST", "/host/status/refresh")
@@ -221,21 +221,21 @@ def host_status(host_id: int = 0, refresh: bool = False) -> str:
 
 @mcp.tool()
 def exec(host_id: int, command: str, timeout_s: int = 60) -> str:
-    """Execute une commande sur un hote, via le plugin Snippets de Termix.
+    """Runs a command on a host, via the Termix Snippets plugin.
 
-    Termix ouvre lui-meme la session SSH et rend stdout, stderr et le code
-    de sortie. Cree un snippet temporaire, l'execute, le supprime.
+    Termix itself opens the SSH session and returns stdout, stderr and the exit
+    code. Creates a temporary snippet, runs it, deletes it.
 
-    Suppose que Termix detienne un identifiant utilisable pour cet hote : un
-    hote en authType=key sans credentialId repond SSH_AUTH_FAILED. En cas de
-    code 255, la commande n'a pas tourne du tout.
+    Assumes Termix holds a usable credential for this host: a
+    host in authType=key without credentialId replies SSH_AUTH_FAILED. On
+    code 255, the command did not run at all.
     """
     name = "__hermes_exec_" + uuid.uuid4().hex[:8]
     created = _call("POST", "/plugin-api/snippets/",
                     {"name": name, "content": command})
     snippet_id = (created or {}).get("id")
     if not snippet_id:
-        return "Creation du snippet impossible : " + json.dumps(
+        return "Cannot create the snippet : " + json.dumps(
             created, ensure_ascii=False)[:300]
     try:
         result = _call(
@@ -243,7 +243,7 @@ def exec(host_id: int, command: str, timeout_s: int = 60) -> str:
             {"snippetId": snippet_id, "hostId": host_id},
             timeout=max(timeout_s, 15) + 30)
     except RuntimeError as exc:
-        raise RuntimeError("Execution sur l'hote %s : %s"
+        raise RuntimeError("Execution on host %s : %s"
                            % (host_id, exc))
     finally:
         try:
@@ -255,10 +255,10 @@ def exec(host_id: int, command: str, timeout_s: int = 60) -> str:
 
 @mcp.tool()
 def plugins(enabled_only: bool = False) -> str:
-    """Liste les plugins Termix installes : id, nom, version, etat.
+    """Lists the installed Termix plugins: id, name, version, state.
 
-    Utile pour savoir quelle capacite est servie (ex. snippets, docker,
-    service-manager) et si un plugin est desactive (503 sur ses routes).
+    Useful to know which capability is served (e.g. snippets, docker,
+    service-manager) and whether a plugin is disabled (503 on its routes).
     """
     rows = _call("GET", "/plugins") or []
     out = []
@@ -277,10 +277,10 @@ def plugins(enabled_only: bool = False) -> str:
 
 @mcp.tool()
 def audit(limit: int = 25, action: str = "") -> str:
-    """Dernieres entrees du journal d'audit de Termix.
+    """Latest entries of the Termix audit log.
 
-    `action` filtre sur un nom d'operation (ex. user_login). Montre qui a
-    fait quoi dans le panel, pas ce qui se passe sur les machines.
+    `action` filters on an operation name (e.g. user_login). Shows who did
+    what in the panel, not what happens on the machines.
     """
     entries = _call("GET", "/audit-logs",
                     query={"limit": limit, "action": action or None})
@@ -294,26 +294,26 @@ def audit(limit: int = 25, action: str = "") -> str:
 @mcp.tool()
 def api(method: str, path: str, body: str = "",
         confirm: bool = False) -> str:
-    """Echappatoire : n'importe quelle route Termix, en JSON.
+    """Escape hatch: any Termix route, in JSON.
 
-    `path` commence par un prefixe proxifie par l'instance : /host, /users,
+    `path` starts with a prefix proxied by the instance: /host, /users,
     /rbac, /plugins, /credentials, /database, /audit-logs, /operations,
-    /open-tabs, /plugin-api/<plugin>/... Un chemin hors de ces prefixes rend
-    le SPA en 200 avec du HTML, pas une erreur.
+    /open-tabs, /plugin-api/<plugin>/... A path outside these prefixes returns
+    the SPA in 200 with HTML, not an error.
 
-    Les methodes autres que GET exigent `confirm=True`. Ne pas s'en servir
-    pour lire les identifiants stockes : `get_host` les retire volontairement
-    et `/host/db/host/<id>/password` reste hors du perimetre de l'agent.
+    Methods other than GET require `confirm=True`. Do not use it
+    to read the stored credentials: `get_host` removes them on purpose
+    and `/host/db/host/<id>/password` stays outside the agent's scope.
     """
     verb = method.strip().upper()
     if not path.startswith("/"):
-        return "path doit commencer par /"
+        return "path must start with /"
     payload = None
     if body.strip():
         try:
             payload = json.loads(body)
         except ValueError as exc:
-            return "body n'est pas du JSON valide : %s" % exc
+            return "body is not valid JSON : %s" % exc
     if verb != "GET" and not confirm:
         return _preview(verb, path, payload)
     result = _call(verb, path, payload)

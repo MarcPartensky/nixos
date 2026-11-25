@@ -1,17 +1,17 @@
 { pkgs, ... }:
 
-# Base "music" : export des playlists Spotify de marc (Exportify), importées vers
-# YouTube Music. Chaque titre garde ses métadonnées d'origine (artistes, album,
-# ISRC, durée) et le video id YouTube Music auquel il a été apparié, ce qui permet
-# de requêter les doublons entre playlists, les artistes les plus présents, ou les
-# titres sans équivalent trouvé côté YouTube Music.
+# "music" database: export of marc's Spotify playlists (Exportify), imported into
+# YouTube Music. Each track keeps its original metadata (artists, album,
+# ISRC, duration) and the YouTube Music video id it was matched to, which allows
+# querying duplicates across playlists, the most present artists, or the
+# tracks with no match found on the YouTube Music side.
 #
-# Rôle dédié "music" (comme les autres services du repo) plutôt que le rôle
-# "hermes" : ce n'est pas un besoin interne de l'agent, n'importe quel outil peut
-# s'y brancher en trust local via `psql -h 127.0.0.1 -U music -d music`.
+# Dedicated "music" role (like the other services of the repo) rather than the
+# "hermes" role: it is not an internal need of the agent, any tool can
+# connect to it under local trust via `psql -h 127.0.0.1 -U music -d music`.
 let
   schema = pkgs.writeText "music-schema.sql" ''
-    -- Playlists importées (id = id de playlist YouTube Music).
+    -- Imported playlists (id = YouTube Music playlist id).
     create table if not exists playlist (
       id          text primary key,
       name        text not null,
@@ -28,8 +28,8 @@ let
       album_artists          text[],
       duration_ms            integer,
       release_date           date,
-      -- Spotify ne donne que l'annee pour certaines sorties : release_date est
-      -- alors normalisee au 1er janvier et la precision reelle est conservee ici.
+      -- Spotify only gives the year for some releases: release_date is
+      -- then normalized to January 1 and the real precision is kept here.
       release_date_precision text,
       isrc                   text,
       explicit               boolean,
@@ -37,11 +37,11 @@ let
       youtube_music_video_id text
     );
 
-    -- Pour une base deja creee avant l'ajout d'une colonne (create table if not
-    -- exists ne touche pas une table existante).
+    -- For a database already created before a column was added (create table if not
+    -- exists does not touch an existing table).
     alter table track add column if not exists release_date_precision text;
 
-    -- Ordre exact des titres dans chaque playlist (position = index d'origine).
+    -- Exact order of tracks in each playlist (position = original index).
     create table if not exists playlist_track (
       playlist_id text    not null references playlist(id) on delete cascade,
       position    integer not null,
@@ -50,7 +50,7 @@ let
       primary key (playlist_id, position)
     );
 
-    -- Titres likés sur YouTube Music (ex "Liked Songs" de Spotify).
+    -- Tracks liked on YouTube Music (e.g. "Liked Songs" from Spotify).
     create table if not exists liked_track (
       track_id bigint primary key references track(id) on delete cascade,
       liked_at timestamptz
@@ -67,7 +67,7 @@ let
       group by p.id, p.name, p.privacy
       order by p.name;
 
-    -- Titres présents dans plusieurs playlists.
+    -- Tracks present in several playlists.
     create or replace view v_duplicate_tracks as
       select t.id, t.title, t.artists, count(distinct pt.playlist_id) as playlists
       from track t
@@ -83,7 +83,7 @@ let
       group by artist
       order by tracks desc;
 
-    -- Titres sans équivalent trouvé sur YouTube Music.
+    -- Tracks with no match found on YouTube Music.
     create or replace view v_unmatched_tracks as
       select id, title, artists, album
       from track
@@ -99,11 +99,11 @@ in {
     }
   ];
 
-  # Schéma appliqué à chaque activation. Tout est en IF NOT EXISTS / OR REPLACE,
-  # donc idempotent : une base vidée ou restaurée se répare toute seule, et une
-  # base déjà remplie n'est jamais touchée (aucun DROP).
+  # Schema applied on each activation. Everything is in IF NOT EXISTS / OR REPLACE,
+  # hence idempotent: an emptied or restored database repairs itself, and a
+  # database already filled is never touched (no DROP).
   systemd.services.music-schema = {
-    description = "Applique le schéma de la base music";
+    description = "Apply the schema of the music database";
     requires = [ "postgresql-setup.service" ];
     after = [ "postgresql-setup.service" ];
     wantedBy = [ "multi-user.target" ];

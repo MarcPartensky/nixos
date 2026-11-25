@@ -1,7 +1,7 @@
 { config, pkgs, ... }:
 
 {
-  # 1. Configuration de PostgreSQL (inspirée de ta config Vaultwarden)
+  # 1. PostgreSQL configuration (inspired by your Vaultwarden config)
   services.postgresql = {
     enable = true;
     ensureDatabases = [ "firefoxsync" ];
@@ -13,11 +13,11 @@
     ];
   };
 
-  # 2. Configuration de Firefox Syncserver
+  # 2. Firefox Syncserver configuration
   services.firefox-syncserver = {
     enable = true;
     
-    # Utilisation du mode singleNode pour la simplicité
+    # Using singleNode mode for simplicity
     # singleNode = {
     #   enable = true;
     #   hostname = "sync.marcpartensky.com";
@@ -28,26 +28,26 @@
     singleNode = {
       enable = true;
       hostname = "localhost"; 
-      url = "http://localhost:5000"; # On passe en HTTP pour le test
-      enableNginx = false;           # Pas besoin de reverse proxy pour un test local
+      url = "http://localhost:5000"; # We switch to HTTP for the test
+      enableNginx = false;           # No reverse proxy needed for a local test
     };
 
-    # Configuration de la base de données
-    # On pointe vers le socket local de PostgreSQL
+    # Database configuration
+    # We point to the local PostgreSQL socket
     database = {
-      createLocally = false; # On gère la DB manuellement ci-dessus
+      createLocally = false; # We handle the DB manually above
       user = "firefoxsync";
       name = "firefoxsync";
       host = "/run/postgresql"; 
     };
 
-    # Chemin vers le secret (doit contenir une chaîne aléatoire)
+    # Path to the secret (must contain a random string)
     secrets = "/var/lib/firefox-syncserver/secrets";
 
     logLevel = "info";
   };
 
-  # 3. Sécurité : Création automatique du répertoire et gestion des droits
+  # 3. Security: Automatic directory creation and permission management
   systemd.services.firefox-syncserver = {
     preStart = ''
       mkdir -p /var/lib/firefox-syncserver

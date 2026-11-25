@@ -1,14 +1,14 @@
 # services/simplefin-mcp/default.nix
-# Serveur MCP SimpleFIN (lecture seule) pour hermes : comptes et transactions
-# Chase via le SimpleFIN Bridge, transport stdio. 5 tools : status,
+# SimpleFIN MCP server (read-only) for hermes: accounts and transactions
+# Chase via the SimpleFIN Bridge, stdio transport. 5 tools: status,
 # list_accounts, get_transactions, search_transactions, spending_summary.
 #
-# Credential : l'access URL du Bridge (identifiants Basic embarqués), dans
-# secrets/simplefin.yml (clé simplefin_access_url). Elle s'obtient en
-# réclamant un Setup Token (usage unique) :
+# Credential: the Bridge access URL (Basic credentials embedded), in
+# secrets/simplefin.yml (key simplefin_access_url). It is obtained by
+# claiming a Setup Token (single use):
 #   python3 /var/lib/hermes/.hermes/scripts/simplefin_claim.py <token>
-# puis en réencryptant ce fichier sops depuis le clair (clé publique tower
-# seule, aucune clé privée requise) :
+# then re-encrypting this sops file from the plaintext (tower public key
+# only, no private key required):
 #   cd /home/marc/git/nixos
 #   printf 'simplefin_access_url: "%s"\n' \
 #     "$(cat /var/lib/hermes/.hermes/simplefin-access-url)" > /tmp/plain.yml
@@ -16,13 +16,13 @@
 #     > secrets/simplefin.yml
 #   shred -u /tmp/plain.yml
 #
-# Limites du Bridge : 24 requêtes/jour, fenêtre 90 jours max, lecture seule,
-# abonnement 15 USD/an à régler sinon /accounts répond 402 « Payment
-# required » (le tool status le dit explicitement).
+# Bridge limits: 24 requests/day, 90-day max window, read-only,
+# 15 USD/year subscription to be paid, otherwise /accounts responds 402 "Payment
+# required" (the status tool says so explicitly).
 #
-# Le serveur relit le fichier secret À CHAQUE appel (rien en env de closure
-# ni dans le store) : une rotation de l'access URL ne demande aucun
-# redémarrage de hermes.
+# The server re-reads the secret file ON EVERY call (nothing in the closure env
+# nor in the store): a rotation of the access URL requires no
+# restart of hermes.
 {pkgs, config, ...}: let
   simplefin-mcp =
     pkgs.writers.writePython3Bin "simplefin-mcp" {
@@ -36,7 +36,7 @@ in {
     mode = "0400";
   };
 
-  # Sur le PATH pour sonder le serveur à la main (stdio).
+  # On the PATH to probe the server by hand (stdio).
   environment.systemPackages = [simplefin-mcp];
 
   services.hermes-agent.mcpServers.simplefin = {

@@ -5,7 +5,7 @@
   ...
 }: {
   sops.secrets = {
-    # db_password supprimé : auth "trust" via socket, aucun mot de passe utilisé
+    # db_password removed: "trust" auth via socket, no password used
 
     "zitadel/master_key" = {
       key = "zitadel_master_key";
@@ -13,25 +13,25 @@
       group = "keys";
     };
 
-    # "zitadel/steps" retiré le 12/10/2026 : le secret pointait sur
-    # zitadel_steps, chiffré en type:int dans secrets/anywhere.yml, ce que
-    # sops-install-secrets refuse ("the value of key '' is not a string"). Il
-    # faisait donc échouer tout le setupSecrets du VPS, donc l'activation
-    # entière : aucun secret n'était écrit (master key absente, zitadel en
-    # boucle de crash) et le switch retournait en erreur.
+    # "zitadel/steps" removed on 12/10/2026: the secret pointed to
+    # zitadel_steps, encrypted as type:int in secrets/anywhere.yml, which
+    # sops-install-secrets rejects ("the value of key '' is not a string"). It
+    # therefore made the whole VPS setupSecrets fail, hence the whole
+    # activation: no secret was written (master key missing, zitadel in a
+    # crash loop) and the switch returned an error.
     #
-    # Un steps YAML ne sert qu'à la première initialisation d'une instance, or
-    # celle-ci est déjà initialisée (base "zitadel" existante). Pour repartir
-    # d'une instance neuve : chiffrer le YAML des steps en type:str et remettre
+    # A steps YAML is only used for the first initialization of an instance, and
+    # this one is already initialized ("zitadel" database exists). To start over
+    # from a fresh instance: encrypt the steps YAML as type:str and restore
     # extraStepsPaths = [ config.sops.secrets."zitadel/steps".path ].
   } // lib.optionalAttrs (config.networking.hostName != "anywhere") {
-    # Mot de passe du compte d'envoi noreply@marcpartensky.com (Stalwart sur le
-    # VPS). Fichier dédié pour que hermes puisse l'écrire sans toucher au reste.
-    # HORS anywhere : secrets/zitadel-smtp.yml n'a pas la cle age du VPS, et un
-    # seul fichier indechiffrable avorte TOUT setupSecrets (donc l'activation).
-    # Ce secret ne sert qu'a la PROVISIONING par API — la config SMTP vit dans
-    # la base Zitadel (projection smtp_configs) — donc son absence sur le VPS
-    # ne change rien au runtime.
+    # Password of the sending account noreply@marcpartensky.com (Stalwart on the
+    # VPS). Dedicated file so that hermes can write it without touching the rest.
+    # OUTSIDE anywhere: secrets/zitadel-smtp.yml does not have the VPS age key, and a
+    # single undecryptable file aborts ALL of setupSecrets (hence the activation).
+    # This secret is only used for PROVISIONING via API - the SMTP config lives in
+    # the Zitadel database (smtp_configs projection) - so its absence on the VPS
+    # changes nothing at runtime.
     "zitadel/smtp_password" = {
       sopsFile = ../../secrets/zitadel-smtp.yml;
       key = "zitadel_smtp_password";
@@ -62,14 +62,14 @@
     enable = true;
     masterKeyFile = config.sops.secrets."zitadel/master_key".path;
 
-    # Pas de clé SMTP ici : depuis ZITADEL v2 la config SMTP vit dans la base
-    # (projection smtp_configs) et se modifie par l'API admin
-    # POST /admin/v1/smtp ou la console. Le fichier de config runtime l'ignore
-    # (vérifié le 19/10/2026 : SMTP.* dans --config ne produit que
-    # Errors.SMTPConfig.NotFound). Le mot de passe du compte d'envoi est dans
-    # secrets/zitadel-smtp.yml pour la provisioning par API.
+    # No SMTP key here: since ZITADEL v2 the SMTP config lives in the database
+    # (smtp_configs projection) and is modified via the admin API
+    # POST /admin/v1/smtp or the console. The runtime config file ignores it
+    # (checked on 19/10/2026: SMTP.* in --config only produces
+    # Errors.SMTPConfig.NotFound). The sending account password is in
+    # secrets/zitadel-smtp.yml for API provisioning.
 
-    # extraStepsPaths retiré : voir le commentaire sur sops.secrets ci-dessus.
+    # extraStepsPaths removed: see the comment on sops.secrets above.
 
     settings = {
       Port = 2080;

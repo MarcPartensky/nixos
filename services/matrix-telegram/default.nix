@@ -1,18 +1,18 @@
 # services/matrix-telegram/default.nix
-# Pont Matrix <-> Telegram (mautrix-telegram, bridge Python historique),
-# serveur : ../matrix
+# Matrix <-> Telegram bridge (mautrix-telegram, historical Python bridge),
+# server: ../matrix
 #
-# PAS ENCORE ACTIVÉ, volontairement : il manque api_id et api_hash, qui
-# s'obtiennent uniquement avec un compte Telegram (https://my.telegram.org,
-# section "API development tools", connexion avec son numéro de téléphone).
-# api_id est un identifiant public, api_hash est le secret.
+# NOT YET ENABLED, on purpose: api_id and api_hash are missing, which
+# are obtained only with a Telegram account (https://my.telegram.org,
+# section "API development tools", login with your phone number).
+# api_id is a public identifier, api_hash is the secret.
 #
-# Pour activer, trois choses :
-#   1. renseigner api_id ci-dessous (nombre, pas un secret) ;
-#   2. créer secrets/telegram.yml avec la clé telegram_api_hash (fichier neuf :
-#      chiffrable avec les seules clés publiques de .sops.yaml) et ajouter la
-#      creation_rule correspondante dans .sops.yaml ;
-#   3. décommenter ./matrix-telegram dans services/default.nix.
+# To enable, three things:
+#   1. fill in api_id below (number, not a secret);
+#   2. create secrets/telegram.yml with the telegram_api_hash key (new file:
+#      encryptable with the sole public keys of .sops.yaml) and add the
+#      corresponding creation_rule in .sops.yaml;
+#   3. uncomment ./matrix-telegram in services/default.nix.
 {
   config,
   lib,
@@ -25,8 +25,8 @@
     restartUnits = ["mautrix-telegram.service"];
   };
 
-  # Le nix store ne contient que la référence $TELEGRAM_API_HASH, la valeur est
-  # injectée par envsubst au démarrage (preStart du module), depuis ce fichier.
+  # The nix store contains only the $TELEGRAM_API_HASH reference, the value is
+  # injected by envsubst at startup (module preStart), from this file.
   sops.templates."matrix-telegram.env" = {
     content = ''
       TELEGRAM_API_HASH=${config.sops.placeholder.telegram_api_hash}
@@ -48,7 +48,7 @@
       };
       appservice = {
         hostname = "127.0.0.1";
-        # défaut du module : 8080, à éviter (déjà pris par jupyterhub sur tower)
+        # module default: 8080, to avoid (already taken by jupyterhub on tower)
         port = 29317;
       };
       bridge.permissions = {
@@ -56,18 +56,18 @@
         "@marc:matrix.marcpartensky.com" = "admin";
       };
       telegram = {
-        # TODO: nombre récupéré sur my.telegram.org
+        # TODO: number retrieved from my.telegram.org
         api_id = 0;
         api_hash = "$TELEGRAM_API_HASH";
       };
     };
 
-    # La registration est générée dans le preStart du bridge, donc c'est synapse
-    # qui doit l'attendre (cf. services/matrix), pas l'inverse.
+    # The registration is generated in the bridge preStart, so it is synapse
+    # that must wait for it (cf. services/matrix), not the opposite.
     serviceDependencies = lib.mkForce [];
   };
 
-  # Après déploiement, connexion (à faire par marc) : DM à
-  # @telegrambot:matrix.marcpartensky.com, `login`, puis suivre les instructions
-  # (numéro de téléphone, code reçu dans Telegram, mot de passe 2FA si activé).
+  # After deployment, login (to be done by marc): DM to
+  # @telegrambot:matrix.marcpartensky.com, `login`, then follow the instructions
+  # (phone number, code received in Telegram, 2FA password if enabled).
 }

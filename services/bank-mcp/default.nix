@@ -1,26 +1,26 @@
 # services/bank-mcp/default.nix
-# MCP bancaire (elcukro/bank-mcp) en stdio pour Hermes : accès LECTURE SEULE
-# aux comptes Chase via Teller (agrégateur, tier développeur gratuit).
+# Banking MCP (elcukro/bank-mcp) over stdio for Hermes: READ-ONLY access
+# to Chase accounts via Teller (aggregator, free developer tier).
 #
-# 5 tools : list_accounts, list_transactions, search_transactions,
-# get_balance, spending_summary. Aucun tool d'écriture n'existe dans le
-# provider (l'interface BankProvider ne déclare que des lectures).
+# 5 tools: list_accounts, list_transactions, search_transactions,
+# get_balance, spending_summary. No write tool exists in the
+# provider (the BankProvider interface only declares reads).
 #
-# Configuration : /var/lib/hermes/.bank-mcp/config.json (0600), écrite par
-# `bank-mcp-setup` (assistant interactif) ou `bank-mcp-connect` (nouvelle
-# connexion). Elle contient l'accessToken Teller par connexion, obtenu via le
-# widget Teller Connect, et les chemins des certificats mTLS.
+# Configuration: /var/lib/hermes/.bank-mcp/config.json (0600), written by
+# `bank-mcp-setup` (interactive wizard) or `bank-mcp-connect` (new
+# connection). It contains the Teller accessToken per connection, obtained via the
+# Teller Connect widget, and the paths to the mTLS certificates.
 #
-# Mise en route (une fois) :
-#   1. teller.io -> créer une application -> Application ID + teller.zip
+# Setup (once):
+#   1. teller.io -> create an application -> Application ID + teller.zip
 #      (certificate.pem, private_key.pem) -> /var/lib/hermes/bank-mcp/certs/
-#   2. `bank-mcp-setup` : Application ID, environnement development,
-#      chemins des deux .pem, puis le widget Teller Connect s'ouvre sur
-#      127.0.0.1 (identifiants Chase à saisir là, jamais dans le chat).
+#   2. `bank-mcp-setup`: Application ID, development environment,
+#      paths to both .pem files, then the Teller Connect widget opens on
+#      127.0.0.1 (Chase credentials entered there, never in the chat).
 #
-# Sans config.json, le serveur démarre quand même (tools/list répond) mais
-# chaque appel échoue en « No connections configured » : échec bruyant, pas
-# d'inertie silencieuse.
+# Without config.json, the server still starts (tools/list responds) but
+# every call fails with "No connections configured": a loud failure, not
+# silent inertia.
 {
   pkgs,
   lib,
@@ -40,11 +40,11 @@
 
     npmDepsHash = "sha256-38xLAj2VHW4/1e8L+UVayjzcL2xEjsqacywXFNigx9M=";
 
-    # dist/ est déjà compilé dans le tarball publié.
+    # dist/ is already compiled in the published tarball.
     dontNpmBuild = true;
 
-    # Tarball publié sans package-lock.json et avec ses devDependencies :
-    # la lock committée ici ne couvre que le runtime, on aligne le manifeste.
+    # Published tarball without package-lock.json and with its devDependencies:
+    # the lock committed here only covers the runtime, so we align the manifest.
     postPatch = ''
       cp ${./package-lock.json} package-lock.json
       ${lib.getExe pkgs.jq} 'del(.devDependencies)' package.json > package.json.tmp
@@ -54,7 +54,7 @@
     meta.mainProgram = "bank-mcp";
   };
 
-  # Le serveur lit son état dans $HOME/.bank-mcp.
+  # The server reads its state from $HOME/.bank-mcp.
   withEnv = ''
     set -euo pipefail
     export HOME=/var/lib/hermes

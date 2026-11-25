@@ -3,15 +3,15 @@
   services.traefik = {
     enable = true;
 
-    # Nom de domaine de ton dashboard
+    # Your dashboard's domain name
     dynamicConfigFile = ./dynamic.toml;
 
-    # Configuration statique
+    # Static configuration
     staticConfigOptions = {
       entryPoints = {
         web = {
           address = ":80";
-          # Force la redirection HTTP -> HTTPS pour tout le monde
+          # Force HTTP -> HTTPS redirection for everyone
           http.redirections.entryPoint = {
             to = "websecure";
             scheme = "https";
@@ -22,11 +22,11 @@
 
       api = {
         dashboard = true;
-        insecure = true; # pas de port 8080 exposé, passe par traefik.marcpartensky.com
+        insecure = true; # no port 8080 exposed, goes through traefik.marcpartensky.com
       };
 
     # providers = {
-    #   # Si tu veux garder les fichiers de config (au lieu du docker provider)
+    #   # If you want to keep the config files (instead of the docker provider)
     #   file = {
     #     directory = "/srv/traefik/config";
     #     watch = true;
@@ -37,7 +37,7 @@
         letsencrypt = {
           acme = {
             email = "marc.partensky@proton.me";
-            # peut etre remplacer par pangolin
+            # can maybe be replaced by pangolin
             storage = lib.mkDefault "/var/lib/traefik/acme.json";
             httpChallenge.entryPoint = "web";
           };
@@ -46,7 +46,7 @@
     };
   };
 
-  # # Reverse proxy vers le dashboard Traefik
+  # # Reverse proxy to the Traefik dashboard
   # services.traefik.dynamicConfigFile = pkgs.writeText "traefik_dynamic.toml" ''
   #   [http.routers]
   #     [http.routers.api]
@@ -56,11 +56,11 @@
   # '';
 
 
-  # Pour HTTPS automatique
+  # For automatic HTTPS
   security.acme.acceptTerms = true;
   security.acme.defaults.email = "marc.partensky@proton.me";
 
-  # Si tu veux stocker tes fichiers de conf locaux
+  # If you want to store your local config files
   systemd.tmpfiles.rules = [
     "d /srv/traefik 0755 root root -"
   ];

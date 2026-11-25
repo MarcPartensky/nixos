@@ -1,36 +1,36 @@
 {
-  # Laisser le reste à la configuration par défaut de Neo-tree
+  # Leave the rest to Neo-tree's default configuration
 
   filesystem = {
     window = {
-      # Ces mappings sont pour les actions principales dans la fenêtre Neo-tree (Filesystem Source).
+      # These mappings are for the main actions in the Neo-tree window (Filesystem Source).
       mappings = {
-        # Ouvre/Ferme les nœuds. Correspond au comportement VIM standard (h/l) dans un explorateur.
-        "h" = "close_node"; # ⬅️ Similaire à se déplacer vers la gauche / fermer le répertoire
-        "l" = "open";       # ➡️ Similaire à se déplacer vers la droite / ouvrir le fichier ou le répertoire
+        # Open/Close nodes. Corresponds to the standard VIM behavior (h/l) in an explorer.
+        "h" = "close_node"; # -> Similar to moving left / closing the directory
+        "l" = "open";       # -> Similar to moving right / opening the file or directory
 
-        # Le reste utilise les actions par défaut de Neo-tree (qui sont souvent déjà VIM-like).
+        # The rest uses Neo-tree's default actions (which are often already VIM-like).
         
-        # Mouvements de base (j/k) sont implicitement gardés si non surchargés, mais on peut les confirmer:
+        # Basic movements (j/k) are implicitly kept if not overridden, but we can confirm them:
         "j" = "move_cursor_down";
         "k" = "move_cursor_up";
         
-        # Actions courantes que vous avez peut-être dans un explorateur :
+        # Common actions you may have in an explorer:
         "<cr>" = "open"; 
         
-        # Aller au répertoire parent (Back)
+        # Go to the parent directory (Back)
         "<bs>" = "navigate_up"; 
         
-        # Aller à la racine du projet
+        # Go to the project root
         "." = "set_root";
         
-        # Toggle les fichiers cachés
+        # Toggle hidden files
         "H" = "toggle_hidden"; 
       };
     };
   };
 
-  # Pour la source Buffers si vous l'activez:
+  # For the Buffers source if you enable it:
   buffers = {
     window = {
       mappings = {
@@ -41,6 +41,6 @@
     };
   };
   
-  # Assurez-vous que l'option de fermer si c'est la dernière fenêtre est là pour la commodité.
+  # Make sure the close-if-last-window option is there for convenience.
   close_if_last_window = true;
 }

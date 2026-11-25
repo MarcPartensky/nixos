@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""taskq-api : API JSON + webui de la file de taches de tower.
+"""taskq-api: JSON API + webui for tower's task queue.
 
-Zero dependance (stdlib + psql, comme le dispatcher). Ecoute en loopback
-uniquement : l'acces distant passe par Pangolin (SSO) -> newt -> 127.0.0.1.
+Zero dependency (stdlib + psql, like the dispatcher). Listens on loopback
+only: remote access goes through Pangolin (SSO) -> newt -> 127.0.0.1.
 
-  GET  /              -> la webui (page unique, poll 5 s de /api/state)
-  GET  /api/state     -> instantane JSON (file, decisions, hotes, metriques)
-  GET  /api/healthz   -> {"status":"ok"} (healthcheck Pangolin)
+  GET  /              -> the webui (single page, 5 s poll of /api/state)
+  GET  /api/state     -> JSON snapshot (queue, decisions, hosts, metrics)
+  GET  /api/healthz   -> {"status":"ok"} (Pangolin healthcheck)
   POST /api/action    -> {"action": pause|resume|ack|unblock|cancel|retry, "id": n}
 
-Les actions sont celles du CLI `taskq` (meme SQL, actor "webui" dans
-`decisions`). Le protocole de flotte (/worker/*, tokens) arrivera ici, sous la
-meme unite, avec authentification par hote.
+The actions are those of the `taskq` CLI (same SQL, actor "webui" in
+`decisions`). The fleet protocol (/worker/*, tokens) will land here, under the
+same unit, with per-host authentication.
 """
 
 from __future__ import annotations
@@ -106,40 +106,40 @@ def action(body: dict) -> dict:
     if a == "pause":
         exec_("insert into state (key, value) values ('paused', 'true'::jsonb)"
               " on conflict (key) do update set value = 'true'::jsonb, updated_at = now()")
-        exec_(f"insert into decisions (action, actor, reason) values ('pause', {q(ACTOR)}, 'file en pause (webui)')")
+        exec_(f"insert into decisions (action, actor, reason) values ('pause', {q(ACTOR)}, 'queue paused (webui)')")
     elif a == "resume":
         exec_("insert into state (key, value) values ('paused', 'false'::jsonb)"
               " on conflict (key) do update set value = 'false'::jsonb, updated_at = now()")
-        exec_(f"insert into decisions (action, actor, reason) values ('resume', {q(ACTOR)}, 'file relancee (webui)')")
+        exec_(f"insert into decisions (action, actor, reason) values ('resume', {q(ACTOR)}, 'queue resumed (webui)')")
     elif a == "ack":
         n = psql("update decisions set notified = true where not notified returning id")
         return {"ok": True, "action": a, "acked": n.count("\n") + 1 if n else 0}
     elif a == "unblock":
-        exec_("update tasks set status='queued', note='debloque', updated_at=now() where status='blocked'")
-        exec_(f"insert into decisions (action, actor, reason) values ('unblock', {q(ACTOR)}, 'taches bloquees remises en file (webui)')")
+        exec_("update tasks set status='queued', note='unblocked', updated_at=now() where status='blocked'")
+        exec_(f"insert into decisions (action, actor, reason) values ('unblock', {q(ACTOR)}, 'blocked tasks requeued (webui)')")
     elif a == "cancel":
         if tid is None:
-            return {"ok": False, "error": "id requis"}
+            return {"ok": False, "error": "id required"}
         exec_(f"update tasks set status='cancelled', finished_at=now(), updated_at=now(),"
-              f" note={q(reason or 'annule par la webui')} where id={int(tid)} and status in ('queued', 'blocked')")
-        exec_(f"insert into decisions (task_id, action, actor, reason) values ({int(tid)}, 'skip', {q(ACTOR)}, {q(reason or 'annule par la webui')})")
+              f" note={q(reason or 'cancelled by webui')} where id={int(tid)} and status in ('queued', 'blocked')")
+        exec_(f"insert into decisions (task_id, action, actor, reason) values ({int(tid)}, 'skip', {q(ACTOR)}, {q(reason or 'cancelled by webui')})")
     elif a == "retry":
         if tid is None:
-            return {"ok": False, "error": "id requis"}
+            return {"ok": False, "error": "id required"}
         exec_(f"update tasks set status='queued', not_before=now(), attempts=0, updated_at=now() where id={int(tid)}")
-        exec_(f"insert into decisions (task_id, action, actor, reason) values ({int(tid)}, 'note', {q(ACTOR)}, 'remise en file (webui)')")
+        exec_(f"insert into decisions (task_id, action, actor, reason) values ({int(tid)}, 'note', {q(ACTOR)}, 'requeued (webui)')")
     else:
-        return {"ok": False, "error": f"action inconnue: {a or '(vide)'}"}
+        return {"ok": False, "error": f"unknown action: {a or '(empty)'}"}
     log(f"action {a} {('#' + str(tid)) if tid is not None else ''}")
     return {"ok": True, "action": a}
 
 
-# ------------------------------------------------------------------- flotte
-# Protocole de flotte : les workers distant (deck, laptop, anywhere, mac)
-# appellent ces routes en PULL. Aucun port ouvert chez eux, aucune donnee
-# d'etat locale : le master garde la politique (pause, budget, GPU) et le bail
-# de chaque tache. Un hote qui se tait (veille, wifi, reboot) voit son bail
-# expirer et sa tache remise en file par le reaper (thread ci-dessous).
+# ------------------------------------------------------------------- fleet
+# Fleet protocol: the remote workers (deck, laptop, anywhere, mac)
+# call these routes in PULL mode. No port open on them, no local
+# state data: the master keeps the policy (pause, budget, GPU) and the lease
+# of each task. A host that goes silent (sleep, wifi, reboot) sees its lease
+# expire and its task requeued by the reaper (thread below).
 
 WORKER_BIND = os.environ.get("TASKQ_WORKER_BIND", "127.0.0.1")
 WORKER_PORT = int(os.environ.get("TASKQ_WORKER_PORT", "9078"))
@@ -149,7 +149,7 @@ MAX_LEASE_LOSSES = 5
 
 
 def tokens() -> dict:
-    """{nom d'hote -> jeton}. Fichier rendu par Nix depuis sops (0600)."""
+    """{hostname -> token}. File rendered by Nix from sops (0600)."""
     try:
         with open(TOKENS_FILE) as f:
             return {str(k): str(v) for k, v in json.load(f).items() if v}
@@ -179,14 +179,14 @@ def jq(v) -> str:
 
 
 def reaper() -> None:
-    """Remet en file les taches dont le worker s'est tu (bail expire)."""
+    """Requeues the tasks whose worker went silent (expired lease)."""
     try:
         lost = rows(
             "with lost as ("
             " update tasks set status='queued', assigned_host=null,"
             "  lease_expires_at=null, lease_losses=lease_losses+1,"
             "  not_before=now() + interval '1 minute', updated_at=now(),"
-            "  note='worker silencieux: bail expire, remise en file'"
+            "  note='silent worker: expired lease, requeued'"
             " where status='running' and assigned_host is not null"
             "  and lease_expires_at < now()"
             " returning id, assigned_host, lease_losses)"
@@ -196,22 +196,22 @@ def reaper() -> None:
         log(f"reaper: {e!r}")
         return
     for t in lost or []:
-        log(f"bail expire: #{t['id']} perdu par {t['assigned_host']}")
+        log(f"expired lease: #{t['id']} lost by {t['assigned_host']}")
         exec_(
             "insert into decisions (task_id, action, actor, reason)"
             f" values ({int(t['id'])}, 'defer', 'reaper', "
-            f"{q('hote ' + str(t['assigned_host']) + ' muet: bail expire, tache remise en file')})"
+            f"{q('host ' + str(t['assigned_host']) + ' silent: expired lease, task requeued')})"
         )
         if int(t["lease_losses"] or 0) >= MAX_LEASE_LOSSES:
             exec_(
                 "update tasks set status='failed', finished_at=now(), updated_at=now(),"
-                f" note={q('abandonnee: ' + str(t['lease_losses']) + ' baux perdus')}"
+                f" note={q('abandoned: ' + str(t['lease_losses']) + ' lost leases')}"
                 f" where id={int(t['id'])}"
             )
             exec_(
                 "insert into decisions (task_id, action, actor, reason)"
                 f" values ({int(t['id'])}, 'fail', 'reaper', "
-                f"{q('abandonnee apres ' + str(t['lease_losses']) + ' baux perdus')})"
+                f"{q('abandoned after ' + str(t['lease_losses']) + ' lost leases')})"
             )
 
 
@@ -233,8 +233,8 @@ def worker_beat(name: str, body: dict) -> dict:
         " metrics=excluded.metrics, heartbeat=now(), enabled=true"
     )
     run_arr = "array[" + ",".join(str(i) for i in running) + "]::int[]" if running else "'{}'::int[]"
-    # Le bail se renouvelle a chaque battement : une tache longue vit tant que
-    # l'hote bat, et meurt des qu'il se tait.
+    # The lease renews on each beat: a long task lives as long as
+    # the host beats, and dies as soon as it goes silent.
     exec_(
         "update tasks set lease_expires_at = now()"
         f" + interval '{int(LEASE_S)} seconds', updated_at=now()"
@@ -275,7 +275,7 @@ def worker_beat(name: str, body: dict) -> dict:
             f"  attempts, max_attempts from upd"
         )
         for t in claim:
-            why = "remis a %s (%s load, %s Mo libres)" % (
+            why = "assigned to %s (%s load, %s MB free)" % (
                 name, metrics.get("load1", "?"), metrics.get("mem_avail_mb", "?"))
             exec_(
                 "insert into decisions (task_id, action, actor, reason)"
@@ -298,14 +298,14 @@ def worker_report(name: str, body: dict) -> dict:
         " returning id"
     )
     if not n:
-        log(f"report #{tid} de {name} ignore (tache plus assignee)")
+        log(f"report #{tid} from {name} ignored (task no longer assigned)")
         return {"ok": True, "ignored": True}
     exec_(
         "insert into decisions (task_id, action, actor, reason)"
         f" values ({tid}, {q('finish' if status == 'done' else 'fail')}, "
         f"{q('worker:' + name)}, {q(note[:200])})"
     )
-    log(f"#{tid} {status} sur {name}")
+    log(f"#{tid} {status} on {name}")
     return {"ok": True, "id": tid, "status": status}
 
 
@@ -380,21 +380,21 @@ PAGE = r"""<!doctype html>
 <header>
   <div class="top">
     <h1>taskq</h1>
-    <span class="sub">file de taches de tower · <span id="conn" class="muted">connecté</span></span>
+    <span class="sub">tower task queue · <span id="conn" class="muted">connected</span></span>
   </div>
   <div class="pills" id="pills"></div>
   <div class="buttons">
     <button id="btn-pause" onclick="act('pause')">Pause</button>
-    <button id="btn-resume" onclick="act('resume')">Reprendre</button>
-    <button onclick="act('unblock')">Débloquer</button>
-    <button onclick="act('ack')">Marquer lu</button>
-    <button onclick="tick()">Rafraîchir</button>
+    <button id="btn-resume" onclick="act('resume')">Resume</button>
+    <button onclick="act('unblock')">Unblock</button>
+    <button onclick="act('ack')">Mark read</button>
+    <button onclick="tick()">Refresh</button>
   </div>
 </header>
 <main>
-  <section><h2>Hôtes</h2><div id="hosts"></div></section>
-  <section><h2>File</h2><div id="queue"></div></section>
-  <section><h2>Décisions récentes</h2><div id="decisions"></div></section>
+  <section><h2>Hosts</h2><div id="hosts"></div></section>
+  <section><h2>Queue</h2><div id="queue"></div></section>
+  <section><h2>Recent decisions</h2><div id="decisions"></div></section>
 </main>
 <script>
 "use strict";
@@ -405,7 +405,7 @@ const esc = (v) => String(v === null || v === undefined ? "" : v)
 async function act(action, id) {
   const body = { action };
   if (id !== undefined) body.id = id;
-  $("conn").textContent = "envoi " + action + "…";
+  $("conn").textContent = "sending " + action + "...";
   try {
     const r = await fetch("/api/action", {
       method: "POST",
@@ -413,9 +413,9 @@ async function act(action, id) {
       body: JSON.stringify(body),
     });
     const j = await r.json();
-    if (!j.ok) $("conn").textContent = "erreur: " + (j.error || r.status);
+    if (!j.ok) $("conn").textContent = "error: " + (j.error || r.status);
   } catch (e) {
-    $("conn").textContent = "erreur réseau";
+    $("conn").textContent = "network error";
   }
   tick();
 }
@@ -425,37 +425,37 @@ function pill(label, value, cls) {
 }
 
 function render(s) {
-  $("conn").textContent = "actualisé " + s.now.slice(11, 19);
+  $("conn").textContent = "updated " + s.now.slice(11, 19);
   const m = s.metrics || {};
   const b = s.budget || {};
   const pills = [];
-  pills.push(pill("état", s.paused ? "EN PAUSE" : "actif", s.paused ? "bad" : "ok"));
+  pills.push(pill("state", s.paused ? "PAUSED" : "active", s.paused ? "bad" : "ok"));
   pills.push(pill("load", (m.load1 ?? "?") + "/" + (m.threads ?? "?"), (m.load1 ?? 0) > 0.9 * (m.threads || 1) ? "warn" : ""));
-  pills.push(pill("RAM libre", (m.mem_avail_mb ?? "?") + " Mo"));
-  const pw = { at_tower: ["à la machine", "warn"], away_work: ["absent (travail)", "ok"],
-               away_sleep: ["absent (sommeil)", "ok"], nearby: ["près de tower", "info"] }[m.presence];
-  const until = m.presence_until ? " jusqu'à " + m.presence_until.slice(11, 16) : "";
-  const marc = pw ? pw[0] + until : (m.marc_connected ? "connecté" : (m.marc_busy ? "occupé" : (m.marc_present ? "présent, calme" : "absent")));
+  pills.push(pill("free RAM", (m.mem_avail_mb ?? "?") + " MB"));
+  const pw = { at_tower: ["at the machine", "warn"], away_work: ["away (work)", "ok"],
+               away_sleep: ["away (sleep)", "ok"], nearby: ["near tower", "info"] }[m.presence];
+  const until = m.presence_until ? " until " + m.presence_until.slice(11, 16) : "";
+  const marc = pw ? pw[0] + until : (m.marc_connected ? "connected" : (m.marc_busy ? "busy" : (m.marc_present ? "present, calm" : "absent")));
   pills.push(pill("marc", marc, pw ? pw[1] : (m.marc_connected ? "info" : (m.marc_busy ? "warn" : "ok"))));
-  pills.push(pill("budget payant", (b.left_cents ?? "?") + " c restants sur " + (b.cap_cents ?? "?")));
-  pills.push(pill("GPU", m.gpu ? m.gpu : "aucun"));
-  pills.push(pill("modèle local", m.local_model_running ? "en cours" : "non"));
-  pills.push(pill("décisions non lues", s.unacked, s.unacked > 0 ? "info" : ""));
+  pills.push(pill("paid budget", (b.left_cents ?? "?") + " c left out of " + (b.cap_cents ?? "?")));
+  pills.push(pill("GPU", m.gpu ? m.gpu : "none"));
+  pills.push(pill("local model", m.local_model_running ? "running" : "no"));
+  pills.push(pill("unread decisions", s.unacked, s.unacked > 0 ? "info" : ""));
   const c = s.counts || {};
-  pills.push(pill("file", (c.queued || 0) + " queued · " + (c.running || 0) + " running · " + (c.blocked || 0) + " blocked · " + (c.failed || 0) + " failed"));
+  pills.push(pill("queue", (c.queued || 0) + " queued · " + (c.running || 0) + " running · " + (c.blocked || 0) + " blocked · " + (c.failed || 0) + " failed"));
   $("pills").innerHTML = pills.join("");
 
   const hs = s.hosts || [];
   if (!hs.length) {
-    $("hosts").innerHTML = '<div class="empty">Aucun worker distant enregistré. tower exécute en local (master et worker implicites) ; la flotte (deck, anywhere, mac) se branchera ici.</div>';
+    $("hosts").innerHTML = '<div class="empty">No remote worker registered. tower runs locally (implicit master and worker); the fleet (deck, anywhere, mac) will plug in here.</div>';
   } else {
-    let h = "<table><tr><th>hôte</th><th>état</th><th>caps</th><th>load</th><th>RAM libre</th><th>note</th></tr>";
+    let h = "<table><tr><th>host</th><th>state</th><th>caps</th><th>load</th><th>free RAM</th><th>note</th></tr>";
     for (const x of hs) {
       const mx = x.metrics || {};
       const silent = x.silent_s;
-      const st = !x.enabled ? ["désactivé", "failed"] :
-        (x.quarantined_until ? ["quarantaine", "blocked"] :
-        (silent >= 0 && silent < 90 ? ["en ligne", "running"] : ["silencieux " + silent + " s", "blocked"]));
+      const st = !x.enabled ? ["disabled", "failed"] :
+        (x.quarantined_until ? ["quarantine", "blocked"] :
+        (silent >= 0 && silent < 90 ? ["online", "running"] : ["silent " + silent + " s", "blocked"]));
       h += "<tr><td class='mono'>" + esc(x.name) + "</td><td><span class='st " + st[1] + "'>" + st[0] + "</span></td>" +
            "<td class='mono'>" + esc(Object.keys(x.caps || {}).filter(k => x.caps[k]).join(", ") || "-") + "</td>" +
            "<td class='mono'>" + esc(mx.load1 ?? "-") + "</td><td class='mono'>" + esc(mx.mem_avail_mb ?? "-") + "</td>" +
@@ -466,22 +466,22 @@ function render(s) {
 
   const q = s.queue || [];
   if (!q.length) {
-    $("queue").innerHTML = '<div class="empty">File vide.</div>';
+    $("queue").innerHTML = '<div class="empty">Queue empty.</div>';
   } else {
-    let h = "<table><tr><th>id</th><th>état</th><th>prio</th><th>classe</th><th>cible</th><th>hôte</th><th>détail</th><th></th></tr>";
+    let h = "<table><tr><th>id</th><th>state</th><th>prio</th><th>class</th><th>target</th><th>host</th><th>detail</th><th></th></tr>";
     for (const t of q) {
-      const when = t.status === "running" ? ("démarré " + esc(t.started) + " (" + esc(t.minutes_taken) + " min)") :
-        (t.deadline ? ("deadline " + esc(t.deadline)) : ("prêt " + esc(t.not_before)));
+      const when = t.status === "running" ? ("started " + esc(t.started) + " (" + esc(t.minutes_taken) + " min)") :
+        (t.deadline ? ("deadline " + esc(t.deadline)) : ("ready " + esc(t.not_before)));
       const flags = [];
       if (t.while_busy) flags.push("while-busy");
       if (t.needs_absence) flags.push("absence");
       if (t.llm_cost && t.llm_cost !== "none") flags.push("llm " + t.llm_cost);
-      if (t.attempts) flags.push("essais " + t.attempts);
+      if (t.attempts) flags.push("attempts " + t.attempts);
       const bits = [when].concat(flags);
       if (t.note) bits.push(esc(t.note));
       const btns = [];
-      if (["failed", "blocked", "expired", "done", "cancelled"].includes(t.status)) btns.push("<button onclick=\"act('retry'," + t.id + ")\">Relancer</button>");
-      if (["queued", "blocked"].includes(t.status)) btns.push("<button class='danger' onclick=\"act('cancel'," + t.id + ")\">Annuler</button>");
+      if (["failed", "blocked", "expired", "done", "cancelled"].includes(t.status)) btns.push("<button onclick=\"act('retry'," + t.id + ")\">Retry</button>");
+      if (["queued", "blocked"].includes(t.status)) btns.push("<button class='danger' onclick=\"act('cancel'," + t.id + ")\">Cancel</button>");
       h += "<tr><td class='mono'>" + t.id + "</td>" +
            "<td><span class='st " + esc(t.status) + "'>" + esc(t.status) + "</span></td>" +
            "<td class='mono'>" + t.priority + "</td><td class='mono'>" + esc(t.cpu_class) + "</td>" +
@@ -494,7 +494,7 @@ function render(s) {
 
   const ds = s.decisions || [];
   if (!ds.length) {
-    $("decisions").innerHTML = '<div class="empty">Aucune décision.</div>';
+    $("decisions").innerHTML = '<div class="empty">No decision.</div>';
   } else {
     let h = "<ol class='dec'>";
     for (const d of ds) {
@@ -511,7 +511,7 @@ async function tick() {
     if (!r.ok) throw new Error(r.status);
     render(await r.json());
   } catch (e) {
-    $("conn").textContent = "hors ligne (" + e.message + ")";
+    $("conn").textContent = "offline (" + e.message + ")";
   }
 }
 setInterval(tick, 5000);
@@ -554,7 +554,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(200, {"status": "ok"})
             else:
                 self._json(404, {"ok": False, "error": "not found"})
-        except Exception as e:  # une erreur ne doit pas tuer le serveur
+        except Exception as e:  # an error must not kill the server
             self._json(500, {"ok": False, "error": repr(e)})
 
     def do_POST(self) -> None:  # noqa: N802
@@ -565,17 +565,17 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             body = None
-        # Routes de flotte : uniquement sur le listener dedie, jeton par hote.
+        # Fleet routes: only on the dedicated listener, per-host token.
         if path.startswith("/worker/"):
             if not worker:
                 self._json(404, {"ok": False, "error": "not found"})
                 return
             name = host_of(self.headers.get("Authorization"))
             if not name:
-                self._json(401, {"ok": False, "error": "jeton de worker inconnu"})
+                self._json(401, {"ok": False, "error": "unknown worker token"})
                 return
             if not isinstance(body, dict):
-                self._json(400, {"ok": False, "error": "corps JSON invalide"})
+                self._json(400, {"ok": False, "error": "invalid JSON body"})
                 return
             fn = {"/worker/beat": worker_beat, "/worker/report": worker_report}.get(path)
             if fn is None:
@@ -584,7 +584,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 self._json(200, fn(name, body))
             except Exception as e:
-                log(f"{path} ({name}) a echoue: {e!r}")
+                log(f"{path} ({name}) failed: {e!r}")
                 self._json(500, {"ok": False, "error": repr(e)})
             return
         if worker or path != "/api/action" or not isinstance(body, dict):
@@ -606,12 +606,12 @@ def serve(host: str, port: int, worker_only: bool) -> ThreadingHTTPServer:
 
 
 def main() -> None:
-    log(f"taskq-api sur {BIND}:{PORT}")
+    log(f"taskq-api on {BIND}:{PORT}")
     if WORKER_BIND == BIND and WORKER_PORT == PORT:
-        log("listener worker desactive: meme adresse que l'API webui")
+        log("worker listener disabled: same address as the webui API")
     else:
-        log(f"taskq worker-api sur {WORKER_BIND}:{WORKER_PORT} "
-            f"(jetons {TOKENS_FILE}, bail {LEASE_S} s)")
+        log(f"taskq worker-api on {WORKER_BIND}:{WORKER_PORT} "
+            f"(tokens {TOKENS_FILE}, lease {LEASE_S} s)")
         threading.Thread(
             target=serve, args=(WORKER_BIND, WORKER_PORT, True), daemon=True
         ).start()

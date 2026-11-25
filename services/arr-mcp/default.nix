@@ -1,29 +1,29 @@
 # services/arr-mcp/default.nix
-# Serveur MCP arr-mcp (bardesss/arr-mcp) : UN endpoint pour la pile media
-# auto-hebergee (Radarr films, Sonarr series, Prowlarr indexeurs, Jellyfin).
-# Conteneur sorti de la conf hote : deploy/containers.nix (entree `arr-mcp`,
-# migrated = true), quadlet podman `arr-mcp.service`, publie sur
+# arr-mcp MCP server (bardesss/arr-mcp): ONE endpoint for the self-hosted
+# media stack (Radarr movies, Sonarr series, Prowlarr indexers, Jellyfin).
+# Container moved out of the host config: deploy/containers.nix (`arr-mcp` entry,
+# migrated = true), podman quadlet `arr-mcp.service`, published on
 # 127.0.0.1:6060.
 #
-# Ce que nix possede :
-#   - le conteneur : image, port, volume /config, fichier d'env ;
-#   - les cles API des quatre services et le token MCP, dans
-#     secrets/arr-mcp.yml (destinataire = tower uniquement) ;
-#   - l'entree MCP de Hermes, dont le header porte un placeholder
-#     ${ARR_MCP_TOKEN} : Hermes le resout depuis son environnement au moment
-#     de se connecter, donc aucun secret n'entre dans config.yaml ni ici.
+# What nix owns:
+#   - the container: image, port, /config volume, env file;
+#   - the API keys of the four services and the MCP token, in
+#     secrets/arr-mcp.yml (recipient = tower only);
+#   - the Hermes MCP entry, whose header carries a placeholder
+#     ${ARR_MCP_TOKEN}: Hermes resolves it from its environment at the time
+#     of connecting, so no secret enters config.yaml or here.
 #
-# Ce que nix ne possede PAS : /var/lib/hermes/arr-mcp/config.yaml, la config
-# applicative que le dashboard du conteneur reecrit (URL des services, hash du
-# token, default_user Jellyfin). Elle ne porte aucun secret : les cles API y
-# sont des placeholders ${RADARR_API_KEY} et compagnie que le conteneur resout
-# depuis /run/secrets/arr_mcp_env, et le token n'y figure que hache (sha256).
+# What nix does NOT own: /var/lib/hermes/arr-mcp/config.yaml, the application
+# config that the container dashboard rewrites (service URLs, token
+# hash, Jellyfin default_user). It carries no secret: the API keys there
+# are placeholders ${RADARR_API_KEY} and friends that the container resolves
+# from /run/secrets/arr_mcp_env, and the token only appears there hashed (sha256).
 { config, ... }: let
   port = 6060;
 in {
-  # Un fichier sops, deux secrets, parce que les deux consommateurs n'ont pas
-  # besoin de la meme chose : le conteneur veut les quatre cles API, hermes
-  # seulement le token MCP (aucune raison de lui donner les cles des *arr).
+  # One sops file, two secrets, because the two consumers do not
+  # need the same thing: the container wants the four API keys, hermes
+  # only the MCP token (no reason to give it the *arr keys).
   sops.secrets."arr_mcp_env" = {
     sopsFile = ../../secrets/arr-mcp.yml;
     owner = "hermes";
@@ -33,23 +33,23 @@ in {
     owner = "hermes";
   };
 
-  # environmentFiles est concatene dans $HERMES_HOME/.env : c'est de la que
-  # Hermes lit ${ARR_MCP_TOKEN} pour le header ci-dessous.
+  # environmentFiles is concatenated into $HERMES_HOME/.env: it is from there that
+  # Hermes reads ${ARR_MCP_TOKEN} for the header below.
   services.hermes-agent.environmentFiles = [
     config.sops.secrets."hermes_arr_mcp_env".path
   ];
 
-  # L'URL passe par le redirecteur LAN de services/mcp-lan-access pour etre
-  # cliquable depuis Hermes Desktop sur le Mac ; cote tower, le trafic local
-  # repasse par lo.
+  # The URL goes through the LAN redirector of services/mcp-lan-access to be
+  # clickable from Hermes Desktop on the Mac; on the tower side, local traffic
+  # goes back through lo.
   services.hermes-agent.mcpServers.arrmcp = {
     url =
       if config.services.mcp-lan-access.enable
       then "http://${config.services.mcp-lan-access.host}:${toString port}/mcp"
       else "http://127.0.0.1:${toString port}/mcp";
-    # \${...} : le placeholder doit arriver LITTERALEMENT dans config.yaml,
-    # c'est Hermes qui le resout a la connexion (doc MCP : ${VAR} dans url et
-    # headers, lu depuis l'environnement du process).
+    # \${...}: the placeholder must arrive LITERALLY in config.yaml,
+    # it is Hermes that resolves it on connection (MCP doc: ${VAR} in url and
+    # headers, read from the process environment).
     headers.Authorization = "Bearer \${ARR_MCP_TOKEN}";
     timeout = 120;
   };

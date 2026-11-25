@@ -1,5 +1,5 @@
-# Homarr : pas de paquet nixpkgs, donc conteneur podman déclaratif.
-# Se configure uniquement dans son UI (SQLite dans /var/lib/homarr).
+# Homarr: no nixpkgs package, so a declarative podman container.
+# Configured only in its UI (SQLite in /var/lib/homarr).
 {
   lib,
   pkgs,
@@ -13,10 +13,10 @@ in {
     "d /var/lib/homarr 0770 1000 1000 -"
   ];
 
-  # Homarr exige une clé de chiffrement ; générée une seule fois hors du
-  # flake (aucun secret en clair dans git).
+  # Homarr requires an encryption key; generated only once outside the
+  # flake (no plaintext secret in git).
   systemd.services.homarr-secret = {
-    description = "Clé de chiffrement Homarr (générée une fois)";
+    description = "Homarr encryption key (generated once)";
     wantedBy = [ "multi-user.target" ];
     before = [ "podman-homarr.service" ];
     serviceConfig = {

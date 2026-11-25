@@ -1,12 +1,12 @@
 # services/androidtv-mcp/default.nix
 #
-# Serveur MCP pour la TV TCL du salon (Android TV 11, plateforme R851T02).
-# Protocole Android TV Remote v2, le même que l'app Google TV :
-# pas de mode développeur, pas d'ADB, juste un appairage par code affiché sur la TV.
+# MCP server for the living room TCL TV (Android TV 11, R851T02 platform).
+# Android TV Remote v2 protocol, the same as the Google TV app:
+# no developer mode, no ADB, just pairing with a code shown on the TV.
 #
-# À importer uniquement sur un host qui est sur le même réseau que la TV (tower).
+# Import only on a host on the same network as the TV (tower).
 {pkgs, ...}: let
-  # IP de la TV : Paramètres > About > Status. Fixe-la en bail DHCP statique sur le routeur.
+  # TV IP: Settings > About > Status. Pin it as a static DHCP lease on the router.
   tvHost = "192.168.1.XX";
   port = 8765;
   stateDir = "/var/lib/androidtv-mcp";
@@ -205,7 +205,7 @@
           main()
     '';
 
-  # Wrapper : même config pour le service et pour l'appairage manuel
+  # Wrapper: same config for the service and for manual pairing
   cli = pkgs.writeShellScriptBin "androidtv-mcp" ''
     export ATV_HOST=${tvHost}
     export ATV_PORT=${toString port}
@@ -231,7 +231,7 @@ in {
       ExecStart = "${cli}/bin/androidtv-mcp serve";
       User = "androidtv-mcp";
       Group = "androidtv-mcp";
-      StateDirectory = "androidtv-mcp"; # certificat d'appairage
+      StateDirectory = "androidtv-mcp"; # pairing certificate
       StateDirectoryMode = "0700";
       Restart = "on-failure";
       RestartSec = 5;
@@ -244,6 +244,6 @@ in {
     };
   };
 
-  # Branché sur le Hermes local, écoute sur 127.0.0.1 uniquement
+  # Wired to the local Hermes, listens on 127.0.0.1 only
   services.hermes-agent.mcpServers.tv.url = "http://127.0.0.1:${toString port}/mcp";
 }

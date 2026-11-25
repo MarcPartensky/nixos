@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Filtre public du leurre BeEF.
+"""Public filter for the BeEF lure.
 
-Le tunnel Cloudflare tape ce relais (127.0.0.1:BEEF_FILTER_PORT) qui relaie vers
-BeEF (127.0.0.1:BEEF_BACKEND_PORT) en refusant tout ce qui n'est pas public :
-console d'operateur (/ui) et API REST admin (/api/).
+The Cloudflare tunnel hits this relay (127.0.0.1:BEEF_FILTER_PORT) which relays to
+BeEF (127.0.0.1:BEEF_BACKEND_PORT) while refusing anything that is not public:
+operator console (/ui) and admin REST API (/api/).
 
-Pourquoi un filtre par chemin et pas les restrictions d'IP de BeEF : un tunnel
-sortant arrive depuis la loopback, donc permitted_hooking_subnet et
-permitted_ui_subnet ne peuvent pas distinguer le public du local. La seule
-frontiere fiable est ici.
+Why a path filter and not BeEF's IP restrictions: an outbound tunnel
+arrives from loopback, so permitted_hooking_subnet and
+permitted_ui_subnet cannot tell the public from the local. The only
+reliable boundary is here.
 
-Le hook n'utilise que GET /hook.js?BEEFHOOK=... (polling XHR, WebSocket
-desactive) : aucune mise a niveau WebSocket a gerer, un relais HTTP suffit.
+The hook only uses GET /hook.js?BEEFHOOK=... (XHR polling, WebSocket
+disabled): no WebSocket upgrade to handle, an HTTP relay is enough.
 """
 
 import http.client
@@ -26,7 +26,7 @@ BACKEND_PORT = int(os.environ.get("BEEF_BACKEND_PORT", "3010"))
 LISTEN_PORT = int(os.environ.get("BEEF_FILTER_PORT", "3011"))
 LOG = os.environ.get("BEEF_FILTER_LOG", "/var/lib/beef/lure-filter-access.log")
 
-# Prefixes jamais servis au public (console d'operateur et API admin).
+# Prefixes never served to the public (operator console and admin API).
 DENY_PREFIXES = ("/ui", "/api/")
 
 HOP_BY_HOP = {
@@ -53,8 +53,8 @@ class Proxy(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "beef-lure-filter/1.0"
 
-    def log_message(self, format, *args):  # noqa: A002 - signature de la classe de base
-        # silence stderr, on journalise nous-memes dans BEEF_FILTER_LOG
+    def log_message(self, format, *args):  # noqa: A002 - base class signature
+        # silence stderr, we log ourselves into BEEF_FILTER_LOG
         pass
 
     def _deny(self) -> bool:
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     try:
         server = ThreadingHTTPServer(("127.0.0.1", LISTEN_PORT), Proxy)
     except OSError as exc:
-        print(f"beef-lure-filter: bind impossible sur {LISTEN_PORT}: {exc}", file=sys.stderr)
+        print(f"beef-lure-filter: cannot bind on {LISTEN_PORT}: {exc}", file=sys.stderr)
         sys.exit(1)
-    print(f"filtre leurre sur 127.0.0.1:{LISTEN_PORT} -> BeEF {BACKEND_HOST}:{BACKEND_PORT}", flush=True)
+    print(f"lure filter on 127.0.0.1:{LISTEN_PORT} -> BeEF {BACKEND_HOST}:{BACKEND_PORT}", flush=True)
     server.serve_forever()

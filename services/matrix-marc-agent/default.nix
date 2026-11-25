@@ -1,22 +1,22 @@
 # services/matrix-marc-agent/default.nix
-# Appservice minimal pour que l'agent hermes obtienne, UNE SEULE FOIS, un token
-# Matrix LIE A UN APPAREIL sur le compte de @marc. C'est le seul moyen de
-# publier des cles E2EE et donc de lire/ecrire dans les salons chiffres
-# (ponts WhatsApp/Signal/Discord/Instagram/Messenger/LinkedIn + DM chiffres).
-# Contexte complet : skill hermes-matrix-access et
-# /var/lib/hermes/workspace/matrix-marc/README.md (outil marcmsg qui consomme
-# le token produit ici).
+# Minimal appservice so the hermes agent obtains, ONCE AND FOR ALL, a
+# DEVICE-LINKED Matrix token on the @marc account. It is the only way to
+# publish E2EE keys and therefore read/write in encrypted rooms
+# (WhatsApp/Signal/Discord/Instagram/Messenger/LinkedIn bridges + encrypted DMs).
+# Full context: hermes-matrix-access skill and
+# /var/lib/hermes/workspace/matrix-marc/README.md (marcmsg tool that consumes
+# the token produced here).
 #
-# Effet de bord assume (valide avec marc) : tant que cette registration est
-# chargee par synapse, TOUS les evenements des salons ou @marc est membre sont
-# pousses vers notre stub (namespace users non exclusif, large par construction).
-# Le stub ne fait que repondre 200 a tout, sans rien dechiffrer ni journaliser :
-# aucune charge utile n'est conservee ici.
+# Accepted side effect (validated with marc): as long as this registration is
+# loaded by synapse, ALL events of the rooms where @marc is a member are
+# pushed to our stub (non-exclusive users namespace, broad by construction).
+# The stub only answers 200 to everything, without decrypting or logging anything:
+# no payload is kept here.
 {pkgs, ...}: let
-  # Registration hors de /var/lib/hermes : synapse (groupe hermes) doit pouvoir
-  # la lire, or /var/lib/hermes/.matrix est en 0700 (non traversable par le
-  # groupe). StateDirectory cree le dossier avant le namespace : avec
-  # ReadWritePaths sur un dossier absent, l'unite echouait en 226/NAMESPACE.
+  # Registration outside /var/lib/hermes: synapse (hermes group) must be able to
+  # read it, but /var/lib/hermes/.matrix is 0700 (not traversable by the
+  # group). StateDirectory creates the folder before the namespace: with
+  # ReadWritePaths on a missing folder, the unit failed with 226/NAMESPACE.
   dataDir = "/var/lib/matrix-marc-agent-as";
   appservicePort = 29340;
   registrationFile = "${dataDir}/registration.yaml";
@@ -66,7 +66,7 @@
   '';
 in {
   systemd.services.matrix-marc-agent-as = {
-    description = "Stub appservice HTTP (encaisse les pushs synapse pour la registration marc-agent)";
+    description = "HTTP appservice stub (absorbs synapse pushes for the marc-agent registration)";
     wantedBy = ["multi-user.target"];
     before = ["matrix-synapse.service"];
     preStart = ''
@@ -106,11 +106,11 @@ in {
     };
   };
 
-  # Login unique (ConditionPathExists saute l'etape si le token existe deja) :
-  # authentifie l'appservice (m.login.application_service) pour obtenir un
-  # access_token+device sur @marc, consomme ensuite par marcmsg.
+  # Single login (ConditionPathExists skips the step if the token already exists):
+  # authenticates the appservice (m.login.application_service) to obtain an
+  # access_token+device on @marc, then consumed by marcmsg.
   systemd.services.matrix-marc-agent-login = {
-    description = "Login appservice -> token lie a un appareil sur @marc (une seule fois)";
+    description = "Appservice login -> device-linked token on @marc (only once)";
     after = ["matrix-synapse.service" "matrix-marc-agent-as.service"];
     requires = ["matrix-synapse.service"];
     wantedBy = ["multi-user.target"];

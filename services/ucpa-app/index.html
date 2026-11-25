@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UCPA février 2027</title>
+<title>UCPA February 2027</title>
 <style>
   :root{
-    /* Palette relevee sur ucpa.com : rouge #e81d00, navy #0f1f28, cyan #00a6c6,
-       vert #8cbe00, jaune #fdc700, gris #e6ecf2 / #c8cdd2. */
+    /* Palette sampled from ucpa.com: red #e81d00, navy #0f1f28, cyan #00a6c6,
+       green #8cbe00, yellow #fdc700, grey #e6ecf2 / #c8cdd2. */
     --base:#f5f5f5; --mantle:#ffffff; --crust:#eef1f4;
     --s0:#e6ecf2; --s1:#c8cdd2; --s2:#a9b3bb;
     --text:#0f1f28; --sub:#3d4c55; --overlay:#5b6f7a;
@@ -115,51 +115,51 @@
 <body>
 <header>
   <div class="bar">
-    <div class="brand"><b>UCPA</b><span>février 2027 · ski &amp; snowboard · 26 ans</span></div>
+    <div class="brand"><b>UCPA</b><span>February 2027 · ski &amp; snowboard · age 26</span></div>
     <div class="spacer"></div>
-    <div class="stat" id="stat">chargement…</div>
-    <button class="iconbtn" id="refresh">Actualiser</button>
+    <div class="stat" id="stat">loading…</div>
+    <button class="iconbtn" id="refresh">Refresh</button>
   </div>
 </header>
 
 <div class="filters">
   <div class="inner">
     <div class="grp"><label>Discipline</label><div class="chips" id="f-family"></div></div>
-    <div class="grp"><label>Formule</label><div class="chips" id="f-formula"></div></div>
-    <div class="grp"><label>Durée</label><div class="chips" id="f-nights"></div></div>
-    <div class="grp"><label>Prix max / pers</label>
+    <div class="grp"><label>Formula</label><div class="chips" id="f-formula"></div></div>
+    <div class="grp"><label>Duration</label><div class="chips" id="f-nights"></div></div>
+    <div class="grp"><label>Max price / person</label>
       <div class="range"><input type="range" id="f-price" min="300" max="2600" step="50" value="2600">
       <output id="f-price-out">2 600 €</output></div></div>
-    <div class="grp"><label>Recherche</label>
-      <input id="f-q" type="search" placeholder="station, séjour…" autocomplete="off"
+    <div class="grp"><label>Search</label>
+      <input id="f-q" type="search" placeholder="resort, stay…" autocomplete="off"
         style="background:var(--mantle);border:1px solid var(--s1);border-radius:9px;
                padding:6px 9px;font-size:12.5px;width:190px"></div>
-    <div class="grp"><label>Tri</label>
+    <div class="grp"><label>Sort</label>
       <select id="f-sort">
-        <option value="price">Prix croissant</option>
-        <option value="night">Prix par nuit</option>
-        <option value="date">Date de départ</option>
-        <option value="stock">Places disponibles</option>
+        <option value="price">Price ascending</option>
+        <option value="night">Price per night</option>
+        <option value="date">Departure date</option>
+        <option value="stock">Available spots</option>
       </select></div>
     <div class="toggles">
-      <label class="tg"><input type="checkbox" id="f-age" checked> éligible 26 ans</label>
-      <label class="tg"><input type="checkbox" id="f-open"> 3 places min</label>
-      <label class="tg"><input type="checkbox" id="f-guar"> départ garanti</label>
-      <label class="tg"><input type="checkbox" id="f-full"> séjours complets</label>
+      <label class="tg"><input type="checkbox" id="f-age" checked> eligible at 26</label>
+      <label class="tg"><input type="checkbox" id="f-open"> 3 spots min</label>
+      <label class="tg"><input type="checkbox" id="f-guar"> guaranteed departure</label>
+      <label class="tg"><input type="checkbox" id="f-full"> full stays</label>
     </div>
   </div>
 </div>
 
 <main>
   <div class="countline" id="countline"></div>
-  <div id="list"><div class="loading"><span class="dot"></span>premier balayage UCPA…</div></div>
+  <div id="list"><div class="loading"><span class="dot"></span>first UCPA sweep…</div></div>
 </main>
 
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
 
 <footer>
-  Prix par personne, hors transport, hors taxe de séjour et options. Source :
-  ucpa.com, sessions et places lues sur la fiche de chaque séjour.
+  Price per person, excluding transport, tourist tax and options. Source:
+  ucpa.com, sessions and spots read from each stay's page.
 </footer>
 
 <script>
@@ -169,7 +169,7 @@ let DATA = null;
 
 const fmtEuro = n => (n==null? '—' : Math.round(n).toLocaleString('fr-FR')+' €');
 const fmtDate = iso => { const [y,m,d]=iso.split('-'); return d+'/'+m; };
-const pn = n => (n==null? '—' : Math.round(n).toLocaleString('fr-FR')+' €/nuit');
+const pn = n => (n==null? '—' : Math.round(n).toLocaleString('fr-FR')+' €/night');
 
 function chips(el, items, key){
   el.innerHTML='';
@@ -182,12 +182,12 @@ function chips(el, items, key){
   });
 }
 
-const FAMILIES=[['all','Tout'],['ski','Ski'],['snowboard','Snowboard'],
-  ['rando','Rando'],['nordique','Nordique'],['biathlon','Biathlon'],['raquettes','Raquettes']];
-const FORMULAS=[['all','Toutes'],['mini','Mini'],['mi-temps','Mi-temps'],
-  ['plein-temps','Plein-temps'],['apprendre','Apprendre'],['decouverte','Découverte'],
-  ['hors-piste','Hors-piste'],['rando','Rando']];
-const NIGHTS=[['all','Toutes'],['week','Semaine (6-8 n)'],['short','Court (2-5 n)']];
+const FAMILIES=[['all','All'],['ski','Ski'],['snowboard','Snowboard'],
+  ['rando','Touring'],['nordique','Nordic'],['biathlon','Biathlon'],['raquettes','Snowshoes']];
+const FORMULAS=[['all','All'],['mini','Mini'],['mi-temps','Half-time'],
+  ['plein-temps','Full-time'],['apprendre','Learn'],['decouverte','Discovery'],
+  ['hors-piste','Off-piste'],['rando','Touring']];
+const NIGHTS=[['all','All'],['week','Week (6-8 n)'],['short','Short (2-5 n)']];
 
 function matches(r){
   if(state.family!=='all' && r.family!==state.family) return false;
@@ -223,10 +223,10 @@ function sortRows(rows){
 function card(r){
   const dates = (r.sessions||[]).slice(0,4).map(s=>{
     const low = s.stock!=null && s.stock<=2;
-    return `<span class="dt">${fmtDate(s.date)} · <b>${fmtEuro(s.price)}</b>${low?' <span style="color:var(--red)">· '+s.stock+' pl.</span>':''}</span>`;
+    return `<span class="dt">${fmtDate(s.date)} · <b>${fmtEuro(s.price)}</b>${low?' <span style="color:var(--red)">· '+s.stock+' spots</span>':''}</span>`;
   }).join('');
   const formulaLabel = (DATA.formulas.find(f=>f.key===r.formula)||{}).label || '';
-  const nights = (r.nights||[]).join(' ou ');
+  const nights = (r.nights||[]).join(' or ');
   return `<article class="card" data-uuid="${r.uuid}">
     <div class="top">
       <div class="head">
@@ -238,10 +238,10 @@ function card(r){
     </div>
     <div class="badges">
       <span class="badge formula">${formulaLabel}</span>
-      <span class="badge">${nights} nuits</span>
-      <span class="badge age">${r.age_min}–${r.age_max} ans</span>
-      ${r.guaranteed?'<span class="badge guar">départ garanti</span>':''}
-      <span class="badge ${r.sessions_open?'stock':'low'}">${r.sessions_open} session${r.sessions_open>1?'s':''} ouverte${r.sessions_open>1?'s':''}</span>
+      <span class="badge">${nights} nights</span>
+      <span class="badge age">${r.age_min}–${r.age_max} years</span>
+      ${r.guaranteed?'<span class="badge guar">guaranteed departure</span>':''}
+      <span class="badge ${r.sessions_open?'stock':'low'}">${r.sessions_open} open session${r.sessions_open>1?'s':''}</span>
     </div>
     <div class="dates">${dates}</div>
   </article>`;
@@ -253,13 +253,13 @@ function render(){
   chips(document.getElementById('f-formula'),FORMULAS,'formula');
   chips(document.getElementById('f-nights'),NIGHTS,'nights');
   document.getElementById('f-price-out').textContent =
-    state.price>=2600?'tous':fmtEuro(state.price);
+    state.price>=2600?'all':fmtEuro(state.price);
   const rows = sortRows(DATA.rows.filter(matches));
   const el=document.getElementById('list');
   document.getElementById('countline').innerHTML =
-    `<b>${rows.length}</b> séjour${rows.length>1?'s':''} sur ${DATA.rows.length}`+
-    ` · ${DATA.offers_matched} offres balayées`+
-    ` <button id="reset" class="chip" style="margin-left:6px">réinitialiser</button>`;
+    `<b>${rows.length}</b> stay${rows.length>1?'s':''} of ${DATA.rows.length}`+
+    ` · ${DATA.offers_matched} offers scanned`+
+    ` <button id="reset" class="chip" style="margin-left:6px">reset</button>`;
   const reset = document.getElementById('reset');
   if(reset) reset.onclick = () => {
     state.family='all'; state.formula='all'; state.nights='all'; state.price=2600;
@@ -273,7 +273,7 @@ function render(){
     render();
   };
   el.innerHTML = rows.length? `<div class="grid">${rows.map(card).join('')}</div>`
-                            : '<div class="empty">aucun séjour sur ces critères</div>';
+                            : '<div class="empty">no stay matching these criteria</div>';
   el.querySelectorAll('.card').forEach(c=>c.onclick=()=>openDetail(c.dataset.uuid));
 }
 
@@ -281,28 +281,28 @@ function openDetail(uuid){
   const r = DATA.rows.find(x=>x.uuid===uuid); if(!r) return;
   const rows = (r.sessions||[]).map(s=>`<tr>
       <td>${s.date.split('-').reverse().join('/')}</td>
-      <td>${s.nights} nuits</td>
+      <td>${s.nights} nights</td>
       <td class="n"><b>${fmtEuro(s.price)}</b></td>
       <td class="n">${s.transport?fmtEuro(s.transport):'—'}</td>
       <td class="n">${s.stock==null?'—':s.stock}</td>
-      <td>${s.available? (s.guaranteed||'disponible') : 'complet'}</td>
+      <td>${s.available? (s.guaranteed||'available') : 'full'}</td>
     </tr>`).join('');
   document.getElementById('sheet').innerHTML = `
-    <button class="close" onclick="closeDetail()">fermer</button>
+    <button class="close" onclick="closeDetail()">close</button>
     <div class="center">${r.center||''}</div>
     <h2>${r.name}</h2>
-    <div class="muted">${r.age_min}–${r.age_max} ans · ${(r.nights||[]).join(' ou ')} nuits ·
-      ${r.activity_name||r.activity} · dès ${fmtEuro(r.price_min)} par personne
+    <div class="muted">${r.age_min}–${r.age_max} years · ${(r.nights||[]).join(' or ')} nights ·
+      ${r.activity_name||r.activity} · from ${fmtEuro(r.price_min)} per person
       (${pn(r.price_per_night)})</div>
     <table>
-      <tr><th>Départ</th><th>Durée</th><th style="text-align:right">Prix sans transport</th>
-      <th style="text-align:right">Avec transport</th><th style="text-align:right">Places</th><th>Statut</th></tr>
+      <tr><th>Departure</th><th>Duration</th><th style="text-align:right">Price without transport</th>
+      <th style="text-align:right">With transport</th><th style="text-align:right">Spots</th><th>Status</th></tr>
       ${rows}
     </table>
     <p class="muted" style="margin-top:14px">
-      Prix par personne, hébergement + pension complète + forfait + matériel
-      ${r.formula==='mini'?'(sans cours)':''}. <a href="${r.url}" target="_blank" rel="noopener"
-      style="text-decoration:underline">ouvrir la fiche sur ucpa.com</a>
+      Price per person, lodging + full board + pass + equipment
+      ${r.formula==='mini'?'(no lessons)':''}. <a href="${r.url}" target="_blank" rel="noopener"
+      style="text-decoration:underline">open the page on ucpa.com</a>
     </p>`;
   document.getElementById('modal').classList.add('on');
 }
@@ -328,8 +328,8 @@ function statText(){
   const hh = d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   const dd = d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'});
   document.getElementById('stat').innerHTML =
-    `<b>${DATA.rows.length} séjours</b> · ${DATA.products_scanned} fiches · relevé du ${dd} ${hh}`+
-    (DATA.stale?' · <span style="color:var(--yellow)">mise à jour en cours</span>':'');
+    `<b>${DATA.rows.length} stays</b> · ${DATA.products_scanned} pages · read on ${dd} ${hh}`+
+    (DATA.stale?' · <span style="color:var(--yellow)">update in progress</span>':'');
 }
 
 async function load(){
@@ -341,9 +341,9 @@ async function load(){
 }
 
 document.getElementById('refresh').onclick = async e => {
-  e.target.disabled=true; e.target.textContent='actualisation…';
+  e.target.disabled=true; e.target.textContent='refreshing…';
   await fetch('/api/refresh',{method:'POST'});
-  setTimeout(()=>{ load(); e.target.disabled=false; e.target.textContent='Actualiser'; }, 3000);
+  setTimeout(()=>{ load(); e.target.disabled=false; e.target.textContent='Refresh'; }, 3000);
 };
 
 load();

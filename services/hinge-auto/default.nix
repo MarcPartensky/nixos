@@ -1,22 +1,22 @@
 # services/hinge-auto/default.nix
-# Auto-like Hinge web (app.hinge.co) via Playwright + Chromium, sur le patron
-# exact de services/amazon-mcp : profil chromium persistant dans
-# /var/lib/hermes/hinge-auto/user-data, ACL marc pour le login manuel visible.
+# Auto-like Hinge web (app.hinge.co) via Playwright + Chromium, following the
+# exact pattern of services/amazon-mcp: persistent chromium profile in
+# /var/lib/hermes/hinge-auto/user-data, marc ACL for the visible manual login.
 #
-# Deux binaires installes dans le profil systeme :
-#   hinge-auto-login     chromium VISIBLE, a lancer depuis une session graphique
-#                        de marc (wayvnc/kasm) : telephone + SMS, Entree = sauve.
-#                        Un seul login tenace jusqu'a expiration de session.
-#   hinge-auto-like      boucle de likes headless sur Discover (HINGE_HEADLESS=0
-#                        pour voir ce que fait le navigateur). Garde-fous :
-#                        HINGE_MAX_LIKES (defaut 40) + detection de fin de flux.
-#   hinge-auto-calibrate dump des boutons pour affiner les selecteurs.
+# Two binaries installed in the system profile:
+#   hinge-auto-login     VISIBLE chromium, to launch from a graphical session
+#                        of marc (wayvnc/kasm): phone + SMS, Enter = save.
+#                        A single login lasts until the session expires.
+#   hinge-auto-like      headless like loop on Discover (HINGE_HEADLESS=0
+#                        to see what the browser does). Safeguards:
+#                        HINGE_MAX_LIKES (default 40) + end-of-feed detection.
+#   hinge-auto-calibrate dump of the buttons to refine the selectors.
 #
-# NB : le profil persistant ne supporte PAS deux instances chromium en meme
-# temps (lock) : ne pas lancer login pendant qu'un like tourne.
+# NB: the persistent profile does NOT support two chromium instances at the same
+# time (lock): do not launch login while a like is running.
 #
-# Limite gratuite Hinge : ~8 likes/jour (Hinge+/X = illimite). Le script s'arrete
-# sur le marqueur de fin, pas sur un compte fixe.
+# Hinge free limit: ~8 likes/day (Hinge+/X = unlimited). The script stops
+# on the end marker, not on a fixed count.
 { pkgs, ... }:
 let
   python = pkgs.python312;
@@ -26,7 +26,7 @@ let
 
   playwrightPython = python.withPackages (ps: [ ps.playwright ]);
 in {
-  # Helpers dispo pour marc (login visible) et pour un run serveur (like).
+  # Helpers available for marc (visible login) and for a server run (like).
   environment.systemPackages = [
     (pkgs.writeShellApplication {
       name = "hinge-auto-login";
@@ -55,8 +55,8 @@ in {
     })
   ];
 
-  # Profil persistant partage hermes <-> marc (login). Pattern amazon-mcp :
-  # /var/lib/hermes en 2770 hermes:hermes, marc a besoin du --x de traversee.
+  # Persistent profile shared hermes <-> marc (login). amazon-mcp pattern:
+  # /var/lib/hermes in 2770 hermes:hermes, marc needs the traversal --x.
   systemd.tmpfiles.rules = [
     "a /var/lib/hermes - - - - u:marc:--x,m::rwx"
     "d /var/lib/hermes/hinge-auto 0750 hermes hermes - -"

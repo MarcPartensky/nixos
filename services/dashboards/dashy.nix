@@ -1,5 +1,5 @@
-# Dashy : build statique via le module nixpkgs (dashy-ui), config compilée
-# dans le store. Pas de serveur Node, donc zéro RAM au repos.
+# Dashy: static build via the nixpkgs module (dashy-ui), config compiled
+# into the store. No Node server, so zero RAM at rest.
 {
   lib,
   pkgs,
@@ -34,27 +34,27 @@ in {
       };
       sections = [
       {
-        name = "Média";
+        name = "Media";
         icon = "fas fa-film";
         displayData = { cols = 4; };
         items = [
           {
             title = "Jellyfin";
-            description = "Films et séries";
+            description = "Movies and series";
             url = "https://jellyfin.marcpartensky.com";
             icon = "jellyfin";
             target = "newtab";
           }
           {
             title = "Audiobookshelf";
-            description = "Livres audio";
+            description = "Audiobooks";
             url = "https://audiobookshelf.marcpartensky.com";
             icon = "audiobookshelf";
             target = "newtab";
           }
           {
             title = "Sonarr";
-            description = "Séries";
+            description = "Series";
             url = "https://sonarr.marcpartensky.com";
             icon = "sonarr";
             target = "newtab";
@@ -68,7 +68,7 @@ in {
           }
           {
             title = "qBittorrent";
-            description = "Téléchargements";
+            description = "Downloads";
             url = "https://torrent.marcpartensky.com";
             icon = "qbittorrent";
             target = "newtab";
@@ -76,48 +76,48 @@ in {
         ];
       }
       {
-        name = "Fichiers";
+        name = "Files";
         icon = "fas fa-folder";
         displayData = { cols = 4; };
         items = [
           {
             title = "Nextcloud";
-            description = "Fichiers et calendrier";
+            description = "Files and calendar";
             url = "https://cloud.marcpartensky.com";
             icon = "nextcloud";
             target = "newtab";
           }
           {
             title = "Syncthing";
-            description = "Synchro appareils";
+            description = "Device sync";
             url = "https://syncthing.marcpartensky.com";
             icon = "syncthing";
             target = "newtab";
           }
           {
             title = "RustFS";
-            description = "Stockage objet S3";
+            description = "S3 object storage";
             url = "https://rustfs.marcpartensky.com";
             icon = "rustfs";
             target = "newtab";
           }
           {
             title = "MinIO";
-            description = "Stockage objet hérité";
+            description = "Legacy object storage";
             url = "https://store.marcpartensky.com";
             icon = "minio";
             target = "newtab";
           }
           {
-            title = "Fichier";
-            description = "Partage de fichiers";
+            title = "File";
+            description = "File sharing";
             url = "https://fichier.marcpartensky.com";
             icon = "filebrowser";
             target = "newtab";
           }
           {
             title = "Droplify";
-            description = "Dépôt de fichiers";
+            description = "File drop";
             url = "https://drop.marcpartensky.com";
             icon = "dropbox";
             target = "newtab";
@@ -131,7 +131,7 @@ in {
         items = [
           {
             title = "Hermes";
-            description = "Interface web";
+            description = "Web interface";
             url = "https://hermes.marcpartensky.com";
             icon = "open-webui";
             target = "newtab";
@@ -152,35 +152,35 @@ in {
           }
           {
             title = "Hermes Anna";
-            description = "Invitée";
+            description = "Guest";
             url = "https://hermes-anna.marcpartensky.com";
             icon = "chatgpt";
             target = "newtab";
           }
           {
             title = "Hermes Yves";
-            description = "Invité";
+            description = "Guest";
             url = "https://hermes-yves.marcpartensky.com";
             icon = "chatgpt";
             target = "newtab";
           }
           {
             title = "Open Notebook";
-            description = "Notebooks IA";
+            description = "AI notebooks";
             url = "https://notebook.marcpartensky.com";
             icon = "jupyter";
             target = "newtab";
           }
           {
             title = "n8n";
-            description = "Automatisations";
+            description = "Automations";
             url = "https://n8n.marcpartensky.com";
             icon = "n8n";
             target = "newtab";
           }
           {
             title = "Matrix";
-            description = "Messagerie";
+            description = "Messaging";
             url = "https://matrix.marcpartensky.com";
             icon = "matrix";
             target = "newtab";
@@ -188,13 +188,13 @@ in {
         ];
       }
       {
-        name = "Développement";
+        name = "Development";
         icon = "fas fa-code";
         displayData = { cols = 4; };
         items = [
           {
             title = "Gitea";
-            description = "Forge git";
+            description = "Git forge";
             url = "https://git.marcpartensky.com";
             icon = "gitea";
             target = "newtab";
@@ -208,7 +208,7 @@ in {
           }
           {
             title = "Taskq";
-            description = "File de tâches";
+            description = "Task queue";
             url = "https://taskq.marcpartensky.com";
             icon = "link";
             target = "newtab";
@@ -236,35 +236,35 @@ in {
           }
           {
             title = "RentScout";
-            description = "Annonces de location";
+            description = "Rental listings";
             url = "https://rentscout.marcpartensky.com";
             icon = "link";
             target = "newtab";
           }
           {
             title = "Backtest";
-            description = "Backtest boursier";
+            description = "Stock market backtest";
             url = "https://backtest.marcpartensky.com";
             icon = "chart";
             target = "newtab";
           }
           {
             title = "Option Pricer";
-            description = "Pricing d'options";
+            description = "Option pricing";
             url = "https://option-pricer.marcpartensky.com";
             icon = "chart";
             target = "newtab";
           }
           {
             title = "Portfolio Optimizer";
-            description = "Optimisation";
+            description = "Optimization";
             url = "https://portfolio-optimizer.marcpartensky.com";
             icon = "chart";
             target = "newtab";
           }
           {
             title = "CV";
-            description = "Réactive Resume";
+            description = "Reactive Resume";
             url = "https://cv.marcpartensky.com";
             icon = "reactive-resume";
             target = "newtab";
@@ -272,13 +272,13 @@ in {
         ];
       }
       {
-        name = "Bureaux distants";
+        name = "Remote desktops";
         icon = "fas fa-desktop";
         displayData = { cols = 4; };
         items = [
           {
             title = "Kasm";
-            description = "Bureau distant";
+            description = "Remote desktop";
             url = "https://kasm.marcpartensky.com";
             icon = "kasm";
             target = "newtab";
@@ -299,7 +299,7 @@ in {
           }
           {
             title = "Guacamole";
-            description = "RDV web";
+            description = "Web meeting";
             url = "https://guac.marcpartensky.com";
             icon = "guacamole";
             target = "newtab";
@@ -307,13 +307,13 @@ in {
         ];
       }
       {
-        name = "Système";
+        name = "System";
         icon = "fas fa-server";
         displayData = { cols = 4; };
         items = [
           {
             title = "Glances";
-            description = "Métriques hôte";
+            description = "Host metrics";
             url = "https://proc.marcpartensky.com";
             icon = "glances";
             target = "newtab";
@@ -327,7 +327,7 @@ in {
           }
           {
             title = "Pangolin";
-            description = "Tunnel réseau";
+            description = "Network tunnel";
             url = "https://pangolin.marcpartensky.com";
             icon = "pangolin";
             target = "newtab";
@@ -355,14 +355,14 @@ in {
           }
           {
             title = "Anki";
-            description = "Synchro cartes";
+            description = "Card sync";
             url = "https://anki.marcpartensky.com";
             icon = "anki";
             target = "newtab";
           }
           {
             title = "Vaultwarden";
-            description = "Mots de passe";
+            description = "Passwords";
             url = "https://vault.marcpartensky.com";
             icon = "vaultwarden";
             target = "newtab";
@@ -376,14 +376,14 @@ in {
           }
           {
             title = "Kanidm";
-            description = "Annuaire VPS";
+            description = "VPS directory";
             url = "https://idm.vps.marcpartensky.com";
             icon = "keycloak";
             target = "newtab";
           }
           {
             title = "Legal";
-            description = "Pages légales";
+            description = "Legal pages";
             url = "https://legal.marcpartensky.com";
             icon = "link";
             target = "newtab";

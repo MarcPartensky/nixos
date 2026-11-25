@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Crée le prefs21.db d'Anki s'il n'existe pas encore.
+"""Creates Anki's prefs21.db if it does not exist yet.
 
-Anki considère `prefs21.db` absent comme « premier lancement » et affiche
-alors un sélecteur de langue MODAL (aqt/__init__.py, `if firstTime:
-pm.setDefaultLang()`), puis attend un clic. Sans écran, ce dialogue bloque
-l'ouverture du profil : pas de collection, pas de serveur MCP. Les images
-headless d'ankimcp contournent le problème en embarquant un prefs21.db
-pré-configuré ; ici on le génère, ce qui reste lisible.
+Anki treats a missing `prefs21.db` as a "first launch" and then shows a
+MODAL language selector (aqt/__init__.py, `if firstTime:
+pm.setDefaultLang()`), then waits for a click. Without a screen, that dialog
+blocks opening the profile: no collection, no MCP server. The headless
+ankimcp images work around the problem by embedding a pre-configured
+prefs21.db; here we generate it, which stays readable.
 
-Contenu minimal attendu par Anki (aqt/profiles.py) : une base sqlite avec une
-table `profiles`, et une ligne `_global` dont la colonne `data` est un dict
-picklé. Les clés sont celles de `metaConf`, avec `firstRun` à False et
-`defaultLang` renseigné (c'est ce dernier qui évite le sélecteur).
+Minimal content expected by Anki (aqt/profiles.py): a sqlite database with a
+`profiles` table, and a `_global` row whose `data` column is a pickled dict.
+The keys are those of `metaConf`, with `firstRun` set to False and
+`defaultLang` filled in (it is the latter that avoids the selector).
 
-Le script est idempotent : il ne touche jamais un prefs21.db existant, donc
-aucun risque d'écraser un réglage posé par Anki ensuite.
+The script is idempotent: it never touches an existing prefs21.db, so there
+is no risk of overwriting a setting applied by Anki afterwards.
 """
 
 import os
@@ -55,7 +55,7 @@ def main() -> int:
     )
     con.commit()
     con.close()
-    print(f"prefs21.db amorcé ({path}, langue {LANG})")
+    print(f"prefs21.db seeded ({path}, language {LANG})")
     return 0
 
 

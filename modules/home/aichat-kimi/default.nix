@@ -1,5 +1,5 @@
 # kimi-aichat.nix
-# Module Home Manager — importez-le dans votre home.nix
+# Home Manager module - import it in your home.nix
 {
   config,
   lib,
@@ -10,15 +10,15 @@ with lib; let
   cfg = config.programs.aichat-moonshot;
 in {
   options.programs.aichat-moonshot = {
-    enable = mkEnableOption "aichat CLI configuré pour Moonshot/Kimi via sops-nix";
+    enable = mkEnableOption "aichat CLI configured for Moonshot/Kimi via sops-nix";
 
     sopsSecretKey = mkOption {
       type = types.str;
       default = "kimi/api_key";
       description = ''
-        Nom de la clé dans votre fichier de secrets sops.
-        Exemple: <literal>kimi/api_key</literal> ou <literal>aichat/moonshot_api_key</literal>.
-        La valeur déchiffrée doit être la clé brute (ex: <literal>sk-xxx</literal>).
+        Name of the key in your sops secrets file.
+        Example: <literal>kimi/api_key</literal> or <literal>aichat/moonshot_api_key</literal>.
+        The decrypted value must be the raw key (e.g. <literal>sk-xxx</literal>).
       '';
     };
 
@@ -26,7 +26,7 @@ in {
       type = types.str;
       default = "moonshot:kimi-latest";
       example = "moonshot:kimi-k1";
-      description = "Modèle par défaut utilisé par aichat.";
+      description = "Default model used by aichat.";
     };
 
     extraConfig = mkOption {
@@ -40,24 +40,24 @@ in {
         }
       '';
       description = ''
-        Attributs Nix supplémentaires mergés dans <filename>~/.config/aichat/config.yaml</filename>.
-        Ne mettez JAMAIS de secrets ici.
+        Additional Nix attributes merged into <filename>~/.config/aichat/config.yaml</filename>.
+        NEVER put secrets here.
       '';
     };
   };
 
   config = mkIf cfg.enable {
-    # 1. Déclare le secret pour sops-nix
-    # (suppose que vous avez déjà importé le module sops-nix dans votre config HM)
+    # 1. Declare the secret for sops-nix
+    # (assumes you have already imported the sops-nix module in your HM config)
     sops.secrets.${cfg.sopsSecretKey} = {};
 
-    # 2. Fichier de config publique (sans clé API)
+    # 2. Public config file (without API key)
     home.file.".config/aichat/config.yaml".text = lib.generators.toYAML {} ({
         model = cfg.model;
       }
       // cfg.extraConfig);
 
-    # 3. Wrapper "kimi" qui lit le secret à l'exécution
+    # 3. "kimi" wrapper that reads the secret at runtime
     home.packages = [
       (pkgs.writeShellApplication {
         name = "kimi";

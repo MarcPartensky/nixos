@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
 # scripts/pure-check.sh
 #
-# Garde de purete de l'eval NixOS (politique marc du 13/11/2026 : plus aucun
-# build impur). Un build pur casse a la premiere reference non verrouillee ou
-# au premier chemin absolu lu hors du depot. Ce script les liste.
+# Purity guard for the NixOS eval (marc's policy of 13/11/2026: no more
+# impure build). A pure build breaks at the first unlocked reference or
+# at the first absolute path read outside the repo. This script lists them.
 #
-# Usage : scripts/pure-check.sh [chemin-du-depot]
-# Sortie 0 = rien a signaler, 1 = au moins une impurete.
+# Usage: scripts/pure-check.sh [repo-path]
+# Exit 0 = nothing to report, 1 = at least one impurity.
 #
-# Ce qu'il cherche, et pourquoi :
-#   1. builtins.getFlake -> exige --impure ("cannot call getFlake on unlocked
-#      flake reference"). Sortie : declarer un input verrouille dans
-#      flake.lock, ou copier le module dans le depot.
-#   2. callPackage/import/builtins.path sur un chemin ABSOLU hors depot ->
-#      "cannot access absolute path in pure eval mode". Sortie : copie
-#      synchronisee dans le depot (ex. services/thclaws/package.nix).
-#   3. --impure dans le Justfile ou les scripts -> les builds lances par ces
-#      recettes restent impurs meme si l'arbre est propre.
-#   4. import <nixpkgs> ou /etc/nixos dans un module -> NIX_PATH n'existe pas
-#      en eval pure.
+# What it looks for, and why:
+#   1. builtins.getFlake -> requires --impure ("cannot call getFlake on unlocked
+#      flake reference"). Way out: declare a locked input in
+#      flake.lock, or copy the module into the repo.
+#   2. callPackage/import/builtins.path on an ABSOLUTE path outside the repo ->
+#      "cannot access absolute path in pure eval mode". Way out: copy
+#      synced into the repo (e.g. services/thclaws/package.nix).
+#   3. --impure in the Justfile or the scripts -> the builds launched by these
+#      recipes stay impure even if the tree is clean.
+#   4. import <nixpkgs> or /etc/nixos in a module -> NIX_PATH does not exist
+#      in pure eval.
 #
-# Les commentaires sont ignores : ils documentent justement les pieges.
+# Comments are ignored: they document exactly these pitfalls.
 
 set -uo pipefail
 
@@ -32,8 +32,8 @@ fail=0
 say() { printf '%s\n' "$*"; }
 bad() { printf 'IMPUR  %s\n' "$*"; fail=1; }
 
-# Emet les lignes <fichier>:<n>:<contenu> dont le CONTENU n'est pas un
-# commentaire, en excluant ce script. $1 = regex, $2.. = options grep.
+# Emits the lines <file>:<n>:<content> whose CONTENT is not a
+# comment, excluding this script. $1 = regex, $2.. = grep options.
 scan() {
   local re="$1"
   shift
@@ -50,17 +50,17 @@ scan() {
     }'
 }
 
-say "== depot : $repo"
+say "== repo: $repo"
 
 while IFS= read -r line; do
-  [ -n "$line" ] && bad "getFlake : $line"
+  [ -n "$line" ] && bad "getFlake: $line"
 done < <(scan 'builtins\.getFlake' --include='*.nix' .)
 
 while IFS= read -r line; do
   case "$line" in
     *'/nix/store/'*) continue ;;
   esac
-  [ -n "$line" ] && bad "chemin absolu evalue : $line"
+  [ -n "$line" ] && bad "absolute path evaluated: $line"
 done < <(scan '(callPackage|import|scopedImport|builtins\.path|builtins\.readFile|builtins\.readDir)[[:space:]]+(/[A-Za-z]|\([[:space:]]*toString[[:space:]]+/)' --include='*.nix' .)
 
 while IFS= read -r line; do
@@ -68,14 +68,14 @@ while IFS= read -r line; do
 done < <(scan '(^|[^[:alnum:]_])--impure' --include='Justfile' --include='justfile' --include='*.sh' .)
 
 while IFS= read -r line; do
-  [ -n "$line" ] && bad "NIX_PATH implicite : $line"
+  [ -n "$line" ] && bad "implicit NIX_PATH: $line"
 done < <(scan '(import[[:space:]]+<|/etc/nixos)' --include='*.nix' .)
 
 if [ "$fail" -eq 0 ]; then
-  say "OK : aucune impurete detectee"
-  say "Verification qui fait foi : nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath (SANS --impure)"
+  say "OK: no impurity detected"
+  say "Authoritative check: nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath (WITHOUT --impure)"
 else
   say "---"
-  say "Corrige ces points, puis : nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
+  say "Fix these points, then: nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath"
 fi
 exit "$fail"

@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
-"""Agrege l'usage LLM que Hermes enregistre lui-meme, tous providers confondus.
+"""Aggregates the LLM usage that Hermes records itself, across all providers.
 
-Source unique : state.db (SQLite) de chaque profil Hermes, table
-session_model_usage. Une ligne = (session, modele, provider de facturation,
-URL de base, tache) avec le nombre d'appels API, les tokens par categorie et un
-cout estime. C'est la seule source qui couvre TOUS les providers, y compris
-ceux dont l'API ne publie aucun detail par modele (DeepSeek direct, abonnement
-Claude, modeles locaux) : les API de facturation ne donnent qu'un solde.
+Single source: state.db (SQLite) of each Hermes profile, table
+session_model_usage. One row = (session, model, billing provider,
+base URL, task) with the number of API calls, the tokens per category and an
+estimated cost. It is the only source that covers ALL providers, including
+those whose API publishes no per-model detail (DeepSeek direct, Claude
+subscription, local models): the billing APIs only give a balance.
 
-Sortie : un JSON agrege destine au service usage-dashboard, qui tourne sous un
-autre utilisateur et ne doit donc pas lire state.db lui-meme :
-  - series : cout / tokens / appels par jour et par provider (axe du graphe) ;
-  - windows : totaux par modele, par surface et par tache pour 1, 7, 30 et N
-    jours ;
-  - sessions : une entree par session (titre, surface, modeles, et le meme
-    decoupage quotidien que l'axe du graphe) pour que la page agrege la
-    fenetre choisie cote navigateur, sans nouvelle collecte ;
-  - meta : age de la collecte, bases lues, volume.
+Output: an aggregated JSON intended for the usage-dashboard service, which runs
+under another user and therefore must not read state.db itself:
+  - series: cost / tokens / calls per day and per provider (graph axis);
+  - windows: totals per model, per surface and per task for 1, 7, 30 and N
+    days;
+  - sessions: one entry per session (title, surface, models, and the same
+    daily breakdown as the graph axis) so the page aggregates the
+    chosen window in the browser, with no new collection;
+  - meta: age of the collection, databases read, volume.
 
-Attribution quotidienne : une ligne de session_model_usage est un agregat de
-session, pas un evenement date (elle ne porte que first_seen et last_seen). On
-la repartit donc sur les jours de la fenetre au prorata des messages de la
-session ce jour-la, et a defaut sur le jour de derniere activite. Le total de
-la session est conserve au token pres, seule la repartition dans le temps est
-approchee : c'est dit explicitement dans le pied de page de la page web. La
-somme des lignes d'une session redonne exactement le total de la fenetre, donc
-la vue par session ne peut pas diverger des totaux par modele.
+Daily attribution: a session_model_usage row is a session
+aggregate, not a dated event (it only carries first_seen and last_seen). We
+therefore spread it over the days of the window in proportion to the messages of the
+session that day, and failing that over the day of last activity. The total of
+the session is kept to the token, only the distribution over time is
+approximated: this is stated explicitly in the footer of the web page. The
+sum of a session's rows gives back exactly the window total, so
+the per-session view cannot diverge from the totals per model.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ LEFT JOIN sessions s ON s.id = u.session_id
 WHERE COALESCE(u.last_seen, u.first_seen) >= ?
 """
 
-# Poids quotidien = nombre de messages de la session ce jour-la.
+# Daily weight = number of messages of the session that day.
 SQL_WEIGHTS = """
 SELECT m.session_id, date(m.timestamp, 'unixepoch') AS d, count(*) AS n
 FROM messages m
@@ -89,14 +89,14 @@ STATUS_RANK = {"unknown": 0, "estimated": 1, "actual": 2}
 
 
 def _best_status(current: str | None, candidate: str) -> str:
-    """Garde le statut le plus fiable des lignes agregees : reel > estime > inconnu."""
+    """Keeps the most reliable status of the aggregated rows: actual > estimated > unknown."""
     if STATUS_RANK.get(candidate, 0) > STATUS_RANK.get(current or "unknown", 0):
         return candidate
     return current or candidate
 
 
 def databases(home: str) -> list[tuple[str, str]]:
-    """(profil, chemin) de chaque base Hermes lisible sous cette racine."""
+    """(profile, path) of each Hermes database readable under this root."""
     found: list[tuple[str, str]] = []
     root = os.path.join(home, "state.db")
     if os.path.exists(root):
@@ -114,7 +114,7 @@ def databases(home: str) -> list[tuple[str, str]]:
 
 
 def read_database(path: str, cut: float) -> tuple[list, dict, dict]:
-    """Lignes d'usage, poids quotidiens par session, et volume lu."""
+    """Usage rows, daily weights per session, and volume read."""
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=20)
     con.row_factory = sqlite3.Row
     try:
@@ -130,7 +130,7 @@ def read_database(path: str, cut: float) -> tuple[list, dict, dict]:
 
 
 def attribute(row, weights: dict, cut_day: str) -> list[tuple[str, float]]:
-    """Repartition d'une ligne d'usage sur des jours de la fenetre (fractions)."""
+    """Distribution of a usage row over the days of the window (fractions)."""
     session_weights = {
         day: count
         for day, count in (weights.get(row["session_id"]) or {}).items()
@@ -143,7 +143,7 @@ def attribute(row, weights: dict, cut_day: str) -> list[tuple[str, float]]:
 
 
 def grouped_window(daily: dict, keep) -> dict[str, list]:
-    """Somme des series (cle, jour) sur les jours retenus, groupees par cle."""
+    """Sum of the series (key, day) over the retained days, grouped by key."""
     out: dict[str, list] = defaultdict(lambda: [0.0, 0.0, 0.0])
     for (name, day), values in daily.items():
         if not keep(day):
@@ -160,22 +160,22 @@ def main() -> None:
     cut_day = (now - timedelta(days=WINDOW_DAYS)).strftime("%Y-%m-%d")
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # series[date][provider] = [cout, tokens, appels]
+    # series[date][provider] = [cost, tokens, calls]
     series: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0]))
-    # model_daily[(provider, modele)][date] = [cout, cout_hors_session, appels,
-    #                                          entree, sortie, cache_lu, cache_ecrit, raisonnement]
+    # model_daily[(provider, model)][date] = [cost, cost_outside_session, calls,
+    #                                        input, output, cache_read, cache_write, reasoning]
     model_daily: dict[tuple[str, str], dict[str, list]] = defaultdict(
         lambda: defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     )
     model_meta: dict[tuple[str, str], dict] = {}
-    # source_daily[(surface, date)] = [cout, tokens, appels]
+    # source_daily[(surface, date)] = [cost, tokens, calls]
     source_daily: dict[tuple[str, str], list] = defaultdict(lambda: [0.0, 0.0, 0.0])
-    # task_daily[(tache, date)] = [cout, tokens, appels]
+    # task_daily[(task, date)] = [cost, tokens, calls]
     task_daily: dict[tuple[str, str], list] = defaultdict(lambda: [0.0, 0.0, 0.0])
     total_daily: dict[str, list] = defaultdict(lambda: [0.0, 0.0, 0.0, 0.0])
-    # session_daily[session][date] = [cout, tokens, appels] : la vue par session
-    # est decoupee sur le meme axe que le graphe, donc le navigateur peut
-    # recalculer n'importe quelle fenetre sans nouvelle collecte.
+    # session_daily[session][date] = [cost, tokens, calls] : the per-session view
+    # is broken down on the same axis as the graph, so the browser can
+    # recompute any window without a new collection.
     session_daily: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(lambda: [0.0, 0.0, 0.0]))
     session_meta: dict[str, dict] = {}
 
@@ -190,9 +190,9 @@ def main() -> None:
 
         for row in rows:
             pid = prov.normalize(row["billing_provider"], row["billing_base_url"])
-            model = (row["model"] or "inconnu").strip() or "inconnu"
+            model = (row["model"] or "unknown").strip() or "unknown"
             task = (row["task"] or "").strip()
-            surface = (row["source"] or "inconnu").strip() or "inconnu"
+            surface = (row["source"] or "unknown").strip() or "unknown"
 
             actual = _num(row["actual_cost_usd"])
             estimated = _num(row["estimated_cost_usd"])
@@ -211,11 +211,11 @@ def main() -> None:
             tokens = tokens_in + tokens_out + cache_read + cache_write
             aux_cost = cost if task else 0.0
 
-            # Fiche de session : le titre vient de la table sessions (pose par
-            # la generation de titre), la surface est la meme que celle de la
-            # vue « Par surface ». Aucune date ici : le decoupage quotidien
-            # porte deja les jours d'activite, la page en deduit le premier et
-            # le dernier jour de la fenetre choisie.
+            # Session record: the title comes from the sessions table (set by
+            # title generation), the surface is the same as in the
+            # "Per surface" view. No date here: the daily breakdown
+            # already carries the activity days, the page deduces the first and
+            # last day of the chosen window.
             sid = row["session_id"]
             smeta = session_meta.setdefault(sid, {"title": "", "source": surface, "models": {}})
             title = (row["title"] or "").strip()
@@ -274,7 +274,7 @@ def main() -> None:
                 session_slot[1] += tokens * frac
                 session_slot[2] += _num(row["api_call_count"]) * frac
 
-    # Axe continu : tous les jours de la fenetre, meme vides.
+    # Continuous axis: all days of the window, even empty ones.
     days: list[str] = []
     cursor = datetime.strptime(cut_day, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     last = today.strftime("%Y-%m-%d")
@@ -295,7 +295,7 @@ def main() -> None:
             }
         )
 
-    # Meme axe, mais cle "provider|modele" : sert au graphe empile par modele.
+    # Same axis, but key "provider|model": used for the graph stacked by model.
     series_model = []
     for day in days:
         row = {}
@@ -396,11 +396,11 @@ def main() -> None:
             },
         }
 
-    # Vue par session : une entree par session, avec le meme decoupage
-    # quotidien que l'axe du graphe. Le navigateur somme les jours de la
-    # fenetre choisie, donc changer de fenetre (24 h, 7, 30, 90 j) ne demande
-    # aucune nouvelle collecte. Les sessions sans cout ni token (lignes
-    # anciennes sans tarif connu) sont ecartees : elles n'apprendraient rien.
+    # Per-session view: one entry per session, with the same daily
+    # breakdown as the graph axis. The browser sums the days of the
+    # chosen window, so changing window (24 h, 7, 30, 90 d) requires
+    # no new collection. Sessions with no cost or token (old
+    # rows without a known rate) are dropped: they would teach nothing.
     sessions_out: list[dict] = []
     for sid, per_day in session_daily.items():
         cost = sum(v[0] for v in per_day.values())
@@ -415,7 +415,7 @@ def main() -> None:
             {
                 "id": sid,
                 "title": smeta.get("title") or "",
-                "source": smeta.get("source") or "inconnu",
+                "source": smeta.get("source") or "unknown",
                 "models": [[name, round(value, 6)] for name, value in models],
                 "days": {
                     day: [round(v[0], 6), int(round(v[1])), int(round(v[2]))]
@@ -448,9 +448,9 @@ def main() -> None:
     os.chmod(tmp, 0o644)
     os.replace(tmp, OUT)
     print(
-        f"[agent-usage] {len(days)} jours, {len(windows[str(WINDOW_DAYS)]['models'])} modeles, "
+        f"[agent-usage] {len(days)} days, {len(windows[str(WINDOW_DAYS)]['models'])} models, "
         f"{len(sessions_out)} sessions, "
-        f"cout {WINDOW_DAYS} j = ${windows[str(WINDOW_DAYS)]['totals']['cost']:.2f} -> {OUT}",
+        f"cost {WINDOW_DAYS} d = ${windows[str(WINDOW_DAYS)]['totals']['cost']:.2f} -> {OUT}",
         flush=True,
     )
 

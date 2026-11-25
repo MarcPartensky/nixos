@@ -1,9 +1,9 @@
 # services/mcp-nixos/default.nix
-# Serveur MCP NixOS (utensils/mcp-nixos, pkgs.mcp-nixos dans nixpkgs 26.05).
-# Sert à interroger les VRAIES données NixOS au lieu de les inventer :
-# packages (130k+), options NixOS (23k+), options home-manager, nix-darwin,
-# nixvim, NVF, FlakeHub, Noogle, wiki NixOS.
-# Interroge les API publiques (search.nixos.org, etc.) : aucun secret requis.
+# NixOS MCP server (utensils/mcp-nixos, pkgs.mcp-nixos in nixpkgs 26.05).
+# Used to query the REAL NixOS data instead of making it up:
+# packages (130k+), NixOS options (23k+), home-manager options, nix-darwin,
+# nixvim, NVF, FlakeHub, Noogle, NixOS wiki.
+# Queries public APIs (search.nixos.org, etc.): no secret required.
 { pkgs, ... }:
 {
   services.hermes-agent.mcpServers.nixos = {

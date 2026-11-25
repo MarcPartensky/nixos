@@ -1,29 +1,29 @@
 # services/anki-sync-server/default.nix
-# Serveur de synchronisation Anki auto-hébergé, implémentation OFFICIELLE en
-# Rust : le paquet nixpkgs `anki-sync-server` compile uniquement le binaire
-# standalone depuis le repo ankitects/anki (même version que le desktop Anki,
-# 25.09.4 dans la nixpkgs épinglée). Zéro Python.
+# Self-hosted Anki sync server, OFFICIAL Rust implementation: the nixpkgs
+# package `anki-sync-server` compiles only the standalone binary from the
+# ankitects/anki repo (same version as the Anki desktop,
+# 25.09.4 in the pinned nixpkgs). Zero Python.
 #
-# Le serveur écoute en loopback (127.0.0.1:27701) et ne sert AUCUNE page web
-# (404 vide sur /, ce qui veut dire « rien » dans un navigateur). Une façade
-# nginx en loopback (127.0.0.1:27702) sert une page de statut sur / et proxifie
-# les routes de sync (/sync/*, /msync/*, /health) vers 27701. Le blueprint
-# Pangolin/newt expose la façade sur anki.marcpartensky.com.
-# PAS de SSO Pangolin : les clients Anki (desktop, AnkiMobile, AnkiDroid) ne
-# savent pas suivre une redirection navigateur ; l'authentification repose sur
-# le couple utilisateur/mot de passe du serveur Anki lui-même (SYNC_USER),
-# transmis en HTTPS par le reverse proxy.
+# The server listens on loopback (127.0.0.1:27701) and serves NO web page
+# (empty 404 on /, which means "nothing" in a browser). An nginx front
+# on loopback (127.0.0.1:27702) serves a status page on / and proxies
+# the sync routes (/sync/*, /msync/*, /health) to 27701. The
+# Pangolin/newt blueprint exposes the front on anki.marcpartensky.com.
+# NO Pangolin SSO: the Anki clients (desktop, AnkiMobile, AnkiDroid) do not
+# know how to follow a browser redirect; authentication relies on
+# the user/password pair of the Anki server itself (SYNC_USER),
+# transmitted over HTTPS by the reverse proxy.
 #
-# Mot de passe du compte "marc" dans secrets/anki.yml (sops). Le module nixpkgs
-# lit passwordFile via LoadCredential systemd (jamais en clair dans le store).
+# Password of the "marc" account in secrets/anki.yml (sops). The nixpkgs module
+# reads passwordFile via systemd LoadCredential (never in clear in the store).
 {
   config,
   lib,
   pkgs,
   ...
 }: let
-  syncPort = 27701; # port du serveur Anki (loopback)
-  proxyPort = 27702; # port de la façade nginx (loopback)
+  syncPort = 27701; # Anki server port (loopback)
+  proxyPort = 27702; # nginx front port (loopback)
   statusPage = pkgs.stdenv.mkDerivation {
     pname = "anki-sync-status";
     version = "1";
@@ -49,9 +49,9 @@
         <div class='card'>
         <h1>Anki Sync Server</h1>
         <span class='badge'>en ligne</span>
-        <p>Ce domaine expose uniquement l'API de synchronisation Anki pour les clients de bureau et mobiles. Il n'y a pas d'interface web à afficher ici.</p>
-        <p>Dans Anki (préférences, onglet <code>synchronisation</code>), renseignez <code>https://anki.marcpartensky.com</code> comme serveur de sync.</p>
-        <p>Santé du service : <code>GET /health</code></p>
+        <p>This domain only exposes the Anki sync API for desktop and mobile clients. There is no web interface to display here.</p>
+        <p>In Anki (preferences, <code>sync</code> tab), enter <code>https://anki.marcpartensky.com</code> as the sync server.</p>
+        <p>Service health: <code>GET /health</code></p>
         </div>
         </body>
         </html>
@@ -63,7 +63,7 @@
       mkdir -p $out
       cp $src $out/index.html
     '';
-    meta.description = "Page de statut du serveur de sync Anki";
+    meta.description = "Status page of the Anki sync server";
   };
 in {
   sops.secrets."anki-sync-server/password" = {
@@ -74,7 +74,7 @@ in {
   services.anki-sync-server = {
     enable = true;
     address = "127.0.0.1";
-    # port par défaut : 27701
+    # default port: 27701
     users = [
       {
         username = "marc";
@@ -83,10 +83,10 @@ in {
     ];
   };
 
-  # Façade nginx, loopback uniquement : page de statut sur / (le serveur Anki
-  # n'a pas d'UI), proxy des routes de sync vers 27701. Timeouts longs (grosses
-  # collections), pas de limite de taille de corps (uploads de médias : images,
-  # vidéos).
+  # nginx front, loopback only: status page on / (the Anki server
+  # has no UI), proxy of the sync routes to 27701. Long timeouts (large
+  # collections), no body size limit (media uploads: images,
+  # videos).
   services.nginx.virtualHosts."anki-sync-status" = {
     listen = [
       {
@@ -119,14 +119,14 @@ in {
     };
   };
 
-  # Ressource publique Pangolin (newt, site "tower") : anki.marcpartensky.com
-  # -> 127.0.0.1:27702 (façade nginx). Cle `proxy-resources` + champ
-  # `protocol` = schema réellement compris par le Pangolin du VPS (cf.
-  # services/newt). Pas d'auth Pangolin (clients natifs).
-  # Healthcheck OBLIGATOIRE sur /health : sans bloc healthcheck, newt check
-  # /healthz par défaut, que nginx proxifie (préfixe /health) vers le serveur
-  # Anki qui répond 404 -> cible marquée unhealthy -> "no available server"
-  # sur le domaine (vécu le 11/10/2026).
+  # Public Pangolin resource (newt, "tower" site): anki.marcpartensky.com
+  # -> 127.0.0.1:27702 (nginx front). Key `proxy-resources` + field
+  # `protocol` = schema actually understood by the VPS's Pangolin (cf.
+  # services/newt). No Pangolin auth (native clients).
+  # MANDATORY healthcheck on /health: without a healthcheck block, newt checks
+  # /healthz by default, which nginx proxies (prefix /health) to the Anki
+  # server which answers 404 -> target marked unhealthy -> "no available server"
+  # on the domain (experienced on 11/10/2026).
   services.newt.blueprint.proxy-resources."anki-sync-server" = {
     name = "anki-sync-server";
     protocol = "http";
@@ -155,13 +155,13 @@ in {
     ];
   };
 
-  # Garde-fou : les ports locaux ne doivent jamais être ouverts au
+  # Safeguard: the local ports must never be opened at the
   # firewall/LAN.
   assertions = [
     {
       assertion = !(lib.elem syncPort config.networking.firewall.allowedTCPPorts)
         && !(lib.elem proxyPort config.networking.firewall.allowedTCPPorts);
-      message = "anki-sync-server : les ports locaux ne doivent pas être ouverts au firewall (exposition uniquement via Pangolin/newt).";
+      message = "anki-sync-server: the local ports must not be opened at the firewall (exposure only via Pangolin/newt).";
     }
   ];
 }

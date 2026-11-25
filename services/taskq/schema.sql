@@ -1,41 +1,41 @@
--- taskq : file de taches durable pour tower (Postgres, pattern SKIP LOCKED).
--- Tout est idempotent : le service systemd rejoue ce fichier a chaque rebuild.
+-- taskq: durable task queue for tower (Postgres, SKIP LOCKED pattern).
+-- Everything is idempotent: the systemd service replays this file on every rebuild.
 
 create table if not exists tasks (
   id            bigserial primary key,
-  key           text unique,                      -- cle d'idempotence (une seule ligne par tache planifiee)
+  key           text unique,                      -- idempotency key (a single row per scheduled task)
   kind          text not null default 'systemd_unit',   -- systemd_unit | command
-  target        text not null,                    -- nom d'unite systemd, ou commande shell
-  run_as        text not null default 'hermes',   -- utilisateur pour kind=command
+  target        text not null,                    -- name of a systemd unit, or shell command
+  run_as        text not null default 'hermes',   -- user for kind=command
   workdir       text,
   env           jsonb not null default '{}'::jsonb,
 
-  -- enveloppe de ressources : ce que la tache demande pour tourner
+  -- resource envelope: what the task asks for in order to run
   cpu_class     text not null default 'medium'    -- light | medium | heavy
                 check (cpu_class in ('light','medium','heavy')),
-  mem_min_mb    int  not null default 512,        -- RAM libre exige pour demarrer
+  mem_min_mb    int  not null default 512,        -- free RAM required to start
   gpu           boolean not null default false,
   llm_cost      text not null default 'none'      -- none | free | paid
                 check (llm_cost in ('none','free','paid')),
-  est_minutes   int,                              -- duree estimee (planification/notif)
-  paid_cap_cents int not null default 0,          -- budget payant max consomme par cette tache
+  est_minutes   int,                              -- estimated duration (scheduling/notif)
+  paid_cap_cents int not null default 0,          -- max paid budget consumed by this task
 
-  -- ordonnancement
-  priority      int not null default 100,         -- plus petit = plus urgent
+  -- scheduling
+  priority      int not null default 100,         -- smaller = more urgent
   not_before    timestamptz not null default now(),
-  deadline      timestamptz,                      -- au-dela, demarrage force puis 'expired'
-  while_busy    boolean not null default false,   -- peut tourner pendant que marc utilise la machine
-  needs_absence boolean not null default false,   -- ne tourne QUE pendant une absence de marc :
-                                                  -- fenetre sommeil/travail de presence.py, ou
-                                                  -- inactivite 15 min (hermes/ssh/webui) ; elle
-                                                  -- est interrompue des qu'il revient
-  requires_gpu  boolean not null default false,   -- si pas de GPU : 'blocked' au lieu de 'queued'
+  deadline      timestamptz,                      -- beyond it, forced start then 'expired'
+  while_busy    boolean not null default false,   -- can run while marc is using the machine
+  needs_absence boolean not null default false,   -- runs ONLY during an absence of marc:
+                                                  -- sleep/work window of presence.py, or
+                                                  -- 15 min inactivity (hermes/ssh/webui); it
+                                                  -- is interrupted as soon as he comes back
+  requires_gpu  boolean not null default false,   -- if no GPU: 'blocked' instead of 'queued'
 
   status        text not null default 'queued'
                 check (status in ('queued','running','done','failed','cancelled','expired','blocked')),
   attempts      int not null default 0,
   max_attempts  int not null default 2,
-  unit          text,                             -- unité transitoire réellement lancée
+  unit          text,                             -- transient unit actually started
   started_at    timestamptz,
   finished_at   timestamptz,
   exit_code     int,
@@ -55,33 +55,33 @@ create index if not exists tasks_running_idx
   where status = 'running';
 create index if not exists tasks_recent_idx on tasks (created_at desc);
 
--- Idempotent pour une table deja creee avant l'ajout de la colonne.
+-- Idempotent for a table already created before the column was added.
 alter table tasks add column if not exists needs_absence boolean not null default false;
 
--- Journal des decisions du dispatcher et du cerveau : ce qui a ete fait, quand,
--- pourquoi, avec les metriques du moment. Sert aussi de file de notification.
+-- Log of the dispatcher's and the brain's decisions: what was done, when,
+-- why, with the metrics of the moment. Also serves as a notification queue.
 create table if not exists decisions (
   id         bigserial primary key,
   at         timestamptz not null default now(),
   task_id    bigint references tasks(id) on delete set null,
   action     text not null,        -- submit|start|finish|fail|defer|skip|expire|block|pause|resume|note
   actor      text not null default 'dispatcher',
-  reason     text,                 -- en clair, pour marc
+  reason     text,                 -- in plain language, for marc
   metrics    jsonb,
   notified   boolean not null default false
 );
 create index if not exists decisions_pending_idx on decisions (notified, at desc);
 
--- Etat courant / reglages (pause globale, budgets, dernieres metriques).
+-- Current state / settings (global pause, budgets, latest metrics).
 create table if not exists state (
   key        text primary key,
   value      jsonb not null,
   updated_at timestamptz not null default now()
 );
 
--- presence_overrides : {date ISO -> {kind: off|wfh, note, by, at}} ; pose par
--- `taskq presence off|wfh|clear` (jour de conge ou de teletravail), lu par le
--- dispatcher a chaque tour (pas de rebuild pour un jour exceptionnel).
+-- presence_overrides: {ISO date -> {kind: off|wfh, note, by, at}}; set by
+-- `taskq presence off|wfh|clear` (day off or remote work), read by the
+-- dispatcher on each round (no rebuild for an exceptional day).
 insert into state (key, value) values
   ('paused', 'false'::jsonb),
   ('paid_budget_cents_per_day', '300'::jsonb),
@@ -89,9 +89,9 @@ insert into state (key, value) values
   ('presence_overrides', '{}'::jsonb)
 on conflict (key) do nothing;
 
--- ------------------------------------------------------------------ flotte
--- Workers enregistres (un par hote). Vide tant que la flotte n'est pas
--- branchee : le master (tower) est un worker local implicite, sans ligne.
+-- ------------------------------------------------------------------ fleet
+-- Registered workers (one per host). Empty as long as the fleet is not
+-- wired up: the master (tower) is an implicit local worker, without a row.
 create table if not exists hosts (
   name              text primary key,               -- tower | deck | anywhere | mac
   caps              jsonb not null default '{}'::jsonb,  -- {tor, renderer, s3, google_egress, always_on, gpu}
@@ -103,22 +103,22 @@ create table if not exists hosts (
   heartbeat         timestamptz
 );
 
--- Champs de la flotte sur les taches : le dispatcher les remplit quand il
--- vise un worker distant ; les taches sans `requires` restent executables en
--- local par le dispatcher (comportement actuel).
+-- Fleet fields on tasks: the dispatcher fills them when it
+-- targets a remote worker; tasks without `requires` stay executable
+-- locally by the dispatcher (current behavior).
 alter table tasks add column if not exists assigned_host text;
 alter table tasks add column if not exists requires text[] not null default '{}';
 alter table tasks add column if not exists lease_expires_at timestamptz;
--- Nombre de fois ou un worker a lache la tache en cours de route (bail expire).
--- Croise avec MAX_LEASE_LOSSES dans api.py : au-dela, la tache est abandonnee
--- au lieu d'etre remise en file indefiniment sur un hote qui drop en boucle.
+-- Number of times a worker dropped the task along the way (expired lease).
+-- Crossed with MAX_LEASE_LOSSES in api.py: beyond it, the task is abandoned
+-- instead of being requeued indefinitely on a host that keeps dropping.
 alter table tasks add column if not exists lease_losses int not null default 0;
 create index if not exists tasks_assigned_idx
   on tasks (assigned_host, status)
   where status in ('queued', 'running');
 
--- Vue lisible pour le CLI, la webui et les digests (drop: une vue ne peut pas
--- renommer/reordonner ses colonnes via create or replace).
+-- Readable view for the CLI, the webui and the digests (drop: a view cannot
+-- rename/reorder its columns via create or replace).
 drop view if exists queue;
 create view queue as
 select id, status, priority, key, kind, target, cpu_class, mem_min_mb, llm_cost,

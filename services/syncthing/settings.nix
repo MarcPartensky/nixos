@@ -1,22 +1,22 @@
-# Réglages Syncthing communs à toute la flotte de marc.
+# Syncthing settings common to marc's whole fleet.
 #
-# Utilisé par le module home-manager (modules/home/syncthing), qui est le même
-# pour tower, laptop, deck et le Mac. La flotte partage une seule
-# `homeConfigurations.marc` pour les trois machines Linux : aucune d'entre elles
-# ne peut se distinguer à l'évaluation. La seule différence exploitable est donc
-# l'OS, et elle suffit ici : le Mac ne prend que les documents, les Linux
-# prennent aussi les photos.
+# Used by the home-manager module (modules/home/syncthing), which is the same
+# for tower, laptop, deck and the Mac. The fleet shares a single
+# `homeConfigurations.marc` for the three Linux machines: none of them
+# can be distinguished at evaluation. The only exploitable difference is thus
+# the OS, and it is enough here: the Mac only takes the documents, the Linux
+# ones also take the photos.
 #
-# Les types sont sendreceive partout, sinon la config ne serait plus identique
-# d'une machine Linux à l'autre. La protection contre une suppression
-# accidentelle vient du versioning `staggered` (30 jours), stocké HORS de
-# l'arbre photos pour ne pas polluer la bibliothèque Immich.
+# The types are sendreceive everywhere, otherwise the config would no longer be identical
+# from one Linux machine to another. The protection against accidental
+# deletion comes from `staggered` versioning (30 days), stored OUTSIDE the
+# photo tree so as not to pollute the Immich library.
 #
-# Principe réseau : aucun contact avec l'infrastructure de Syncthing (pas de
-# découverte globale, pas de relais public, pas de NAT/STUN vers l'extérieur,
-# pas de télémétrie, pas de vérification de mise à jour). Les nœuds se joignent
-# par leur adresse fixe dans le mesh headscale, plus la découverte locale (LAN,
-# 21027/udp) qui ne sort pas du réseau.
+# Network principle: no contact with Syncthing's infrastructure (no
+# global discovery, no public relay, no NAT/STUN to the outside,
+# no telemetry, no update check). The nodes join
+# by their fixed address in the headscale mesh, plus local discovery (LAN,
+# 21027/udp) which does not leave the network.
 {
   lib,
   isDarwin,
@@ -30,7 +30,7 @@
     then folder.macPath
     else folder.linuxPath;
 
-  # Un dossier sans chemin pour l'OS courant n'est pas déclaré du tout.
+  # A folder without a path for the current OS is not declared at all.
   myFolders = lib.filter (folder: folderPath folder != null) mesh.folders;
 
   versionsRoot =
@@ -42,19 +42,19 @@
     label = folder.label;
     path = folderPath folder;
     type = "sendreceive";
-    # Syncthing tolère le nœud local dans cette liste (il y est de toute façon
-    # et un renvoi est un 400 sans conséquence). Ça garde une seule config pour
-    # toute la flotte.
+    # Syncthing tolerates the local node in this list (it is there anyway
+    # and an echo back is a harmless 400). This keeps a single config for
+    # the whole fleet.
     devices = folder.members;
     fsWatcherEnabled = true;
     rescanIntervalS = 3600;
     ignorePatterns = [".DS_Store"];
-    # Historique des suppressions et remplacements : 30 jours, hors de l'arbre
-    # partagé (sans quoi Immich indexerait .stversions).
+    # History of deletions and replacements: 30 days, outside the shared
+    # tree (otherwise Immich would index .stversions).
     versioning = {
       type = "staggered";
       params = {
-        maxAge = "2592000"; # 30 jours, en secondes
+        maxAge = "2592000"; # 30 days, in seconds
         cleanInterval = "3600";
         versionsPath = "${versionsRoot}/${folder.id}";
       };
@@ -65,20 +65,20 @@ in {
 
   devices = lib.mapAttrs (_: node: {
     id = node.id;
-    # Adresse fixe sur le mesh, plus « dynamic » pour que la découverte locale
-    # serve quand le mesh n'est pas joignable (même LAN).
+    # Fixed address on the mesh, plus "dynamic" so that local discovery
+    # serves when the mesh is not reachable (same LAN).
     addresses = node.addresses ++ ["dynamic"];
   }) nodes;
 
   options = {
     listenAddresses = ["tcp://0.0.0.0:22000" "quic://0.0.0.0:22000"];
-    # Aucun appel sortant vers l'infrastructure de Syncthing : découverte
-    # globale, relais, STUN, télémétrie, rapport de crash, vérification de
-    # mise à jour. Les URLs sont vidées en plus des booléens, pour que même un
-    # clic dans l'UI ne puisse pas les joindre.
+    # No outgoing call to Syncthing's infrastructure: global
+    # discovery, relays, STUN, telemetry, crash report, update
+    # check. The URLs are emptied in addition to the booleans, so that even a
+    # click in the UI cannot reach them.
     globalAnnounceEnabled = false;
     globalAnnounceServers = [];
-    localAnnounceEnabled = true; # LAN uniquement (21027/udp, pas d'Internet)
+    localAnnounceEnabled = true; # LAN only (21027/udp, no Internet)
     relaysEnabled = false;
     natEnabled = false;
     stunServers = [];
@@ -92,6 +92,6 @@ in {
     startBrowser = false;
   };
 
-  # Un dossier par identifiant, tel que l'attend le module home-manager.
+  # One folder per identifier, as the home-manager module expects.
   folders = lib.listToAttrs (map (folder: lib.nameValuePair folder.id (mkFolder folder)) myFolders);
 }

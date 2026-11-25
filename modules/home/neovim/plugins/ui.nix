@@ -1,8 +1,8 @@
 {pkgs, ...}: {
   programs.nixvim = {
-    # transparent = true retire le fond opaque de TOUS les groupes du thème
-    # (Normal, EndOfBuffer, SignColumn, NeoTreeNormal...), pas seulement Normal.
-    # Sans ça, la zone vide sous la fin du buffer garde le bg0 gris de onedark.
+    # transparent = true removes the opaque background from ALL theme groups
+    # (Normal, EndOfBuffer, SignColumn, NeoTreeNormal...), not just Normal.
+    # Without it, the empty area below the end of the buffer keeps onedark's gray bg0.
     colorschemes.onedark = {
       enable = true;
       settings.transparent = true;
@@ -17,7 +17,7 @@
       neo-tree = {
         enable = true;
         settings.enable_git_status = true;
-        # Si tu as un fichier de settings séparé :
+        # If you have a separate settings file:
         # settings = import ./neo-tree-settings.nix;
       };
     };

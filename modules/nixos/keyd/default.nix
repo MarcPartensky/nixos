@@ -3,13 +3,13 @@
   services.keyd = {
     enable = true;
     keyboards = {
-      default = {  # Applique à tous les claviers
+      default = {  # Applies to all keyboards
         ids = [ "*" ];
         settings = {
           main = {
-            # Conservez votre mapping Caps Lock -> Échap
+            # Keep your Caps Lock -> Escape mapping
             # capslock = "esc";
-            # Mappez PgDn comme Shift gauche
+            # Map PgDn as left Shift
             # pgdn = "leftshift";
             pagedown = "layer(shift)";
           };

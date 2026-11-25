@@ -8,11 +8,11 @@
 
   stateDir = "/var/lib/bt-sink";
   recDir = "${stateDir}/rec";
-  # marc n a pas d uid declare en dur : le relais deduit son runtime dir via id -u
+  # marc has no hardcoded uid: the relay derives its runtime dir via id -u
   binPath = lib.makeBinPath [pkgs.bluez pkgs.pipewire pkgs.coreutils pkgs.gnugrep pkgs.gnused pkgs.systemd];
 
-  # Partie root : identite Bluetooth (Class of Device + nom) et pilotage du relais.
-  # Appelee via sudo uniquement, cf. security.sudo.extraRules plus bas.
+  # Root part: Bluetooth identity (Class of Device + name) and relay control.
+  # Called via sudo only, cf. security.sudo.extraRules further down.
   rootHelper = pkgs.writeShellScriptBin "bt-sink-root" ''
     set -u
     export PATH=${binPath}:$PATH
@@ -28,12 +28,12 @@
     }
     status() {
       echo "adapter   : $ADAPTER"
-      echo "class     : 0x$(printf '%06x' "$(get_class)")  (0x240418 = casque, 0x240414 = enceinte)"
-      echo "nom       : $(get_alias)"
+      echo "class     : 0x$(printf '%06x' "$(get_class)")  (0x240418 = headset, 0x240414 = speaker)"
+      echo "name      : $(get_alias)"
       echo "discoverable : $(busctl --system get-property org.bluez $PATH_OBJ org.bluez.Adapter1 Discoverable | cut -d' ' -f2)"
-      echo "mode      : $(cat "$STATE/mode" 2>/dev/null || echo play)  (play | silent | replace:<fichier>)"
-      echo "relais    : $(systemctl is-active bt-sink-relay 2>/dev/null || true)  /  agent : $(systemctl is-active bt-sink-agent 2>/dev/null || true)"
-      echo "captures  : $(find "$STATE/rec" -name '*.raw' 2>/dev/null | wc -l) fichier(s) dans $STATE/rec"
+      echo "mode      : $(cat "$STATE/mode" 2>/dev/null || echo play)  (play | silent | replace:<file>)"
+      echo "relay     : $(systemctl is-active bt-sink-relay 2>/dev/null || true)  /  agent : $(systemctl is-active bt-sink-agent 2>/dev/null || true)"
+      echo "captures  : $(find "$STATE/rec" -name '*.raw' 2>/dev/null | wc -l) file(s) in $STATE/rec"
     }
 
     case "''${1:-status}" in
@@ -45,7 +45,7 @@
         fi
         hciconfig "$ADAPTER" class ${cfg.class} 2>&1 | sed 's/^/hciconfig: /' || true
         sleep 1
-        echo "classe appliquee : 0x$(printf '%06x' "$(get_class)")"
+        echo "class applied: 0x$(printf '%06x' "$(get_class)")"
         busctl --system set-property org.bluez $PATH_OBJ org.bluez.Adapter1 Alias s "${cfg.alias}"
         busctl --system set-property org.bluez $PATH_OBJ org.bluez.Adapter1 DiscoverableTimeout u 0
         busctl --system set-property org.bluez $PATH_OBJ org.bluez.Adapter1 Discoverable b true
@@ -71,19 +71,19 @@
         ;;
       status) status ;;
       *)
-        echo "usage: bt-sink-root [on|off|status|mode <play|silent|replace:/chemin/fichier>]" >&2
+        echo "usage: bt-sink-root [on|off|status|mode <play|silent|replace:/path/file>]" >&2
         exit 2
         ;;
     esac
   '';
 
-  # Relais : attrape le flux A2DP entrant (bluez_input.*) et le pousse dans la
-  # sortie par defaut du PipeWire de l'utilisateur, en le copiant au passage.
+  # Relay: catches the incoming A2DP stream (bluez_input.*) and pushes it into
+  # the user's default PipeWire output, copying it along the way.
   relay = pkgs.writeShellScriptBin "bt-sink-relay" ''
     set -u
     export PATH=${binPath}:$PATH
-    # lance par systemd avec User=marc : id -u donne 1000, et le socket
-    # PipeWire de sa session vit dans /run/user/1000
+    # launched by systemd with User=marc: id -u gives 1000, and the
+    # PipeWire socket of his session lives in /run/user/1000
     if [ ! -S "''${XDG_RUNTIME_DIR:-/nonexistent}/pipewire-0" ]; then
       export XDG_RUNTIME_DIR="/run/user/$(id -u)"
     fi
@@ -94,13 +94,13 @@
     seen="init"
     while :; do
       if ! dump=$(pw-dump 2>/dev/null); then
-        log "pw-dump indisponible (XDG_RUNTIME_DIR=''${XDG_RUNTIME_DIR:-vide})"
+        log "pw-dump unavailable (XDG_RUNTIME_DIR=''${XDG_RUNTIME_DIR:-empty})"
         sleep 5
         continue
       fi
       all=$(printf '%s' "$dump" | grep -o '"node.name": "bluez_[^"]*"' | sed -e 's/.*: "//' -e 's/"$//' | sort -u | tr '\n' ' ')
       if [ "$all" != "$seen" ]; then
-        log "noeuds bluez: ''${all:-aucun}"
+        log "bluez nodes: ''${all:-none}"
         seen="$all"
       fi
       node=$(echo "$all" | tr ' ' '\n' | grep '^bluez_input' | head -n1)
@@ -110,10 +110,10 @@
       fi
 
       prof=$(printf '%s' "$dump" | grep -o '"api\.bluez5\.\(codec\|profile\)": "[^"]*"' | sort -u | tr '\n' ' ')
-      log "transport : ''${prof:-non expose}"
+      log "transport: ''${prof:-not exposed}"
       mode=$(cat "$STATE/mode" 2>/dev/null || echo play)
       out="$STATE/rec/$(date +%Y%m%dT%H%M%S)-a2dp-sink-48k-stereo-s16.raw"
-      log "flux entrant sur $node, mode=$mode, capture=$out"
+      log "incoming stream on $node, mode=$mode, capture=$out"
 
       case "$mode" in
         silent)
@@ -132,7 +132,7 @@
             pw-record --target="$node" --rate 48000 --channels 2 --format s16 - | tee -a "$out" > /dev/null
             kill "$pid" 2>/dev/null
           else
-            log "fichier de remplacement illisible: $file, mode play"
+            log "replacement file unreadable: $file, play mode"
             pw-record --target="$node" --rate 48000 --channels 2 --format s16 - | tee -a "$out" | pw-play --rate 48000 --channels 2 --format s16 -
           fi
           ;;
@@ -141,12 +141,12 @@
           ;;
       esac
 
-      log "flux termine, $(stat -c %s "$out" 2>/dev/null || echo 0) octets dans $out"
+      log "stream finished, $(stat -c %s "$out" 2>/dev/null || echo 0) bytes in $out"
       sleep 1
     done
   '';
 
-  # Commande utilisateur (marc) : pas de root direct, tout passe par le helper.
+  # User command (marc): no direct root, everything goes through the helper.
   cli = pkgs.writeShellScriptBin "bt-sink" ''
     set -u
     export PATH=${binPath}:$PATH
@@ -168,10 +168,10 @@
       play)
         f=$(ls -t "$STATE"/rec/*.raw 2>/dev/null | head -n1)
         if [ -z "''${f:-}" ]; then
-          echo "aucune capture dans $STATE/rec" >&2
+          echo "no capture in $STATE/rec" >&2
           exit 1
         fi
-        echo "lecture de $f"
+        echo "playing $f"
         pw-play --rate 48000 --channels 2 --format s16 "$f"
         ;;
       list|ls)
@@ -179,18 +179,18 @@
         ;;
       *)
         cat >&2 <<'EOF'
-    usage: bt-sink <commande>
+    usage: bt-sink <command>
 
-      on                       devient un faux casque Bluetooth (nom + classe casque,
-                               discoverable, relais audio demarre)
-      off                      restaure la classe et le nom d'origine
-      status                   etat courant
-      mode play                le flux recu sort par les enceintes (defaut)
-      mode silent              le flux est seulement enregistre
-      mode replace:/chemin.raw le flux recu est enregistre, et c'est ce fichier
-                               qui sort par les enceintes
-      list                     captures disponibles
-      play                     rejoue la derniere capture
+      on                       becomes a fake Bluetooth headset (name + headset class,
+                               discoverable, audio relay started)
+      off                      restores the original class and name
+      status                   current state
+      mode play                the received stream plays through the speakers (default)
+      mode silent              the stream is only recorded
+      mode replace:/path.raw   the received stream is recorded, and it is this file
+                               that plays through the speakers
+      list                     available captures
+      play                     replays the last capture
     EOF
         exit 2
         ;;
@@ -198,11 +198,11 @@
   '';
 in {
   options.services.btSink = {
-    enable = lib.mkEnableOption "faux casque Bluetooth (recepteur A2DP)";
+    enable = lib.mkEnableOption "fake Bluetooth headset (A2DP receiver)";
     user = lib.mkOption {
       type = lib.types.str;
       default = "marc";
-      description = "Utilisateur dont la session PipeWire recoit le son.";
+      description = "User whose PipeWire session receives the sound.";
     };
     adapter = lib.mkOption {
       type = lib.types.str;
@@ -211,12 +211,12 @@ in {
     alias = lib.mkOption {
       type = lib.types.str;
       default = "AirPods Pro";
-      description = "Nom annonce pendant le deguisement.";
+      description = "Name announced during the disguise.";
     };
     class = lib.mkOption {
       type = lib.types.str;
       default = "0x240418";
-      description = "Class of Device (0x240418 casque, 0x240414 enceinte).";
+      description = "Class of Device (0x240418 headset, 0x240414 speaker).";
     };
   };
 
@@ -230,9 +230,9 @@ in {
     ];
 
     systemd.services.bt-sink-relay = {
-      description = "Relais A2DP sink (audio Bluetooth entrant vers les enceintes + capture)";
+      description = "A2DP sink relay (incoming Bluetooth audio to the speakers + capture)";
       after = ["bluetooth.service"];
-      # demarre a la demande par bt-sink on, pas au boot
+      # started on demand by bt-sink on, not at boot
       wantedBy = [];
       serviceConfig = {
         User = cfg.user;
@@ -242,10 +242,10 @@ in {
       };
     };
 
-    # Agent d appairage sans interaction (Just Works) : sans agent enregistre,
-    # bluetoothd refuse un appairage initie par le telephone.
+    # Interaction-free pairing agent (Just Works): without a registered agent,
+    # bluetoothd refuses a pairing initiated by the phone.
     systemd.services.bt-sink-agent = {
-      description = "Agent d appairage Bluetooth pour bt-sink (NoInputNoOutput)";
+      description = "Bluetooth pairing agent for bt-sink (NoInputNoOutput)";
       after = ["bluetooth.service"];
       wantedBy = [];
       serviceConfig = {

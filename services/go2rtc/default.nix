@@ -1,55 +1,55 @@
-# go2rtc : un seul point d'entree pour toutes les cameras de la maison, et une
-# page web qui les liste.
+# go2rtc: a single entry point for all the cameras of the house, and a
+# web page that lists them.
 #
-# POURQUOI go2rtc et pas un NVR : le besoin est « voir le flux de la tablette
-# (et des autres appareils) depuis un navigateur, avec plusieurs flux au choix,
-# sans client a installer ». go2rtc (AlexxIT) est le moteur de flux de Frigate,
-# mature, un binaire, aucune base de donnees : il prend en source RTSP, HTTP
-# (H.264 / MJPEG), ONVIF ou exec, et il sert la MEME page avec un bouton par
-# flux, en WebRTC / MSE / HLS / MJPEG / snapshot. Frigate ou MediaMTX
-# demanderaient un NVR complet ou un fichier de conf par flux pour le meme
-# resultat.
+# WHY go2rtc and not an NVR: the need is "view the tablet's stream
+# (and those of the other devices) from a browser, with several streams to choose from,
+# without a client to install". go2rtc (AlexxIT) is Frigate's stream engine,
+# mature, a single binary, no database: it takes as source RTSP, HTTP
+# (H.264 / MJPEG), ONVIF or exec, and it serves the SAME page with one button per
+# stream, in WebRTC / MSE / HLS / MJPEG / snapshot. Frigate or MediaMTX
+# would require a full NVR or one config file per stream for the same
+# result.
 #
-# COTE APPAREIL ANDROID : l'appli « Android IP Camera » (F-Droid,
-# com.github.digitallyrefined.androidipcamera, MIT) sert le flux elle-meme :
-#   http://<ip>:4444/video/h264      H.264 Annex-B (le moins cher en CPU)
-#   http://<ip>:4444/video/mjpeg     MJPEG multipart
-#   http://<ip>:4444/video/snapshot  JPEG haute resolution
-#   rtsps://<ip>:8554/live           RTSP (TLS) quand on l'active
-# Elle tourne en service de premier plan, donc elle survit a l'ecran eteint, et
-# sait demarrer au boot. C'est la seule partie non declarative : un APK.
+# ON THE ANDROID DEVICE SIDE: the "Android IP Camera" app (F-Droid,
+# com.github.digitallyrefined.androidipcamera, MIT) serves the stream itself:
+#   http://<ip>:4444/video/h264      H.264 Annex-B (the cheapest in CPU)
+#   http://<ip>:4444/video/mjpeg     multipart MJPEG
+#   http://<ip>:4444/video/snapshot  high-resolution JPEG
+#   rtsps://<ip>:8554/live           RTSP (TLS) when enabled
+# It runs as a foreground service, so it survives the screen being off, and
+# can start at boot. It is the only non-declarative part: an APK.
 #
-# EXPOSITION : go2rtc n'a AUCUNE authentification. Il ecoute donc uniquement en
-# loopback, et c'est newt/Pangolin qui publie cam.marcpartensky.com avec le SSO
-# (cf. services/newt/default.nix). Le firewall reste ferme : rien sur le LAN
-# hors du port 4444 de la tablette, qui n'est pas un port de tower.
+# EXPOSURE: go2rtc has NO authentication. It therefore listens only on
+# loopback, and it is newt/Pangolin that publishes cam.marcpartensky.com with SSO
+# (cf. services/newt/default.nix). The firewall stays closed: nothing on the LAN
+# except the tablet's port 4444, which is not a tower port.
 #
-# NE PAS METTRE D'IDENTIFIANTS ICI : le depot est public. Si l'appli demande un
-# jour un mot de passe, il passe par sops + environmentFile, pas par ce fichier.
+# DO NOT PUT CREDENTIALS HERE: the repo is public. If the app one
+# day asks for a password, it goes through sops + environmentFile, not this file.
 #
-# L'IP de la tablette vient d'un bail DHCP : si elle change, le flux passe en
-# erreur et il faut corriger la ligne ci-dessous (les autres flux ne bougent
-# pas). Un bail reserve sur la box regle le probleme a la source.
+# The tablet's IP comes from a DHCP lease: if it changes, the stream goes into
+# error and the line below must be fixed (the other streams do not move).
+# A reserved lease on the box solves the problem at the source.
 { ... }:
 {
   services.go2rtc = {
     enable = true;
 
     settings = {
-      # 1984 = port par defaut de l'API et de l'UI. Loopback uniquement.
+      # 1984 = default port of the API and the UI. Loopback only.
       api.listen = "127.0.0.1:1984";
 
-      # Serveur RTSP interne : sert a re-diffuser les flux dans un client
-      # (mpv, VLC) sans passer par le web, et a donner un point d'entree unique
-      # aux NVR eventuels.
+      # Internal RTSP server: used to re-broadcast the streams into a client
+      # (mpv, VLC) without going through the web, and to give a single entry point
+      # to possible NVRs.
       rtsp.listen = "127.0.0.1:18554";
 
       streams = {
-        # Tablette (gen 7 du profil nix-on-droid `tablet`, 192.168.1.114).
+        # Tablet (gen 7 of the nix-on-droid `tablet` profile, 192.168.1.114).
         tablette = "http://192.168.1.114:4444/video/h264";
 
-        # Le telephone (Xiaomi 13T Pro) prendra la meme ligne le jour ou
-        # l'appli y sera installee :
+        # The phone (Xiaomi 13T Pro) will take the same line the day
+        # the app is installed there:
         # tel = "http://192.168.1.172:4444/video/h264";
       };
     };

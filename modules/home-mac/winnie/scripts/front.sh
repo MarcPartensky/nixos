@@ -1,6 +1,6 @@
-# Serveur Vite (HMR) de app/ : joignable sur le LAN (http://<mac>:8080) et sur
-# dev.winnie.marcpartensky.com via Pangolin. Lancé par winnie-front, donc les
-# outils (node 22, npm) viennent du devShell du flake winnie.
+# Vite (HMR) server of app/: reachable on the LAN (http://<mac>:8080) and on
+# dev.winnie.marcpartensky.com via Pangolin. Launched by winnie-front, so the
+# tools (node 22, npm) come from the winnie flake's devShell.
 repo="$HOME/@REPO_REL@"
 cd "$repo/app"
 

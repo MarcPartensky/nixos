@@ -1,6 +1,6 @@
 {config, ...}: {
-  # ── Secrets via SOPS ────────────────────────────────────────────
-  # Dans ton anywhere.yml, ajoute :
+  # -- Secrets via SOPS -------------------------------------------
+  # In your anywhere.yml, add:
   #   chhoto_env: |
   #     password=un_mot_de_passe_fort
   #     api_key=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 128)
@@ -8,13 +8,13 @@
     key = "chhoto_env";
   };
 
-  # ── Répertoire persistant (SQLite + WAL side-files) ─────────────
-  # WAL mode requiert un dossier entier monté, pas un fichier seul
+  # -- Persistent directory (SQLite + WAL side-files) -------------
+  # WAL mode requires a whole mounted directory, not a single file
   systemd.tmpfiles.rules = [
     "d /var/lib/chhoto 0750 root root -"
   ];
 
-  # ── Container ───────────────────────────────────────────────────
+  # -- Container --------------------------------------------------
   virtualisation.podman = {
     enable = true;
     dockerCompat = true;
@@ -41,7 +41,7 @@
       port = "4567";
     };
 
-    # Le fichier SOPS déchiffré contient password= et api_key=
+    # The decrypted SOPS file contains password= and api_key=
     environmentFiles = [config.sops.secrets."chhoto/env".path];
 
     extraOptions = [

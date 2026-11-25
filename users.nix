@@ -10,8 +10,8 @@
       marc = {
         isNormalUser = true;
         home = "/home/marc";
-        # le home existe déjà : empêche update-users-groups.pl de refaire
-        # un chown/chmod 700 à chaque activation (cassait le mask ACL de hermes)
+        # the home already exists: prevents update-users-groups.pl from redoing
+        # a chown/chmod 700 on each activation (broke hermes' ACL mask)
         createHome = false;
         description = "Marc Partensky";
         extraGroups = [
@@ -26,16 +26,16 @@
           "network"
           "manager"
           "ydotool"
-          # sessions hermes lancees par marc dans les panes herdr : elles
-          # partagent le state dir /var/lib/hermes/.hermes du service (cf
-          # HERMES_HOME dans users/marc/home.nix), donc acces groupe hermes.
+          # hermes sessions launched by marc in the herdr panes: they
+          # share the service's state dir /var/lib/hermes/.hermes (cf
+          # HERMES_HOME in users/marc/home.nix), hence group hermes access.
           "hermes"
         ];
         # openssh.authorizedKeys.keys =
         shell = pkgs.zsh;
         # initialHashedPassword = "$6$0QAYnBqAJtqB12p3$2lb7rAS2sYw49GUJt0L0bAEpZJSv4HZARQjlbYPhexSmeRB71IRMBzXjf3b4rX6fuDxOuDLydP/Kni9uraS5j/";
         # ancien : initialHashedPassword = "$6$m6HmpBg7jzxJZhwX$OcKxHxT4tyhwSh9decgeAVmiC1J6QphiWWaVJv6cMfONUeWS8ap1No/pnkINqD2h0GGO/ptNtVWjZwQOe7KXd1";
-        # reset 25/09/2026 : hashedPassword (pas initial) pour forcer la valeur au switch, marc ne pouvait plus se logger.
+        # reset 25/09/2026: hashedPassword (not initial) to force the value on switch, marc could no longer log in.
         hashedPassword = "$6$dE28cUDZ9G81wzwo$JoO.6M91zdtR0ja/g1pw/LKE8aAMugmGkIyOiSuqdjEWVKId9F2jxqdvh5Bo69uOC3/g7uP6O3mZmzxqD2pKU1";
         # RSA key: legacy clients. ed25519 = marc@Air-de-Marc, the key his Mac
         # uses, so `ssh laptop` / `ssh tower` work with the same identity from

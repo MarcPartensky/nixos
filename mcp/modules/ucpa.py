@@ -1,37 +1,37 @@
-"""Outils UCPA (sejours ski/snowboard, prix, veille) pour mcp-host.
+"""UCPA tools (ski/snowboard stays, prices, watch) for mcp-host.
 
-Pourquoi ce module plutot qu'un serveur MCP dedie : ucpa.com n'expose aucune
-API documentee, mais son front AMP/Vue interroge deux routes JSON publiques,
-sans compte ni cle :
+Why this module rather than a dedicated MCP server: ucpa.com exposes no
+documented API, but its AMP/Vue front end queries two public JSON routes,
+with no account or key:
 
   GET /api/products?filters=<json>&start=&limit=&sortby=
-      Decouverte. Rend une entree par offre/session, avec le produit
-      (uuid, nom, centre, activite, age min/max, url) et un prix indicatif
-      nomme ici price_from : ce n'est PAS le prix d'une session datee (mesure
-      du 18/11/2026 : 693 en liste contre 1140 en detail pour le meme sejour).
+      Discovery. Returns one entry per offer/session, with the product
+      (uuid, name, center, activity, age min/max, url) and an indicative price
+      named price_from here: this is NOT the price of a dated session (measurement
+      of 18/11/2026: 693 in the list versus 1140 in the detail for the same stay).
   GET /api/product/<uuid>?locale=fr&workspace=ucpa
-      Verite terrain. offersInfo porte les sessions avec date complete
-      (dF, DD/MM/YYYY), prix, stock, statut depart garanti, et pour chaque
-      session les variantes avec transport (departC = ville de depart).
-      ~930 Ko en clair, 23 Ko gzip, ~2 s : on cache sur disque.
+      Ground truth. offersInfo carries the sessions with the full date
+      (dF, DD/MM/YYYY), price, stock, guaranteed departure status, and for each
+      session the variants with transport (departC = departure city).
+      ~930 KB uncompressed, 23 KB gzip, ~2 s: we cache to disk.
 
-Filtres verifies sur l'API (un filtre non honore renverrait 200 + corps
-identique) : activity_label, date_start_min, date_start_max (DD/MM/YYYY),
+Filters verified on the API (a filter that is not honored would return 200 +
+identical body): activity_label, date_start_min, date_start_max (DD/MM/YYYY),
 availability=[1], age_list, transport_departure_city, month, season, country,
-segment_marketing, price_range, duration. Controle negatif : fevrier 2019
-renvoie 0 resultat, donc la fenetre de dates filtre bien.
+segment_marketing, price_range, duration. Negative control: February 2019
+returns 0 results, so the date window does filter correctly.
 
-AGE : UCPA ne facture pas par age sur ces sejours. L'age est un critere
-d'ELIGIBILITE (product_age_min/max, et le filtre age_list de l'API). Un
-sejour « 18-40 ans » est donc ouvert a 26 ans, un « 14-17 » non.
+AGE: UCPA does not bill by age on these stays. Age is an
+ELIGIBILITY criterion (product_age_min/max, and the API's age_list filter). A
+"18-40 years" stay is therefore open at 26, a "14-17" one is not.
 
-Cache et veille : tout vit dans UCPA_STATE_DIR (defaut
-~/.local/state/ucpa-mcp). Le cache evite de marteler un site qui met 2 a 7 s
-par requete ; la veille garde le dernier releve BON par session et ne
-l'ecrase jamais avec un releve en erreur.
+Cache and watch: everything lives in UCPA_STATE_DIR (default
+~/.local/state/ucpa-mcp). The cache avoids hammering a site that takes 2 to 7 s
+per request; the watch keeps the last GOOD reading per session and never
+overwrites it with an errored reading.
 
-Env : UCPA_BASE, UCPA_STATE_DIR, UCPA_TIMEOUT (defaut 60),
-UCPA_CACHE_TTL (secondes, defaut 3600), UCPA_MAX_WORKERS (defaut 6).
+Env: UCPA_BASE, UCPA_STATE_DIR, UCPA_TIMEOUT (default 60),
+UCPA_CACHE_TTL (seconds, default 3600), UCPA_MAX_WORKERS (default 6).
 """
 
 import gzip
@@ -47,7 +47,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 try:
     from fastmcp.tools import tool
-except Exception:  # test hors mcp-host : decorateur neutre
+except Exception:  # test outside mcp-host: neutral decorator
 
     def tool(fn=None, **_kw):
         if fn is not None:
@@ -67,15 +67,15 @@ CACHE_TTL = float(os.environ.get("UCPA_CACHE_TTL", "3600"))
 WORKERS = max(1, int(os.environ.get("UCPA_MAX_WORKERS", "6")))
 WORKSPACE = os.environ.get("UCPA_WORKSPACE", "ucpa")
 
-# Le site est derriere un anti-bot AMP : un UA de navigateur complet est
-# necessaire, un UA court se fait jeter. Aucun nom d'utilisateur dedans.
+# The site is behind an AMP anti-bot: a full browser UA is
+# necessary, a short UA gets rejected. No username inside.
 UA = os.environ.get(
     "UCPA_UA",
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/131.0.0.0 Safari/537.36",
 )
 
-# Familles d'activite telles que les nomme le facet activity_label d'UCPA.
+# Activity families as named by UCPA's activity_label facet.
 SKI_SNOWBOARD = [
     "ski-alpin",
     "ski-alpin-ou-snowboard",
@@ -96,7 +96,7 @@ DEFAULT_TO = "2027-02-28"
 _lock = threading.Lock()
 
 
-# ------------------------------------------------------------------ reseau
+# ------------------------------------------------------------------ network
 
 
 def _resolve_dir(path):
@@ -134,7 +134,7 @@ def _cache_put(kind, key, payload):
 
 
 def _fetch(path, params=None, ttl=None):
-    """GET JSON avec cache disque. Leve RuntimeError avec le corps brut."""
+    """GET JSON with disk cache. Raises RuntimeError with the raw body."""
     url = BASE + path
     if params:
         url += "?" + urllib.parse.urlencode(params)
@@ -158,11 +158,11 @@ def _fetch(path, params=None, ttl=None):
             payload = json.loads(raw)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode(errors="replace")[:300]
-        raise RuntimeError(f"UCPA HTTP {exc.code} sur {path} : {detail}") from None
+        raise RuntimeError(f"UCPA HTTP {exc.code} on {path}: {detail}") from None
     except urllib.error.URLError as exc:
-        raise RuntimeError(f"UCPA injoignable ({path}) : {exc.reason}") from None
+        raise RuntimeError(f"UCPA unreachable ({path}): {exc.reason}") from None
     except ValueError:
-        raise RuntimeError(f"UCPA {path} : reponse non JSON") from None
+        raise RuntimeError(f"UCPA {path}: non-JSON response") from None
     _cache_put("json", url, payload)
     return payload
 
@@ -171,7 +171,7 @@ def _fetch(path, params=None, ttl=None):
 
 
 def _iso(fr_date):
-    """'07/02/2027' -> '2027-02-07'. Rend None si le format surprend."""
+    """'07/02/2027' -> '2027-02-07'. Returns None if the format is unexpected."""
     try:
         day, month, year = str(fr_date).split("/")
         return f"{year}-{month}-{day}"
@@ -180,10 +180,10 @@ def _iso(fr_date):
 
 
 def _fr(iso_date):
-    """'2027-02-01' -> '01/02/2027' (format attendu par l'API de filtres)."""
+    """'2027-02-01' -> '01/02/2027' (format expected by the filter API)."""
     parts = str(iso_date).split("-")
     if len(parts) != 3:
-        raise RuntimeError(f"date attendue en AAAA-MM-JJ, recu {iso_date!r}")
+        raise RuntimeError(f"date expected as YYYY-MM-DD, got {iso_date!r}")
     return f"{parts[2]}/{parts[1]}/{parts[0]}"
 
 
@@ -195,7 +195,7 @@ def _num(value, digits=2):
 
 
 def _slug_list(activities):
-    """Resout les alias ('ski', 'tous') en slugs activity_label d'UCPA."""
+    """Resolves the aliases ('ski', 'tous') into UCPA activity_label slugs."""
     if activities is None:
         return list(SKI_SNOWBOARD)
     if isinstance(activities, str):
@@ -226,8 +226,8 @@ def _build_filters(
     if date_to:
         filters["date_start_max"] = [_fr(date_to)]
     if date_from or date_to:
-        # Exclut les sejours sans place sur la fenetre. Verifie : sans ce
-        # couple, l'API rend aussi des produits non reservables.
+        # Excludes stays with no room in the window. Verified: without this
+        # pair, the API also returns non-bookable products.
         filters["availability"] = [1]
     if age is not None:
         filters["age_list"] = [int(age)]
@@ -238,7 +238,7 @@ def _build_filters(
     return filters
 
 
-# --------------------------------------------------------------- lecture API
+# --------------------------------------------------------------- API reading
 
 
 def _search_page(filters, start, limit, sortby, ttl, query=None):
@@ -256,11 +256,11 @@ def _search_page(filters, start, limit, sortby, ttl, query=None):
 
 
 def _collect(filters, sortby="pertinence", max_items=600, ttl=None, limit=100):
-    """Pagine la decouverte et rend (total, produits uniques tries).
+    """Paginates the discovery and returns (total, sorted unique products).
 
-    Les pages sont independantes : elles partent en parallele (6 par defaut).
-    Sans ca, un balayage ski/snowboard de fevrier 2027 coute 68 s de bout en
-    bout, l'API repondant en 5 s par page de 100 offres.
+    The pages are independent: they run in parallel (6 by default).
+    Without that, a ski/snowboard sweep of February 2027 costs 68 s end to
+    end, the API answering in 5 s per page of 100 offers.
     """
     total = None
     items = []
@@ -330,7 +330,7 @@ def _detail(uuid, ttl=None):
         ttl=ttl,
     )
     if not isinstance(payload, dict):
-        raise RuntimeError(f"detail illisible pour {uuid}")
+        raise RuntimeError(f"unreadable detail for {uuid}")
     return payload
 
 
@@ -340,7 +340,7 @@ def _offers(detail):
 
 
 def _sessions_from(detail, date_from=None, date_to=None, departure_city=None):
-    """Sessions datees, prix par variante transport, filtrees sur la fenetre."""
+    """Dated sessions, price per transport variant, filtered on the window."""
     out = []
     for offer in _offers(detail):
         iso = _iso(offer.get("dF"))
@@ -381,7 +381,7 @@ def _cities(detail):
 
 
 def _best(sessions, transport=None, cities=None):
-    """Prix le plus bas par date : sans transport, ou avec (ville donnee)."""
+    """Lowest price per date: without transport, or with (given city)."""
     picked = {}
     for s in sessions:
         if transport is True and not s["transport"]:
@@ -412,7 +412,7 @@ def _price_table(
     sortby,
     ttl,
 ):
-    """Decouverte + detail de chaque produit : sessions datees et prix reels."""
+    """Discovery + detail of each product: dated sessions and real prices."""
     filters = _build_filters(
         activities, date_from, date_to, age=age, departure_city=departure_city
     )
@@ -484,7 +484,7 @@ def _price_table(
     }
 
 
-# ---------------------------------------------------------------- etat veille
+# ---------------------------------------------------------------- watch state
 
 
 def _load_watches():
@@ -508,7 +508,7 @@ def _save_watches(data):
 
 
 def _watch_keys(rows, transport):
-    """Indexe les sessions d'une veille : cle stable uuid|date|variante."""
+    """Indexes the sessions of a watch: stable key uuid|date|variant."""
     out = {}
     for row in rows:
         for sess in row["dates"]:
@@ -582,9 +582,9 @@ def _diff(previous, current):
 
 @tool
 def ucpa_status() -> str:
-    """Etat du serveur UCPA : API joignable, cache, veilles en place.
+    """UCPA server state: API reachable, cache, watches in place.
 
-    Sert de smoke test : c'est le seul outil qui ne depend d'aucun filtre.
+    Serves as a smoke test: it is the only tool that depends on no filter.
     """
     out = {
         "base": BASE,
@@ -622,10 +622,10 @@ def ucpa_status() -> str:
 
 @tool
 def ucpa_activities() -> str:
-    """Activites UCPA disponibles (slug + libelle) et leurs familles.
+    """Available UCPA activities (slug + label) and their families.
 
-    Le slug est ce qu'attendent les outils de recherche ; `ski` rend la
-    famille ski/snowboard complete.
+    The slug is what the search tools expect; `ski` returns the
+    complete ski/snowboard family.
     """
     try:
         page = _search_page({}, 0, 1, None, CACHE_TTL)
@@ -662,22 +662,22 @@ def ucpa_search(
     sortby: str = "prix_sort_asc",
     max_offers: int = 400,
 ) -> str:
-    """Decouvre les sejours UCPA sur une fenetre de dates, sans les sessions.
+    """Discovers UCPA stays over a date window, without the sessions.
 
-    Rapide (une requete paginee, pas de detail par sejour). Rend un prix
-    `price_from` INDICATIF issu de la liste : pour un prix de session
-    opposable, enchainer sur ucpa_sessions ou appeler ucpa_prices, qui lit le
-    detail de chaque sejour.
+    Fast (one paginated request, no per-stay detail). Returns a price
+    `price_from` that is INDICATIVE, from the list: for a price of a session
+    that can be relied on, chain into ucpa_sessions or call ucpa_prices, which reads the
+    detail of each stay.
 
-    activities : 'ski' (famille ski/snowboard), 'tous', ou des slugs separes
-    par des virgules ('snowboard,snowboard-freestyle'). Voir ucpa_activities.
-    date_from/date_to : AAAA-MM-JJ, defaut fevrier 2027 (le sejour vise).
-    age : critere d'eligibilite (UCPA ne facture pas par age sur ces sejours).
-    departure_city : ville de depart transport, ex 'Paris' (filtre cote API).
-    max_price : 0 = pas de plafond ; filtre sur price_from.
-    sortby : pertinence | prix_sort_asc | prix_sort_desc.
-    max_offers : borne le balayage, en OFFRES de la liste (mesure ski/snowboard
-    fevrier 2027 : 1277 offres = 95 sejours, ~13 offres par sejour).
+    activities: 'ski' (ski/snowboard family), 'tous', or slugs separated
+    by commas ('snowboard,snowboard-freestyle'). See ucpa_activities.
+    date_from/date_to: YYYY-MM-DD, default February 2027 (the targeted stay).
+    age: eligibility criterion (UCPA does not bill by age on these stays).
+    departure_city: transport departure city, e.g. 'Paris' (filter on the API side).
+    max_price: 0 = no cap; filter on price_from.
+    sortby: pertinence | prix_sort_asc | prix_sort_desc.
+    max_offers: bounds the sweep, in OFFERS of the list (ski/snowboard measurement
+    February 2027: 1277 offers = 95 stays, ~13 offers per stay).
     """
     filters = _build_filters(
         activities, date_from, date_to, age=age, departure_city=departure_city
@@ -694,8 +694,8 @@ def ucpa_search(
             "filters": filters,
             "offers_matched": total,
             "products": len(products),
-            "note": "price_from = indicatif (liste) ; ucpa_prices/ucpa_sessions "
-            "rendent le prix de session issu du detail",
+            "note": "price_from = indicative (list); ucpa_prices/ucpa_sessions "
+            "return the session price from the detail",
             "results": products,
         },
         ensure_ascii=False,
@@ -711,13 +711,13 @@ def ucpa_sessions(
     departure_city: str = "",
     refresh: bool = False,
 ) -> str:
-    """Sessions datees et prix exacts d'un sejour (detail UCPA).
+    """Dated sessions and exact prices of a stay (UCPA detail).
 
-    product : uuid ('product_rdd_2703'), URL ucpa.com, ou code sejour de
-    l'URL (ex 'sfavisn13' dans /sejour/sfavisn13-...). Rend, par date, les
-    variantes sans transport et avec transport (ville de depart), avec prix,
-    stock, statut depart garanti. departure_city filtre les variantes avec
-    transport (sous-chaine, insensible a la casse).
+    product: uuid ('product_rdd_2703'), ucpa.com URL, or stay code from
+    the URL (e.g. 'sfavisn13' in /sejour/sfavisn13-...). Returns, per date, the
+    variants without transport and with transport (departure city), with price,
+    stock, guaranteed departure status. departure_city filters the variants with
+    transport (substring, case-insensitive).
     """
     uuid = _resolve_product(product)
     ttl = 0 if refresh else CACHE_TTL
@@ -754,17 +754,17 @@ def ucpa_prices(
     max_offers: int = 120,
     sortby: str = "prix_sort_asc",
 ) -> str:
-    """Prix reels par session pour tous les sejours d'une fenetre de dates.
+    """Real prices per session for all the stays of a date window.
 
-    Le seul outil qui donne des prix opposes : il lit le detail de chaque
-    sejour decouvert, donc il coute ~2 s par sejour (cache disque ensuite).
-    max_offers borne le balayage, en OFFRES de la liste (mesure ski/snowboard
-    fevrier 2027 : 1277 offres = 95 sejours ; compter ~13 offres par sejour).
-    1400 couvre donc l'inventaire complet de la famille sur un mois.
+    The only tool that gives reliable prices: it reads the detail of each
+    discovered stay, so it costs ~2 s per stay (disk cache afterwards).
+    max_offers bounds the sweep, in OFFERS of the list (ski/snowboard measurement
+    February 2027: 1277 offers = 95 stays; count ~13 offers per stay).
+    1400 therefore covers the complete inventory of the family over a month.
 
-    transport : 'sans' (defaut, prix sejour seul), 'avec' (variante avec
-    transport, la moins chere), 'indifferent' (le moins cher des deux).
-    max_price : 0 = pas de plafond, sinon filtre sur le prix de session.
+    transport: 'sans' (default, stay-only price), 'avec' (variant with
+    transport, the cheapest), 'indifferent' (the cheapest of the two).
+    max_price: 0 = no cap, otherwise filter on the session price.
     """
     mode = {"sans": False, "avec": True, "indifferent": None}.get(
         (transport or "sans").lower(), False
@@ -785,10 +785,10 @@ def ucpa_prices(
 
 
 def _resolve_product(product):
-    """Accepte un uuid de sejour ou une URL ucpa.com (code sejour dedans)."""
+    """Accepts a stay uuid or a ucpa.com URL (stay code inside)."""
     raw = str(product or "").strip()
     if not raw:
-        raise RuntimeError("product vide")
+        raise RuntimeError("empty product")
     if raw.startswith("product_"):
         return raw
     if "ucpa.com" in raw:
@@ -797,14 +797,14 @@ def _resolve_product(product):
         raw = raw.rsplit("/", 1)[-1]
     code = raw.split("-", 1)[0]
     if not code:
-        raise RuntimeError(f"reference de sejour illisible : {product!r}")
+        raise RuntimeError(f"unreadable stay reference: {product!r}")
     page = _search_page({}, 0, 100, None, CACHE_TTL, query=code)
     for item in page.get("items") or []:
         if f"/{code}-" in (item.get("url") or ""):
             return item["uuid"]
     raise RuntimeError(
-        f"aucun sejour UCPA pour la reference {code!r} ; passer l'uuid rendu "
-        "par ucpa_search (champ uuid)"
+        f"no UCPA stay for reference {code!r}; pass the uuid returned "
+        "by ucpa_search (uuid field)"
     )
 
 
@@ -820,11 +820,11 @@ def ucpa_watch_add(
     transport: str = "sans",
     max_offers: int = 120,
 ) -> str:
-    """Enregistre une veille de prix (contrat nomme) sans la lancer.
+    """Saves a price watch (named contract) without running it.
 
-    La veille est identifiee par `name` ; la relancer ecrase la precedente.
-    Les differents releves sont compares par ucpa_watch_check, qui ne garde
-    jamais un releve en erreur. Voir les prix tout de suite : ucpa_prices.
+    The watch is identified by `name`; re-running it overwrites the previous one.
+    The different readings are compared by ucpa_watch_check, which never
+    keeps an errored reading. To see prices right away: ucpa_prices.
     """
     data = _load_watches()
     data["watches"][name] = {
@@ -849,7 +849,7 @@ def ucpa_watch_add(
 
 @tool
 def ucpa_watch_list() -> str:
-    """Veilles enregistrees, avec leur dernier releve."""
+    """Saved watches, with their last reading."""
     data = _load_watches()
     rows = []
     for name, watch in data["watches"].items():
@@ -871,34 +871,34 @@ def ucpa_watch_list() -> str:
 
 @tool
 def ucpa_watch_remove(name: str) -> str:
-    """Supprime une veille (et son historique de prix)."""
+    """Removes a watch (and its price history)."""
     data = _load_watches()
     removed = data["watches"].pop(name, None)
     if removed is None:
-        raise RuntimeError(f"veille inconnue : {name!r}")
+        raise RuntimeError(f"unknown watch: {name!r}")
     _save_watches(data)
     return json.dumps({"removed": name}, ensure_ascii=False)
 
 
 @tool
 def ucpa_watch_check(name: str = "", max_price_check: bool = True) -> str:
-    """Relance une veille (ou toutes) et rend les changements de prix.
+    """Re-runs a watch (or all) and returns the price changes.
 
-    Sortie : sessions nouvelles, baisses, hausses, disparitions, et les
-    sessions passees sous le plafond de la veille. Si l'API echoue pour un
-    sejour, son dernier releve est conserve (jamais ecrase par une erreur).
+    Output: new sessions, drops, rises, disappearances, and the
+    sessions that fell below the watch cap. If the API fails for a
+    stay, its last reading is kept (never overwritten by an error).
 
-    A appeler depuis un cron quotidien ; c'est la brique 'tracker les prix'.
+    To be called from a daily cron; it is the 'track prices' building block.
     """
     data = _load_watches()
     names = [name] if name else list(data["watches"])
     if not names:
-        raise RuntimeError("aucune veille : creer avec ucpa_watch_add")
+        raise RuntimeError("no watch: create one with ucpa_watch_add")
     report = []
     for watch_name in names:
         watch = data["watches"].get(watch_name)
         if watch is None:
-            report.append({"name": watch_name, "error": "veille inconnue"})
+            report.append({"name": watch_name, "error": "unknown watch"})
             continue
         mode = {"sans": False, "avec": True, "indifferent": None}.get(
             (watch.get("transport") or "sans").lower(), False
@@ -914,7 +914,7 @@ def ucpa_watch_check(name: str = "", max_price_check: bool = True) -> str:
                 mode,
                 int(watch.get("max_offers") or 120),
                 "prix_sort_asc",
-                0,  # pas de cache : un releve de veille doit etre frais
+                0,  # no cache: a watch reading must be fresh
             )
         except RuntimeError as exc:
             report.append(
@@ -926,7 +926,7 @@ def ucpa_watch_check(name: str = "", max_price_check: bool = True) -> str:
             report.append(
                 {
                     "name": watch_name,
-                    "error": "aucune session sur ce releve, dernier etat conserve",
+                    "error": "no session in this reading, last state kept",
                     "kept": True,
                 }
             )

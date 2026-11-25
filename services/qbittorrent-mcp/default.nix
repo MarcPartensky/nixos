@@ -1,27 +1,27 @@
 # services/qbittorrent-mcp/default.nix
-# Serveur MCP qBittorrent (arr-mcps/qbittorrent-mcp) : toute l'API WebUI v2
-# (torrents, transferts, catégories/tags, RSS, recherche) en 10 outils groupés,
-# un `operation` par endpoint.
+# qBittorrent MCP server (arr-mcps/qbittorrent-mcp): the whole WebUI API v2
+# (torrents, transfers, categories/tags, RSS, search) in 10 grouped tools,
+# one `operation` per endpoint.
 #
-# Auth : AUCUNE credential. Le serveur tape http://127.0.0.1:8084 et
-# qBittorrent dispense de login les requêtes locales (AuthSubnetWhitelistEnabled
-# + 127.0.0.1/32 dans services/qbittorrent). Même modèle que le tunnel newt, qui
-# joint lui aussi la loopback. Si la whitelist disparaît un jour : générer une
-# clé API (qBittorrent >= 5.2, Preferences > WebUI > API Key, format qbt_...) et
-# la passer par sops en QBITTORRENT_API_KEY (jamais dans le store).
+# Auth: NO credential. The server hits http://127.0.0.1:8084 and
+# qBittorrent exempts local requests from login (AuthSubnetWhitelistEnabled
+# + 127.0.0.1/32 in services/qbittorrent). Same model as the newt tunnel, which
+# also reaches loopback. If the whitelist ever disappears: generate an
+# API key (qBittorrent >= 5.2, Preferences > WebUI > API Key, format qbt_...) and
+# pass it via sops in QBITTORRENT_API_KEY (never in the store).
 #
-# Pas d'unité systemd : transport stdio, hermes spawn le binaire en subprocess.
+# No systemd unit: stdio transport, hermes spawns the binary as a subprocess.
 {pkgs, ...}: let
   python = pkgs.python312;
 
-  # Dépendances de fastmcp (extras complets) dont la suite de tests ne passe
-  # pas en sandbox, et qui ne sont pas dans le cache binaire 26.05 : sans ces
-  # doCheck = false, fastmcp (donc qbittorrent-mcp, et tout le toplevel avec)
-  # ne se construit pas. Constaté : portalocker 3.2.0 (test multiprocess flaky,
-  # TimeoutError à 1.5 s), azure-core 1.38.0 (271 erreurs pytest-asyncio
-  # « Didn't start! »), inquirer 3.4.1 (38 tests d'acceptation pexpect sans
-  # TTY), chalice 1.33.0 (bloqué par inquirer). Override scopé au set python
-  # utilisé ici uniquement.
+  # fastmcp dependencies (full extras) whose test suite does not pass
+  # in the sandbox, and which are not in the 26.05 binary cache: without these
+  # doCheck = false, fastmcp (so qbittorrent-mcp, and the whole toplevel with it)
+  # does not build. Observed: portalocker 3.2.0 (flaky multiprocess test,
+  # TimeoutError at 1.5 s), azure-core 1.38.0 (271 pytest-asyncio errors
+  # "Didn't start!"), inquirer 3.4.1 (38 pexpect acceptance tests without
+  # TTY), chalice 1.33.0 (blocked by inquirer). Override scoped to the python set
+  # used here only.
   py = python.pkgs.overrideScope (final: prev: {
     portalocker = prev.portalocker.overridePythonAttrs (_: {doCheck = false;});
     azure-core = prev.azure-core.overridePythonAttrs (_: {doCheck = false;});
@@ -41,7 +41,7 @@
     pyproject = true;
     build-system = [py.hatchling];
     dependencies = [py.fastmcp py.httpx];
-    doCheck = false; # les seuls tests utiles exigent un qBittorrent live
+    doCheck = false; # the only useful tests require a live qBittorrent
     meta = {
       description = "MCP server exposing qBittorrent's WebUI API v2";
       license = pkgs.lib.licenses.mit;
@@ -49,7 +49,7 @@
     };
   };
 in {
-  # Sur le PATH pour pouvoir sonder le serveur à la main (stdio).
+  # On the PATH to be able to probe the server by hand (stdio).
   environment.systemPackages = [qbittorrent-mcp];
 
   services.hermes-agent.mcpServers.qbittorrent = {

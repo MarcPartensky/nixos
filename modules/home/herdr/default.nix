@@ -3,25 +3,25 @@
   lib,
   ...
 }: {
-  # --- herdr : config de marc, posee par home-manager ---
-  # herdr (multiplexeur d'agents, github:ogulcancelik/herdr) n'a pas d'option
-  # NixOS et le module `programs.herdr` n'existe pas encore dans le
-  # home-manager epingle (verifie : pas de modules/programs/herdr.nix dans
-  # l'input), donc le fichier est declare ici et pose par xdg.configFile.
+  # --- herdr: marc's config, placed by home-manager ---
+  # herdr (agent multiplexer, github:ogulcancelik/herdr) has no NixOS
+  # option and the `programs.herdr` module does not yet exist in the
+  # pinned home-manager (verified: no modules/programs/herdr.nix in
+  # the input), so the file is declared here and placed by xdg.configFile.
   #
-  # Contenu : voir modules/home/herdr/config.toml (rows de sidebar qui
-  # affichent le modele hermes de chaque pane, via le titre OSC ecrit par le
-  # TUI ; cote hermes, cela suppose display.interface = "tui", cf
+  # Content: see modules/home/herdr/config.toml (sidebar rows that
+  # display the hermes model of each pane, via the OSC title written by the
+  # TUI; on the hermes side, this assumes display.interface = "tui", cf
   # services/hermes/default.nix).
   #
-  # Application a chaud apres un switch : `herdr server reload-config`
-  # (ou menu global -> reload config). Un client deja lance garde son ancienne
-  # config jusqu'au reload.
-  # `force = true` : la 1re activation du HM systeme bute sinon sur l'ancien
-  # symlink /home/marc/.config/herdr/config.toml laisse par la version
-  # systemd.tmpfiles (il ne ressemble pas a un fichier home-manager-files, donc
-  # check-link-targets le declare "would be clobbered" et l'activation echoue
-  # en status=1). force saute ce controle et remplace le lien.
+  # Hot application after a switch: `herdr server reload-config`
+  # (or global menu -> reload config). An already-launched client keeps its old
+  # config until the reload.
+  # `force = true`: the 1st activation of the system HM otherwise stumbles on the old
+  # symlink /home/marc/.config/herdr/config.toml left by the
+  # systemd.tmpfiles version (it does not look like a home-manager-files file, so
+  # check-link-targets declares it "would be clobbered" and the activation fails
+  # with status=1). force skips this check and replaces the link.
   xdg.configFile."herdr/config.toml" = {
     force = true;
     text = builtins.readFile ./config.toml;

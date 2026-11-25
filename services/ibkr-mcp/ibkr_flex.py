@@ -1,12 +1,12 @@
-"""MCP IBKR en lecture seule, adosse au Flex Web Service d'Interactive Brokers.
+"""Read-only IBKR MCP, backed by Interactive Brokers' Flex Web Service.
 
-Aucun identifiant de compte n'est necessaire : le token Flex est independant
-du mot de passe IBKR, revocable depuis Client Portal, et le service repond en
-HTTPS sans session ni 2FA. Cout : les rapports sont generes a la demande
-(quelques secondes), pas de cotation temps reel.
+No account identifier is needed: the Flex token is independent
+of the IBKR password, revocable from Client Portal, and the service answers over
+HTTPS with no session or 2FA. Cost: reports are generated on demand
+(a few seconds), no real-time quotes.
 
-Le token et les identifiants de requetes vivent dans un dotenv relu a CHAQUE
-appel (IBKR_FLEX_ENV_FILE) : une rotation n'exige pas de redemarrage.
+The token and the query identifiers live in a dotenv re-read on EVERY
+call (IBKR_FLEX_ENV_FILE): a rotation does not require a restart.
 """
 
 import os
@@ -30,7 +30,7 @@ UA = "hermes-ibkr-mcp/1.0"
 PLACEHOLDER = re.compile(
     r"placeholder|remplacer|set_me|changeme|todo|xxx", re.I
 )
-# Codes Flex qui signifient "rapport pas encore pret, repasse plus tard".
+# Flex codes that mean "report not ready yet, come back later".
 RETRYABLE = {"1001", "1003", "1004", "1005", "1006", "1007", "1008",
              "1019"}
 
@@ -38,7 +38,7 @@ mcp = MCPServer("ibkr-flex")
 
 
 def _env():
-    """Lit le dotenv a chaque appel (rotation sans redemarrage)."""
+    """Read the dotenv on each call (rotation without restart)."""
     path = os.environ.get("IBKR_FLEX_ENV_FILE", "/run/secrets/ibkr-flex.env")
     values = {}
     if os.path.exists(path):
@@ -56,16 +56,16 @@ def _cred(name):
     value = _env().get(name, "")
     if not value:
         raise RuntimeError(
-            f"{name} absent de {os.environ.get('IBKR_FLEX_ENV_FILE')} : "
-            "creer le token Flex (Client Portal > Performance & Reports > "
-            "Flex Queries > Flex Web Service Configuration), le poser dans "
-            "secrets/ibkr.yml puis reactiver le systeme."
+            f"{name} missing from {os.environ.get('IBKR_FLEX_ENV_FILE')}: "
+            "create the Flex token (Client Portal > Performance & Reports > "
+            "Flex Queries > Flex Web Service Configuration), put it in "
+            "secrets/ibkr.yml then reactivate the system."
         )
     if PLACEHOLDER.search(value):
         raise RuntimeError(
-            f"{name} vaut encore un placeholder ({value[:24]}...) : le "
-            "serveur est deploye mais INERTE. Remplacer la valeur dans "
-            "secrets/ibkr.yml et reactiver."
+            f"{name} is still a placeholder ({value[:24]}...): the "
+            "server is deployed but INERT. Replace the value in "
+            "secrets/ibkr.yml and reactivate."
         )
     return value
 
@@ -81,10 +81,10 @@ def _get(url, params, what):
     except urllib.error.HTTPError as err:
         body = err.read().decode("utf-8", "replace")
         raise RuntimeError(
-            f"HTTP {err.code} sur {what} : {body[:300]}"
+            f"HTTP {err.code} on {what}: {body[:300]}"
         ) from err
     except urllib.error.URLError as err:
-        raise RuntimeError(f"reseau injoignable sur {what} : {err.reason}")
+        raise RuntimeError(f"network unreachable on {what}: {err.reason}")
 
 
 def _fields(xml_text):
@@ -92,7 +92,7 @@ def _fields(xml_text):
         root = ET.fromstring(xml_text)
     except ET.ParseError as err:
         raise RuntimeError(
-            f"reponse Flex illisible ({err}) : {xml_text[:300]}"
+            f"unreadable Flex response ({err}): {xml_text[:300]}"
         ) from err
     return root, {child.tag: (child.text or "").strip() for child in root}
 
@@ -109,7 +109,7 @@ def _send_request(token, query_id, from_date="", to_date="", period=""):
     if fields.get("Status") != "Success":
         code = fields.get("ErrorCode", "?")
         msg = fields.get("ErrorMessage", text[:300])
-        raise RuntimeError(f"Flex a refuse la requete ({code}) : {msg}")
+        raise RuntimeError(f"Flex refused the request ({code}): {msg}")
     return fields.get("ReferenceCode", "")
 
 
@@ -126,8 +126,8 @@ def _fetch(token, query_id, reference, timeout=75):
         msg = fields.get("ErrorMessage", "")
         if code not in RETRYABLE or time.time() >= deadline:
             raise RuntimeError(
-                f"rapport Flex indisponible (reference {reference}, code "
-                f"{code}) : {msg}"
+                f"Flex report unavailable (reference {reference}, code "
+                f"{code}): {msg}"
             )
         time.sleep(delay)
         delay = min(delay * 2, 10)
@@ -153,20 +153,20 @@ def _query_id(arg):
     value = _env().get("IBKR_FLEX_QUERY_ID", "")
     if not value or PLACEHOLDER.search(value):
         raise RuntimeError(
-            "aucun identifiant de requete Flex (parametre query_id ou cle "
-            "IBKR_FLEX_QUERY_ID dans secrets/ibkr.yml). Creer une Activity "
-            "Flex Query dans Client Portal et poser son identifiant."
+            "no Flex query identifier (query_id parameter or key "
+            "IBKR_FLEX_QUERY_ID in secrets/ibkr.yml). Create an Activity "
+            "Flex Query in Client Portal and set its identifier."
         )
     return value, "IBKR_FLEX_QUERY_ID"
 
 
 @mcp.tool()
 def status() -> dict:
-    """Etat du serveur : fichier de credentials, token, et test Flex reel.
+    """Server status: credentials file, token, and real Flex test.
 
-    A appeler en premier : c'est le smoke test permanent du serveur. Un
-    statut "ok" avec un code d'erreur IBKR est une preuve que la chaine
-    complete fonctionne (aucune donnee de compte n'en sort).
+    Call it first: it is the permanent smoke test of the server. A
+    "ok" status with an IBKR error code is proof that the whole chain
+    works (no account data comes out of it).
     """
     path = os.environ.get("IBKR_FLEX_ENV_FILE", "/run/secrets/ibkr-flex.env")
     env = _env()
@@ -184,7 +184,7 @@ def status() -> dict:
         "endpoint": f"{BASE}/SendRequest",
     }
     if not token or not query:
-        out["flex"] = "non teste : token ou identifiant de requete manquant"
+        out["flex"] = "not tested: token or query identifier missing"
         return out
     try:
         ref = _send_request(token, query)
@@ -204,16 +204,16 @@ def report(
     period: str = "",
     limit: int = 50,
 ) -> dict:
-    """Genere une requete Flex et renvoie le rapport, en clair et structure.
+    """Generate a Flex query and return the report, in clear text and structured.
 
-    query_id : identifiant de la Flex query (defaut : IBKR_FLEX_QUERY_ID).
-    section : nom de la balise XML a extraire (ex. OpenPosition, Trade,
-    CashReportCurrency, EquitySummaryByReportDateInBase). Vide = index des
-    sections du rapport avec le nombre de lignes de chacune, ce qui sert a
-    savoir ce que contient la requete.
-    from_date/to_date : override de periode au format AAAAMMJJ (365 j max).
-    period : override en nombre de jours (ex. "5").
-    limit : nombre max de lignes renvoyees (0 = pas de limite).
+    query_id: identifier of the Flex query (default: IBKR_FLEX_QUERY_ID).
+    section: name of the XML tag to extract (e.g. OpenPosition, Trade,
+    CashReportCurrency, EquitySummaryByReportDateInBase). Empty = index of the
+    report sections with the row count of each, which is used to
+    know what the query contains.
+    from_date/to_date: period override in YYYYMMDD format (365 d max).
+    period: override as a number of days (e.g. "5").
+    limit: max number of rows returned (0 = no limit).
     """
     token = _cred("IBKR_FLEX_TOKEN")
     qid, source = _query_id(query_id)
@@ -228,9 +228,9 @@ def report(
         out["rows"] = rows
         if not rows:
             out["hint"] = (
-                "section vide : soit aucune donnee sur la periode, soit la "
-                "balise n'est pas activee dans la Flex query (ajouter la "
-                "section dans Client Portal, puis relancer)."
+                "empty section: either no data for the period, or the "
+                "tag is not enabled in the Flex query (add the "
+                "section in Client Portal, then re-run)."
             )
     else:
         out["sections"] = _sections(root)
@@ -239,10 +239,10 @@ def report(
 
 @mcp.tool()
 def positions(query_id: str = "", limit: int = 0) -> dict:
-    """Positions ouvertes (section OpenPosition) : quantite, cout, P&L.
+    """Open positions (OpenPosition section): quantity, cost, P&L.
 
-    Lit la Flex query d'activite. Renvoie les lignes brutes telles que IBKR
-    les expose (chaque attribut = une colonne du rapport).
+    Reads the activity Flex query. Returns the raw rows as IBKR
+    exposes them (each attribute = a report column).
     """
     return report(
         query_id=query_id, section="OpenPosition", limit=limit
@@ -251,14 +251,14 @@ def positions(query_id: str = "", limit: int = 0) -> dict:
 
 @mcp.tool()
 def cash(query_id: str = "", limit: int = 0) -> dict:
-    """Soldes par devise (section CashReportCurrency) et compte de depenses."""
+    """Balances by currency (CashReportCurrency section) and expense account."""
     return report(query_id=query_id, section="CashReportCurrency",
                   limit=limit)
 
 
 @mcp.tool()
 def nav(query_id: str = "", limit: int = 30) -> dict:
-    """Valeur nette du compte dans le temps (NAV in Base)."""
+    """Net account value over time (NAV in Base)."""
     return report(
         query_id=query_id,
         section="EquitySummaryByReportDateInBase",
@@ -268,10 +268,10 @@ def nav(query_id: str = "", limit: int = 30) -> dict:
 
 @mcp.tool()
 def trades(days: int = 30, query_id: str = "", limit: int = 50) -> dict:
-    """Transactions, sur les N derniers jours.
+    """Trades over the last N days.
 
-    Utilise IBKR_FLEX_TRADES_QUERY_ID si defini (Trade Confirmation Flex
-    Query, plus fiable pour l'historique), sinon la query d'activite.
+    Uses IBKR_FLEX_TRADES_QUERY_ID if set (Trade Confirmation Flex
+    Query, more reliable for history), otherwise the activity query.
     """
     env = _env()
     qid = query_id or env.get("IBKR_FLEX_TRADES_QUERY_ID", "")
@@ -295,13 +295,13 @@ def trades(days: int = 30, query_id: str = "", limit: int = 50) -> dict:
 
 @mcp.tool()
 def accounts(query_id: str = "") -> dict:
-    """Comptes couverts par la Flex query (section AccountInformation)."""
+    """Accounts covered by the Flex query (AccountInformation section)."""
     return report(query_id=query_id, section="AccountInformation")
 
 
 @mcp.tool()
 def raw(query_id: str = "", chars: int = 2000) -> str:
-    """Rapport Flex brut (XML tronque) : utile pour regler une requete."""
+    """Raw Flex report (truncated XML): useful for tuning a query."""
     token = _cred("IBKR_FLEX_TOKEN")
     qid, _ = _query_id(query_id)
     ref = _send_request(token, qid)

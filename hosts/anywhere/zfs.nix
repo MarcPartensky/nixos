@@ -13,7 +13,7 @@
         content = {
           type = "gpt";
           partitions = {
-            # Partition BIOS pour GRUB
+            # BIOS partition for GRUB
             bios = {
               name = "bios";
               size = "1M";
@@ -32,7 +32,7 @@
 
          root = {
             name = "root";
-            size = "10G"; # taille de / en ext4
+            size = "10G"; # size of / in ext4
             content = {
               type = "filesystem";
               format = "ext4";
@@ -40,12 +40,12 @@
             };
           };
 
-            # Partition ZFS pour le pool
+            # ZFS partition for the pool
             zfs = {
               size = "100%";
               content = {
                 type = "zfs";
-                pool = "rpool"; # nom du pool ZFS
+                pool = "rpool"; # name of the ZFS pool
               };
             };
           };
@@ -53,11 +53,11 @@
       };
     };
 
-    # Définition du pool ZFS
+    # ZFS pool definition
     zpool = {
       rpool = {
         type = "zpool";
-        mode = ""; # ou "mirror", "raidz1" si plusieurs disques
+        mode = ""; # or "mirror", "raidz1" if several disks
         options.cachefile = "none";
         rootFsOptions = {
           mountpoint = "none";
@@ -75,7 +75,7 @@
             options.compression = "lz4";
           };
 
-          # swap dataset (optionnel)
+          # swap dataset (optional)
           # swap = {
           #   type = "zfs_volume";
           #   size = "4G";
@@ -84,7 +84,7 @@
           #   };
           # };
 
-          # home dataset (optionnel)
+          # home dataset (optional)
           # home = {
           #   type = "zfs_fs";
           #   mountpoint = "/home";

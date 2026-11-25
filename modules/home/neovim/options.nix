@@ -1,5 +1,5 @@
 {
-  # inspiré de https://github.com/brainfucksec/neovim-lua/blob/main/nvim/lua/core/options.lua
+  # inspired by https://github.com/brainfucksec/neovim-lua/blob/main/nvim/lua/core/options.lua
 
   # GENERAL
   swapfile = false;
@@ -7,25 +7,25 @@
   undofile = true;
   completeopt = "menuone,noinsert,noselect";
   textwidth = 80;
-  # Pour ajouter 't' à formatoptions, il faut utiliser la fonction concat
-  # (sera géré dans l'import pour simplifier)
+  # To add 't' to formatoptions, one must use the concat function
+  # (will be handled in the import to simplify)
 
   # NEVIM UI
-  # Note : Vous avez 'number = false' et 'nu = true' (équivalent à number=true)
-  # J'utilise 'nu = true' pour correspondre à votre dernière définition
+  # Note: You have 'number = false' and 'nu = true' (equivalent to number=true)
+  # I use 'nu = true' to match your last definition
   number = true;
   relativenumber = true;
   smartcase = true;
   linebreak = true;
   ignorecase = true;
   guicursor = "";
-  # laststatus = 3; # Non inclus dans la plupart des opts standard de nixvim
+  # laststatus = 3; # Not included in most of nixvim's standard opts
   background = "dark";
   hlsearch = false;
   incsearch = true;
-  wrap = false; # Désactiver le wrapping général
-  termguicolors = true; # Permet à Neovim d'utiliser les vraies couleurs
-  winblend = 0;         # Transparence pour les fenêtres flottantes (0 = opaque, 100 = transparent)
+  wrap = false; # Disable general wrapping
+  termguicolors = true; # Allows Neovim to use true colors
+  winblend = 0;         # Transparency for floating windows (0 = opaque, 100 = transparent)
   
   # TABS / INDENTS
   expandtab = true;

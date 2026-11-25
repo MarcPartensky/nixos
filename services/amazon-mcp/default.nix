@@ -1,30 +1,30 @@
 # services/amazon-mcp/default.nix
-# Serveur MCP Amazon (duaragha/amazon-shopping-mcp) : recherche, fiches produits,
-# avis, panier, commande, retours — via Playwright/Chromium (binaires nix).
+# Amazon MCP server (duaragha/amazon-shopping-mcp): search, product pages,
+# reviews, cart, order, returns -- via Playwright/Chromium (nix binaries).
 #
-# Transport stdio : hermes spawn le binaire en subprocess
-# (services.hermes-agent.mcpServers), donc PAS d'unité systemd dédiée :
-# upstream ne parle que stdio, un proxy HTTP n'ajouterait qu'un hop.
-# Les tools apparaissent préfixés mcp_amazon_* (amazon_search, amazon_add_to_cart...).
+# stdio transport: hermes spawns the binary as a subprocess
+# (services.hermes-agent.mcpServers), so NO dedicated systemd unit:
+# upstream only speaks stdio, an HTTP proxy would only add a hop.
+# The tools appear prefixed mcp_amazon_* (amazon_search, amazon_add_to_cart...).
 #
-# Session Amazon : profil chromium persistant dans
-# /var/lib/hermes/amazon-mcp/user-data (dans le stateDir hermes : ProtectSystem=strict
-# rend tout le reste en lecture seule pour les subprocess du service).
-# Partagé avec marc par ACL pour le login.
+# Amazon session: persistent chromium profile in
+# /var/lib/hermes/amazon-mcp/user-data (inside the hermes stateDir: ProtectSystem=strict
+# makes everything else read-only for the service's subprocesses).
+# Shared with marc via ACL for the login.
 #
-# LOGIN (humain, une fois, à refaire quand la session expire) :
-#   amazon-mcp-login        # depuis une session graphique de marc (wayvnc)
-# Ouvre un chromium VISIBLE sur amazon.com : taper mot de passe + 2FA, puis
-# Entrée dans le terminal -> la session est persistée pour le service hermes.
+# LOGIN (human, once, to redo when the session expires):
+#   amazon-mcp-login        # from a marc graphical session (wayvnc)
+# Opens a VISIBLE chromium on amazon.com: type password + 2FA, then
+# Enter in the terminal -> the session is persisted for the hermes service.
 #
-# Debug :
-#   journalctl -u hermes-agent -f          # les tools mcp_amazon_* au démarrage
-#   AMAZON_HEADLESS=0 amazon-mcp-login     # voir ce que le navigateur voit
+# Debug:
+#   journalctl -u hermes-agent -f          # the mcp_amazon_* tools at startup
+#   AMAZON_HEADLESS=0 amazon-mcp-login     # see what the browser sees
 #
-# Attention : l'achat automatise une session loguée, contraire aux CGU Amazon
-# (risque de flag/restriction du compte en cas d'usage intensif).
-# amazon_place_order exige confirm=true (preview par défaut) : rien n'est
-# acheté sans confirmation explicite dans la conversation.
+# Warning: automated purchase of a logged-in session, contrary to Amazon's ToS
+# (risk of flag/restriction of the account in case of intensive use).
+# amazon_place_order requires confirm=true (preview by default): nothing is
+# bought without explicit confirmation in the conversation.
 {pkgs, ...}: let
   python = pkgs.python312;
   py = python.pkgs;
@@ -40,10 +40,10 @@
     };
     pyproject = true;
     build-system = [py.hatchling];
-    # playwright de nixpkgs : driver patché vers playwright-driver (cli.js),
-    # les navigateurs viennent de PLAYWRIGHT_BROWSERS_PATH (env ci-dessous)
+    # playwright from nixpkgs: driver patched to playwright-driver (cli.js),
+    # the browsers come from PLAYWRIGHT_BROWSERS_PATH (env below)
     dependencies = [py.mcp py.playwright];
-    doCheck = false; # pas de tests upstream
+    doCheck = false; # no upstream tests
     meta = {
       description = "MCP server: search, compare and buy on Amazon via Playwright";
       license = pkgs.lib.licenses.mit;
@@ -51,8 +51,8 @@
     };
   };
 
-  # Login manuel : ouvre un chromium visible sur le MÊME profil persistant que
-  # le serveur MCP -> les cookies de session sont réutilisés par hermes.
+  # Manual login: opens a visible chromium on the SAME persistent profile as
+  # the MCP server -> the session cookies are reused by hermes.
   login-py = pkgs.writeText "amazon-mcp-login.py" ''
     import os
     from playwright.sync_api import sync_playwright
@@ -68,10 +68,10 @@
         )
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         page.goto(f"https://www.amazon.{domain}/")
-        input("Connecte-toi dans la fenêtre chromium (mot de passe + 2FA), "
-              "puis appuie sur Entrée ici pour sauver la session... ")
+        input("Log in in the chromium window (password + 2FA), "
+              "then press Enter here to save the session... ")
         ctx.close()
-    print("Session persistée dans " + data_dir)
+    print("Session persisted in " + data_dir)
   '';
 
   amazon-mcp-login = pkgs.writeShellApplication {
@@ -83,12 +83,12 @@
     '';
   };
 in {
-  # helper de login dispo dans la session graphique de marc
+  # login helper available in marc's graphical session
   environment.systemPackages = [amazon-mcp-login];
 
-  # Profil partagé hermes (service MCP) <-> marc (login).
-  # /var/lib/hermes est en 2770 hermes:hermes : marc a besoin d'un --x de traversée.
-  # NB : tmpfiles "a"/"d" ne sont rejoués qu'au BOOT ; après le premier switch :
+  # Profile shared hermes (MCP service) <-> marc (login).
+  # /var/lib/hermes is 2770 hermes:hermes: marc needs a traversal --x.
+  # NB: tmpfiles "a"/"d" are only replayed at BOOT; after the first switch:
   #   sudo systemd-tmpfiles --create
   systemd.tmpfiles.rules = [
     "a /var/lib/hermes - - - - u:marc:--x,m::rwx"
@@ -96,18 +96,18 @@ in {
     "a /var/lib/hermes/amazon-mcp - - - - u:marc:rwx,d:u:marc:rwx,d:u:hermes:rwx,m::rwx,d:m::rwx"
   ];
 
-  # Hermes spawn le serveur en stdio ; son env subprocess est filtré ->
-  # tout passer explicitement via env ici.
+  # Hermes spawns the server over stdio; its subprocess env is filtered ->
+  # pass everything explicitly via env here.
   services.hermes-agent.mcpServers.amazon = {
     command = "${amazon-mcp}/bin/amazon-mcp";
     env = {
       PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
       AMAZON_USER_DATA_DIR = "/var/lib/hermes/amazon-mcp/user-data";
-      # storefront .com (NYC) ; passer à "fr" pour amazon.fr
+      # storefront .com (NYC); switch to "fr" for amazon.fr
       AMAZON_DOMAIN = "com";
       AMAZON_HEADLESS = "1";
     };
-    timeout = 300; # le scraping de fiches parallèles peut être long
-    sampling.enabled = false; # serveur communautaire non audité
+    timeout = 300; # scraping product pages in parallel can take a while
+    sampling.enabled = false; # unaudited community server
   };
 }

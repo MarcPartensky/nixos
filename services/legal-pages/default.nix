@@ -1,12 +1,12 @@
 # services/legal-pages/default.nix
-# Deux pages statiques (politique de confidentialite + CGU) servies en
-# local sur 127.0.0.1:8077, exposees publiquement SANS SSO via la
-# ressource Pangolin `legal-pages` (legal.marcpartensky.com).
-# But: satisfaire l'enregistrement d'applications personnelles chez
-# les agregateurs open-banking (Enable Banking exige privacy_url et
-# terms_url publics pour une app PRODUCTION en mode restricted).
-# Contenu verifie par marc avant publication: ces pages engagent son
-# nom (responsable de traitement = Marc Partensky).
+# Two static pages (privacy policy + ToS) served
+# locally on 127.0.0.1:8077, exposed publicly WITHOUT SSO via the
+# Pangolin resource `legal-pages` (legal.marcpartensky.com).
+# Goal: satisfy the registration of personal applications with
+# open-banking aggregators (Enable Banking requires public privacy_url and
+# terms_url for a PRODUCTION app in restricted mode).
+# Content verified by marc before publication: these pages commit his
+# name (data controller = Marc Partensky).
 {pkgs, ...}:
 let
   site = pkgs.lib.fileset.toSource {

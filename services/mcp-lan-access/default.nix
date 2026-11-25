@@ -1,25 +1,25 @@
 # services/mcp-lan-access/default.nix
 #
-# Rend cliquables depuis le Mac de marc les URLs des serveurs MCP HTTP qui
-# écoutent en loopback sur tower (nextcloud 8710, anki 3141, arrmcp 6060).
-# Hermes Desktop affiche l'URL de `mcp_servers.<nom>.url` telle
-# quelle dans Capabilities -> MCP : en loopback, le clic part sur le localhost
-# du Mac et ne peut pas répondre.
+# Makes the URLs of the HTTP MCP servers that listen on loopback on tower
+# clickable from marc's Mac (nextcloud 8710, anki 3141, arrmcp 6060).
+# Hermes Desktop displays the URL of `mcp_servers.<name>.url` as
+# is in Capabilities -> MCP: on loopback, the click goes to the Mac's
+# localhost and cannot answer.
 #
-# Principe : un redirecteur TCP par port, qui écoute sur l'adresse LAN de tower
-# et relaie vers 127.0.0.1. systemd-socket-proxyd est un proxy TCP pur : il ne
-# touche pas aux en-têtes HTTP, donc les flux SSE / streamable HTTP des serveurs
-# MCP passent intacts (pas de buffering nginx à régler).
+# Principle: one TCP redirector per port, listening on tower's LAN address
+# and relaying to 127.0.0.1. systemd-socket-proxyd is a pure TCP proxy: it does not
+# touch the HTTP headers, so the SSE / streamable HTTP streams of the MCP
+# servers pass through intact (no nginx buffering to tune).
 #
-# Sécurité : le firewall NixOS (backend iptables sur tower) n'accepte ces ports
-# que depuis `clientAddress` (le Mac). Les ports ne vont JAMAIS dans
-# allowedTCPPorts, et les services eux-mêmes restent sur la loopback. Le trafic
-# de tower vers sa propre adresse LAN sort par lo (interface de confiance), donc
-# Hermes continue de joindre les mêmes URLs sans règle supplémentaire.
+# Security: the NixOS firewall (iptables backend on tower) accepts these ports
+# only from `clientAddress` (the Mac). The ports NEVER go into
+# allowedTCPPorts, and the services themselves stay on loopback. Tower's traffic
+# to its own LAN address goes out through lo (trusted interface), so
+# Hermes keeps reaching the same URLs without an extra rule.
 #
-# Le couple adresse/port est dupliqué dans les URLs MCP : changer `host` ici
-# met à jour les quatre URLs du même coup (chaque module service lit cette
-# option). Si wlan0 change d'adresse DHCP, mettre `host` à jour et rebuild.
+# The address/port pair is duplicated in the MCP URLs: changing `host` here
+# updates the four URLs at once (each service module reads this
+# option). If wlan0 changes DHCP address, update `host` and rebuild.
 { config, lib, ... }:
 let
   cfg = config.services.mcp-lan-access;
@@ -29,21 +29,21 @@ let
   unitName = f: "mcp-lan-${f.name}";
 in {
   options.services.mcp-lan-access = {
-    enable = lib.mkEnableOption "accès LAN filtré aux endpoints MCP loopback de tower";
+    enable = lib.mkEnableOption "filtered LAN access to tower's loopback MCP endpoints";
 
     host = lib.mkOption {
       type = lib.types.str;
       default = "192.168.1.44";
       description = ''
-        Adresse LAN de tower sur laquelle les redirecteurs écoutent. Sert aussi
-        de base aux URLs MCP des modules nextcloud-mcp, arr-mcp et anki-mcp.
+        Tower's LAN address on which the redirectors listen. Also serves
+        as the base for the MCP URLs of the nextcloud-mcp, arr-mcp and anki-mcp modules.
       '';
     };
 
     clientAddress = lib.mkOption {
       type = lib.types.str;
       default = "192.168.1.48";
-      description = "Seule adresse source que le firewall accepte sur ces ports.";
+      description = "Only source address the firewall accepts on these ports.";
     };
 
     endpoints = lib.mkOption {
@@ -53,7 +53,7 @@ in {
         nextcloud = 8710;
         anki = 3141;
       };
-      description = "Attribut nom -> port loopback à republier sur `host`.";
+      description = "Attribute name -> loopback port to republish on `host`.";
     };
   };
 
@@ -61,12 +61,12 @@ in {
     systemd.sockets = lib.listToAttrs (map (f: {
       name = unitName f;
       value = {
-        description = "Redirecteur LAN ${cfg.host}:${toString f.port} vers 127.0.0.1:${toString f.port}";
+        description = "LAN redirector ${cfg.host}:${toString f.port} to 127.0.0.1:${toString f.port}";
         wantedBy = [ "sockets.target" ];
         listenStreams = [ "${cfg.host}:${toString f.port}" ];
-        # wlan0 est en DHCP : FreeBind crée le socket avant que l'adresse existe
-        # au boot ; il accepte dès que l'adresse est posée. Sans ça, le socket
-        # unit échoue en "Cannot assign requested address" au démarrage.
+        # wlan0 is on DHCP: FreeBind creates the socket before the address exists
+        # at boot; it accepts as soon as the address is set. Without it, the socket
+        # unit fails with "Cannot assign requested address" at startup.
         socketConfig.FreeBind = true;
       };
     }) forwards);
@@ -74,7 +74,7 @@ in {
     systemd.services = lib.listToAttrs (map (f: {
       name = unitName f;
       value = {
-        description = "Redirecteur LAN vers MCP ${f.name} (127.0.0.1:${toString f.port})";
+        description = "LAN redirector to MCP ${f.name} (127.0.0.1:${toString f.port})";
         requires = [ "${unitName f}.socket" ];
         after = [ "${unitName f}.socket" ];
         serviceConfig = {
@@ -91,7 +91,7 @@ in {
 
     assertions = [{
       assertion = !(lib.any (f: lib.elem f.port config.networking.firewall.allowedTCPPorts) forwards);
-      message = "mcp-lan-access : ne pas mettre ces ports dans networking.firewall.allowedTCPPorts ; la règle filtrée par source de ce module suffit.";
+      message = "mcp-lan-access: do not put these ports in networking.firewall.allowedTCPPorts; this module's source-filtered rule is enough.";
     }];
   };
 }

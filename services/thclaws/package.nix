@@ -3,10 +3,10 @@
 # pulls 12 GTK/webkit libraries even in CLI mode. autoPatchelfHook rewrites the
 # RPATH against nix store libraries, wrapGAppsHook3 exports GI/GTK typelib paths.
 #
-# COPIE SYNCHRONISEE de /home/marc/git/thclaws/package.nix. Les deux doivent
-# porter la meme version et le meme sha256 : l'eval NixOS est PURE (aucun chemin
-# absolu hors du depot, cf skill nixos-pure-eval), donc ce dossier ne peut pas
-# importer le fichier du flake projet par chemin. Bumper l'un, bumper l'autre.
+# SYNCHRONIZED COPY of /home/marc/git/thclaws/package.nix. The two must
+# carry the same version and the same sha256: the NixOS eval is PURE (no absolute
+# path outside the repo, cf skill nixos-pure-eval), so this directory cannot
+# import the project flake's file by path. Bump one, bump the other.
 #
 # Bumping the version: get the tarball and the .sha256 published next to it,
 # then `nix hash file --type sha256 --sri <tarball>` for the sha256 below.

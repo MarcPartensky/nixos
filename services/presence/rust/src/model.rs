@@ -157,8 +157,8 @@ pub fn transitions(w: &Windows, ov: &HashMap<String, String>, t: i64, count: usi
         let at = |h: (u32, u32)| day_start + h.0 as i64 * 3600 + h.1 as i64 * 60;
         let mut add = |s: i64, e: i64, kind: &str| {
             let (tn, te) = match kind {
-                "sleep" => ("début sommeil", "fin sommeil"),
-                _ => ("début travail", "fin travail"),
+                "sleep" => ("sleep start", "sleep end"),
+                _ => ("work start", "work end"),
             };
             for (x, label) in [(s, tn.to_string()), (e, te.to_string())] {
                 if x > t {
@@ -232,18 +232,18 @@ pub fn verdict(
     if night && phone_off_for >= 20 * 60 && mac_quiet && at_home_or_unknown {
         return base(
             "away_sleep",
-            format!("nuit, téléphone éteint depuis {} min, Mac au repos", phone_off_for / 60),
+            format!("night, phone off for {} min, Mac at rest", phone_off_for / 60),
             true,
         );
     }
     if kind == "sleep" {
         let _ = phone_state;
-        return base("away_sleep", "fenetre sommeil, aucun appareil actif".into(), true);
+        return base("away_sleep", "sleep window, no active device".into(), true);
     }
     if kind == "work" && location != "home" {
-        let mut why = "fenetre travail, aucun appareil actif".to_string();
+        let mut why = "work window, no active device".to_string();
         if !connected_why.is_empty() {
-            why.push_str(&format!(" (derniere interaction : {connected_why})"));
+            why.push_str(&format!(" (last interaction: {connected_why})"));
         }
         return base("away_work", why, true);
     }
@@ -253,9 +253,9 @@ pub fn verdict(
     base(
         "home_idle",
         if location == "home" {
-            "à la maison, aucun appareil actif".to_string()
+            "at home, no active device".to_string()
         } else if connected_why.is_empty() {
-            "aucun appareil actif".to_string()
+            "no active device".to_string()
         } else {
             connected_why.to_string()
         },
@@ -266,19 +266,19 @@ pub fn verdict(
 /// The `needs_absence` gate of the taskq queue.
 pub fn may_start(state: &str, absent_confident: bool, connected: bool) -> (bool, String) {
     match state {
-        "at_tower" => (false, "marc utilise tower".into()),
-        "at_mac" => (true, "marc est sur mac, tower libre".into()),
-        "at_phone" => (true, "marc est sur telephone, tower libre".into()),
+        "at_tower" => (false, "marc is using tower".into()),
+        "at_mac" => (true, "marc is on mac, tower free".into()),
+        "at_phone" => (true, "marc is on phone, tower free".into()),
         "away_out" | "away_work" | "away_sleep" if absent_confident => {
-            (true, format!("marc absent ({state})"))
+            (true, format!("marc away ({state})"))
         }
         _ => {
             if absent_confident {
-                (true, "marc absent (fenetre)".into())
+                (true, "marc away (window)".into())
             } else if !connected {
-                (true, "marc absent (aucune interaction recente)".into())
+                (true, "marc away (no recent interaction)".into())
             } else {
-                (false, "marc actif (interaction recente)".into())
+                (false, "marc active (recent interaction)".into())
             }
         }
     }
@@ -404,7 +404,7 @@ fn labelled(hermes_home: &Path) -> HashMap<i64, bool> {
                 }
             }
         }
-        Err(e) => eprintln!("[presence] state.db illisible : {e} (le modele perd les messages)"),
+        Err(e) => eprintln!("[presence] state.db unreadable: {e} (the model loses the messages)"),
     }
     // Mac screen on (pmset intervals)
     if let Some(raw) = read(&state_dir().join("mac_display.json").to_string_lossy()) {
@@ -478,7 +478,7 @@ pub fn build_model(hermes_home: &Path) -> Model {
         m.day[idx][1] += w;
         m.samples += 1;
     }
-    eprintln!("[presence] modele : {} minutes etiquetees", m.samples);
+    eprintln!("[presence] model: {} labelled minutes", m.samples);
     m
 }
 
@@ -534,12 +534,12 @@ pub fn forecast(sh: &Shared, model: &Model, snap_devices: &Map<String, Value>, s
     let prev = sh.forecast.lock().unwrap().clone();
     let prev_loc = prev["location"].as_str().unwrap_or("");
     if ["out", "out?", "work"].contains(&prev_loc) && location == "home" {
-        triggers.push("retour à la maison détecté".into());
+        triggers.push("return home detected".into());
     }
     let phone = snap_devices.get("phone").and_then(|v| v.as_object());
     if let Some(p) = phone {
         if p.get("state").and_then(|v| v.as_str()) == Some("verrouille") && !is_interactive(state) {
-            triggers.push("téléphone allumé (écran verrouillé)".into());
+            triggers.push("phone on (screen locked)".into());
         }
     }
     if let Some(m) = snap_devices.get("mac").and_then(|v| v.as_object()) {
@@ -548,7 +548,7 @@ pub fn forecast(sh: &Shared, model: &Model, snap_devices: &Map<String, Value>, s
         let active = m.get("active").and_then(|v| v.as_bool()).unwrap_or(false);
         let idle = m.get("idle_s").and_then(|v| v.as_f64()).unwrap_or(1e9);
         if on && display && !active && idle < 600.0 {
-            triggers.push("Mac allumé, utilisé il y a moins de 10 min".into());
+            triggers.push("Mac on, used less than 10 min ago".into());
         }
     }
     if let Some(last) = snap_devices
@@ -558,7 +558,7 @@ pub fn forecast(sh: &Shared, model: &Model, snap_devices: &Map<String, Value>, s
         .and_then(|v| v.as_i64())
     {
         if t - last < 20 * 60 && !is_interactive(state) {
-            triggers.push(format!("actif il y a {} min", (t - last) / 60));
+            triggers.push(format!("active {} min ago", (t - last) / 60));
         }
     }
     let present = is_interactive(state);
@@ -569,15 +569,15 @@ pub fn forecast(sh: &Shared, model: &Model, snap_devices: &Map<String, Value>, s
         reserve = present; // outside: the hourly habit is not enough
     }
     let why = if present {
-        "présent maintenant".to_string()
+        "present now".to_string()
     } else if !triggers.is_empty() {
         triggers.join("; ")
     } else if p_next >= threshold {
-        format!("habitude : P(présent < 30 min) = {:.0}%", p_next * 100.0)
+        format!("habit: P(present < 30 min) = {:.0}%", p_next * 100.0)
     } else if sticky {
-        "réservation maintenue (hystérésis)".to_string()
+        "reservation held (hysteresis)".to_string()
     } else {
-        format!("calme prévu (P = {:.0}%)", p_next * 100.0)
+        format!("calm forecast (P = {:.0}%)", p_next * 100.0)
     };
     let reserve_until = if reserve {
         t + 20 * 60
@@ -833,7 +833,7 @@ pub fn timeline(sh: &Shared, hours: i64) -> String {
         e.5 = top;
         e.6 = topname;
     }
-    } // fin du repli fichier
+    } // end of the file fallback
     // 2. label dictionaries
     let mut states: Vec<String> = Vec::new();
     let mut devices: Vec<String> = Vec::new();

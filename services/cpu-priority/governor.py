@@ -1,35 +1,35 @@
 #!/usr/bin/env python3
-"""Gouverneur CPU des jobs winnie (declaration : services/cpu-priority/default.nix).
+"""CPU governor for winnie jobs (declaration: services/cpu-priority/default.nix).
 
-Principe
+Principle
 --------
-Les plafonds CPUQuota declaratifs sont la valeur SURE (etat "capped"). Ce
-gouverneur ne fait que les ELARGIR (etat "wide") quand la pression CPU de
-user.slice (sessions de marc + sessions Hermes) reste quasi nulle pendant
-2 minutes : a ce moment-la personne ne fait la queue pour du CPU et les
-batches peuvent prendre la machine. Exception : les jobs navigateur (voir
-HARD_CAP plus bas) restent plafonnes a 30 % du CPU total en permanence.
-Des qu'une tache interactive attend du
-CPU (some avg10 >= HIGH), on referme sur les plafonds declaratifs.
+The declarative CPUQuota caps are the SAFE value (state "capped"). This
+governor only WIDENS them (state "wide") when the CPU pressure of
+user.slice (marc's sessions + Hermes sessions) stays near zero for
+2 minutes: at that point nobody is queuing for CPU and the
+batches can take the machine. Exception: the browser jobs (see
+HARD_CAP below) stay capped at 30% of total CPU at all times.
+As soon as an interactive task waits for
+CPU (some avg10 >= HIGH), we close back onto the declarative caps.
 
-Pourquoi la PSI de user.slice et pas la PSI systeme : verifie le 25/10/2026,
-le throttling CFS d'un cgroup remonte dans SA PSI (sonde 4 threads sous
-CPUQuota=100 % : some avg10=23 %, full avg10=23 %) et donc dans la PSI
-globale. Un batch plafonne se signalerait lui-meme comme "quelqu'un attend"
-et les vannes ne s'ouvriraient jamais. Les unites winnie sont des unites
-systeme (system.slice), les sessions de marc et de Hermes sont dans
-user.slice : c'est le bon thermometre.
+Why user.slice PSI and not system PSI: verified on 25/10/2026,
+a cgroup's CFS throttling shows up in ITS PSI (probe with 4 threads under
+CPUQuota=100%: some avg10=23%, full avg10=23%) and therefore in the
+global PSI. A capped batch would flag itself as "someone is waiting"
+and the valves would never open. The winnie units are
+system units (system.slice), marc's and Hermes' sessions are in
+user.slice: that is the right thermometer.
 
-Les overrides sont poses avec `systemctl set-property --runtime` : ils vivent
-dans /run et disparaissent au reboot. La config declarative reste la
-reference, et si ce gouverneur s'arrete on reste borne (etat "capped").
+The overrides are set with `systemctl set-property --runtime`: they live
+in /run and disappear on reboot. The declarative config remains the
+reference, and if this governor stops we stay bounded (state "capped").
 
-Cout : un tick ne fait que lire deux fichiers (/proc-like) et n'appelle
-`systemctl` que pour les unites dont le plafond change. Ne PAS revenir a
-`systemctl list-units` ici : l'enumeration complete des unites coutait 1,1 s
-de CPU par tick (mesure du 25/10/2026).
+Cost: a tick only reads two files (/proc-like) and calls
+`systemctl` only for the units whose cap changes. Do NOT go back to
+`systemctl list-units` here: the full enumeration of units cost 1.1 s
+of CPU per tick (measured on 25/10/2026).
 
-Usage : winnie-cpu-governor [--print] [--force wide|capped]
+Usage: winnie-cpu-governor [--print] [--force wide|capped]
 """
 import json
 import os
@@ -38,37 +38,37 @@ import subprocess
 import sys
 import time
 
-# unite -> (plafond % en etat capped, plafond % en etat wide)
+# unit -> (cap % in capped state, cap % in wide state)
 UNITS = {
     "ollama.service": (600, 1200),
     "winnie-calories.service": (400, 1200),
 }
-# Jobs navigateur winnie : plafond DUR de 30 % du total (480 % de 16 threads),
-# jamais elargi (demande marc 25/10/2026). Reaffirme a chaque tick pour
-# rattraper un override --runtime perime (ex. 400 % de l'ancien gouverneur).
+# winnie browser jobs: HARD cap of 30% of total (480% of 16 threads),
+# never widened (marc's request 25/10/2026). Reasserted on each tick to
+# catch a stale --runtime override (e.g. 400% from the old governor).
 HARD_CAP = {
     "winnie-gmaps-scrape.service": 480,
     "winnie-ingest-nightly.service": 480,
     "winnie-hours-refresh.service": 480,
 }
-JOB_UNITS = (400, 1200)  # unites transitoires winnie-job-* trouvees a l'execution
+JOB_UNITS = (400, 1200)  # transient winnie-job-* units found at runtime
 
 PRESSURE = pathlib.Path("/sys/fs/cgroup/user.slice/cpu.pressure")
-# Prevision du service presence (Rust, services/presence) : `reserve` = marc va
-# probablement avoir besoin de la machine dans les 30 min (habitude horaire ou
-# retour a la maison detecte). Dans ce cas on ne desserre PAS : on reste aux
-# plafonds declaratifs, pour que la machine soit deja libre quand il arrive.
+# Forecast from the presence service (Rust, services/presence): `reserve` = marc
+# will probably need the machine within 30 min (hourly habit or
+# detected return home). In that case we do NOT loosen: we stay at the
+# declarative caps, so the machine is already free when he arrives.
 FORECAST = pathlib.Path("/var/lib/hermes/presence-dashboard/forecast.json")
-FORECAST_MAX_AGE = 600  # s : au-dela, la prevision est perimee, on l'ignore
+FORECAST_MAX_AGE = 600  # s: beyond that, the forecast is stale, we ignore it
 SYSTEM_SLICE = pathlib.Path("/sys/fs/cgroup/system.slice")
-HIGH = 10.0      # some avg10 (%) : des taches interactives font la queue
-LOW = 2.0        # some avg10 (%) : personne n'attend
-QUIET_TICKS = 8  # 8 ticks de 15 s = 2 min de calme avant d'elargir
+HIGH = 10.0      # some avg10 (%): interactive tasks are queuing
+LOW = 2.0        # some avg10 (%): nobody is waiting
+QUIET_TICKS = 8  # 8 ticks of 15 s = 2 min of calm before widening
 STATE = pathlib.Path("/run/winnie-cpu-governor/state.json")
 
 
 def pressure_some_avg10():
-    """Pression CPU de user.slice, ou None si illisible (on restera borne)."""
+    """user.slice CPU pressure, or None if unreadable (we will stay bounded)."""
     try:
         for line in PRESSURE.read_text().splitlines():
             if line.startswith("some"):
@@ -81,24 +81,24 @@ def pressure_some_avg10():
 
 
 def reserve_now():
-    """(reserve, raison) d'apres forecast.json ; (None, ...) si indisponible."""
+    """(reserve, reason) from forecast.json; (None, ...) if unavailable."""
     try:
         data = json.loads(FORECAST.read_text())
     except (OSError, ValueError):
-        return None, "prevision indisponible"
+        return None, "forecast unavailable"
     try:
         age = time.time() - float(data.get("at") or 0)
     except (TypeError, ValueError):
-        return None, "prevision illisible"
+        return None, "forecast unreadable"
     if age > FORECAST_MAX_AGE:
-        return None, f"prevision perimee ({int(age)} s)"
+        return None, f"stale forecast ({int(age)} s)"
     if data.get("reserve"):
         return True, str(data.get("why") or "reserve")
-    return False, str(data.get("why") or "calme")
+    return False, str(data.get("why") or "calm")
 
 
 def transient_units():
-    """Unites winnie-job-* actives, via le repertoire cgroup (pas de systemctl)."""
+    """Active winnie-job-* units, via the cgroup directory (no systemctl)."""
     try:
         names = os.listdir(SYSTEM_SLICE)
     except OSError:
@@ -127,7 +127,7 @@ def main():
     if force in ("wide", "capped"):
         new_state, new_quiet = force, 0
     elif reserve is True:
-        # marc arrive (ou est la) : on garde les plafonds, sans attendre la PSI
+        # marc is arriving (or is here): keep the caps, without waiting for PSI
         new_state, new_quiet = "capped", 0
     elif psi is None:
         new_state, new_quiet = "capped", 0
@@ -139,7 +139,7 @@ def main():
         if new_state == "wide":
             new_quiet = 0
 
-    shown = "illisible" if psi is None else f"{psi:.2f}%"
+    shown = "unreadable" if psi is None else f"{psi:.2f}%"
     print(f"psi(user.slice) some avg10={shown} {state}({quiet}) -> {new_state}"
           f"  [reserve={reserve}: {reserve_why}]", flush=True)
 
@@ -167,7 +167,7 @@ def main():
     STATE.parent.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps({"state": new_state, "quiet": new_quiet, "applied": applied}) + "\n")
     if todo:
-        print(f"  applique: {', '.join(f'{u}={q}%' for u, q in todo.items())}", flush=True)
+        print(f"  applied: {', '.join(f'{u}={q}%' for u, q in todo.items())}", flush=True)
     return 0
 
 

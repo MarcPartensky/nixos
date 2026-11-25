@@ -2,10 +2,10 @@
 
 {
   # services.qemuGuest.enable = true;
-  # # boot.loader.grub.device = "/dev/vda"; # adapte si ton disque est vda/sda/nvme0n1
+  # # boot.loader.grub.device = "/dev/vda"; # adapt if your disk is vda/sda/nvme0n1
   # boot.kernelParams = [
   #   "console=ttyS0"
-  #   "boot.shell_on_fail"  # ouvre un shell si l’init échoue
+  #   "boot.shell_on_fail"  # opens a shell if init fails
   # ];
 
   # boot.loader.grub = {
@@ -57,13 +57,13 @@
       vg0 = {
         type = "lvm_vg";
         lvs = {
-          # la swap avant root
+          # swap before root
           swap = {
             size = "4G";
             content = { type = "swap"; };
           };
           root = {
-            size = "100%FREE";  # prend tout l'espace disponible
+            size = "100%FREE";  # takes all available space
             content = {
               type = "filesystem";
               format = "ext4";

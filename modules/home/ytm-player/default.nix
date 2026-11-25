@@ -1,5 +1,5 @@
 # Client YouTube Music TUI "ytm-player" (github:peternaame-boop/ytm-player).
-# Variante "full" : MPRIS, lyrics synchronisés, Discord, Last.fm, import Spotify.
+# "full" variant: MPRIS, synced lyrics, Discord, Last.fm, Spotify import.
 {pkgs, inputs, ...}: {
   home.packages = [
     inputs.ytm-player.packages.${pkgs.stdenv.hostPlatform.system}.ytm-player-full

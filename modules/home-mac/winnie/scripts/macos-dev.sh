@@ -1,5 +1,5 @@
-# App macOS (fenêtre Tauri + Vite en HMR) : ni Xcode ni simulateur, les
-# Command Line Tools suffisent.
+# macOS app (Tauri window + Vite in HMR): neither Xcode nor a simulator,
+# Command Line Tools are enough.
 repo="$HOME/@REPO_REL@"
 cd "$repo/app"
 

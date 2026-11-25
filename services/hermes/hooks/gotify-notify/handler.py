@@ -1,24 +1,24 @@
-# Hook de gateway « gotify-notify » — sens Matrix -> Gotify du pont.
+# Gateway hook "gotify-notify" - Matrix -> Gotify direction of the bridge.
 #
-# Evenement : `agent:end` (le contexte porte platform, chat_id, message,
-# response). On ne pousse que les tours termines DANS la salle du pont, donc
-# les reponses de l'agent (y compris les resumes de cron livres dans cette
-# salle) partent en notification Gotify, donc sur le telephone de marc via
-# l'appli Gotify.
+# Event: `agent:end` (the context carries platform, chat_id, message,
+# response). We only push completed turns IN the bridge room, so
+# the agent responses (including cron summaries delivered in this
+# room) go out as Gotify notifications, so to marc's phone via
+# the Gotify app.
 #
-# Ce que ce hook ne fait PAS (volontairement) :
-#   - les messages ENTRANTS de marc (`agent:start`) : il vient de les ecrire,
-#     ce serait une notification en echo. Pour les pousser aussi, ajouter
-#     "agent:start" a la liste `events` du HOOK.yaml : le contexte a la meme
-#     forme (le texte entrant est dans `message` au lieu de `response`).
-#   - les autres salles Matrix / plateformes : filtre sur chat_id == salle.
+# What this hook does NOT do (on purpose):
+#   - marc's INCOMING messages (`agent:start`): he just wrote them,
+#     it would be an echo notification. To push them too, add
+#     "agent:start" to the `events` list of HOOK.yaml: the context has the same
+#     shape (the incoming text is in `message` instead of `response`).
+#   - the other Matrix rooms / platforms: filter on chat_id == room.
 #
-# Jeton : l'application Gotify creee par services/gotify-matrix
-# (/var/lib/gotify-pont/application_token, 0400 hermes). Le hook tourne dans le
-# process du gateway (utilisateur hermes), il peut donc le lire.
+# Token: the Gotify application created by services/gotify-matrix
+# (/var/lib/gotify-pont/application_token, 0400 hermes). The hook runs in the
+# gateway process (hermes user), so it can read it.
 #
-# Erreurs : jamais remontees au gateway (contrat des hooks), seulement
-# journalisees dans le log du gateway + une ligne `gotify-notify:` visible.
+# Errors: never raised to the gateway (hook contract), only
+# logged in the gateway log + a visible `gotify-notify:` line.
 
 import json
 import os
@@ -26,9 +26,9 @@ import urllib.request
 
 
 ROOM = os.environ.get("GOTIFY_PONT_ROOM", "!bHIbXBYEcLDiMFtbse:matrix.marcpartensky.com")
-# Gotify vit sur le VPS depuis le 20/11/2026 : l'URL publique est la cible
-# normale. Le repli loopback reste utile pendant une bascule (serveur encore
-# local) et coute une seconde d'attente en cas d'echec.
+# Gotify has lived on the VPS since 20/11/2026: the public URL is the normal
+# target. The loopback fallback remains useful during a switchover (server still
+# local) and costs a second of waiting on failure.
 GOTIFY_URL = os.environ.get("GOTIFY_PONT_URL", "https://gotify.marcpartensky.com")
 GOTIFY_URL_FALLBACK = os.environ.get("GOTIFY_PONT_URL_FALLBACK", "http://127.0.0.1:8070")
 TOKEN_FILE = os.environ.get("GOTIFY_PONT_APP_TOKEN_FILE", "/var/lib/gotify-pont/application_token")
@@ -37,8 +37,8 @@ MAX_CHARS = 4000
 
 
 def _context(args, kwargs):
-    """Le chargeur appelle `handle(event_type, context)` ; on tolere aussi un
-    appel en kwargs pour ne pas casser si le contrat evolue."""
+    """The loader calls `handle(event_type, context)`; we also tolerate a
+    call with kwargs so as not to break if the contract evolves."""
     for value in list(args) + list(kwargs.values()):
         if isinstance(value, dict):
             return value
@@ -70,9 +70,9 @@ def handle(*args, **kwargs):
         )
         try:
             with urllib.request.urlopen(request, timeout=10) as response:
-                print("gotify-notify: pousse dans Gotify (%s, plateforme %s, salle %s) -> HTTP %s"
+                print("gotify-notify: pushed to Gotify (%s, platform %s, room %s) -> HTTP %s"
                       % (base, context.get("platform"), chat_id, response.status), flush=True)
                 return
-        except Exception as exc:  # noqa: BLE001 — un hook ne doit jamais casser un tour
+        except Exception as exc:  # noqa: BLE001 - a hook must never break a turn
             last_exc = exc
-    print("gotify-notify: echec de la poussee Gotify : %s" % last_exc, flush=True)
+    print("gotify-notify: Gotify push failed: %s" % last_exc, flush=True)

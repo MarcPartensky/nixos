@@ -1,25 +1,25 @@
-# Module NixOS : service de décision local « System One » (API compatible Jev),
-# destiné à tower. Laya est un moteur de décision non autorégressif, Apache-2.0 :
-# on lui envoie un état (texte, JSON) plus des questions typées (choice / score /
-# noul) et il rend une distribution de probabilités en UNE passe avant, sans
-# générer un seul token. C'est l'équivalent libre du modèle Jev de TypeSafe, qui
-# n'est ni ouvert ni auto-hébergeable.
+# NixOS module: local decision service "System One" (Jev-compatible API),
+# intended for tower. Laya is a non-autoregressive decision engine, Apache-2.0:
+# you send it a state (text, JSON) plus typed questions (choice / score /
+# noul) and it returns a probability distribution in ONE forward pass, without
+# generating a single token. It is the free equivalent of TypeSafe's Jev model, which
+# is neither open nor self-hostable.
 #
-# POURQUOI ce module plutôt que celui du dépôt amont : le flake amont
-# (github:NandhaKishorM/laya, nix/laya-serve.nix) construit son paquet avec
-# `python3Packages.torch-bin`, le wheel CUDA prébuilt, et son unité autorise les
-# périphériques /dev/nvidia*. tower n'a aucun GPU NVIDIA (iGPU Vega Renoir) : la
-# closure CUDA pèserait plusieurs Go pour zéro usage. Ici laya est construit
-# depuis le sdist PyPI avec le torch CPU de nixpkgs, et l'unité reprend la forme
-# amont (durcissement systemd, StateDirectory pour le cache de poids).
+# WHY this module rather than the upstream one: the upstream flake
+# (github:NandhaKishorM/laya, nix/laya-serve.nix) builds its package with
+# `python3Packages.torch-bin`, the prebuilt CUDA wheel, and its unit allows the
+# /dev/nvidia* devices. tower has no NVIDIA GPU (Vega Renoir iGPU): the
+# CUDA closure would weigh several GB for zero use. Here laya is built
+# from the PyPI sdist with nixpkgs' CPU torch, and the unit takes the upstream
+# shape (systemd hardening, StateDirectory for the weights cache).
 { config, lib, pkgs, ... }:
 let
   cfg = config.services.laya-serve;
 
-  # laya 0.4.21 : bibliothèque plus les CLI `laya`, `laya-serve`, `laya-mcp-server`.
-  # Le sdist est épinglé par empreinte SRI, donc un build reproductible, sans
-  # appel réseau. L'amont importe fastapi/uvicorn paresseusement, on les déclare
-  # quand même : `laya-serve` doit démarrer sans dépendance manquante.
+  # laya 0.4.21: library plus the CLIs `laya`, `laya-serve`, `laya-mcp-server`.
+  # The sdist is pinned by SRI hash, so a reproducible build, without
+  # network calls. Upstream imports fastapi/uvicorn lazily, we declare them
+  # anyway: `laya-serve` must start without a missing dependency.
   laya = pkgs.python3Packages.buildPythonApplication {
     pname = "laya";
     version = "0.4.21";
@@ -30,22 +30,22 @@ let
       hash = "sha256-kTCgxfKiEC8xfPAgm+e69orpuZabXttx2iYEDaZ8UwE=";
     };
     propagatedBuildInputs = with pkgs.python3Packages; [
-      torch # CPU : tower n'a pas de GPU NVIDIA, inutile de tirer torch-bin
+      torch # CPU: tower has no NVIDIA GPU, pointless to pull torch-bin
       transformers
       safetensors
       huggingface-hub
       numpy
       fastapi
       uvicorn
-      multipart # python-multipart, pour les uploads du serveur d'exemple
+      multipart # python-multipart, for the example server's uploads
     ];
-    # Les tests amont chargent des checkpoints depuis le Hub : réseau et GPU.
+    # Upstream tests load checkpoints from the Hub: network and GPU.
     doCheck = false;
     pythonImportsCheck = [ "laya" "laya.serve" ];
   };
 
-  # Le jeton (optionnel) arrive par LoadCredential : jamais dans le store ni
-  # dans l'environnement de l'unité.
+  # The token (optional) arrives via LoadCredential: never in the store nor
+  # in the unit's environment.
   startScript = pkgs.writeShellScript "laya-serve-start" ''
     set -eu
     ${lib.optionalString (cfg.apiKeyFile != null) ''
@@ -56,45 +56,45 @@ let
 in
 {
   options.services.laya-serve = {
-    enable = lib.mkEnableOption "serveur de décision Laya (API compatible Jev, /v1/systemone)";
+    enable = lib.mkEnableOption "Laya decision server (Jev-compatible API, /v1/systemone)";
 
     package = lib.mkOption {
       type = lib.types.package;
       default = laya;
       defaultText = lib.literalExpression "laya (built from the PyPI sdist, CPU torch)";
-      description = "Paquet laya-serve à exécuter.";
+      description = "laya-serve package to run.";
     };
 
     host = lib.mkOption {
       type = lib.types.str;
       default = "127.0.0.1";
       description = ''
-        Adresse d'écoute. 127.0.0.1 par défaut : le service rend des décisions,
-        il n'a aucune raison d'être joignable ailleurs qu'en local. Passer par
-        une ressource Pangolin (SSO) si un accès distant est voulu.
+        Listen address. 127.0.0.1 by default: the service renders decisions,
+        it has no reason to be reachable anywhere but locally. Go through
+        a Pangolin resource (SSO) if remote access is wanted.
       '';
     };
 
     port = lib.mkOption {
       type = lib.types.port;
       default = 8000;
-      description = "Port TCP d'écoute.";
+      description = "Listening TCP port.";
     };
 
     device = lib.mkOption {
       type = lib.types.str;
       default = "cpu";
       example = "cuda";
-      description = "Périphérique torch pour chaque checkpoint (cpu, cuda, cuda:0, ...).";
+      description = "torch device for each checkpoint (cpu, cuda, cuda:0, ...).";
     };
 
     models = lib.mkOption {
       type = lib.types.listOf (lib.types.enum [ "english" "multilingual" "typed-decisions" ]);
       default = [ "english" "multilingual" "typed-decisions" ];
       description = ''
-        Checkpoints préchargés au démarrage. Le routeur choisit ensuite selon la
-        langue de l'état reçu (marc écrit en français et en anglais, donc
-        multilingual n'est pas décoratif).
+        Checkpoints preloaded at startup. The router then chooses according to the
+        language of the received state (marc writes in French and English, so
+        multilingual is not decorative).
       '';
     };
 
@@ -102,9 +102,9 @@ in
       type = lib.types.bool;
       default = true;
       description = ''
-        Construire les checkpoints au démarrage plutôt qu'à la première requête.
-        true évite de payer le chargement au milieu d'une boucle d'agent ; le
-        premier démarrage télécharge alors environ 1,2 Gio de poids.
+        Build the checkpoints at startup rather than on the first request.
+        true avoids paying the load in the middle of an agent loop; the
+        first start then downloads about 1.2 GiB of weights.
       '';
     };
 
@@ -113,17 +113,17 @@ in
       default = 8;
       example = 16;
       description = ''
-        Plafond de threads torch pour l'inférence CPU (pose LAYA_THREADS et
-        OMP_NUM_THREADS). tower = Ryzen 7 4800H, 8 cœurs physiques sur 16
-        logiques : rester à 8 pour la latence d'une requête isolée, monter
-        vers 16 seulement pour du débit en lot.
+        torch thread cap for CPU inference (sets LAYA_THREADS and
+        OMP_NUM_THREADS). tower = Ryzen 7 4800H, 8 physical cores out of 16
+        logical: stay at 8 for the latency of an isolated request, go up
+        to 16 only for batch throughput.
       '';
     };
 
     autoTaskDetection = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Laisser le routeur choisir le checkpoint typed-decisions quand les questions correspondent à ses workflows.";
+      description = "Let the router choose the typed-decisions checkpoint when the questions match its workflows.";
     };
 
     apiKeyFile = lib.mkOption {
@@ -131,27 +131,27 @@ in
       default = null;
       example = lib.literalExpression "config.sops.secrets.laya-api-key.path";
       description = ''
-        Fichier contenant un jeton bearer. Quand il est posé, les clients doivent
-        envoyer `Authorization: Bearer <token>`.
+        File containing a bearer token. When it is set, clients must
+        send `Authorization: Bearer <token>`.
       '';
     };
 
     openFirewall = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Ouvrir `port` au pare-feu (inutile tant que host reste en loopback).";
+      description = "Open `port` on the firewall (pointless as long as host stays on loopback).";
     };
 
     stateDirectory = lib.mkOption {
       type = lib.types.str;
       default = "laya-serve";
-      description = "Nom sous /var/lib pour le cache de poids Hugging Face (HF_HOME).";
+      description = "Name under /var/lib for the Hugging Face weights cache (HF_HOME).";
     };
   };
 
   config = lib.mkIf cfg.enable {
     systemd.services.laya-serve = {
-      description = "Laya : serveur de décision System One (API compatible Jev)";
+      description = "Laya: System One decision server (Jev-compatible API)";
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
@@ -173,14 +173,14 @@ in
         ExecStart = startScript;
         Restart = "on-failure";
         RestartSec = 5;
-        # Premier démarrage : téléchargement des poids avant l'écoute.
+        # First start: download of the weights before listening.
         TimeoutStartSec = "900";
 
         DynamicUser = true;
         StateDirectory = cfg.stateDirectory;
 
-        # Aucun GPU : pas de PrivateDevices = false ni de DeviceAllow, contrairement
-        # au module amont qui ouvre les nœuds /dev/nvidia*.
+        # No GPU: no PrivateDevices = false nor DeviceAllow, unlike
+        # the upstream module which opens the /dev/nvidia* nodes.
         NoNewPrivileges = true;
         ProtectSystem = "strict";
         ProtectHome = true;
@@ -195,8 +195,8 @@ in
       };
     };
 
-    # `laya` et `laya-serve` dans le PATH : sert à tester une décision à la main
-    # (echo '{"state":...,"questions":...}' | laya ...) sans passer par l'API.
+    # `laya` and `laya-serve` in the PATH: used to test a decision by hand
+    # (echo '{"state":...,"questions":...}' | laya ...) without going through the API.
     environment.systemPackages = [ cfg.package ];
 
     networking.firewall.allowedTCPPorts = lib.optional cfg.openFirewall cfg.port;

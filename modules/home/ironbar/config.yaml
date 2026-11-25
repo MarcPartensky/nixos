@@ -1,7 +1,7 @@
 # ~/.config/ironbar/config.yaml
 position: top
 height: 42
-# L'option magique pour le slide au hover (500ms de délai avant de repartir)
+# The magic option for slide on hover (500ms delay before hiding again)
 autohide: 500
 start:
   - type: "workspaces"

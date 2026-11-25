@@ -1,25 +1,25 @@
-// Layout de la barre Plasma du bureau distant (kasm.marcpartensky.com).
+// Plasma panel layout for the remote desktop (kasm.marcpartensky.com).
 //
-// Base : share/plasma/layout-templates/org.kde.plasma.desktop.defaultPanel de
-// plasma-desktop 6.6.6. Deux ecarts volontaires par rapport a l'upstream :
-//   1. la barre est forcee en bas alors que l'upstream laisse ShellCorona
-//      choisir un bord disponible (en pratique le bas, mais pas garanti) ;
-//   2. le gestionnaire de taches epingle konsole et LibreWolf, pour qu'ils se
-//      lancent en UN clic depuis la barre et pas seulement via le menu.
+// Base: share/plasma/layout-templates/org.kde.plasma.desktop.defaultPanel from
+// plasma-desktop 6.6.6. Two deliberate deviations from upstream:
+//   1. the panel is forced to the bottom whereas upstream lets ShellCorona
+//      choose an available edge (in practice the bottom, but not guaranteed);
+//   2. the task manager pins konsole and LibreWolf, so that they
+//      launch in ONE click from the panel and not only via the menu.
 //
-// Ce fichier est charge par plasmashell au PREMIER demarrage d'une session,
-// quand aucun ~/.config/plasma-org.kde.plasma.desktop-appletsrc n'existe. Un
-// appletsrc deja present (marc aurait deja lance Plasma sur tower) n'est PAS
-// ecrase : c'est voulu, on ne detruit pas un reglage utilisateur.
+// This file is loaded by plasmashell on the FIRST start of a session,
+// when no ~/.config/plasma-org.kde.plasma.desktop-appletsrc exists. An
+// appletsrc already present (marc may have already launched Plasma on tower) is NOT
+// overwritten: that is intended, we do not destroy a user setting.
 
 var panel = new Panel
 panel.location = "bottom"
 
-// Hauteur : *2 est trop petit, *3 trop grand (calcul de l'upstream, arrondi au
-// nombre pair suivant : le widget de taille de barre n'affiche que des pairs).
+// Height: *2 is too small, *3 too big (upstream's computation, rounded to the
+// next even number: the panel size widget only shows even numbers).
 panel.height = 2 * Math.ceil(gridUnit * 2.5 / 2)
 
-// Sur un ecran ultra-large, la barre ne s'etale pas sur toute la largeur.
+// On an ultra-wide screen, the panel does not span the full width.
 var panelScreen = panel.screen
 const maximumAspectRatio = 21 / 9;
 if (panel.formFactor === "horizontal") {
@@ -39,15 +39,15 @@ panel.addWidget("org.kde.plasma.systemtray")
 panel.addWidget("org.kde.plasma.digitalclock")
 panel.addWidget("org.kde.plasma.showdesktop")
 
-// Epinglage des lanceurs dans le gestionnaire de taches.
+// Pinning the launchers in the task manager.
 //
-// Ids de .desktop VERIFIES dans le store : le terminal de KDE 6 s'appelle
-// org.kde.konsole.desktop (pas konsole.desktop) et LibreWolf librewolf.desktop.
-// Un id inexistant est simplement ignore par l'applet.
+// .desktop ids VERIFIED in the store: KDE 6's terminal is called
+// org.kde.konsole.desktop (not konsole.desktop) and LibreWolf librewolf.desktop.
+// A nonexistent id is simply ignored by the applet.
 //
-// try/catch obligatoire : une exception non rattrapee ferait echouer TOUT le
-// script de layout, donc une session sans barre du tout. L'epinglage est un
-// confort, la barre est l'essentiel.
+// try/catch mandatory: an uncaught exception would make the WHOLE
+// layout script fail, hence a session with no panel at all. Pinning is a
+// convenience, the panel is essential.
 try {
     var tasks = panel.widgets("org.kde.plasma.icontasks")
     if (tasks.length > 0) {
@@ -55,7 +55,7 @@ try {
         tasks[0].writeConfig("launchers", "applications:org.kde.konsole.desktop,applications:librewolf.desktop")
     }
 } catch (e) {
-    print("kasmvnc-plasma: epinglage des lanceurs impossible (" + e + ")")
+    print("kasmvnc-plasma: launcher pinning failed (" + e + ")")
 }
 
 var desktopsArray = desktopsForActivity(currentActivity());

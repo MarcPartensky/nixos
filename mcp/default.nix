@@ -1,20 +1,20 @@
 # mcp/default.nix
-# Les serveurs MCP maison, exposes comme sorties du flake.
+# The home-grown MCP servers, exposed as flake outputs.
 #
-# Pourquoi : aujourd'hui chaque serveur est construit dans le module du service
-# qui le declare, donc il ne peut exister que dans la closure de
-# nixosConfigurations.tower, et seulement apres un eval complet de l'hote.
-# Ici chaque serveur est un paquet independant : `nix build .#shlink-mcp`
-# n'evalue que nixpkgs et ce fichier, pas la conf NixOS.
+# Why: today each server is built in the module of the service
+# that declares it, so it can only exist in the closure of
+# nixosConfigurations.tower, and only after a full host eval.
+# Here each server is an independent package: `nix build .#shlink-mcp`
+# evaluates only nixpkgs and this file, not the NixOS config.
 #
-# Ce que ca ne fait pas encore : le cablage cote module. Tant que
-# services/<nom>/default.nix defini son binaire en local, l'hote ne consomme
-# pas ces sorties. Le basculement se fait module par module, en pointant
-# `command = "${self.packages.${pkgs.system}.<nom>}/bin/<nom>"`.
+# What it does not do yet: the module-side wiring. As long as
+# services/<name>/default.nix defines its binary locally, the host does not consume
+# these outputs. The switch happens module by module, by pointing
+# `command = "${self.packages.${pkgs.system}.<name>}/bin/<name>"`.
 #
-# Serveurs volontairement absents : ceux dont le code python est encore une
-# chaine inline dans le module (androidtv-mcp, roku-mcp, pangolin-mcp, tts-mcp).
-# Les sortir demande d'extraire le code dans un .py a cote d'abord.
+# Servers deliberately absent: those whose python code is still an
+# inline string in the module (androidtv-mcp, roku-mcp, pangolin-mcp, tts-mcp).
+# Moving them out requires first extracting the code into a .py alongside.
 {pkgs}: let
   py = pkgs.python3Packages;
   mk = name: file: libraries:
@@ -23,19 +23,19 @@
       flakeIgnore = ["E501" "W503" "W504"];
     } (builtins.readFile file);
 in {
-  # Portage Rust du serveur MCP shlink (crate dans ./shlink-mcp-rs).
-  # Mesure du 15/11/2026, meme API, memes 10 outils : 1,4 Mo de RSS au lieu de
-  # 54, 2 ms de demarrage au lieu de 4200, et le texte rendu au modele est du
-  # JSON compact (1,4 ko au lieu de 2,4 ko sur un list). Cargo.lock est
-  # verrouille dans le depot, donc le build est reproductible sans reseau
-  # au-dela du fetch des crates de la serrure.
+  # Rust port of the shlink MCP server (crate in ./shlink-mcp-rs).
+  # Measurement of 15/11/2026, same API, same 10 tools: 1.4 MB of RSS instead of
+  # 54, 2 ms of startup instead of 4200, and the text rendered to the model is
+  # compact JSON (1.4 kB instead of 2.4 kB on a list). Cargo.lock is
+  # locked in the repo, so the build is reproducible without network
+  # beyond fetching the crates of the lockfile.
   shlink-mcp = pkgs.rustPlatform.buildRustPackage {
     pname = "shlink-mcp-rs";
     version = "0.1.0";
     src = ./shlink-mcp-rs;
     cargoLock.lockFile = ./shlink-mcp-rs/Cargo.lock;
     meta = {
-      description = "Serveur MCP Shlink en Rust (stdio, 10 outils)";
+      description = "Shlink MCP server in Rust (stdio, 10 tools)";
       mainProgram = "shlink-mcp-rs";
     };
   };

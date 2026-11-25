@@ -9,22 +9,22 @@
     ../../modules/home/gh
   ];
 
-  # Identites ssh de root, pour le nix-daemon (qui tourne en root) : les builds
-  # distribues sont lances par le daemon, et Nix ne transmet PAS la cle declaree
-  # dans /etc/nix/machines a ssh. Sans identite utilisable, le daemon echoue sur
-  # `no such identity: /root/.ssh/id_ed25519` puis `Permission denied` et
-  # recompile en local sur tower (constate le 25/11/2026).
+  # root's ssh identities, for the nix-daemon (which runs as root): distributed
+  # builds are launched by the daemon, and Nix does NOT pass the key declared in
+  # /etc/nix/machines to ssh. Without a usable identity the daemon fails with
+  # `no such identity: /root/.ssh/id_ed25519` then `Permission denied` and
+  # recompiles locally on tower (observed on 2026-11-25).
   #
-  # La valeur va dans le bloc `*` (et pas dans un bloc par hote) : ssh applique
-  # la PREMIERE valeur obtenue d'une directive, et modules/home/ssh declare deja
-  # IdentityFile dans `*`. mkForce remplace cette valeur par la liste, essayee
-  # dans l'ordre :
-  #   - nix-builder          : paire DEDIEE hermes@tower -> builders, autorisee
-  #     de facon declarative cote laptop et deck ;
-  #   - id_ed25519 (hermes)  : la cle personnelle de l'agent, deja autorisee sur
-  #     les deux builders (authorized_keys.d) : filet de securite si la paire
-  #     dediee n'est pas encore posee sur un hote ;
-  #   - ~/.ssh/id_ed25519    : cle personnelle de root (celle que le module pose).
+  # The value goes into the `*` block (not a per-host block): ssh applies the
+  # FIRST value obtained for a directive, and modules/home/ssh already declares
+  # IdentityFile in `*`. mkForce replaces that value with the list, tried in
+  # order:
+  #   - nix-builder         : pair DEDICATED to hermes@tower -> builders,
+  #     authorized declaratively on the laptop and the deck;
+  #   - id_ed25519 (hermes) : the agent's personal key, already authorized on
+  #     both builders (authorized_keys.d): safety net when the dedicated pair is
+  #     not in place yet on a host;
+  #   - ~/.ssh/id_ed25519   : root's personal key (the one the module sets).
   programs.ssh.settings."*".IdentityFile = lib.mkForce [
     "/var/lib/hermes/.ssh/nix-builder"
     "/var/lib/hermes/.ssh/id_ed25519"

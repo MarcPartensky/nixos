@@ -3,11 +3,11 @@ let
   # pythonPackages = pkgs.python311Packages;
   pythonPackages = pkgs.python311Packages.override {
     overrides = self: super: {
-      # On désactive les tests spécifiquement pour pytest-benchmark
+      # We disable tests specifically for pytest-benchmark
       pytest-benchmark = super.pytest-benchmark.overridePythonAttrs (old: {
         doCheck = false;
       });
-      # Si d'autres paquets bloquent (ex: cryptography), tu peux les ajouter ici :
+      # If other packages block (e.g. cryptography), you can add them here:
       # cryptography = super.cryptography.overridePythonAttrs (old: { doCheck = false; });
     };
   };

@@ -1,24 +1,24 @@
-"""Réglages de voix du client vocal Hermes.
+"""Voice settings of the Hermes voice client.
 
-Petit service HTTP local (127.0.0.1) proxifié par nginx sous /voice/api/ sur le
-domaine mobile. Il porte trois choses que le backend `hermes serve` ne sait pas
-faire :
+Small local HTTP service (127.0.0.1) proxied by nginx under /voice/api/ on the
+mobile domain. It carries three things that the `hermes serve` backend cannot
+do:
 
-- un état persistant (moteur, voix, vitesse, hauteur) dans
-  ~/.hermes/voice-settings.json ;
-- le catalogue des voix disponibles (edge-tts, filtré sur les langues utiles) ;
-- la synthèse, pour les aperçus ET pour la conversation : la page web parle via
-  ce service, donc changer de voix est immédiat, sans redémarrage ni rebuild.
+- a persistent state (engine, voice, rate, pitch) in
+  ~/.hermes/voice-settings.json;
+- the catalogue of available voices (edge-tts, filtered on the useful languages);
+- synthesis, for the previews AND for the conversation: the web page speaks via
+  this service, so changing voice is immediate, without restart or rebuild.
 
-Endpoints (préfixe retiré par nginx) :
-  GET  /state                      -> état courant
-  POST /state   {engine,voice,rate,pitch} -> valide + enregistre
+Endpoints (prefix stripped by nginx):
+  GET  /state                      -> current state
+  POST /state   {engine,voice,rate,pitch} -> validates + saves
   GET  /voices                     -> {engines:[...], state}
-  POST /preview {text?, ...override} -> audio/mpeg (aperçu)
+  POST /preview {text?, ...override} -> audio/mpeg (preview)
   POST /speak   {text,   ...override} -> audio/mpeg (conversation)
 
-Aucune dépendance hors stdlib + edge-tts. Écrit uniquement dans le fichier
-d'état ; les fichiers audio sont rendus en mémoire et jamais laissés sur disque.
+No dependency outside stdlib + edge-tts. Writes only to the state
+file; the audio files are rendered in memory and never left on disk.
 """
 
 from __future__ import annotations
@@ -43,14 +43,14 @@ STATE_PATH = Path(
         str(Path.home() / ".hermes" / "voice-settings.json"),
     )
 )
-# Langues proposées : français d'abord (usage réel), puis les multilingues.
+# Proposed languages: French first (real usage), then the multilingual ones.
 LANGS = ("fr-", "en-GB", "en-US")
 DEFAULT_STATE: dict[str, Any] = {
     "engine": "edge",
     "voice": "fr-FR-VivienneMultilingualNeural",
-    "rate": 0,      # pourcentage, -50..+50
+    "rate": 0,      # percentage, -50..+50
     "pitch": 0,     # Hz, -30..+30
-    "volume": 0,    # pourcentage, -50..+50
+    "volume": 0,    # percentage, -50..+50
 }
 MAX_TEXT = 4000
 
@@ -98,7 +98,7 @@ def _label(short_name: str, gender: str | None) -> str:
     base = re.sub(r"Neural$", "", base)
     base = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", base)
     if gender:
-        base += " (F)" if gender.upper().startswith("F") else " (H)"
+        base += " (F)" if gender.upper().startswith("F") else " (M)"
     return base
 
 
@@ -210,8 +210,8 @@ class Handler(BaseHTTPRequestHandler):
                         "engines": [
                             {
                                 "id": "edge",
-                                "name": "Edge (gratuit, rapide)",
-                                "note": "Voix neuronales Microsoft, ~1 s par phrase.",
+                                "name": "Edge (free, fast)",
+                                "note": "Microsoft neural voices, ~1 s per sentence.",
                                 "voices": catalogue,
                             }
                         ],
@@ -238,7 +238,7 @@ class Handler(BaseHTTPRequestHandler):
                 override = {k: payload[k] for k in DEFAULT_STATE if k in payload and k != "engine"}
                 audio = synthesize(text, override)
                 if not audio:
-                    return self._json(502, {"ok": False, "error": "synthèse vide"})
+                    return self._json(502, {"ok": False, "error": "empty synthesis"})
                 return self._audio(audio)
         except Exception as exc:  # noqa: BLE001
             return self._json(500, {"ok": False, "error": str(exc)})
@@ -247,7 +247,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    print(f"voice-settings: http://{HOST}:{PORT} (état {STATE_PATH})", flush=True)
+    print(f"voice-settings: http://{HOST}:{PORT} (state {STATE_PATH})", flush=True)
     server.serve_forever()
 
 

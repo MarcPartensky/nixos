@@ -1,10 +1,10 @@
-# Service rentscout : UI web + scrape planifié.
+# rentscout service: web UI + scheduled scrape.
 #
-# Le code vit pour l'instant dans /var/lib/hermes/workspace/rentscout (hermes n'a
-# pas le droit d'ecrire dans /home/marc/git). Des que le dossier
-# /home/marc/git/rentscout existe avec son ACL, ce module doit importer le
-# module du projet (builtins.getFlake -> nixosModules.default) au lieu de
-# declarer les unites ici, comme services/winnie.
+# The code currently lives in /var/lib/hermes/workspace/rentscout (hermes is
+# not allowed to write in /home/marc/git). As soon as the folder
+# /home/marc/git/rentscout exists with its ACL, this module must import the
+# project module (builtins.getFlake -> nixosModules.default) instead of
+# declaring the units here, like services/winnie.
 { config, pkgs, lib, ... }:
 let
   projectDir = /var/lib/hermes/workspace/rentscout;
@@ -24,13 +24,13 @@ let
   schema = "${rentscout}/share/rentscout/schema.sql";
   env = {
     RENTSCOUT_DATABASE_URL = "postgresql://rentscout@127.0.0.1:5432/rentscout";
-    # chromium du desktop Kasm (CDP) : sans lui, seules les annonces SpareRoom
-    # descendent (elles passent en HTTP simple).
+    # Kasm desktop chromium (CDP): without it, only the SpareRoom listings
+    # come down (they go over plain HTTP).
     RENTSCOUT_CDP_URL = "http://127.0.0.1:9224";
   };
 in {
-  # Utilisateur système + groupe (le rôle Postgres homonyme est déclaré plus bas :
-  # deux espaces de noms différents, cf. services/taskq).
+  # System user + group (the same-named Postgres role is declared below:
+  # two different namespaces, cf. services/taskq).
   users.groups.rentscout = { };
   users.users.rentscout = {
     isSystemUser = true;
@@ -38,12 +38,12 @@ in {
     description = "rentscout scrape + web UI";
   };
 
-  # Ressource Pangolin declaree ici (blueprint newt) et pas via l'API : newt
-  # 1.17 n'applique que ce que le blueprint contient, une ressource creee par
-  # l'API reste en 503 (verifie le 2026-11-03 : target creee, health jamais
-  # sonder, aucun log cote newt).
-  # SSO desactive a la demande de marc (2026-11-03) : la page ne contient que
-  # des annonces publiques, rien de personnel.
+  # Pangolin resource declared here (newt blueprint) and not via the API: newt
+  # 1.17 only applies what the blueprint contains, a resource created by
+  # the API stays in 503 (verified on 2026-11-03: target created, health never
+  # probed, no log on the newt side).
+  # SSO disabled at marc's request (2026-11-03): the page only contains
+  # public listings, nothing personal.
   services.newt.blueprint.proxy-resources.rentscout = {
     name = "rentscout";
     protocol = "http";

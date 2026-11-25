@@ -2,7 +2,7 @@
 name = "presence"
 version = "0.1.0"
 edition = "2021"
-description = "Presence de marc (Mac / telephone / tower / Hermes) + prevision et reservation CPU"
+description = "marc's presence (Mac / phone / tower / Hermes) + CPU forecast and reservation"
 license = "MIT"
 
 [dependencies]
@@ -23,6 +23,6 @@ postgres = { version = "0.19", default-features = false }
 opt-level = "z"      # a service that sleeps does not need raw speed
 lto = "fat"
 codegen-units = 1
-# pas de panic = "abort" : une erreur dans un handler doit rendre un 500, pas
-# tuer le service (vecu : une panique de connexion Postgres relancait l'unite)
+# no panic = "abort": an error in a handler must return a 500, not
+# kill the service (experienced: a Postgres connection panic restarted the unit)
 strip = true

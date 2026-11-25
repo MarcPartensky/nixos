@@ -1,13 +1,13 @@
-# Catppuccin Mocha + accent Lavender (thème de marc, aligné sur le skin
-# display.skin = catppuccin-dark-lavender du profil default).
+# Catppuccin Mocha + Lavender accent (marc's theme, aligned with the skin
+# display.skin = catppuccin-dark-lavender of the default profile).
 #
-# Format : thème UTILISATEUR du dashboard (DashboardAuthProvider / ThemeProvider).
-# Lu depuis <hermes-home>/dashboard-themes/*.yaml par _discover_user_themes().
-# colorOverrides -> variables CSS --color-* ; palette -> --background-base /
-# --midground-base ; typography/layout -> --theme-* ; customCSS injecté tel quel.
+# Format: USER theme of the dashboard (DashboardAuthProvider / ThemeProvider).
+# Read from <hermes-home>/dashboard-themes/*.yaml by _discover_user_themes().
+# colorOverrides -> CSS variables --color-* ; palette -> --background-base /
+# --midground-base ; typography/layout -> --theme-* ; customCSS injected as is.
 name: catppuccin-mocha-lavender
 label: Catppuccin Mocha (Lavender)
-description: Catppuccin Mocha, accent Lavender, palette de marc
+description: Catppuccin Mocha, Lavender accent, marc's palette
 
 palette:
   background:
@@ -64,8 +64,8 @@ componentStyles:
     borderColor: "#313244"
 
 customCSS: |
-  /* Mocha : la barre latérale et le corps partagent les tons Mantle/Crust,
-     l'accent Lavender reste réservé aux rôles d'accent. */
+  /* Mocha: the sidebar and the body share the Mantle/Crust tones,
+     the Lavender accent stays reserved for accent roles. */
   :root {
     --color-sidebar: #181825;
   }

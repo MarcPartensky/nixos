@@ -1,38 +1,38 @@
 { config, lib, ... }:
-# Proxy TLS INTERNE du tailnet, sur tower.
+# INTERNAL TLS proxy of the tailnet, on tower.
 #
-# Deux jeux de noms pour le meme backend :
-#   - `<service>.intra.marcpartensky.com` : certificat public Let's Encrypt
-#     (wildcard DNS-01), donc valide meme sur un appareil qui n'a pas la racine
-#     interne installee (telephone pretе, TV, machine d'un ami).
-#   - `<service>` tout court : certificat signe par la CA interne (step), valide
-#     uniquement la ou la racine est installee, mais URL minuscule.
+# Two sets of names for the same backend:
+#   - `<service>.intra.marcpartensky.com`: public Let's Encrypt certificate
+#     (wildcard DNS-01), so valid even on a device that does not have the internal
+#     root installed (borrowed phone, TV, a friend's machine).
+#   - `<service>` short: certificate signed by the internal CA (step), valid
+#     only where the root is installed, but tiny URL.
 #
-# Port 9443 : 443 est le relais Tor (services/tor, ORPort 443) et 8443 est
-# KasmVNC. Firewall : seules les interfaces trusted (tailscale0, ygg) joignent
-# ce port, le LAN et internet ne le voient pas.
+# Port 9443: 443 is the Tor relay (services/tor, ORPort 443) and 8443 is
+# KasmVNC. Firewall: only trusted interfaces (tailscale0, ygg) reach
+# this port, the LAN and internet do not see it.
 let
   domain = "intra.marcpartensky.com";
 
-  # Noms courts -> backend, source unique dans modules/intra-hosts.nix. Ajouter
-  # une entree la-bas suffit : le routeur, le certificat signe par la CA interne,
-  # l'entree hosts et le rewrite DNS sont generes.
+  # Short names -> backend, single source in modules/intra-hosts.nix. Adding
+  # an entry there is enough: the router, the certificate signed by the internal CA,
+  # the hosts entry and the DNS rewrite are generated.
   local = import ../../modules/intra-hosts.nix;
   names = builtins.attrNames local;
 
-  # Noms PUBLICS courts pour les memes backends : `jf.marcpartensky.com` au lieu
-  # de `jellyfin.intra.marcpartensky.com`. Le certificat est Let's Encrypt
-  # (DNS-01), donc accepte par tout appareil sans installer de racine privee :
-  # c'est la seule voie pour les clients natifs (app Jellyfin Android, TV).
-  # La liste vit dans modules/public-hosts.nix, partagee avec les rewrites DNS
-  # des instances AdGuard : la resolution reste interne au tailnet, aucun
-  # enregistrement public ne pointe vers l'IP mesh.
+  # Short PUBLIC names for the same backends: `jf.marcpartensky.com` instead
+  # of `jellyfin.intra.marcpartensky.com`. The certificate is Let's Encrypt
+  # (DNS-01), so accepted by any device without installing a private root:
+  # it is the only way for native clients (Jellyfin Android app, TV).
+  # The list lives in modules/public-hosts.nix, shared with the DNS rewrites
+  # of the AdGuard instances: resolution stays internal to the tailnet, no
+  # public record points to the mesh IP.
   public = import ../../modules/public-hosts.nix;
 
   tlsDomain = {
     certResolver = "le-dns";
-    # Sans `domains`, Traefik demanderait un certificat par nom d'hote ; ici on
-    # demande UNE fois le wildcard, reutilise par tous les routeurs.
+    # Without `domains`, Traefik would request one certificate per hostname; here
+    # the wildcard is requested ONCE, reused by all routers.
     domains = [ { main = domain; sans = [ "*.${domain}" ]; } ];
   };
 in
@@ -46,7 +46,7 @@ in
 
   services.traefik = {
     enable = true;
-    # CF_DNS_API_TOKEN, rendu par sops au demarrage (jamais dans le store).
+    # CF_DNS_API_TOKEN, rendered by sops at startup (never in the store).
     environmentFiles = [ config.sops.templates."traefik-dns.env".path ];
 
     staticConfigOptions = {
@@ -64,7 +64,7 @@ in
     dynamicConfigOptions = {
       http = {
         routers =
-          # Nom court : certificat de la CA interne, selectionne par SNI.
+          # Short name: internal CA certificate, selected by SNI.
           (lib.mapAttrs' (name: _: lib.nameValuePair "${name}-local" {
             rule = "Host(`${name}`)";
             entryPoints = [ "websecure" ];
@@ -83,9 +83,9 @@ in
             rule = "Host(`${host}`)";
             entryPoints = [ "websecure" ];
             service = name;
-            # Un certificat par nom public (pas de wildcard ici : le A
-            # Cloudflare est un nom precis, et le wildcard *.marcpartensky.com
-            # appartient au VPS).
+            # One certificate per public name (no wildcard here: the Cloudflare
+            # A record is a precise name, and the wildcard *.marcpartensky.com
+            # belongs to the VPS).
             tls = {
               certResolver = "le-dns";
               domains = [ { main = host; } ];
@@ -97,9 +97,9 @@ in
         }) local;
       };
 
-      # Les certificats se declarent a la RACINE du fichier dynamique, pas sous
-      # `http` : sinon Traefik refuse la config (« field not found, node: tls »).
-      # Feuilles ecrites par intra-ca-issue (systemd, avant traefik).
+      # Certificates are declared at the ROOT of the dynamic file, not under
+      # `http`: otherwise Traefik rejects the config ("field not found, node: tls").
+      # Leaf files written by intra-ca-issue (systemd, before traefik).
       tls.certificates = map (name: {
         certFile = "/var/lib/traefik-certs/${name}.crt";
         keyFile = "/var/lib/traefik-certs/${name}.key";
@@ -107,25 +107,25 @@ in
     };
   };
 
-  # Tor tient 0.0.0.0:443 sur tower (ORPort). Un REDIRECT en PREROUTING limite
-  # a la seule IP du mesh renvoie le 443 du tailnet vers l'entrypoint 9443 :
-  # `https://mesh` marche sans port, et le relais Tor n'est pas touche. Les
-  # paquets concernes arrivent par tailscale0, donc le LAN et internet ne sont
-  # pas affectes.
+  # Tor holds 0.0.0.0:443 on tower (ORPort). A REDIRECT in PREROUTING limited
+  # to the mesh IP alone sends the tailnet's 443 to entrypoint 9443:
+  # `https://mesh` works without a port, and the Tor relay is not touched. The
+  # packets concerned arrive via tailscale0, so the LAN and internet are
+  # not affected.
   networking.firewall.extraCommands = ''
     iptables -t nat -C PREROUTING -d 100.64.0.3 -p tcp --dport 443 -j REDIRECT --to-ports 9443 2>/dev/null || \
     iptables -t nat -A PREROUTING -d 100.64.0.3 -p tcp --dport 443 -j REDIRECT --to-ports 9443
-    # Le trafic emis PAR tower vers sa propre IP mesh sort en OUTPUT : il ne
-    # passe pas par PREROUTING et frappait donc le relais Tor (0.0.0.0:443).
-    # Sans cette regle, `https://jellyfin` echoue dans le navigateur de tower
-    # alors qu'il marche depuis les autres noeuds.
+    # Traffic emitted BY tower to its own mesh IP goes out via OUTPUT: it does not
+    # pass through PREROUTING and thus hit the Tor relay (0.0.0.0:443).
+    # Without this rule, `https://jellyfin` fails in tower's browser
+    # while it works from the other nodes.
     iptables -t nat -C OUTPUT -d 100.64.0.3 -p tcp --dport 443 -j REDIRECT --to-ports 9443 2>/dev/null || \
     iptables -t nat -A OUTPUT -d 100.64.0.3 -p tcp --dport 443 -j REDIRECT --to-ports 9443
   '';
 
-  # Token Cloudflare (Zone:DNS:Edit sur marcpartensky.com), chiffre pour tower
-  # uniquement. Volontairement ABSENT de anywhere.yml, que tower ne peut pas
-  # dechiffrer.
+  # Cloudflare token (Zone:DNS:Edit on marcpartensky.com), encrypted for tower
+  # only. Deliberately ABSENT from anywhere.yml, which tower cannot
+  # decrypt.
   sops.secrets."traefik/cloudflare_dns" = {
     sopsFile = ../../secrets/traefik.yml;
     key = "cloudflare_dns_token";

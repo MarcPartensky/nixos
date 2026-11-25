@@ -1,21 +1,21 @@
 # services/openrouter-mcp/default.nix
-# Serveur MCP OpenRouter (codeChap/mcp-server-open-router) pour hermes.
+# OpenRouter MCP server (codeChap/mcp-server-open-router) for hermes.
 #
-# 5 outils : chat, chat_with_vision, chat_with_search (recherche web via le
-# plugin OpenRouter), list_models, credits. Binaire Rust unique, stdio.
-# Choisi plutôt que le serveur officiel distant (mcp.openrouter.ai, OAuth) :
-# ce dernier délivre une clé à durée de vie 7 jours (spend cap $10), donc
-# inutilisable pour une intégration nix déclarative "pose et oublie".
+# 5 tools: chat, chat_with_vision, chat_with_search (web search via the
+# OpenRouter plugin), list_models, credits. Single Rust binary, stdio.
+# Chosen over the official remote server (mcp.openrouter.ai, OAuth):
+# the latter issues a key with a 7-day lifetime (spend cap $10), so
+# unusable for a declarative nix "set and forget" integration.
 #
-# Le binaire lit sa config depuis $XDG_CONFIG_HOME/mcp-server-open-router/config.toml
-# (crate `dirs`, pas de variable d'env ni de flag pour le chemin). Le wrapper
-# régénère ce fichier à chaque lancement depuis le secret sops : la clé n'est
-# JAMAIS en clair dans le nix store ni dans mcpServers.env.
+# The binary reads its config from $XDG_CONFIG_HOME/mcp-server-open-router/config.toml
+# (crate `dirs`, no env var and no flag for the path). The wrapper
+# regenerates this file on every launch from the sops secret: the key is
+# NEVER in cleartext in the nix store nor in mcpServers.env.
 #
-# Secret : secrets/openrouter-mcp.yml (sops, clé openrouter_api_key).
-# PLACEHOLDER à remplacer par marc :
+# Secret: secrets/openrouter-mcp.yml (sops, key openrouter_api_key).
+# PLACEHOLDER to be replaced by marc:
 #   nix run nixpkgs#sops -- secrets/openrouter-mcp.yml
-# (clé OpenRouter : https://openrouter.ai/settings/keys)
+# (OpenRouter key: https://openrouter.ai/settings/keys)
 {
   config,
   lib,
@@ -34,7 +34,7 @@
     pname = "mcp-server-open-router";
     inherit version src;
     cargoLock.lockFile = "${src}/Cargo.lock";
-    # reqwest -> openssl-sys a besoin de pkg-config + libs de dev OpenSSL.
+    # reqwest -> openssl-sys needs pkg-config + OpenSSL dev libs.
     nativeBuildInputs = [pkgs.pkg-config];
     buildInputs = [pkgs.openssl];
     meta = {
@@ -49,9 +49,9 @@
   configDir = "${stateDir}/config";
   apiKeyFile = config.sops.secrets."openrouter-mcp/api_key".path;
 
-  # Régénère config.toml à chaque lancement depuis le secret sops (jq -Rs
-  # produit une chaîne TOML/JSON correctement échappée, jamais d'interpolation
-  # brute d'une valeur pouvant contenir des guillemets).
+  # Regenerates config.toml on every launch from the sops secret (jq -Rs
+  # produces a correctly escaped TOML/JSON string, never a raw
+  # interpolation of a value that may contain quotes).
   wrapper = pkgs.writeShellScript "openrouter-mcp-hermes" ''
     set -euo pipefail
     umask 077

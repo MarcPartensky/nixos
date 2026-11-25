@@ -1,23 +1,23 @@
 #!/bin/sh
-# nod-bootstrap.sh : provisionne (ou repare) un appareil Android Nix-on-Droid
-# pour le pilotage a distance et longue duree par l'agent de marc.
+# nod-bootstrap.sh: provisions (or repairs) an Android Nix-on-Droid device
+# for remote and long-duration control by marc's agent.
 #
-# Sur l'appareil, dans le terminal de l'app Nix-on-Droid (com.termux.nix) :
-#   curl -fsSL <lien-court> | sh                 # installe / met a jour / repare
-#   curl -fsSL <lien-court> | sh -s status       # etat seulement, ne touche a rien
+# On the device, in the terminal of the Nix-on-Droid app (com.termux.nix):
+#   curl -fsSL <short-link> | sh                 # installs / updates / repairs
+#   curl -fsSL <short-link> | sh -s status       # state only, touches nothing
 #
-# Fonctionne aussi deja installe, pour un switch de maintenance :
+# Also works once already installed, for a maintenance switch:
 #   /nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/nod-bootstrap
 #
-# Variables (toutes optionnelles) :
-#   NOD_FLAKE     flake a deployer           (defaut github:MarcPartensky/nixos)
-#   NOD_DEVICE    attribut de configuration  (defaut : `default`)
-#   NOD_RELAY_KEY cle ed25519 de relais en base64, ecrite dans ~/.ssh/relay_ed25519
-#                 (sans elle, l'appareil reste joignable en ssh sur le LAN, :8023)
-#   NOD_NO_SWITCH 1 = ne pas relancer le switch (verification seule)
+# Variables (all optional):
+#   NOD_FLAKE     flake to deploy             (default github:MarcPartensky/nixos)
+#   NOD_DEVICE    configuration attribute     (default: `default`)
+#   NOD_RELAY_KEY ed25519 relay key in base64, written to ~/.ssh/relay_ed25519
+#                 (without it, the device stays reachable via ssh on the LAN, :8023)
+#   NOD_NO_SWITCH 1 = do not relaunch the switch (verification only)
 #
-# Aucun secret n'est contenu dans ce script : il n'est la que pour rendre
-# l'appareil declaratif, reproductible et reparables en une commande.
+# No secret is contained in this script: it is only there to make
+# the device declarative, reproducible and repairable in one command.
 
 set -u
 
@@ -39,9 +39,9 @@ warn() { printf '!!! %s\n' "$*" >&2; }
 die()  { printf '!!! %s\n' "$*" >&2; printf 'NOD-BOOTSTRAP-FAILED\n'; exit 1; }
 ok()   { printf ' ok  %s\n' "$*"; }
 
-# Resout un binaire : generation courante, puis profil utilisateur, puis PATH.
-# La generation courante est le chemin STABLE pose par nix-on-droid : il survit
-# a un switch et resout toujours l'environnement actif.
+# Resolves a binary: current generation, then user profile, then PATH.
+# The current generation is the STABLE path set by nix-on-droid: it survives
+# a switch and always resolves the active environment.
 find_bin() {
   name=$1
   for p in "$GEN_BIN/$name" "$NOD_HOME/.nix-profile/bin/$name"; do
@@ -51,75 +51,75 @@ find_bin() {
   return 1
 }
 
-say "nod-bootstrap, mode=$MODE, $(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo 'date inconnue')"
+say "nod-bootstrap, mode=$MODE, $(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo 'unknown date')"
 say "home=$NOD_HOME"
 case "$NOD_HOME" in
-  */com.termux.nix/*|*/termux.nix/*) ok "environnement Nix-on-Droid reconnu" ;;
-  *) warn "HOME inattendu : ce script vise l'app Nix-on-Droid (com.termux.nix). On continue quand meme." ;;
+  */com.termux.nix/*|*/termux.nix/*) ok "Nix-on-Droid environment recognized" ;;
+  *) warn "unexpected HOME: this script targets the Nix-on-Droid app (com.termux.nix). Continuing anyway." ;;
 esac
 
-# --- etat seul ---------------------------------------------------------------
+# --- state only --------------------------------------------------------------
 report_state() {
   s=0
   for b in sshd phone-up phone-status phone-watchdog zsh git; do
-    if p=$(find_bin "$b"); then ok "$b -> $p"; else warn "$b ABSENT"; s=1; fi
+    if p=$(find_bin "$b"); then ok "$b -> $p"; else warn "$b MISSING"; s=1; fi
   done
   if [ -x "$GEN_BIN/phone-status" ]; then
     say "phone-status :"
-    "$GEN_BIN/phone-status" || warn "phone-status a echoue"
+    "$GEN_BIN/phone-status" || warn "phone-status failed"
   fi
-  if p=$(find_bin curl); then ok "curl -> $p"; else warn "curl ABSENT (le lien court ne pourra pas etre relance sur cet appareil)"; fi
+  if p=$(find_bin curl); then ok "curl -> $p"; else warn "curl MISSING (the short link will not be relaunchable on this device)"; fi
   return $s
 }
 
 if [ "$MODE" = status ]; then
-  report_state || warn "etat incomplet"
+  report_state || warn "incomplete state"
   printf 'NOD-BOOTSTRAP-STATUS-DONE\n'
   exit 0
 fi
 
-# --- cle de relais (optionnelle) --------------------------------------------
+# --- relay key (optional) ---------------------------------------------------
 if [ -n "${NOD_RELAY_KEY:-}" ]; then
-  say "ecriture de la cle de relais dans ~/.ssh/relay_ed25519"
+  say "writing the relay key to ~/.ssh/relay_ed25519"
   umask 077
   mkdir -p "$NOD_HOME/.ssh"
   if printf '%s' "$NOD_RELAY_KEY" | base64 -d > "$NOD_HOME/.ssh/relay_ed25519" 2>/dev/null; then
     chmod 600 "$NOD_HOME/.ssh/relay_ed25519"
-    ok "cle de relais posee (tunnel sortant vers le VPS actif au prochain phone-up)"
+    ok "relay key set (outbound tunnel to the active VPS at the next phone-up)"
   else
-    warn "base64 illisible : cle NON posee"
+    warn "unreadable base64: key NOT set"
   fi
   unset NOD_RELAY_KEY
 fi
 
-# --- switch declaratif ------------------------------------------------------
+# --- declarative switch -----------------------------------------------------
 NOD_BIN_CONF=$(find_bin nix-on-droid) \
-  || die "binaire nix-on-droid introuvable : installer d'abord l'app Nix-on-Droid (F-Droid, com.termux.nix) et repondre y a la question sur les flakes."
+  || die "nix-on-droid binary not found: first install the Nix-on-Droid app (F-Droid, com.termux.nix) and answer the flakes question there."
 
 if [ "${NOD_NO_SWITCH:-0}" = 1 ]; then
-  say "NOD_NO_SWITCH=1 : switch saute"
+  say "NOD_NO_SWITCH=1: switch skipped"
 else
   TARGET="$NOD_FLAKE"
   [ -n "$NOD_DEVICE" ] && TARGET="$NOD_FLAKE#$NOD_DEVICE"
-  say "switch depuis $TARGET (tarball-ttl $NOD_TTL)"
-  say "premier build : plusieurs minutes, l'ecran peut sembler fige. Ne pas fermer l'app."
-  # Le fetcher de nix met en cache les refs non epinglees (~1 h) : tarball-ttl 0
-  # force la resolution fraiche, indispensable juste apres un push de la config.
-  # Le switch ne tue ni sshd ni les boucles deja lancees : la session survit.
+  say "switch from $TARGET (tarball-ttl $NOD_TTL)"
+  say "first build: several minutes, the screen may seem frozen. Do not close the app."
+  # The nix fetcher caches unpinned refs (~1 h): tarball-ttl 0
+  # forces a fresh resolution, essential right after a config push.
+  # The switch kills neither sshd nor the already-started loops: the session survives.
   if [ "$NOD_TTL" = 0 ]; then
     "$NOD_BIN_CONF" switch --flake "$TARGET" --option tarball-ttl 0
   else
     "$NOD_BIN_CONF" switch --flake "$TARGET" --option tarball-ttl "$NOD_TTL"
-  fi || die "le switch a echoue : lire les 20 dernieres lignes ci-dessus (souvent un nom de fichier ou une variable mal nommee dans un module)."
-  ok "generation active"
+  fi || die "the switch failed: read the last 20 lines above (often a file name or a variable misnamed in a module)."
+  ok "active generation"
 fi
 
-# --- demarrage des services -------------------------------------------------
+# --- starting the services --------------------------------------------------
 if p=$(find_bin phone-up); then
   say "phone-up (sshd, tunnels, watchdog, wake-lock)"
-  "$p" || warn "phone-up a renvoye un code non nul (voir ~/sshd/up.log)"
+  "$p" || warn "phone-up returned a non-zero code (see ~/sshd/up.log)"
 else
-  warn "phone-up absent du profil : le switch n'a pas deploye le module d'acces (verifier profiles/nix-on-droid)."
+  warn "phone-up absent from the profile: the switch did not deploy the access module (check profiles/nix-on-droid)."
 fi
 sleep 3
 
@@ -127,19 +127,19 @@ sleep 3
 say "verification"
 FAIL=0
 for b in sshd phone-up phone-status zsh git; do
-  if p=$(find_bin "$b"); then ok "$b"; else warn "$b ABSENT"; FAIL=1; fi
+  if p=$(find_bin "$b"); then ok "$b"; else warn "$b MISSING"; FAIL=1; fi
 done
-if p=$(find_bin curl); then ok "curl (le lien court est relancable sur cet appareil)"; else warn "curl absent : l'appareil ne pourra pas se rebootstrap seul (ajouter curl a environment.packages)"; fi
+if p=$(find_bin curl); then ok "curl (the short link is relaunchable on this device)"; else warn "curl absent: the device will not be able to re-bootstrap itself (add curl to environment.packages)"; fi
 
-# sshd ecoute-t-il ? (uid app : pas de ss/netlink, mais /dev/tcp suffit)
+# does sshd listen? (app uid: no ss/netlink, but /dev/tcp is enough)
 if timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/8023' 2>/dev/null; then
-  ok "sshd joignable sur 127.0.0.1:8023"
+  ok "sshd reachable on 127.0.0.1:8023"
 else
-  warn "sshd ne repond pas sur 127.0.0.1:8023 (relancer phone-up ; sinon lire ~/sshd/up.log)"
+  warn "sshd does not answer on 127.0.0.1:8023 (relaunch phone-up; otherwise read ~/sshd/up.log)"
   FAIL=1
 fi
 
-# IP LAN : sous uid app, la lecture netlink est parfois refusee, on tolere.
+# LAN IP: under the app uid, netlink reading is sometimes refused, we tolerate it.
 if p=$(find_bin ip); then
   LAN=$("$p" -4 -o addr show wlan0 2>/dev/null | grep -o '[0-9][0-9.]*/[0-9]*' | head -1 | cut -d/ -f1)
   [ -n "$LAN" ] && ok "wlan0 = $LAN  (ssh -p 8023 nix-on-droid@$LAN)"
@@ -147,21 +147,21 @@ fi
 
 if [ -x "$GEN_BIN/phone-status" ]; then
   say "phone-status :"
-  "$GEN_BIN/phone-status" || warn "phone-status a echoue"
+  "$GEN_BIN/phone-status" || warn "phone-status failed"
 fi
 
 cat <<'CHECKLIST'
 
---- les 4 reglages Android qui tiennent l'appareil en vie (une fois) -------------
- 1. Nix-on-Droid : demarrage automatique ON (Parametres > Applis > Nix-on-Droid)
- 2. batterie : AUCUNE restriction (le tueur d'apps HyperOS sinon gele l'app)
- 3. permission "Afficher les fenetres pop-up" (requise par le wake-lock)
- 4. verrouiller l'app dans les recents (cadenas)
- controle : dans une session, `termux-wake-lock; echo $?` doit afficher 0
+--- the 4 Android settings that keep the device alive (once) -------------------
+ 1. Nix-on-Droid: automatic start ON (Settings > Apps > Nix-on-Droid)
+ 2. battery: NO restriction (otherwise the HyperOS app killer freezes the app)
+ 3. permission "Display pop-up windows" (required by the wake-lock)
+ 4. lock the app in the recents (padlock)
+ check: in a session, `termux-wake-lock; echo $?` must display 0
 
---- ensuite ---------------------------------------------------------------
- relancer la meme commande courte = mise a jour + reparation (idempotent)
- etat :  /nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/nod-bootstrap status
+--- afterwards ------------------------------------------------------------
+ relaunching the same short command = update + repair (idempotent)
+ state:  /nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/nod-bootstrap status
 CHECKLIST
 
 if [ "$FAIL" = 0 ]; then

@@ -1,15 +1,15 @@
-"""Serveur MCP "mac" : pilote le Mac de marc depuis tower via ssh.
+"""MCP server "mac": drives marc's Mac from tower via ssh.
 
-Sert le cycle de build de Winnie : etat du poste (winnie-doctor), sync du
-depot depuis tower, reparations (--fix), operations root Xcode (regle sudo
-NOPASSWD xcode-select/xcodebuild/xcrun, voir sudoers.d/20-hermes-xcode),
-runtime du simulateur iOS (~8 Go, en arriere-plan) et builds tauri
-(macOS desktop ; iOS simulateur) lances en arriere-plan, journaux
-consultables par log_tail.
+Serves the Winnie build cycle: machine state (winnie-doctor), repo sync
+from tower, repairs (--fix), root Xcode operations (sudo NOPASSWD rule
+xcode-select/xcodebuild/xcrun, see sudoers.d/20-hermes-xcode),
+iOS simulator runtime (~8 GB, in the background) and tauri builds
+(macOS desktop; iOS simulator) launched in the background, logs
+viewable via log_tail.
 
-Tout tourne en ssh sous le compte marc ; les longs builds rendent la main
-tout de suite et se suivent par log_tail. Hote choisi au premier appel :
-alias maclan (LAN) puis mac (tunnel inverse par rack).
+Everything runs over ssh under the marc account; long builds return
+immediately and are followed via log_tail. Host chosen on the first call:
+alias maclan (LAN) then mac (reverse tunnel via rack).
 """
 
 import os
@@ -27,8 +27,8 @@ BIN = "/etc/profiles/per-user/marc/bin"
 PATH_PREFIX = 'export PATH="/run/current-system/sw/bin:%s:$PATH";' % BIN
 NIX = "nix --extra-experimental-features 'nix-command flakes'"
 
-# Motifs pgrep : le [x] empeche le process du pgrep (dont la ligne de
-# commande contient le motif) de se compter lui-meme.
+# pgrep patterns: the [x] prevents the pgrep process itself (whose command
+# line contains the pattern) from counting itself.
 LOGS = {
     "runtime": "[d]ownloadPlatform",
     "ios-init": "[t]auri ios init",
@@ -61,7 +61,7 @@ def _pick_host():
             return h
         lines = (r.stderr or "").strip().splitlines()
         errors.append("%s: %s" % (h, lines[-1] if lines else "rc!=0"))
-    raise RuntimeError("Mac injoignable (%s)" % " ; ".join(errors))
+    raise RuntimeError("Mac unreachable (%s)" % " ; ".join(errors))
 
 
 def _ssh(cmd, timeout=900):
@@ -74,7 +74,7 @@ def _ssh(cmd, timeout=900):
     out = ((r.stdout or "") + (r.stderr or "")).strip()
     if r.returncode != 0:
         raise RuntimeError(
-            "ssh %s a echoue (rc=%s) :\n%s" % (host, r.returncode, out[-2000:])
+            "ssh %s failed (rc=%s):\n%s" % (host, r.returncode, out[-2000:])
         )
     return out
 
@@ -84,7 +84,7 @@ def _start(name, cmd):
     line = "cd %s && nohup %s >%s 2>&1 </dev/null & echo pid=$!" % (
         REPO, cmd, log)
     out = _ssh(line, timeout=60)
-    return "%s lance en arriere-plan (%s) ; suivi log_tail('%s').\n%s" % (
+    return "%s launched in the background (%s); follow log_tail('%s').\n%s" % (
         name, log, name, out)
 
 
@@ -94,11 +94,11 @@ def _dev(cmd):
 
 @mcp.tool()
 def status() -> str:
-    """Etat du poste Mac pour builder Winnie.
+    """State of the Mac machine for building Winnie.
 
-    winnie-doctor (Xcode, licence, SDK iOS, runtime du simulateur,
-    node_modules, API) + revisions des depots ~/git/winnie et ~/git/nixos
-    + hote ssh joignable (maclan ou mac).
+    winnie-doctor (Xcode, license, iOS SDK, simulator runtime,
+    node_modules, API) + revisions of the ~/git/winnie and ~/git/nixos
+    repos + reachable ssh host (maclan or mac).
     """
     revs = _ssh(
         "cd %s && git log -1 --format='winnie %%h %%s' ; "
@@ -106,15 +106,15 @@ def status() -> str:
         timeout=60,
     )
     doc = _ssh("%s/winnie-doctor ; echo RC=$?" % BIN, timeout=180)
-    return "hote ssh : %s\n%s\n\n%s" % (_pick_host(), revs, doc)
+    return "ssh host: %s\n%s\n\n%s" % (_pick_host(), revs, doc)
 
 
 @mcp.tool()
 def sync(delete: bool = False) -> str:
-    """Rafraichit ~/git/winnie sur le Mac depuis tower (rsync ssh).
+    """Refreshes ~/git/winnie on the Mac from tower (rsync ssh).
 
-    delete=False (defaut) garde les fichiers locaux en trop ;
-    delete=True fait un miroir strict de tower.
+    delete=False (default) keeps extra local files;
+    delete=True makes a strict mirror of tower.
     """
     arg = " --delete" if delete else ""
     return _ssh("%s/winnie-sync%s" % (BIN, arg), timeout=600)
@@ -122,19 +122,19 @@ def sync(delete: bool = False) -> str:
 
 @mcp.tool()
 def doctor_fix() -> str:
-    """winnie-doctor --fix : repare le poste Mac (depot, node_modules,
-    Xcode, licence, runtime). Les operations root passent par la regle
-    sudo NOPASSWD deployee. Relancable sans risque.
+    """winnie-doctor --fix: repairs the Mac machine (repo, node_modules,
+    Xcode, license, runtime). Root operations go through the deployed
+    sudo NOPASSWD rule. Safe to re-run.
     """
     return _ssh("%s/winnie-doctor --fix ; echo RC=$?" % BIN, timeout=1800)
 
 
 @mcp.tool()
 def xcode_fix() -> str:
-    """Pointe xcode-select sur /Applications/Xcode.app, accepte la licence
-    Xcode et installe les premiers composants (les trois operations root,
-    via sudo). A relancer apres toute (re)installation ou mise a jour
-    majeure de Xcode ; conclut sur l'etat du SDK.
+    """Points xcode-select at /Applications/Xcode.app, accepts the Xcode
+    license and installs the first components (the three root operations,
+    via sudo). To re-run after any (re)installation or major Xcode
+    update; concludes on the state of the SDK.
     """
     return _ssh(
         "sudo -n /usr/bin/xcode-select -s /Applications/Xcode.app"
@@ -148,9 +148,9 @@ def xcode_fix() -> str:
 
 @mcp.tool()
 def runtime_install() -> str:
-    """Telecharge le runtime du simulateur iOS sur le Mac (~8 Go, long) en
-    arriere-plan ; suivre avec log_tail('runtime'). Inutile si status le
-    montre deja present.
+    """Downloads the iOS simulator runtime on the Mac (~8 GB, long) in the
+    background; follow with log_tail('runtime'). Useless if status already
+    shows it present.
     """
     return _start("runtime",
                   "sudo -n /usr/bin/xcodebuild -downloadPlatform iOS")
@@ -158,9 +158,9 @@ def runtime_install() -> str:
 
 @mcp.tool()
 def ios_init() -> str:
-    """Sur le Mac : npm ci si besoin puis tauri ios init (projet Xcode +
-    pod install) dans le devShell winnie. Bloque quelques minutes ; sans
-    effet si app/src-tauri/gen/apple existe deja.
+    """On the Mac: npm ci if needed then tauri ios init (Xcode project +
+    pod install) in the winnie devShell. Blocks for a few minutes; no
+    effect if app/src-tauri/gen/apple already exists.
     """
     # npm and NOT ./node_modules/.bin/tauri: the CLI copies its own invocation
     # into the "Build Rust Code" phase of the Xcode project. Launched directly it
@@ -175,25 +175,25 @@ def ios_init() -> str:
 
 @mcp.tool()
 def ios_dev(device: str = "") -> str:
-    """Dev client iOS en live reload sur le simulateur (tauri ios dev), en
-    arriere-plan ; suivre avec log_tail('ios-dev').
+    """iOS dev client in live reload on the simulator (tauri ios dev), in the
+    background; follow with log_tail('ios-dev').
 
-    C'est l'equivalent iOS du dev client Android : l'app charge le devUrl de
-    app/src-tauri/tauri.ios.conf.json, c'est-a-dire le serveur de dev de tower
-    (https://dev.winnie.marcpartensky.com), donc une edition du front sur tower
-    s'y applique sans rebuild. device vide = premier simulateur iPhone
-    disponible (choisi par le wrapper winnie-ios). Pre-requis : runtime du
-    simulateur (runtime_install), gen/apple (ios_init) et l'unite winnie-dev
-    active sur tower.
+    This is the iOS equivalent of the Android dev client: the app loads the devUrl of
+    app/src-tauri/tauri.ios.conf.json, that is, tower's dev server
+    (https://dev.winnie.marcpartensky.com), so an edit of the front on tower
+    applies there without a rebuild. empty device = first available iPhone
+    simulator (chosen by the winnie-ios wrapper). Prerequisites: simulator
+    runtime (runtime_install), gen/apple (ios_init) and the winnie-dev unit
+    active on tower.
     """
     arg = " " + shlex.quote(device) if device else ""
     return _start("ios-dev", "%s/winnie-ios%s" % (BIN, arg))
 
 @mcp.tool()
 def ios_build_sim() -> str:
-    """Build iOS pour le simulateur (aucun compte Apple requis), en
-    arriere-plan ; suivre avec log_tail('ios-build'). Pre-requis : runtime
-    du simulateur (runtime_install) et gen/apple (ios_init).
+    """iOS build for the simulator (no Apple account required), in the
+    background; follow with log_tail('ios-build'). Prerequisites: simulator
+    runtime (runtime_install) and gen/apple (ios_init).
     """
     inner = ("cd app && ./node_modules/.bin/tauri ios build"
              " --target aarch64-sim; echo BUILD_EXIT=$?")
@@ -202,8 +202,8 @@ def ios_build_sim() -> str:
 
 @mcp.tool()
 def macos_build() -> str:
-    """Build macOS desktop (.app + .dmg, Command Line Tools suffisent), en
-    arriere-plan ; suivre avec log_tail('macos-build').
+    """macOS desktop build (.app + .dmg, Command Line Tools are enough), in the
+    background; follow with log_tail('macos-build').
     """
     inner = ("cd app && ./node_modules/.bin/tauri build"
              "; echo BUILD_EXIT=$?")
@@ -212,11 +212,11 @@ def macos_build() -> str:
 
 @mcp.tool()
 def log_tail(name: str, lines: int = 40) -> str:
-    """Dernieres lignes du journal d'une tache en arriere-plan ; name parmi
-    runtime, ios-build, macos-build. Dit aussi si la tache tourne encore.
+    """Last lines of the log of a background task; name among
+    runtime, ios-build, macos-build. Also says whether the task is still running.
     """
     if name not in LOGS:
-        raise RuntimeError("nom inconnu : %s (attendu : %s)"
+        raise RuntimeError("unknown name: %s (expected: %s)"
                            % (name, ", ".join(sorted(LOGS))))
     cmd = ("tail -n %d /Users/marc/winnie-%s.log 2>/dev/null"
            " ; echo --- ; pgrep -fl %s | head -5 || true")

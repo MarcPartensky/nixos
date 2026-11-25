@@ -18,18 +18,18 @@
     port = 8050;
   };
 
-  # Pont vers l'API server Hermes. Un seul listener par hote : le gateway du
-  # profil default sert tous les profils, celui d'un profil secondaire sous
-  # /p/<profil>/ (cf. services/hermes). C'est CETTE route que consomme le cog,
-  # pas un port dedie : elle n'ecoute que si le gateway tourne (8642).
-  # HERMES_BRIDGE_URL n'est pas secret (loopback local), seule la cle l'est.
+  # Bridge to the Hermes API server. A single listener per host: the gateway of
+  # the default profile serves all profiles, that of a secondary profile under
+  # /p/<profile>/ (see services/hermes). It is THIS route that the cog consumes,
+  # not a dedicated port: it only listens if the gateway is running (8642).
+  # HERMES_BRIDGE_URL is not secret (local loopback), only the key is.
   systemd.services.discord-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
     config.sops.secrets."discord_bot_hermes_bridge_env".path
   ];
   systemd.services.discord-bot.environment = {
     HERMES_BRIDGE_URL = "http://127.0.0.1:8642/p/discord-bridge/v1/chat/completions";
     HERMES_BRIDGE_ROLE_NAME = "hermes";
-    # Surface de test locale du cog (loopback, PAS ouverte au firewall) :
+    # Local test surface of the cog (loopback, NOT opened in the firewall):
     # POST /hermes/ask {"message": "..."} -> {"answer": "..."}.
     HERMES_BRIDGE_ASK_PORT = "8052";
   };

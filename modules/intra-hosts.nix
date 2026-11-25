@@ -17,10 +17,10 @@
   # Jellyfin over the mesh instead of the public path, which goes
   # tower -> home uplink -> Chicago VPS (Pangolin/newt) -> back to tower.
   jellyfin = "http://127.0.0.1:8096";
-  # mnemo (moteur de retention) : pod k3s en hostNetwork sur tower, lie a la
-  # loopback, donc joignable par ce proxy mais par personne d'autre. Donne
-  # `https://mnemo` et `https://mnemo.intra.marcpartensky.com` depuis le
-  # tailnet, a cote du nom public mnemo.marcpartensky.com qui passe par
-  # Pangolin avec le SSO.
+  # mnemo (retention engine): k3s pod in hostNetwork on tower, bound to
+  # loopback, so reachable by this proxy but by no one else. Gives
+  # `https://mnemo` and `https://mnemo.intra.marcpartensky.com` from the
+  # tailnet, alongside the public name mnemo.marcpartensky.com which goes through
+  # Pangolin with SSO.
   mnemo = "http://127.0.0.1:9152";
 }

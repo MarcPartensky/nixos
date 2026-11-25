@@ -1,20 +1,20 @@
-# Prébuild asynchrone de la config tower : dès que HEAD ou le diff des
-# fichiers suivis change, on pose une tâche taskq `nixos-rebuild build`.
-# `just nixos` ne fait alors plus que l'activation, et le post-build-hook
-# d'attic (services/attic) pousse les paquets fraîchement compilés dans la
-# cache binaire locale au passage.
+# Asynchronous prebuild of the tower config: as soon as HEAD or the diff of
+# tracked files changes, we submit a taskq task `nixos-rebuild build`.
+# `just nixos` then only does the activation, and the post-build-hook
+# of attic (services/attic) pushes the freshly compiled packages into the
+# local binary cache along the way.
 #
-# Le timer ne fait QUE poser la tâche (clé d'idempotence = empreinte, une
-# seule ligne taskq par état de l'arbre) ; le dispatcher la lance quand la
-# machine le permet (classe light, --while-busy : elle doit tourner pendant
-# que marc travaille, c'est le but).
+# The timer ONLY submits the task (idempotency key = fingerprint, a single
+# taskq line per tree state); the dispatcher launches it when the
+# machine allows it (class light, --while-busy: it must run while
+# marc is working, that is the point).
 { config, pkgs, ... }:
 let
   repo = "/home/marc/git/nixos";
 in
 {
   systemd.services.nixos-prebuild-check = {
-    description = "Pose un prébuild taskq si la config nixos (tower) a changé";
+    description = "Submit a taskq prebuild if the nixos config (tower) changed";
     serviceConfig = {
       Type = "oneshot";
       User = "hermes";

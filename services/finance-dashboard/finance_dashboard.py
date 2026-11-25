@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""services/finance-dashboard : page de suivi des dépenses de marc.
+"""services/finance-dashboard: spending tracking page for marc.
 
-Chaine : Pangolin (finance.marcpartensky.com, SSO) -> newt (site tower)
-         -> 127.0.0.1:9142 (ce service).
+Chain: Pangolin (finance.marcpartensky.com, SSO) -> newt (site tower)
+         -> 127.0.0.1:9142 (this service).
 
-Le service ne calcule RIEN : il lit /var/lib/hermes/workspace/finance/dashboard.json,
-écrit chaque matin par le cron « Daily finances recap » (finance_recap.py, Wise +
-Chase via SimpleFIN), et le rend en HTML avec des SVG générés côté serveur.
-Aucun JS, aucun CDN, aucune dépendance hors stdlib : la page s'ouvre même si le
-réseau est coupé, et un chiffre affiché est toujours celui du JSON.
+The service computes NOTHING: it reads /var/lib/hermes/workspace/finance/dashboard.json,
+written every morning by the "Daily finances recap" cron (finance_recap.py, Wise +
+Chase via SimpleFIN), and renders it as HTML with server-generated SVGs.
+No JS, no CDN, no dependency outside stdlib: the page opens even if the
+network is down, and a displayed figure is always the one from the JSON.
 
-Routes :
-  GET /          page HTML (auto-refresh 5 min)
-  GET /api/data  le JSON brut
+Routes:
+  GET /          HTML page (auto-refresh 5 min)
+  GET /api/data  the raw JSON
   GET /healthz   200 "ok" (Pangolin/newt healthcheck)
 """
 
@@ -29,7 +29,7 @@ DATA = os.environ.get(
 PORT = int(os.environ.get("FINANCE_DASHBOARD_PORT", "9142"))
 HOST = os.environ.get("FINANCE_DASHBOARD_HOST", "0.0.0.0")
 
-# Palette Catppuccin Mocha, accent Lavender (préférence marc).
+# Catppuccin Mocha palette, Lavender accent (marc's preference).
 CAT_COLORS = [
     "#b4befe",  # lavender
     "#cba6f7",  # mauve
@@ -45,7 +45,7 @@ CAT_COLORS = [
 
 
 def fmt(n, dec=0):
-    """Montant à la française : espace fine insécable comme séparateur."""
+    """French-style amount: narrow no-break space as separator."""
     try:
         v = float(n)
     except (TypeError, ValueError):
@@ -64,7 +64,7 @@ def pct(a, b):
 
 
 def nice_max(v):
-    """Échelle arrondie (25, 50, 100...) pour des graduations lisibles."""
+    """Rounded scale (25, 50, 100...) for readable ticks."""
     v = max(float(v or 0), 1.0)
     for step in (5, 10, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000, 10000):
         if v <= step * 4:
@@ -94,10 +94,10 @@ def load():
 
 # ------------------------------------------------------------------ charts SVG
 def bar_chart(daily, days=30):
-    """Barres quotidiennes, dernier jour en lavande."""
+    """Daily bars, last day in lavender."""
     pts = (daily or [])[-days:]
     if not pts:
-        return '<p class="empty">pas encore de données</p>'
+        return '<p class="empty">no data yet</p>'
     w, h = 900, 230
     pad_l, pad_b, pad_t, pad_r = 56, 26, 14, 12
     pw, ph = w - pad_l - pad_r, h - pad_t - pad_b
@@ -105,7 +105,7 @@ def bar_chart(daily, days=30):
     step = pw / len(pts)
     bw = max(2.0, step * 0.66)
     out = [
-        f'<svg viewBox="0 0 {w} {h}" role="img" aria-label="Dépenses quotidiennes">',
+        f'<svg viewBox="0 0 {w} {h}" role="img" aria-label="Daily spending">',
         f'<line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t + ph}" stroke="#45475a"/>',
         f'<line x1="{pad_l}" y1="{pad_t + ph}" x2="{pad_l + pw}" y2="{pad_t + ph}" stroke="#45475a"/>',
     ]
@@ -145,11 +145,11 @@ def bar_chart(daily, days=30):
 
 
 def cat_chart(cats30, cats90=None):
-    """Barres horizontales par catégorie (30 jours)."""
+    """Horizontal bars by category (30 days)."""
     cats90 = cats90 or {}
     rows = sorted(((k, v) for k, v in (cats30 or {}).items()), key=lambda x: -x[1])
     if not rows:
-        return '<p class="empty">pas encore de données</p>'
+        return '<p class="empty">no data yet</p>'
     total = sum(v for _, v in rows) or 1.0
     vmax = max(v for _, v in rows)
     out = []
@@ -158,7 +158,7 @@ def cat_chart(cats30, cats90=None):
         width = 100.0 * v / vmax
         share = 100.0 * v / total
         avg90 = cats90.get(name)
-        per_month = f" · moy. {fmt(avg90 / 3)} €/mois" if avg90 else ""
+        per_month = f" · avg. {fmt(avg90 / 3)} €/month" if avg90 else ""
         out.append(
             f'<div class="cat"><div class="cat-label">{esc(name)}</div>'
             f'<div class="cat-track"><div class="cat-bar" style="width:{max(width, 1):.1f}%;'
@@ -170,11 +170,11 @@ def cat_chart(cats30, cats90=None):
 
 
 def cum_chart(curve):
-    """Cumul du mois, mois en cours vs mois précédent."""
+    """Month cumulative, current month vs previous month."""
     cur = (curve or {}).get("current") or []
     prev = (curve or {}).get("previous") or []
     if not cur:
-        return '<p class="empty">pas encore de données</p>'
+        return '<p class="empty">no data yet</p>'
     w, h = 900, 250
     pad_l, pad_b, pad_t, pad_r = 64, 26, 16, 14
     pw, ph = w - pad_l - pad_r, h - pad_t - pad_b
@@ -194,7 +194,7 @@ def cum_chart(curve):
         )
 
     out = [
-        f'<svg viewBox="0 0 {w} {h}" role="img" aria-label="Cumul du mois">',
+        f'<svg viewBox="0 0 {w} {h}" role="img" aria-label="Month cumulative">',
         f'<line x1="{pad_l}" y1="{pad_t}" x2="{pad_l}" y2="{pad_t + ph}" stroke="#45475a"/>',
         f'<line x1="{pad_l}" y1="{pad_t + ph}" x2="{pad_l + pw}" y2="{pad_t + ph}" stroke="#45475a"/>',
     ]
@@ -211,7 +211,7 @@ def cum_chart(curve):
     out.append(
         f'<text x="{pad_l - 8}" y="{pad_t + ph + 4}" text-anchor="end" class="axis">0</text>'
     )
-    # Repère « aujourd'hui » : sans lui, la courbe en cours a l'air tronquée.
+    # "today" marker: without it, the current curve looks truncated.
     today_x = px(len(cur) - 1)
     out.append(
         f'<line x1="{today_x:.1f}" y1="{pad_t}" x2="{today_x:.1f}" y2="{pad_t + ph}" '
@@ -219,14 +219,14 @@ def cum_chart(curve):
     )
     out.append(
         f'<text x="{today_x - 4:.1f}" y="{pad_t + 10}" text-anchor="end" class="axis">'
-        "aujourd&#8217;hui</text>"
+        "today</text>"
     )
     out.append(poly(prev, "#7f849c", "6 5"))
     out.append(poly(cur, "#b4befe"))
     for i, p in enumerate(cur):
         out.append(
             f'<circle cx="{px(i):.1f}" cy="{py(p.get("cum", 0)):.1f}" r="2.6" fill="#b4befe">'
-            f'<title>le {esc(p.get("date", "")[-2:])} : {fmt(p.get("cum", 0) , 2)} EUR</title></circle>'
+            f'<title>on {esc(p.get("date", "")[-2:])} : {fmt(p.get("cum", 0) , 2)} EUR</title></circle>'
         )
     for day in (1, 10, 20, 30):
         if day <= nmax:
@@ -253,8 +253,8 @@ def render(p):
         return f"""<!doctype html><meta charset="utf-8">
 <title>Finances</title><style>{CSS}</style>
 <body><main><h1>Finances</h1>
-<p class="empty">Aucune donnée : <code>{esc(DATA)}</code> est absent.
-Le cron « Daily finances recap » le écrit chaque matin à 8 h.</p></main></body>"""
+<p class="empty">No data: <code>{esc(DATA)}</code> is missing.
+The "Daily finances recap" cron writes it every morning at 8 AM.</p></main></body>"""
 
     t = p.get("totals") or {}
     wise = [b for b in (p.get("balances") or {}).get("wise", [])]
@@ -277,11 +277,11 @@ Le cron « Daily finances recap » le écrit chaque matin à 8 h.</p></main></bo
         color = "#f38ba8" if delta > 0 else "#a6e3a1"
         trend = (
             f'<span style="color:{color}">{arrow} {abs(delta):.0f} %</span> '
-            f"vs 7 j précédents ({fmt(prev7)} €)"
+            f"vs previous 7 days ({fmt(prev7)} €)"
         )
 
     gen = str(p.get("generated_at", ""))
-    gen = f"{frdate(gen)} à {gen[11:16]}" if len(gen) >= 16 else gen[:16]
+    gen = f"{frdate(gen)} at {gen[11:16]}" if len(gen) >= 16 else gen[:16]
     day = dt.date.today()
     days_in_month = (
         (day.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
@@ -293,11 +293,11 @@ Le cron « Daily finances recap » le écrit chaque matin à 8 h.</p></main></bo
         chase_html = kpi(
             "Chase checking",
             f"{fmt(usd, 2)} <span class='unit'>USD</span>",
-            f"débits 30 j : {fmt(chase.get('debits_30d_usd'))} USD "
+            f"debits 30 d: {fmt(chase.get('debits_30d_usd'))} USD "
             f"({fmt(chase.get('debits_30d_eur'))} €)",
         )
     elif chase.get("errors"):
-        chase_html = kpi("Chase", "<span class='bad'>indisponible</span>",
+        chase_html = kpi("Chase", "<span class='bad'>unavailable</span>",
                          esc(chase["errors"][0])[:90])
 
     tops = "".join(
@@ -312,7 +312,7 @@ Le cron « Daily finances recap » le écrit chaque matin à 8 h.</p></main></bo
     )
     recs = "".join(
         f'<li><span>{esc(r.get("name"))}</span>'
-        f'<span class="muted">{r.get("months")} mois</span></li>'
+        f'<span class="muted">{r.get("months")} months</span></li>'
         for r in (p.get("recurring") or [])[:8]
     )
 
@@ -328,58 +328,58 @@ Le cron « Daily finances recap » le écrit chaque matin à 8 h.</p></main></bo
 <header>
   <div>
     <h1>Finances</h1>
-    <p class="sub">Wise + Chase · fenêtre {esc(p.get("window_days", 90))} j ·
-    données du {esc(gen)}</p>
+    <p class="sub">Wise + Chase · window {esc(p.get("window_days", 90))} d ·
+    data from {esc(gen)}</p>
   </div>
 </header>
 
 <section class="kpis">
-  {kpi("Solde Wise", f"{fmt(avail, 2)} <span class='unit'>EUR</span>",
-       f"réservé : {fmt(reserved, 2)} €", accent=True)}
-  {kpi("7 derniers jours", f"{fmt(d7)} €", trend)}
-  {kpi("30 jours", f"{fmt(t.get('d30'))} €",
-       f"{fmt(t.get('count_30d'))} opérations · avant : {fmt(t.get('prev30'))} €")}
-  {kpi("Mois en cours", f"{fmt(mtd)} €",
-       f"projection : {fmt(proj)} € · même jour le mois dernier : {fmt(t.get('prev_mtd'))} €")}
+  {kpi("Wise balance", f"{fmt(avail, 2)} <span class='unit'>EUR</span>",
+       f"reserved: {fmt(reserved, 2)} €", accent=True)}
+  {kpi("last 7 days", f"{fmt(d7)} €", trend)}
+  {kpi("30 days", f"{fmt(t.get('d30'))} €",
+       f"{fmt(t.get('count_30d'))} operations · before: {fmt(t.get('prev30'))} €")}
+  {kpi("Current month", f"{fmt(mtd)} €",
+       f"projection: {fmt(proj)} € · same day last month: {fmt(t.get('prev_mtd'))} €")}
   {chase_html}
 </section>
 
 <section class="card">
-  <h2>Dépenses quotidiennes · 30 jours</h2>
+  <h2>Daily spending · 30 days</h2>
   {bar_chart(p.get("daily"), 30)}
 </section>
 
 <section class="card">
   <div class="card-head">
-    <h2>Cumul du mois</h2>
+    <h2>Month cumulative</h2>
     <div class="legend">
-      <span><i style="background:#b4befe"></i>ce mois</span>
-      <span><i class="dash" style="border-color:#7f849c"></i>mois précédent</span>
+      <span><i style="background:#b4befe"></i>this month</span>
+      <span><i class="dash" style="border-color:#7f849c"></i>previous month</span>
     </div>
   </div>
   {cum_chart(p.get("month_curve"))}
-  <p class="note">Le loyer (Roomrs, payé sur Chase) n'est pas dans ces courbes :
-  il est isolé pour ne pas écraser le rythme des dépenses courantes.</p>
+  <p class="note">Rent (Roomrs, paid on Chase) is not in these curves:
+  it is isolated so as not to crush the pace of regular spending.</p>
 </section>
 
 <section class="card">
-  <h2>Répartition par catégorie · 30 jours</h2>
+  <h2>Breakdown by category · 30 days</h2>
   {cat_chart(p.get("cats_30d"), p.get("cats_90d"))}
-  <p class="note">Catégories = heuristique sur le nom du marchand, pas les
-  catégories officielles de Wise.</p>
+  <p class="note">Categories = heuristic on the merchant name, not
+  Wise's official categories.</p>
 </section>
 
 <section class="cols">
-  <div class="card"><h2>Top marchands · 30 j</h2><ul class="list">{tops}</ul></div>
-  <div class="card"><h2>Plus gros tickets · 30 j</h2><ul class="list">{bigs}</ul></div>
-  <div class="card"><h2>Abonnements récurrents</h2>
-    <ul class="list">{recs or '<li class="muted">aucun vu sur 2 mois différents</li>'}</ul>
+  <div class="card"><h2>Top merchants · 30 d</h2><ul class="list">{tops}</ul></div>
+  <div class="card"><h2>Biggest tickets · 30 d</h2><ul class="list">{bigs}</ul></div>
+  <div class="card"><h2>Recurring subscriptions</h2>
+    <ul class="list">{recs or '<li class="muted">none seen over 2 different months</li>'}</ul>
   </div>
 </section>
 
 <footer>
-  <p>Source : {esc(p.get("source"))} · fichier <code>{esc(DATA)}</code> ·
-  page régénérée à chaque rechargement, données rafraîchies par le cron de 8 h.</p>
+  <p>Source: {esc(p.get("source"))} · file <code>{esc(DATA)}</code> ·
+  page regenerated on each reload, data refreshed by the 8 AM cron.</p>
 </footer>
 </main></body></html>"""
 
@@ -476,12 +476,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/":
             try:
                 return self._send(200, render(payload))
-            except Exception as e:  # noqa: BLE001 - la page ne doit jamais 500
+            except Exception as e:  # noqa: BLE001 - the page must never 500
                 sys.stderr.write(f"render error: {e!r}\n")
                 return self._send(500, f"<pre>render error: {esc(e)}</pre>")
         return self._send(404, "not found", "text/plain; charset=utf-8")
 
-    def log_message(self, format, *args):  # noqa: A002, N802 - silence les logs d'accès
+    def log_message(self, format, *args):  # noqa: A002, N802 - silence access logs
         return
 
 

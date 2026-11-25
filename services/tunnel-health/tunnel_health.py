@@ -65,9 +65,9 @@ done
 """
 
 REASONS = {
-    "closed": "port fermé sur le VPS (tunnel absent)",
-    "nobanner": "port ouvert, aucune bannière SSH",
-    "other": "réponse inattendue (pas SSH)",
+    "closed": "port closed on the VPS (tunnel absent)",
+    "nobanner": "port open, no SSH banner",
+    "other": "unexpected response (not SSH)",
 }
 
 
@@ -88,7 +88,7 @@ def probe_tcp(host: str, port: int) -> dict:
                     break
                 data += chunk
     except ConnectionRefusedError:
-        return {"status": "down", "latency_ms": None, "detail": "connexion refusée"}
+        return {"status": "down", "latency_ms": None, "detail": "connection refused"}
     except socket.timeout:
         return {"status": "down", "latency_ms": None, "detail": "timeout"}
     except OSError as exc:
@@ -96,7 +96,7 @@ def probe_tcp(host: str, port: int) -> dict:
     latency = int((time.monotonic() - t0) * 1000)
     if data.startswith(b"SSH-"):
         return {"status": "up", "latency_ms": latency, "detail": ""}
-    return {"status": "down", "latency_ms": latency, "detail": "pas de bannière SSH"}
+    return {"status": "down", "latency_ms": latency, "detail": "no SSH banner"}
 
 
 def probe_rack(ports: list[int]) -> tuple[dict, str]:
@@ -122,12 +122,12 @@ def probe_rack(ports: list[int]) -> tuple[dict, str]:
             timeout=RACK_SSH_TIMEOUT,
         )
     except subprocess.TimeoutExpired:
-        return {}, "ssh vers le VPS : timeout"
+        return {}, "ssh to the VPS: timeout"
     except OSError as exc:
-        return {}, f"ssh vers le VPS : {exc}"
+        return {}, f"ssh to the VPS: {exc}"
     if proc.returncode != 0:
         err = (proc.stderr or "").strip().splitlines()
-        return {}, "ssh vers le VPS : " + (err[-1] if err else f"code {proc.returncode}")
+        return {}, "ssh to the VPS: " + (err[-1] if err else f"code {proc.returncode}")
     results: dict[int, dict] = {}
     for line in (proc.stdout or "").splitlines():
         parts = line.split()
@@ -140,11 +140,11 @@ def probe_rack(ports: list[int]) -> tuple[dict, str]:
             results[port] = {
                 "status": "down",
                 "latency_ms": None,
-                "detail": REASONS.get(state, f"état {state}"),
+                "detail": REASONS.get(state, f"state {state}"),
             }
     missing = [p for p in ports if p not in results]
     if missing:
-        return results, "réponse incomplète du VPS (ports " + ", ".join(map(str, missing)) + ")"
+        return results, "incomplete response from the VPS (ports " + ", ".join(map(str, missing)) + ")"
     return results, ""
 
 
@@ -186,15 +186,15 @@ def save_state(state: dict) -> None:
 
 def ago(ts: float | None, now: float) -> str:
     if not ts:
-        return "jamais"
+        return "never"
     secs = max(0, int(now - ts))
     if secs < 90:
-        return f"il y a {secs} s"
+        return f"{secs} s ago"
     if secs < 5400:
-        return f"il y a {secs // 60} min"
+        return f"{secs // 60} min ago"
     if secs < 172800:
-        return f"il y a {secs // 3600} h"
-    return f"il y a {secs // 86400} j"
+        return f"{secs // 3600} h ago"
+    return f"{secs // 86400} d ago"
 
 
 def duration(ts: float | None, now: float) -> str:
@@ -207,13 +207,13 @@ def duration(ts: float | None, now: float) -> str:
         return f"{secs // 60} min"
     if secs < 172800:
         return f"{secs // 3600} h {(secs % 3600) // 60:02d}"
-    return f"{secs // 86400} j"
+    return f"{secs // 86400} d"
 
 
 LABELS = {
-    "up": ("en ligne", "up"),
-    "down": ("hors ligne", "down"),
-    "unknown": ("indéterminé", "unknown"),
+    "up": ("online", "up"),
+    "down": ("offline", "down"),
+    "unknown": ("undetermined", "unknown"),
 }
 
 
@@ -242,7 +242,7 @@ def render(endpoints: list[dict], state: dict) -> str:
       </tr>""")
     checked_iso = datetime.fromtimestamp(checked, tz=timezone.utc).isoformat() if checked else ""
     checked_local = (
-        datetime.fromtimestamp(checked).strftime("%d/%m %H:%M:%S") if checked else "jamais"
+        datetime.fromtimestamp(checked).strftime("%d/%m %H:%M:%S") if checked else "never"
     )
     return f"""<!doctype html>
 <html lang="fr">
@@ -250,7 +250,7 @@ def render(endpoints: list[dict], state: dict) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="15">
-<title>Santé des tunnels</title>
+<title>Tunnel health</title>
 <style>
   :root {{
     --bg: #1e1e2e; --card: #181825; --surface: #313244; --surface2: #45475a;
@@ -304,27 +304,27 @@ def render(endpoints: list[dict], state: dict) -> str:
 <body>
 <main>
   <header>
-    <h1>Santé des <span>tunnels</span></h1>
-    <div class="sub" style="margin:0">vérifié {checked_local} · rafraîchi toutes les 15 s</div>
+    <h1>Tunnel <span>health</span></h1>
+    <div class="sub" style="margin:0">checked {checked_local} - refreshed every 15 s</div>
   </header>
-  <p class="sub">Chaque ligne est une lecture de bannière SSH par le chemin réel de
-    l'alias : LAN direct, loopback de tower, ou loopback du VPS pour les tunnels inverses.
-    Vert = <b>tu peux te connecter maintenant</b>.</p>
-  <div id="stale">La sonde n'a pas tourné depuis plus de 3 minutes : les données affichées sont périmées.</div>
+  <p class="sub">Each row is an SSH banner read through the real path of
+    the alias: direct LAN, tower loopback, or VPS loopback for the reverse tunnels.
+    Green = <b>you can connect right now</b>.</p>
+  <div id="stale">The probe has not run for more than 3 minutes: the displayed data is stale.</div>
   <div class="wrap">
   <table>
     <thead><tr>
-      <th>Alias</th><th>Cible</th><th>Rôle</th><th>État</th><th class="num">Latence</th><th class="num">Depuis</th>
+      <th>Alias</th><th>Target</th><th>Role</th><th>State</th><th class="num">Latency</th><th class="num">Since</th>
     </tr></thead>
     <tbody>{"".join(rows)}
     </tbody>
   </table>
   </div>
   <footer>
-    Sonde : unité <code>tunnel-health-probe</code> sur tower, toutes les 60 s, un seul ssh vers
-    le VPS pour les quatre tunnels inverses. <code>unknown</code> = le VPS lui-même est
-    injoignable, donc le tunnel n'est pas mesurable (ce n'est pas une preuve qu'il est tombé).<br>
-    Le mesh (tower, deck, laptop, mac, phone, vps) a sa propre page :
+    Probe: unit <code>tunnel-health-probe</code> on tower, every 60 s, a single ssh to
+    the VPS for the four reverse tunnels. <code>unknown</code> = the VPS itself is
+    unreachable, so the tunnel is not measurable (it is not proof that it is down).<br>
+    The mesh (tower, deck, laptop, mac, phone, vps) has its own page:
     <a href="https://mesh.marcpartensky.com">mesh.marcpartensky.com</a>.
   </footer>
 </main>
@@ -373,8 +373,8 @@ def cmd_probe() -> int:
         "checked_at": now,
         "duration_ms": int((now - started) * 1000),
         "rack_error": rack_error,
-        # Metadonnees des endpoints : le dashboard du tailnet relit ce fichier
-        # seul pour sa section « tunnels », sans redeclarer les alias.
+        # Endpoint metadata: the tailnet dashboard re-reads this file
+        # alone for its "tunnels" section, without redeclaring the aliases.
         "endpoints": [
             {k: ep.get(k) for k in ("alias", "target", "purpose", "via", "user")}
             for ep in endpoints

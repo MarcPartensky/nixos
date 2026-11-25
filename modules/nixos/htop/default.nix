@@ -1,10 +1,10 @@
-# htop : colonnes et ecrans communs a la flotte, orientes diagnostic CPU/RAM
-# (voir htoprc a cote pour le detail des quatre ecrans).
+# htop: columns and screens shared across the fleet, oriented toward CPU/RAM diagnostics
+# (see htoprc alongside for the details of the four screens).
 #
-# /etc/htoprc est le dernier recours de htop : il n'est lu que par un
-# utilisateur qui n'a pas de ~/.config/htop/htoprc. C'est donc la config de
-# root (sudo htop sur tower, ou root direct) et des comptes neufs. Marc a le
-# meme fichier en lien direct via users/marc/home.nix.
+# /etc/htoprc is htop's last resort: it is only read by a
+# user who has no ~/.config/htop/htoprc. It is therefore the config of
+# root (sudo htop on tower, or direct root) and of new accounts. Marc has the
+# same file directly linked via users/marc/home.nix.
 {pkgs, ...}: {
   environment.etc."htoprc".source = ./htoprc;
   environment.systemPackages = [pkgs.htop];

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Auto-like Hinge web (app.hinge.co), pilote par Playwright + Chromium.
+"""Auto-like Hinge web (app.hinge.co), driven by Playwright + Chromium.
 
-Modes :
-  login      Chromium VISIBLE (aucun headless) : tu te connectes (telephone + SMS),
-             tu arrives sur le flux Discover, puis Entree dans le terminal = session
-             persistee dans le profil. A lancer depuis une session graphique de marc.
-  like       Profil persistant + boucle de likes dans Discover jusqu'a la limite
-             journaliere ou l'epuisement du flux. Headless par defaut (serveur).
-  calibrate  Vide la structure des boutons du flux Discover (textes, aria-labels,
-             data-testid) pour affiner les selecteurs sans lire le DOM a la main.
+Modes:
+  login      VISIBLE Chromium (no headless): you log in (phone + SMS),
+             you reach the Discover feed, then Enter in the terminal = session
+             persisted in the profile. To be run from a graphical marc session.
+  like       Persistent profile + like loop in Discover until the daily
+             limit or feed exhaustion. Headless by default (server).
+  calibrate  Dumps the structure of the Discover feed buttons (texts, aria-labels,
+             data-testid) to refine the selectors without reading the DOM by hand.
 
-Env :
-  HINGE_USER_DATA_DIR  profil persistant (defaut /var/lib/hermes/hinge-auto/user-data)
-  HINGE_HEADLESS       0|1 pour le mode like (defaut 1 = headless serveur)
-  HINGE_MAX_LIKES      nombre max de likes avant arret (defaut 40, garde-fou)
+Env:
+  HINGE_USER_DATA_DIR  persistent profile (default /var/lib/hermes/hinge-auto/user-data)
+  HINGE_HEADLESS       0|1 for like mode (default 1 = server headless)
+  HINGE_MAX_LIKES      max number of likes before stopping (default 40, safeguard)
 """
 import os
 import random
@@ -27,7 +27,7 @@ DISCOVER = BASE + "/discover"
 DATA_DIR = os.environ.get("HINGE_USER_DATA_DIR", "/var/lib/hermes/hinge-auto/user-data")
 MAX_LIKES = int(os.environ.get("HINGE_MAX_LIKES", "40"))
 
-# Selecteurs candidats pour le bouton Like d'une fiche (a calibrer sur le DOM reel).
+# Candidate selectors for a card's Like button (to calibrate on the real DOM).
 LIKE_SELECTORS = [
     "button[aria-label*='like' i]",
     "[data-testid*='like' i]",
@@ -35,7 +35,7 @@ LIKE_SELECTORS = [
     "button[title*='Like']",
 ]
 
-# Boutons de confirmation du dialog apres un like.
+# Confirmation buttons of the dialog after a like.
 CONFIRM_SELECTORS = [
     "button:has-text('Send Like')",
     "button:has-text('Send a Like')",
@@ -44,7 +44,7 @@ CONFIRM_SELECTORS = [
     "text=Send a Like",
 ]
 
-# Marqueurs de fin (aucun like possible / flux epuise).
+# End markers (no like possible / feed exhausted).
 END_MARKERS = [
     "all caught up",
     "out of likes",
@@ -75,7 +75,7 @@ def _page_text(page):
 
 
 def click_first(page, selectors, timeout=6000):
-    """Clique le premier selecteur qui matche ; renvoie le selecteur ou None."""
+    """Click the first selector that matches; return the selector or None."""
     for sel in selectors:
         try:
             el = page.locator(sel).first
@@ -93,15 +93,15 @@ def do_login(p):
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         page.goto(DISCOVER, wait_until="domcontentloaded")
         input(
-            "\nConnecte-toi dans la fenetre Chromium (telephone + code SMS), "
-            "arrive sur le flux Discover, puis reviens ici et appuie sur Entree "
-            "pour sauver la session... "
+            "\nLog in in the Chromium window (phone + SMS code), "
+            "reach the Discover feed, then come back here and press Enter "
+            "to save the session... "
         )
-        # laisser quelques secondes pour que les cookies/localStorage soient flushes
+        # leave a few seconds so the cookies/localStorage get flushed
         time.sleep(2)
     finally:
         ctx.close()
-    print("Session persistee dans " + DATA_DIR)
+    print("Session persisted in " + DATA_DIR)
 
 
 def do_calibrate(p):
@@ -109,8 +109,8 @@ def do_calibrate(p):
     try:
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         page.goto(DISCOVER, wait_until="domcontentloaded")
-        input("Va sur une fiche Discover, puis reviens et appuie sur Entree pour dump... ")
-        print("=== BOUTONS ===")
+        input("Go to a Discover card, then come back and press Enter to dump... ")
+        print("=== BUTTONS ===")
         for i, b in enumerate(page.locator("button").all()[:60]):
             try:
                 label = b.get_attribute("aria-label") or ""
@@ -135,7 +135,7 @@ def do_like(p, headless):
         page.goto(DISCOVER, wait_until="domcontentloaded")
         human_delay(3, 5)
 
-        # Si la navigation n'a pas deja mene au flux, on tente l'URL Discover.
+        # If the navigation did not already reach the feed, try the Discover URL.
         if "discover" not in page.url.lower():
             page.goto(DISCOVER, wait_until="domcontentloaded")
             human_delay(3, 5)
@@ -143,26 +143,26 @@ def do_like(p, headless):
         while sent < MAX_LIKES:
             txt = _page_text(page)
             if any(m in txt for m in END_MARKERS):
-                print(f"[stop] flux epuise ou limite atteinte apres {sent} likes : marqueur trouve")
+                print(f"[stop] feed exhausted or limit reached after {sent} likes: marker found")
                 break
 
             liked = click_first(page, LIKE_SELECTORS, timeout=4000)
             if not liked:
-                print(f"[stop] aucun bouton Like trouve apres {sent} likes (page: {page.url})")
+                print(f"[stop] no Like button found after {sent} likes (page: {page.url})")
                 break
 
             sent += 1
-            print(f"[like] +1 (selecteur: {liked}) total={sent}")
+            print(f"[like] +1 (selector: {liked}) total={sent}")
             human_delay(1, 2)
 
-            # Dialog de confirmation eventuel : l'envoyer si present, sinon la
-            # fiche suivante apparait d'elle-meme.
+            # Possible confirmation dialog: send it if present, otherwise the
+            # next card appears by itself.
             conf = click_first(page, CONFIRM_SELECTORS, timeout=2500)
             if conf:
                 print(f"       confirm: {conf}")
             human_delay(1.5, 3.5)
 
-        print(f"[done] {sent} likes envoyes")
+        print(f"[done] {sent} likes sent")
     finally:
         ctx.close()
 

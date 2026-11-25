@@ -1,39 +1,39 @@
 # services/shlink-mcp/default.nix
-# Serveur MCP Shlink pour hermes (portage Rust, crate dans ../../mcp/shlink-mcp-rs).
+# Shlink MCP server for hermes (Rust port, crate in ../../mcp/shlink-mcp-rs).
 #
-# Pourquoi un MCP maison plutôt qu'un connecteur tiers : l'API REST v3 de
-# Shlink est entièrement décrite par une spec OpenAPI, donc un passthrough
-# (`shlink_request`) suffit à tout piloter, plus des outils typés pour les
-# opérations courantes.
+# Why a home-made MCP rather than a third-party connector: the REST API v3 of
+# Shlink is fully described by an OpenAPI spec, so a passthrough
+# (`shlink_request`) is enough to drive everything, plus typed tools for the
+# common operations.
 #
-# Pourquoi Rust et plus Python : même contrat JSON-RPC, mêmes 10 outils, mêmes
-# réponses (parité vérifiée sur 9 appels réels le 15/11/2026), pour 1,4 Mo de
-# RSS au lieu de 54 Mo, 2 ms de démarrage au lieu de 4,2 s, et un texte de
-# réponse compact (1,4 ko au lieu de 2,4 ko sur shlink_list_short_urls).
-# L'ancien server.py FastMCP a été supprimé en même temps.
+# Why Rust and no longer Python: same JSON-RPC contract, same 10 tools, same
+# responses (parity checked on 9 real calls on 15/11/2026), for 1.4 MB of
+# RSS instead of 54 MB, 2 ms startup instead of 4.2 s, and a compact
+# response text (1.4 kB instead of 2.4 kB on shlink_list_short_urls).
+# The old FastMCP server.py was removed at the same time.
 #
-# Transport stdio : hermes spawn le subprocess. La clé d'API n'est jamais
-# passée en clair dans la config (elle est lue depuis le fichier sops par le
-# binaire, via SHLINK_API_KEY_FILE).
+# stdio transport: hermes spawns the subprocess. The API key is never
+# passed in clear in the config (it is read from the sops file by the
+# binary, via SHLINK_API_KEY_FILE).
 #
-# Écritures : SHLINK_ALLOW_WRITES=1 les autorise, et chaque appel mutant exige
-# encore confirm=True ; sans ça l'outil renvoie un aperçu de la requête.
+# Writes: SHLINK_ALLOW_WRITES=1 allows them, and each mutating call still
+# requires confirm=True; without it the tool returns a preview of the request.
 #
-# Debug à la main (garder stdin ouvert, un EOF tue la requête) :
+# Manual debug (keep stdin open, an EOF kills the request):
 #   { printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'; sleep 5; } \
 #     | /nix/store/.../bin/shlink-mcp-rs
 {self, pkgs, config, ...}: let
-  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
-  # sans evaluer cette conf.
+  # Binary built as a flake output (mcp/default.nix): buildable
+  # without evaluating this config.
   shlink-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.shlink-mcp;
 
 in {
-  # Le binaire sur le PATH.
+  # The binary on the PATH.
   environment.systemPackages = [shlink-mcp];
 
-  # Déclaration stdio : ce serveur n'est plus monté par mcp-host
-  # (services.mcp-host.servers ne le liste plus), donc ses outils reviennent
-  # sous le namespace mcp__shlink__* au lieu de hermes-tools.
+  # stdio declaration: this server is no longer mounted by mcp-host
+  # (services.mcp-host.servers no longer lists it), so its tools come back
+  # under the mcp__shlink__* namespace instead of hermes-tools.
   services.hermes-agent.mcpServers.shlink = {
     command = "${shlink-mcp}/bin/shlink-mcp-rs";
     args = [];

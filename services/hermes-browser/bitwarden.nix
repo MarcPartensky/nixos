@@ -1,17 +1,17 @@
 # services/hermes-browser/bitwarden.nix
-# CLI Bitwarden (`bw`) pour l'utilisateur hermes : Hermes le détecte tout seul
-# sur son PATH (/etc/profiles/per-user/hermes/bin) et l'utilise comme backend
-# « bitwarden » de browser_vault. Le mot de passe maître ne transite jamais
-# par la conversation : Hermes le demande dans une invite masquée (bw unlock
-# --passwordenv), le jeton de session reste en mémoire.
+# Bitwarden CLI (`bw`) for the hermes user: Hermes detects it on its own
+# on its PATH (/etc/profiles/per-user/hermes/bin) and uses it as the "bitwarden"
+# backend of browser_vault. The master password never passes
+# through the conversation: Hermes asks for it in a masked prompt (bw unlock
+# --passwordenv), the session token stays in memory.
 #
-# - Serveur : https://vault.marcpartensky.com (Vaultwarden de tower). Le CLI
-#   2026 refuse tout serveur en http, donc pas de 127.0.0.1:8222 direct ;
-#   l'API doit être joignable sans le SSO Pangolin (règles de contournement
-#   sur /api, /identity, /notifications de la ressource Pangolin).
-# - Connexion initiale, une seule fois, par marc : `sudo -u hermes bw login`.
-# - users.users.hermes.packages plutôt qu'environment.systemPackages : outil
-#   propre à l'agent, et l'ajout ne redémarre pas hermes-agent.
+# - Server: https://vault.marcpartensky.com (tower's Vaultwarden). The 2026
+#   CLI refuses any http server, so no direct 127.0.0.1:8222;
+#   the API must be reachable without the Pangolin SSO (bypass rules
+#   on /api, /identity, /notifications of the Pangolin resource).
+# - Initial login, only once, by marc: `sudo -u hermes bw login`.
+# - users.users.hermes.packages rather than environment.systemPackages: tool
+#   specific to the agent, and the addition does not restart hermes-agent.
 {
   pkgs,
   ...
@@ -21,10 +21,10 @@
 in {
   users.users.hermes.packages = [pkgs.bitwarden-cli];
 
-  # Pointe le CLI sur le bon serveur tant qu'aucun compte n'est connecté
-  # (bw refuse de changer de serveur une fois loggué). Idempotent.
+  # Points the CLI at the right server as long as no account is connected
+  # (bw refuses to change server once logged in). Idempotent.
   systemd.services.hermes-bw-server = {
-    description = "CLI bw de hermes pointé sur ${server}";
+    description = "hermes bw CLI pointed at ${server}";
     wantedBy = ["multi-user.target"];
     environment.HOME = "/var/lib/hermes";
     serviceConfig = {

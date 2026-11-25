@@ -3,50 +3,50 @@
   lib,
   ...
 }:
-# Interdiction de compilation pour l'utilisateur hermes, sur tower uniquement.
+# Compilation ban for the hermes user, on tower only.
 #
-# Politique marc du 25/11/2026 : hermes n'a plus le droit de compiler quoi que
-# ce soit sur tower (rustc/cargo, gcc/clang, make/cmake/ninja...). Le CPU de
-# marc ne sert pas aux builds d'agent : le rust/C se compile sur le deck, et
-# les builds nix (daemon, `just build`) restent permis (ils ne compilent pas en
-# tant que hermes).
+# Marc's policy of 25/11/2026: hermes is no longer allowed to compile anything
+# at all on tower (rustc/cargo, gcc/clang, make/cmake/ninja...). Marc's CPU is
+# not for agent builds: rust/C is compiled on the deck, and
+# nix builds (daemon, `just build`) remain allowed (they do not compile as
+# hermes).
 #
-# Deux etages, tous deux declares ici :
-#  - des shims /etc/hermes-no-compile/bin/<outil> (rc 97), prepends au PATH par
-#    le bloc shell : ils couvrent les enfants non-bash (sh, python, node) ;
-#  - un bloc shell (no-compile.sh) (re)appose par l'activation dans
-#    /var/lib/hermes/.bashrc (l'ancien bloc entre marqueurs est remplace a
-#    chaque switch) : fonctions de refus + `export -f` (les bash enfants
-#    heritent) + refus des paquets compilateurs via `nix shell/develop/run`
-#    et `nix-shell`.
+# Two layers, both declared here:
+#  - shims /etc/hermes-no-compile/bin/<tool> (rc 97), prepended to PATH by
+#    the shell block: they cover non-bash children (sh, python, node);
+#  - a shell block (no-compile.sh) (re)appended by the activation in
+#    /var/lib/hermes/.bashrc (the old block between markers is replaced on
+#    each switch): refusal functions + `export -f` (bash children
+#    inherit) + refusal of compiler packages via `nix shell/develop/run`
+#    and `nix-shell`.
 #
-# Ce n'est PAS un verrou noyau : un chemin absolu /nix/store/.../bin/gcc reste
-# appelable, et un job cron ne source pas .bashrc. Le verrou dur serait un LSM
-# (AppArmor), non retenu — meme modele "ceinture" que la garde de purete
-# (rc 97) documentee par le skill nixos-pure-eval.
+# This is NOT a kernel lock: an absolute path /nix/store/.../bin/gcc remains
+# callable, and a cron job does not source .bashrc. The hard lock would be an LSM
+# (AppArmor), not retained - same "belt" model as the purity guard
+# (rc 97) documented by the nixos-pure-eval skill.
 #
-# Le module est importe par services/hermes (partage par tous les hotes) et se
-# limite a tower : sur le deck, hermes DOIT pouvoir compiler.
+# The module is imported by services/hermes (shared by all hosts) and is
+# limited to tower: on the deck, hermes MUST be able to compile.
 let
-  # LISTE TENUE SYNCHRO avec le `for _t in ...` de no-compile.sh (meme
-  # repertoire) : ajouter un outil ici ET la-bas.
+  # LIST KEPT IN SYNC with the `for _t in ...` of no-compile.sh (same
+  # directory): add a tool here AND there.
   toolNames = [
-    # compilateurs
+    # compilers
     "gcc" "g++" "cc" "c++" "cpp" "gfortran" "clang" "clang++" "clang-cl" "clang-cpp"
     "rustc" "cargo" "rustup" "go" "zig" "javac" "kotlinc" "swiftc" "ghc" "ghci"
     "cabal" "stack" "ocamlc" "ocamlopt" "dotnet" "msbuild" "tsc" "node-gyp"
-    # lanceurs de build
+    # build launchers
     "make" "gmake" "cmake" "meson" "ninja" "bazel" "scons" "xmake"
     "ccache" "sccache" "distcc"
-    # binutils / editeurs de binaires
+    # binutils / binary editors
     "as" "ld" "ld.bfd" "ld.gold" "ld.lld" "lld" "lld-link" "ar" "ranlib"
     "strip" "objcopy" "gprof"
   ];
 
   shim = ''
     #!/bin/sh
-    printf 'REFUS: compilation interdite pour hermes sur tower (politique marc, 25/11/2026).\n' >&2
-    printf 'Rust/C/C++/Go/make/cmake... : compile sur le deck. Les builds nix (daemon, just build) restent permis.\n' >&2
+    printf 'DENIED: compilation forbidden for hermes on tower (marc policy, 25/11/2026).\n' >&2
+    printf 'Rust/C/C++/Go/make/cmake... : compile on the deck. nix builds (daemon, just build) remain allowed.\n' >&2
     exit 97
   '';
 in
@@ -66,9 +66,9 @@ lib.mkIf (config.networking.hostName == "tower") {
       chown hermes:hermes "$f"
       chmod 0644 "$f"
     fi
-    # Le fichier du depot est la source de verite : retirer l'ancien bloc
-    # (marqueurs) puis apposer la version courante. Une liste d'outils etendue
-    # se propage donc au switch suivant, sans edition manuelle du .bashrc.
+    # The repo file is the source of truth: remove the old block
+    # (markers) then append the current version. An extended tool list
+    # therefore propagates on the next switch, without manual editing of .bashrc.
     if grep -qF '>>> hermes-no-compile >>>' "$f"; then
       sed -i '/^# >>> hermes-no-compile >>>$/,/^# <<< hermes-no-compile <<<$/d' "$f"
     fi

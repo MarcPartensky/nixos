@@ -1,9 +1,9 @@
-# winnie-sync : rafraîchit ~/git/winnie depuis tower, la source de vérité
-# (le dépôt n'a pas de remote git : tower est le seul original).
-# Le premier alias ssh qui répond gagne : LAN d'abord (towerlocal), puis le
-# tunnel par le VPS (tower -> 10.100.0.3 via rack, tenu par l'agent autossh).
-#   winnie-sync            copie incrémentale, garde les fichiers locaux en trop
-#   winnie-sync --delete   miroir strict de tower (supprime les fichiers en trop)
+# winnie-sync: refreshes ~/git/winnie from tower, the source of truth
+# (the repo has no git remote: tower is the only original).
+# The first ssh alias that answers wins: LAN first (towerlocal), then the
+# tunnel through the VPS (tower -> 10.100.0.3 via rack, kept up by the autossh agent).
+#   winnie-sync            incremental copy, keeps extra local files
+#   winnie-sync --delete   strict mirror of tower (deletes extra files)
 repo="$HOME/@REPO_REL@"
 tower_repo="@TOWER_REPO@"
 hosts=(@TOWER_HOSTS@)
@@ -24,27 +24,27 @@ for h in "${hosts[@]}"; do
     host="$h"
     break
   fi
-  echo "injoignable"
+  echo "unreachable"
 done
 
 if [ -z "$host" ]; then
-  echo "winnie-sync : tower injoignable (essayé : ${hosts[*]})" >&2
-  echo "winnie-sync : LAN = towerlocal (192.168.1.44) ; hors LAN = tower (via rack)" >&2
+  echo "winnie-sync: tower unreachable (tried: ${hosts[*]})" >&2
+  echo "winnie-sync: LAN = towerlocal (192.168.1.44); off LAN = tower (via rack)" >&2
   exit 1
 fi
 
 mkdir -p "$repo"
 echo "winnie-sync : $host:$tower_repo -> $repo"
 
-# La barre de progression seulement sur un terminal (sans quoi un log
-# redirigé se remplit de retours chariot).
+# Progress bar only on a terminal (otherwise a redirected
+# log fills up with carriage returns).
 progress=()
 if [ -t 1 ]; then
   progress=(--info=progress2)
 fi
 
-# Ce qui ne traverse jamais : binaires par plateforme (node_modules, tauri-cli)
-# et artefacts liés à la machine (target, projet Xcode généré, clés de signature).
+# What never crosses over: per-platform binaries (node_modules, tauri-cli)
+# and machine-bound artifacts (target, generated Xcode project, signing keys).
 rsync -a --no-owner --no-group "${progress[@]}" \
   --exclude /.direnv/ \
   --exclude /backend/target/ \
@@ -59,4 +59,4 @@ rsync -a --no-owner --no-group "${progress[@]}" \
   "${delete[@]}" \
   "$host:$tower_repo/" "$repo/"
 
-echo "winnie-sync : terminé (winnie-doctor pour l'état du poste)."
+echo "winnie-sync: done (winnie-doctor for the machine state)."

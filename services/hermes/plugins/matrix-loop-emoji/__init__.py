@@ -1,21 +1,21 @@
-"""Emoji de boucle 🔄 en fin de message Matrix, et renouvellement de session par réaction.
+"""Loop emoji 🔄 at the end of a Matrix message, and session renewal by reaction.
 
-Deux comportements, branchés via ``ctx.register_platform_handler`` (API plugin
-supportée, appelée par l'adaptateur Matrix à son ``connect()``) :
+Two behaviors, wired via ``ctx.register_platform_handler`` (plugin API
+supported, called by the Matrix adapter on its ``connect()``):
 
-1. Chaque message texte sortant reçoit ``🔄`` sur sa propre ligne à la fin.
-   C'est l'affordance : c'est l'emoji sur lequel Marc réagit.
-2. Une réaction ``🔄`` d'un utilisateur autorisé sur un message du bot appelle
-   directement ``GatewayRunner._handle_reset_command`` (le chemin de ``/new``,
-   sans la demande de confirmation) et renvoie la bannière de reset dans le salon.
+1. Every outgoing text message gets ``🔄`` on its own line at the end.
+   That is the affordance: it is the emoji Marc reacts to.
+2. A ``🔄`` reaction from an allowed user on a bot message calls
+   ``GatewayRunner._handle_reset_command`` directly (the ``/new`` path,
+   without the confirmation prompt) and returns the reset banner in the room.
 
-Pourquoi pas un patch du paquet nix : l'adaptateur vit dans le store (lecture
-seule) et un ``postPatch`` coûterait un rebuild complet. Le point d'extension
-plugin est officiel, survit aux rebuilds (répertoire utilisateur) et se ré-applique
-tout seul à chaque reconnexion de l'adaptateur.
+Why not a patch of the nix package: the adapter lives in the store (read
+only) and a ``postPatch`` would cost a full rebuild. The plugin
+extension point is official, survives rebuilds (user directory) and re-applies
+itself on every adapter reconnection.
 
-Aucun import lourd au niveau module : les plugins sont chargés dans TOUS les
-process Hermes (CLI, cron, sous-agents), mautrix n'a de sens qu'au gateway.
+No heavy import at module level: plugins are loaded in ALL Hermes
+processes (CLI, cron, subagents), mautrix only makes sense at the gateway.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ _SEND_FLAG = "_loop_emoji_send_patched"
 
 
 def _decorate(content: object) -> object:
-    """Ajoute l'emoji en fin de message, une seule fois, sans toucher au reste."""
+    """Append the emoji at the end of the message, once only, without touching the rest."""
     if not isinstance(content, str):
         return content
     stripped = content.rstrip()
@@ -39,18 +39,18 @@ def _decorate(content: object) -> object:
 
 
 def _patch_send(adapter: object) -> None:
-    """Enveloppe ``adapter.send`` une seule fois par instance d'adaptateur."""
+    """Wrap ``adapter.send`` once per adapter instance."""
     if getattr(adapter, _SEND_FLAG, False):
         return
     original = getattr(adapter, "send", None)
     if original is None:
-        logger.warning("matrix-loop-emoji : adaptateur sans méthode send, emoji non appliqué")
+        logger.warning("matrix-loop-emoji: adapter without a send method, emoji not applied")
         return
 
     async def send_with_loop_emoji(chat_id, content, *args, **kwargs):
         try:
             content = _decorate(content)
-        except Exception:  # noqa: BLE001 - l'emoji ne doit jamais casser un envoi
+        except Exception:  # noqa: BLE001 - the emoji must never break a send
             pass
         return await original(chat_id, content, *args, **kwargs)
 
@@ -58,14 +58,14 @@ def _patch_send(adapter: object) -> None:
         adapter.send = send_with_loop_emoji
         setattr(adapter, _SEND_FLAG, True)
     except Exception as exc:  # noqa: BLE001
-        logger.warning("matrix-loop-emoji : impossible de patcher send : %s", exc)
+        logger.warning("matrix-loop-emoji: unable to patch send: %s", exc)
 
 
 async def _renew_session(adapter: object, room_id: str, sender: str, reacts_to: str) -> None:
-    """Renouvelle la session du salon via le chemin de /new (sans confirmation)."""
+    """Renew the room session via the /new path (without confirmation)."""
     runner = getattr(adapter, "gateway_runner", None)
     if runner is None:
-        logger.warning("matrix-loop-emoji : gateway_runner absent, reset impossible")
+        logger.warning("matrix-loop-emoji: gateway_runner missing, reset impossible")
         return
     from gateway.platforms.event import MessageEvent, MessageType
 
@@ -98,13 +98,13 @@ async def _renew_session(adapter: object, room_id: str, sender: str, reacts_to: 
     if isinstance(result, str) and result.strip():
         await adapter.send(room_id, result)
     logger.info(
-        "matrix-loop-emoji : session renouvelée dans %s (réaction %s de %s sur %s)",
+        "matrix-loop-emoji: session renewed in %s (reaction %s from %s on %s)",
         room_id, EMOJI, sender, reacts_to,
     )
 
 
 async def _on_reaction(adapter: object, event: object) -> None:
-    """Handler natif mautrix : ne fait quelque chose que sur la réaction 🔄."""
+    """Native mautrix handler: only does something on the 🔄 reaction."""
     content = getattr(event, "content", None)
     if not content:
         return
@@ -121,41 +121,41 @@ async def _on_reaction(adapter: object, event: object) -> None:
         return
     allowed = getattr(adapter, "_allowed_user_ids", None) or set()
     if allowed and sender not in allowed:
-        logger.info("matrix-loop-emoji : réaction ignorée, %s hors allowlist", sender)
+        logger.info("matrix-loop-emoji: reaction ignored, %s not in allowlist", sender)
         return
     room_id = str(getattr(event, "room_id", "") or "")
     if not room_id:
         return
     try:
         if not await adapter._is_allowed_matrix_room_event(room_id):
-            logger.info("matrix-loop-emoji : réaction ignorée, salon %s non autorisé", room_id)
+            logger.info("matrix-loop-emoji: reaction ignored, room %s not allowed", room_id)
             return
-    except Exception:  # noqa: BLE001 - pas d'info, on continue
+    except Exception:  # noqa: BLE001 - no info, we continue
         pass
     await _renew_session(adapter, room_id, sender, str(reacts_to))
 
 
 def _wire(native: object, adapter: object) -> None:
-    """Factory appelée par l'adaptateur Matrix au connect() : (client mautrix, adaptateur)."""
+    """Factory called by the Matrix adapter at connect(): (mautrix client, adapter)."""
     if native is None:
         return
     _patch_send(adapter)
     try:
         from mautrix.types import EventType
     except Exception as exc:  # noqa: BLE001
-        logger.warning("matrix-loop-emoji : mautrix indisponible (%s)", exc)
+        logger.warning("matrix-loop-emoji: mautrix unavailable (%s)", exc)
         return
 
     async def handler(event):
         try:
             await _on_reaction(adapter, event)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("matrix-loop-emoji : handler réaction en échec : %s", exc)
+            logger.warning("matrix-loop-emoji: reaction handler failed: %s", exc)
 
     native.add_event_handler(EventType.REACTION, handler)
-    logger.info("matrix-loop-emoji : emoji %s actif (envoi + réaction)", EMOJI)
+    logger.info("matrix-loop-emoji: emoji %s active (send + reaction)", EMOJI)
 
 
 def register(ctx) -> None:
-    """Point d'entrée du plugin."""
+    """Plugin entry point."""
     ctx.register_platform_handler("matrix", _wire)

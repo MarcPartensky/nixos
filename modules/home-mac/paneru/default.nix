@@ -1,15 +1,15 @@
 { pkgs, lib, ... }:
 let
-  # Paneru = le WM macOS le plus proche de niri (bande horizontale infinie,
-  # colonnes, workspaces verticaux). Cette conf est le miroir de
-  # modules/home/niri/default.nix (niri, côté Linux) : memes gestes, memes
-  # largeurs, memes regles. Mod de niri (= Super) devient Cmd sur macOS.
+  # Paneru = the macOS WM closest to niri (infinite horizontal strip,
+  # columns, vertical workspaces). This config is the mirror of
+  # modules/home/niri/default.nix (niri, on the Linux side): same gestures, same
+  # widths, same rules. niri's Mod (= Super) becomes Cmd on macOS.
   #
-  # Ecart assume : les raccourcis macOS pris par les apps (Cmd+V coller,
-  # Cmd+F chercher, Cmd+Q quitter) ne sont PAS detournes ; les commandes
-  # niri correspondantes sont posees sur Cmd+Shift ou Option.
+  # Assumed deviation: the macOS shortcuts taken by apps (Cmd+V paste,
+  # Cmd+F find, Cmd+Q quit) are NOT hijacked; the corresponding
+  # niri commands are placed on Cmd+Shift or Option.
   initLua = pkgs.writeText "paneru-init.lua" ''
-    -- Paneru : miroir de la conf niri de marc (~/git/nixos/modules/home/niri).
+    -- Paneru: mirror of marc's niri config (~/git/nixos/modules/home/niri).
     local HOME = os.getenv("HOME")
 
     local function sh(cmd)
@@ -20,13 +20,13 @@ let
       options = {
         -- niri: input.focus-follows-mouse.enable = true
         focus_follows_mouse = true,
-        -- niri ne teleporte pas le curseur au changement de focus
+        -- niri does not teleport the cursor on focus change
         mouse_follows_focus = false,
-        -- niri: defilement anime (bande de 8 a 20)
+        -- niri: animated scrolling (strip from 8 to 20)
         animation_speed = 12.0,
         auto_center = false,
         window_resize_cycle = true,
-        -- niri supprime les workspaces vides
+        -- niri removes empty workspaces
         reap_empty_workspaces = true,
         insert_windows_mid_strip = false,
         -- niri: layout.default-column-width.proportion = 0.5
@@ -35,12 +35,12 @@ let
         sliver_height = 1.0,
         window_hidden_ratio = 0.0,
       },
-      -- niri: pas de gaps (layout sans padding)
+      -- niri: no gaps (layout without padding)
       padding = { top = 0, bottom = 0, left = 0, right = 0 },
       swipe = {
         sensitivity = 0.4,
         continuous = true,
-        -- geste 3 doigts : horizontal = bande, vertical = workspaces
+        -- 3-finger gesture: horizontal = strip, vertical = workspaces
         gesture = {
           fingers_count = 3,
           direction = "Natural",
@@ -60,16 +60,16 @@ let
       },
       restore = { enabled = true, startup_grace_ms = 3000 },
       windows = {
-        -- niri: Alacritty open-maximized. `manage = true` est indispensable :
-        -- sans lui Paneru ignore les fenetres Alacritty (app vue comme
-        -- inobservable), mesure 13/11/2026. Regle declarative, pas de hook Lua.
+        -- niri: Alacritty open-maximized. `manage = true` is essential:
+        -- without it Paneru ignores Alacritty windows (app seen as
+        -- unobservable), measured 13/11/2026. Declarative rule, no Lua hook.
         alacritty = { title = ".*", bundle_id = "org.alacritty", manage = true, width = 1.0 },
         dialogs = { title = ".*", subrole = "AXDialog", floating = true },
         floating_window = { title = ".*", subrole = "AXFloatingWindow", floating = true },
       },
     }
 
-    -- --- Navigation : niri Mod+H / Mod+L / fleches ---
+    -- --- Navigation: niri Mod+H / Mod+L / arrows ---
     paneru.bind("cmd - h", "window focus west")
     paneru.bind("cmd - l", "window focus east")
     paneru.bind("cmd - leftarrow", "window focus west")
@@ -77,19 +77,19 @@ let
     paneru.bind("cmd - uparrow", "window focus north")
     paneru.bind("cmd - downarrow", "window focus south")
 
-    -- --- Workspaces verticaux : niri Mod+J / Mod+K ---
+    -- --- Vertical workspaces: niri Mod+J / Mod+K ---
     paneru.bind("cmd - j", "window virtual south")
     paneru.bind("cmd - k", "window virtual north")
 
-    -- --- Colonnes ---
+    -- --- Columns ---
     paneru.bind("cmd - m", "window fullwidth")   -- niri Mod+M maximize-column
     paneru.bind("cmd - t", "window resize")      -- niri Mod+T set-column-width 50%
     paneru.bind("cmd - y", "window shrink")      -- niri Mod+Y set-column-width 33%
     paneru.bind("cmd - minus", "window shrink")
     paneru.bind("cmd - equal", "window resize")
-    paneru.bind("cmd + shift - v", "window manage")   -- niri Mod+V floating (Cmd+V = coller)
+    paneru.bind("cmd + shift - v", "window manage")   -- niri Mod+V floating (Cmd+V = paste)
 
-    -- --- Deplacement de fenetres (habitude AeroSpace) ---
+    -- --- Window movement (AeroSpace habit) ---
     paneru.bind("cmd + shift - h", "window swap west")
     paneru.bind("cmd + shift - l", "window swap east")
     paneru.bind("cmd + shift - j", "window swap south")
@@ -97,7 +97,7 @@ let
 
     -- --- Applications ---
     paneru.bind("cmd - return", function() sh("open -a Alacritty") end)      -- niri Mod+Return
-    paneru.bind("alt - f", function() sh("open -a LibreWolf") end)          -- niri Mod+F (Cmd+F = chercher)
+    paneru.bind("alt - f", function() sh("open -a LibreWolf") end)          -- niri Mod+F (Cmd+F = find)
     paneru.bind("alt - l", function() sh("open -a Finder " .. HOME) end)     -- niri Alt+L nautilus
     paneru.bind("cmd + shift - s", function()                                -- niri Print
       sh("mkdir -p " .. HOME .. "/media/screenshots && screencapture -i " ..
@@ -110,7 +110,7 @@ let
     paneru.bind("alt - s", function() sh([[osascript -e 'tell application "Spotify" to previous track']]) end)
     paneru.bind("alt - k", function() sh([[osascript -e 'tell application "Spotify" to playpause']]) end)
 
-    -- --- Workspaces numerotes : niri Mod+1..9 / Alt+1..9 ---
+    -- --- Numbered workspaces: niri Mod+1..9 / Alt+1..9 ---
     for i = 1, 9 do
       paneru.bind("cmd - " .. i, "window virtualnum " .. i)
       paneru.bind("alt + shift - " .. i, "window virtualmovenum " .. i)

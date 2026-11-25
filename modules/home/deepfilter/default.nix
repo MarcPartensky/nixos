@@ -5,7 +5,7 @@
 
     src = pkgs.deepfilternet.src;
 
-    # On met le hash exact que Nix vient de nous donner !
+    # We put the exact hash Nix just gave us!
     cargoHash = "sha256-eNyX2ir+JYV15QI+e8tWcso7DVEbPxcS6PKenJIPzEA=";
 
     cargoBuildFlags = ["-p" "deep_filter"];

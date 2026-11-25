@@ -1,7 +1,7 @@
-# Sablier : demarrage a la demande et arret automatique des workloads.
+# Sablier: on-demand startup and automatic shutdown of workloads.
 #
-# Absent de nixpkgs 26.05 (verifie : ni `sablier` ni `sablierapp`), d'ou ce
-# paquet. Binaire Go statique unique, aucune dependance runtime hors D-Bus.
+# Absent from nixpkgs 26.05 (verified: neither `sablier` nor `sablierapp`), hence this
+# package. Single static Go binary, no runtime dependency other than D-Bus.
 {
   lib,
   buildGoModule,
@@ -20,8 +20,8 @@ buildGoModule rec {
 
   vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
-  # Pas de tests dans le build : les tests d'integration du provider systemd
-  # demarrent un systemd dans testcontainers, impossible dans le sandbox Nix.
+  # No tests in the build: the systemd provider integration tests
+  # start a systemd inside testcontainers, impossible in the Nix sandbox.
   doCheck = false;
 
   ldflags = [

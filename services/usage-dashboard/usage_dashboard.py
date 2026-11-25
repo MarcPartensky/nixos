@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
-"""Dashboard d'usage LLM, centre sur les providers et non sur un seul.
+"""LLM usage dashboard, centered on the providers and not on a single one.
 
-Trois sources, trois roles :
+Three sources, three roles:
 
-  1. Usage reel enregistre par Hermes (agent-usage.json, produit par
-     agent_usage.py sous l'utilisateur hermes) : c'est la seule source qui
-     couvre TOUS les providers et donne le detail par modele, par surface et
-     par jour, y compris pour ceux dont l'API de facturation ne publie rien
-     d'autre qu'un solde (DeepSeek direct, abonnement Claude, modeles locaux).
-     Le cout y est ESTIME a partir des tarifs connus de Hermes.
+  1. Real usage recorded by Hermes (agent-usage.json, produced by
+     agent_usage.py under the hermes user): it is the only source that
+     covers ALL the providers and gives the detail per model, per surface and
+     per day, including for those whose billing API publishes nothing
+     other than a balance (DeepSeek direct, Claude subscription, local models).
+     The cost there is ESTIMATED from Hermes's known rates.
 
-  2. Soldes des API de facturation, quand elles en exposent un :
-       - OpenRouter /credits (credits achetes / consommes / restants)
-       - OpenRouter /key     (usage temps reel de la cle d'inference)
+  2. Billing API balances, when they expose one:
+       - OpenRouter /credits (credits purchased / consumed / remaining)
+       - OpenRouter /key     (real-time usage of the inference key)
        - Moonshot /users/me/balance
        - DeepSeek /user/balance
-     C'est le seul cout REEL disponible, et il n'existe qu'au niveau du compte.
+     It is the only REAL cost available, and it exists only at the account level.
 
-  3. Historique des soldes, tenu par ce service : en comparant les releves dans
-     le temps on obtient la consommation REELLE par provider sans dependre d'un
-     endpoint de facturation detaille. C'est ce qui permet de dire combien de
-     credit un provider consomme par jour, et combien de jours il en reste.
+  3. Balance history, kept by this service: by comparing the samples over
+     time we get the REAL consumption per provider without depending on a
+     detailed billing endpoint. This is what allows saying how much
+     credit a provider consumes per day, and how many days are left.
 
-Un cout est donc toujours etiquete : "reel" (solde), "estime" (tarifs Hermes)
-ou "equivalent" (abonnement : ce que couterait l'usage au tarif API, sans etre
-facture au token). La page ne melange jamais les trois dans un meme total.
+A cost is therefore always labeled: "real" (balance), "estimated" (Hermes rates)
+or "equivalent" (subscription: what the usage would cost at the API rate, without being
+billed per token). The page never mixes the three in a single total.
 
-Aucune dependance hors stdlib. La page est servie statique et interroge
-/api/data : le rafraichissement est cote navigateur, donc une page ouverte
-reste a jour sans redeploiement.
+No dependency outside the stdlib. The page is served static and queries
+/api/data: the refresh is on the browser side, so an open page
+stays up to date without redeployment.
 """
 
 from __future__ import annotations
@@ -61,11 +61,11 @@ DEEPSEEK_KEY_FILE = os.environ.get("USAGE_DASHBOARD_DEEPSEEK_KEY_FILE", "")
 GEMINI_KEY_FILE = os.environ.get("USAGE_DASHBOARD_GEMINI_KEY_FILE", "")
 REFRESH = float(os.environ.get("USAGE_DASHBOARD_REFRESH", "120"))
 WINDOW_DAYS = int(os.environ.get("USAGE_DASHBOARD_WINDOW_DAYS", "90"))
-# Modele teste si aucun usage gemini n'est enregistre dans la fenetre.
+# Model tested if no gemini usage is recorded in the window.
 GEMINI_PROBE_MODEL = os.environ.get("USAGE_DASHBOARD_GEMINI_PROBE_MODEL", "gemini-3.8-flash")
-# Cadence de l'appel de generation de la sonde : il consomme du quota chez
-# Google (limites par minute ET par jour, meme sur le palier gratuit), donc un
-# essai par heure suffit largement a voir une panne.
+# Cadence of the probe's generation call: it consumes quota at
+# Google (limits per minute AND per day, even on the free tier), so one
+# try per hour is largely enough to see an outage.
 GEMINI_GEN_EVERY = float(os.environ.get("USAGE_DASHBOARD_GEMINI_GEN_EVERY", "3600"))
 GEMINI_GEN_TIMEOUT = int(os.environ.get("USAGE_DASHBOARD_GEMINI_GEN_TIMEOUT", "25"))
 SUBSCRIPTIONS = json.loads(os.environ.get("USAGE_DASHBOARD_SUBSCRIPTIONS", "[]") or "[]")
@@ -76,10 +76,10 @@ DEEPSEEK_API = "https://api.deepseek.com"
 GEMINI_API = "https://generativelanguage.googleapis.com/v1beta"
 FX_URL = "https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,CNY"
 
-# Jamais le nom de marc dans un User-Agent.
+# Never marc's name in a User-Agent.
 UA = "hermes-research/1.0"
 
-# Releve de solde : au plus un point par heure, garde sur un an.
+# Balance sample: at most one point per hour, kept for a year.
 SAMPLE_EVERY = 3600
 SAMPLE_KEEP_DAYS = 400
 
@@ -89,10 +89,10 @@ _lock = threading.Lock()
 _cache: dict = {"payload": None, "payload_public": None, "fetched_at": 0.0}
 _page_cache: dict = {"body": None, "mtime": 0.0}
 
-# Le domaine public est ouvert (pas de SSO Pangolin) : les titres de session
-# sont personnels, ils ne partent donc que vers un client venu DIRECTEMENT du
-# tailnet. Pangolin arrive par newt depuis 127.0.0.1, donc une requete locale
-# n'est pas un client de confiance : elle peut venir d'Internet.
+# The public domain is open (no Pangolin SSO): the session titles
+# are personal, so they only go to a client coming DIRECTLY from the
+# tailnet. Pangolin arrives via newt from 127.0.0.1, so a local request
+# is not a trusted client: it may come from the Internet.
 TAILNET = ipaddress.ip_network("100.64.0.0/10")
 
 
@@ -104,10 +104,10 @@ def _trusted_client(address: str) -> bool:
 
 
 def public_view(payload: dict) -> dict:
-    """Copie du payload servie hors tailnet : titres de session retires.
+    """Copy of the payload served outside the tailnet: session titles removed.
 
-    Le reste (id de session, surface, modele dominant, cout, tokens) est un
-    agregat sans secret et part tel quel. Calculee une fois par collecte.
+    The rest (session id, surface, dominant model, cost, tokens) is an
+    aggregate without secrets and goes as is. Computed once per collection.
     """
     sessions = [
         {**s, "title": ""} if s.get("title") else s for s in (payload.get("sessions") or [])
@@ -116,15 +116,15 @@ def public_view(payload: dict) -> dict:
 
 
 # --------------------------------------------------------------------------
-# bas niveau
+# low level
 # --------------------------------------------------------------------------
 def _read_secret(path: str) -> str | None:
-    """Lit un secret d'un fichier. Un placeholder non remplace vaut absent.
+    """Reads a secret from a file. An unreplaced placeholder counts as absent.
 
-    Le fichier contient soit la valeur seule (secrets/deepseek.yml), soit une
-    ligne dotenv « CLE=valeur » (secrets/hermes-gemini.yml, le meme fichier que
-    celui rendu dans le .env de l'agent) : dans ce cas on ne garde que la
-    valeur, sinon l'en-tete HTTP partirait avec « GOOGLE_API_KEY= » devant.
+    The file contains either the value alone (secrets/deepseek.yml), or a
+    dotenv line "KEY=value" (secrets/hermes-gemini.yml, the same file as
+    the one rendered in the agent's .env): in that case only the
+    value is kept, otherwise the HTTP header would go out with "GOOGLE_API_KEY=" in front.
     """
     if not path:
         return None
@@ -142,7 +142,7 @@ def _read_secret(path: str) -> str | None:
 
 
 def _http(url: str, key: str | None = None, payload: dict | None = None, timeout: int = 20):
-    """Renvoie (data, None) ou (None, message d'erreur lisible)."""
+    """Returns (data, None) or (None, readable error message)."""
     body = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(url, data=body, method="POST" if body else "GET")
     req.add_header("User-Agent", UA)
@@ -166,7 +166,7 @@ def _http(url: str, key: str | None = None, payload: dict | None = None, timeout
 
 
 def _num(value) -> float:
-    """Les compteurs des API arrivent en nombre OU en chaine : accepter les deux."""
+    """API counters arrive as a number OR as a string: accept both."""
     if isinstance(value, bool):
         return 0.0
     if isinstance(value, (int, float)):
@@ -198,11 +198,11 @@ def _write_json(path: str, payload) -> None:
             json.dump(payload, fh, ensure_ascii=False, separators=(",", ":"))
         os.replace(tmp, path)
     except OSError as exc:
-        print(f"[usage-dashboard] ecriture de {path} impossible : {exc}", flush=True)
+        print(f"[usage-dashboard] cannot write {path}: {exc}", flush=True)
 
 
 # --------------------------------------------------------------------------
-# historique de solde : consommation reelle sans endpoint de facturation
+# balance history: real consumption without a billing endpoint
 # --------------------------------------------------------------------------
 def load_history() -> dict:
     data = _read_json(HISTORY_FILE) or {}
@@ -211,7 +211,7 @@ def load_history() -> dict:
 
 
 def record_samples(samples: dict, balances: dict[str, dict], now: datetime) -> dict:
-    """Ajoute un point par provider (au plus un par heure) et elague le vieux."""
+    """Adds one point per provider (at most one per hour) and prunes the old ones."""
     stamp = now.timestamp()
     cut = stamp - SAMPLE_KEEP_DAYS * 86400
     for pid, balance in balances.items():
@@ -228,11 +228,11 @@ def record_samples(samples: dict, balances: dict[str, dict], now: datetime) -> d
 
 
 def consumption(samples: list, now: datetime, days: int) -> dict | None:
-    """Consommation deduite de la baisse du solde (les recharges sont ignorees).
+    """Consumption deduced from the drop in the balance (top-ups are ignored).
 
-    Le solde ne baisse que quand le provider facture : la somme des baisses sur
-    la periode est donc de l'argent reellement depense, sans dependre d'un
-    detail par modele. Une hausse est une recharge, pas une consommation.
+    The balance only drops when the provider bills: the sum of the drops over
+    the period is therefore money really spent, without depending on a
+    detail per model. A rise is a top-up, not a consumption.
     """
     if not samples:
         return None
@@ -257,23 +257,23 @@ def consumption(samples: list, now: datetime, days: int) -> dict | None:
 
 
 # --------------------------------------------------------------------------
-# sonde gemini
+# gemini probe
 # --------------------------------------------------------------------------
-# Google n'expose aucun endpoint de solde (l'API donne le quota, pas le credit
-# restant) : l'equivalent de la carte « solde » des autres providers est donc
-# une sonde de sante. Deux etages, parce que ce sont deux pannes differentes :
-#   - GET /v1beta/models : gratuit et rapide, il prouve que la cle est encore
-#     acceptee et que les modeles reellement utilises sont toujours proposes
-#     (un modele retire du palier repond 404 a la generation tout en restant
-#     dans les releves d'usage) ;
-#   - POST generateContent sur le dernier modele utilise : la seule sonde qui
-#     voit un 429 de quota epuise, un modele sature (503) ou un timeout. Un
-#     essai par heure (8 tokens) suffit a voir une panne sans bruler le quota.
+# Google exposes no balance endpoint (the API gives the quota, not the remaining
+# credit): the equivalent of the "balance" card of the other providers is therefore
+# a health probe. Two stages, because they are two different outages:
+#   - GET /v1beta/models: free and fast, it proves that the key is still
+#     accepted and that the models actually used are still offered
+#     (a model removed from the tier answers 404 on generation while remaining
+#     in the usage samples);
+#   - POST generateContent on the last model used: the only probe that
+#     sees a 429 of exhausted quota, a saturated model (503) or a timeout. One
+#     try per hour (8 tokens) is enough to see an outage without burning the quota.
 _gemini_gen: dict = {"at": 0.0, "result": None}
 
 
 def _gemini_call(path: str, key: str, payload: dict | None = None, timeout: int = 20):
-    """(code, data, message, latence_ms). En-tete x-goog-api-key, jamais Bearer."""
+    """(code, data, message, latency_ms). x-goog-api-key header, never Bearer."""
     body = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(f"{GEMINI_API}/{path}", data=body, method="POST" if body else "GET")
     req.add_header("x-goog-api-key", key)
@@ -298,7 +298,7 @@ def _gemini_call(path: str, key: str, payload: dict | None = None, timeout: int 
 
 
 def _google_error(raw: str) -> str:
-    """« 429 RESOURCE_EXHAUSTED: You exceeded your current quota » depuis le corps JSON."""
+    """"429 RESOURCE_EXHAUSTED: You exceeded your current quota" from the JSON body."""
     try:
         err = (json.loads(raw) or {}).get("error") or {}
     except (json.JSONDecodeError, AttributeError, TypeError):
@@ -311,7 +311,7 @@ def _google_error(raw: str) -> str:
 
 
 def _gemini_models_used(payload: dict, limit: int = 3) -> list[str]:
-    """Modeles gemini reellement utilises, du plus recemment vu au plus ancien."""
+    """Gemini models actually used, from the most recently seen to the oldest."""
     windows = payload.get("windows") or {}
     win = windows.get("7") or windows.get("30") or {}
     rows = [m for m in (win.get("models") or []) if m.get("provider") == "gemini"]
@@ -336,7 +336,7 @@ def _gemini_generate(key: str, model: str, now: datetime) -> dict:
 
 
 def probe_gemini(key: str, models_used: list[str], now: datetime) -> dict:
-    """Etat du provider gemini : cle, modeles utilises, generation reelle."""
+    """State of the gemini provider: key, models used, real generation."""
     health: dict = {
         "checked_at": _iso(now),
         "key_ok": False,
@@ -350,13 +350,13 @@ def probe_gemini(key: str, models_used: list[str], now: datetime) -> dict:
     code, data, message, latency = _gemini_call("models", key, timeout=15)
     health["latency_ms"] = latency
     if code != 200:
-        health["detail"].append(f"clé refusée ({message})")
+        health["detail"].append(f"key refused ({message})")
         return health
 
     names = [(m.get("name") or "").split("/")[-1] for m in (data or {}).get("models", [])]
     health["key_ok"] = True
     health["models_listed"] = len(names)
-    health["detail"].append(f"{len(names)} modèles listés en {latency} ms")
+    health["detail"].append(f"{len(names)} models listed in {latency} ms")
     missing = []
     for model in models_used:
         listed = model in names
@@ -364,7 +364,7 @@ def probe_gemini(key: str, models_used: list[str], now: datetime) -> dict:
         if not listed:
             missing.append(model)
     if missing:
-        health["detail"].append("plus proposé : " + ", ".join(missing))
+        health["detail"].append("no longer offered: " + ", ".join(missing))
 
     target = models_used[0] if models_used else GEMINI_PROBE_MODEL
     cached = _gemini_gen.get("result")
@@ -383,27 +383,27 @@ def probe_gemini(key: str, models_used: list[str], now: datetime) -> dict:
     gen = health["gen"] or {}
     if gen.get("state") == "ok" and not missing:
         health["state"] = "ok"
-        health["detail"].append(f"génération OK sur {gen.get('model')} en {gen.get('latency_ms')} ms")
+        health["detail"].append(f"generation OK on {gen.get('model')} in {gen.get('latency_ms')} ms")
     else:
         health["state"] = "degraded"
-        reason = gen.get("message") or ("modèle retiré de l'offre" if missing else "aucune génération testée")
-        health["detail"].append(f"génération {gen.get('state') or 'non testée'} sur {target} : {reason}"[:220])
+        reason = gen.get("message") or ("model removed from the offering" if missing else "no generation tested")
+        health["detail"].append(f"generation {gen.get('state') or 'not tested'} on {target}: {reason}"[:220])
     return health
 
 
 # --------------------------------------------------------------------------
-# collecte
+# collection
 # --------------------------------------------------------------------------
 def collect_balances(now: datetime, note) -> tuple[dict, dict]:
-    """Soldes par provider. Renvoie (balances, extra) ou extra porte les details."""
+    """Balances per provider. Returns (balances, extra) where extra carries the details."""
     balances: dict[str, dict] = {}
     extra: dict = {"openrouter": None}
 
     mgmt = _read_secret(MGMT_KEY_FILE)
     infer = _read_secret(INFER_KEY_FILE)
 
-    # 1. OpenRouter : le solde ne depend pas du role de la cle, /credits repond
-    #    aux deux. On prend la premiere disponible.
+    # 1. OpenRouter: the balance does not depend on the key role, /credits answers
+    #    to both. We take the first available one.
     credits_key = mgmt or infer
     if credits_key:
         data, err = _http(f"{OR_API}/credits", key=credits_key)
@@ -419,15 +419,15 @@ def collect_balances(now: datetime, note) -> tuple[dict, dict]:
                 "source": "/api/v1/credits",
                 "used_pct": round(100.0 * used / total, 2) if total > 0 else 0.0,
                 "detail": [
-                    f"{total:.2f} achetes",
-                    f"{used:.2f} consommes",
+                    f"{total:.2f} purchased",
+                    f"{used:.2f} consumed",
                 ],
             }
             note("openrouter/credits", "ok")
     else:
-        note("openrouter/credits", "missing", "aucune cle OpenRouter lisible")
+        note("openrouter/credits", "missing", "no readable OpenRouter key")
 
-    # 2. OpenRouter : usage temps reel de la cle d'inference (jour/semaine/mois).
+    # 2. OpenRouter: real-time usage of the inference key (day/week/month).
     key_usage = None
     if infer:
         data, err = _http(f"{OR_API}/key", key=infer)
@@ -446,7 +446,7 @@ def collect_balances(now: datetime, note) -> tuple[dict, dict]:
             }
             note("openrouter/key", "ok")
     else:
-        note("openrouter/key", "missing", "cle d'inference absente (usage temps reel indisponible)")
+        note("openrouter/key", "missing", "inference key absent (real-time usage unavailable)")
 
     # 3. Moonshot (kimi direct).
     moonshot = _read_secret(MOONSHOT_KEY_FILE)
@@ -467,10 +467,10 @@ def collect_balances(now: datetime, note) -> tuple[dict, dict]:
             }
             note("moonshot", "ok")
     else:
-        note("moonshot", "missing", "cle Moonshot absente (kimi direct non suivi)")
+        note("moonshot", "missing", "Moonshot key absent (kimi direct not tracked)")
 
-    # 4. DeepSeek direct : une cle API ne lit QUE le solde (le detail par
-    #    cle/jour n'existe que sur la console, derriere un login).
+    # 4. DeepSeek direct: an API key reads ONLY the balance (the detail per
+    #    key/day exists only on the console, behind a login).
     deepseek = _read_secret(DEEPSEEK_KEY_FILE)
     if deepseek:
         data, err = _http(f"{DEEPSEEK_API}/user/balance", key=deepseek, timeout=15)
@@ -484,16 +484,16 @@ def collect_balances(now: datetime, note) -> tuple[dict, dict]:
                 "currency": info.get("currency") or "USD",
                 "source": "/user/balance",
                 "detail": [
-                    f"offert {_num(info.get('granted_balance')):.2f}",
-                    f"recharge {_num(info.get('topped_up_balance')):.2f}",
+                    f"granted {_num(info.get('granted_balance')):.2f}",
+                    f"top-up {_num(info.get('topped_up_balance')):.2f}",
                 ],
                 "usable": bool((data or {}).get("is_available")),
             }
             note("deepseek", "ok")
     else:
-        note("deepseek", "missing", "cle DeepSeek absente (compte direct non suivi)")
+        note("deepseek", "missing", "DeepSeek key absent (direct account not tracked)")
 
-    # 5. Taux de change (sans cle, cosmetique : un echec ne casse rien).
+    # 5. Exchange rate (no key, cosmetic: a failure breaks nothing).
     data, err = _http(FX_URL, timeout=12)
     if err:
         note("frankfurter", "error", err)
@@ -507,11 +507,11 @@ def collect_balances(now: datetime, note) -> tuple[dict, dict]:
             }
             note("frankfurter", "ok")
         else:
-            note("frankfurter", "error", "pas de taux EUR dans la reponse")
+            note("frankfurter", "error", "no EUR rate in the response")
 
-    # 6. OpenRouter analytics : contre-verification du cout estime par Hermes.
-    #    Cle management obligatoire (lecture seule, gratuite). Sans elle, le
-    #    reste de la page fonctionne : ce n'est qu'un recoupement.
+    # 6. OpenRouter analytics: cross-check of the cost estimated by Hermes.
+    #    Management key mandatory (read-only, free). Without it, the
+    #    rest of the page works: it is only a cross-reference.
     analytics = None
     if mgmt:
         start = now - timedelta(days=min(WINDOW_DAYS, 30))
@@ -537,7 +537,7 @@ def collect_balances(now: datetime, note) -> tuple[dict, dict]:
         note(
             "openrouter/analytics",
             "missing",
-            "cle management absente : pas de contre-verification du cout OpenRouter",
+            "management key absent: no cross-check of the OpenRouter cost",
         )
 
     extra["openrouter"] = {"analytics": analytics, "key": key_usage}
@@ -563,7 +563,7 @@ def _analytics_query(key: str, metrics: list[str], start, end, limit: int = 100,
 
 
 def provider_rollup(agent: dict) -> dict[str, dict[str, dict]]:
-    """Totaux par provider et par fenetre, derives des totaux par modele."""
+    """Totals per provider and per window, derived from the totals per model."""
     rollup: dict[str, dict[str, dict]] = {}
     windows = (agent or {}).get("windows") or {}
     for span in SPANS:
@@ -616,10 +616,10 @@ def collect() -> dict:
     payload["fx"] = extra.get("fx")
     payload["openrouter"] = extra.get("openrouter")
 
-    # Usage enregistre par Hermes.
+    # Usage recorded by Hermes.
     agent = _read_json(AGENT_FILE)
     if not isinstance(agent, dict):
-        note("hermes/usage", "error", f"fichier d'usage illisible ({AGENT_FILE or 'non configure'})")
+        note("hermes/usage", "error", f"unreadable usage file ({AGENT_FILE or 'not configured'})")
         agent = {}
     else:
         stamp = agent.get("generated_at")
@@ -636,9 +636,9 @@ def collect() -> dict:
             pass
         payload["series"] = agent.get("series") or []
         payload["series_model"] = agent.get("series_model") or []
-        # Detail par session : ~290 Ko brut, ~70 Ko compresse, et il ne bouge
-        # qu'au rythme du collecteur (5 min). La page l'agrege cote navigateur
-        # pour la fenetre choisie, donc aucun aller-retour supplementaire.
+        # Detail per session: ~290 KB raw, ~70 KB compressed, and it only moves
+        # at the collector's pace (5 min). The page aggregates it on the browser side
+        # for the chosen window, so no extra round-trip.
         payload["sessions"] = agent.get("sessions") or []
         payload["windows"] = agent.get("windows") or {}
         payload["agent"] = {
@@ -647,21 +647,21 @@ def collect() -> dict:
             "window_days": agent.get("window_days"),
             "homes": agent.get("homes") or [],
         }
-        note("hermes/usage", "ok", None if (age is None or age < 1800) else f"collecte vieille de {age // 60} min")
+        note("hermes/usage", "ok", None if (age is None or age < 1800) else f"collection {age // 60} min old")
 
-    # Limites du forfait Claude (collecteur claude_plan.py).
+    # Claude plan limits (claude_plan.py collector).
     plan = _read_json(CLAUDE_PLAN_FILE) if CLAUDE_PLAN_FILE else None
     if isinstance(plan, dict):
         payload["claude_plan"] = plan
         state = plan.get("state")
         note("claude/plan", "ok" if state == "ok" else ("missing" if state == "stale" else "error"), plan.get("message"))
     elif CLAUDE_PLAN_FILE:
-        note("claude/plan", "missing", "pas encore de releve")
+        note("claude/plan", "missing", "no sample yet")
 
-    # Sante du provider gemini. Google n'a pas de solde a lire (pas d'endpoint
-    # de credit), donc la carte porte une sonde : cle acceptee, modeles utilises
-    # encore proposes, et une vraie generation. Elle a besoin des modeles gemini
-    # reellement utilises, d'ou sa place apres la lecture de l'usage Hermes.
+    # Health of the gemini provider. Google has no balance to read (no credit
+    # endpoint), so the card carries a probe: key accepted, models used
+    # still offered, and a real generation. It needs the gemini models
+    # actually used, hence its place after reading the Hermes usage.
     gemini_key = _read_secret(GEMINI_KEY_FILE)
     if gemini_key:
         health = probe_gemini(gemini_key, _gemini_models_used(payload), now)
@@ -672,7 +672,7 @@ def collect() -> dict:
             None if health["state"] == "ok" else " · ".join(health["detail"][-2:])[:220],
         )
     elif GEMINI_KEY_FILE:
-        note("gemini/health", "missing", "clé Gemini absente : sante du provider non surveillee")
+        note("gemini/health", "missing", "Gemini key absent: provider health not monitored")
 
     rollup = provider_rollup(agent)
     histories = load_history()
@@ -680,8 +680,8 @@ def collect() -> dict:
     if HISTORY_FILE:
         _write_json(HISTORY_FILE, {"version": 1, "samples": histories})
 
-    # Providers a afficher : ceux qui ont de l'usage, un solde, ou une entree
-    # connue du registre avec une cle presente.
+    # Providers to display: those that have usage, a balance, or a known
+    # registry entry with a key present.
     ids = set(rollup)
     ids.update(balances)
     if _read_secret(INFER_KEY_FILE) or _read_secret(MGMT_KEY_FILE):
@@ -709,8 +709,8 @@ def collect() -> dict:
         if burn:
             burn["source"] = "history"
         elif month["cost"] > 0:
-            # Pas encore d'historique de solde assez long : on retombe sur le
-            # cout estime par Hermes, en le disant (source = estimate).
+            # No long enough balance history yet: we fall back on the
+            # cost estimated by Hermes, saying so (source = estimate).
             burn = {
                 "usd": round(month["cost"], 4),
                 "span_days": 30,
@@ -766,8 +766,8 @@ def collect() -> dict:
         "all_30": round(total_cash_30 + total_sub_30, 4),
     }
 
-    # Abonnements declares hors API (Claude MAX...) : rattaches au provider de
-    # meme nom s'il existe, sinon affiches seuls.
+    # Subscriptions declared outside the API (Claude MAX...): attached to the provider of
+    # the same name if it exists, otherwise displayed alone.
     for sub in SUBSCRIPTIONS:
         name = (sub.get("name") or "").strip()
         if not name:
@@ -788,7 +788,7 @@ def collect() -> dict:
                     "label": name,
                     "kind": "subscription",
                     "color": prov.meta(prov.normalize(name, ""))["color"],
-                    "note": sub.get("note") or "abonnement hors API",
+                    "note": sub.get("note") or "subscription outside the API",
                     "balance": None,
                     "burn_30": None,
                     "burn_7": None,
@@ -820,7 +820,7 @@ def refresh() -> None:
         payload = {
             "generated_at": _iso(datetime.now(timezone.utc)),
             "status": {},
-            "errors": [f"collecte: {type(exc).__name__}: {exc}"],
+            "errors": [f"collection: {type(exc).__name__}: {exc}"],
         }
     with _lock:
         _cache["payload"] = payload
@@ -831,7 +831,7 @@ def refresh() -> None:
 
 
 def worker() -> None:
-    # Cache de demarrage : afficher tout de suite le dernier payload valide.
+    # Startup cache: display the last valid payload immediately.
     if STATE_FILE and os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, encoding="utf-8") as fh:
@@ -849,7 +849,7 @@ def worker() -> None:
             payload = _cache["payload"] or {}
         bad = [s for s, v in (payload.get("status") or {}).items() if v.get("state") == "error"]
         print(
-            f"[usage-dashboard] collecte en {elapsed:.1f}s, {len(bad)} source(s) en erreur"
+            f"[usage-dashboard] collected in {elapsed:.1f}s, {len(bad)} source(s) in error"
             + (f" : {', '.join(bad)}" if bad else ""),
             flush=True,
         )
@@ -857,9 +857,9 @@ def worker() -> None:
 
 
 def page() -> bytes:
-    """Sert index.html depuis le store (relu si le fichier change : pratique en test)."""
+    """Serves index.html from the store (re-read if the file changes: handy in testing)."""
     if not PAGE_FILE:
-        return b"<h1>usage-dashboard : USAGE_DASHBOARD_PAGE non configure</h1>"
+        return b"<h1>usage-dashboard: USAGE_DASHBOARD_PAGE not configured</h1>"
     try:
         mtime = os.path.getmtime(PAGE_FILE)
         with _lock:
@@ -872,7 +872,7 @@ def page() -> bytes:
             _page_cache["mtime"] = mtime
         return body
     except OSError as exc:
-        return f"<h1>index.html illisible : {exc}</h1>".encode()
+        return f"<h1>index.html unreadable: {exc}</h1>".encode()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -880,9 +880,9 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def _send(self, code: int, body: bytes, content_type: str) -> None:
-        # La vue par session fait passer /api/data a ~325 Ko brut (75 Ko
-        # compresse) et la page le recharge toutes les 60 s : on sert en gzip
-        # des que le client l'accepte, ce qui compte aussi sur un telephone.
+        # The per-session view brings /api/data to ~325 KB raw (75 KB
+        # compressed) and the page reloads it every 60 s: we serve in gzip
+        # as soon as the client accepts it, which also matters on a phone.
         encoding = None
         if len(body) >= 1024 and "gzip" in (self.headers.get("Accept-Encoding") or ""):
             packed = gzip.compress(body, 6)
@@ -929,14 +929,14 @@ class Handler(BaseHTTPRequestHandler):
     do_HEAD = do_GET
 
     def log_message(self, format: str, *args) -> None:  # noqa: A002,A003
-        # Journal silencieux : la collecte est deja journalisee par le worker.
+        # Silent log: the collection is already logged by the worker.
         return
 
 
 def main() -> None:
     threading.Thread(target=worker, daemon=True).start()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    print(f"[usage-dashboard] http://{HOST}:{PORT} (rafraichissement {REFRESH:.0f}s)", flush=True)
+    print(f"[usage-dashboard] http://{HOST}:{PORT} (refresh {REFRESH:.0f}s)", flush=True)
     server.serve_forever()
 
 

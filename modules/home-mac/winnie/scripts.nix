@@ -1,9 +1,9 @@
-# Commandes de build Winnie pour macOS, en dérivations writeShellApplication :
-# shellcheck tourne au build et chaque commande est versionnée avec la config.
+# Winnie build commands for macOS, as writeShellApplication derivations:
+# shellcheck runs at build and each command is versioned with the config.
 #
-# Séparé du module home-manager exprès : ce fichier s'importe tel quel depuis
-# tower avec les pkgs x86_64-linux pour construire et tester les mêmes scripts
-# sans Mac (le Mac les reconstruit avec ses pkgs darwin).
+# Separated from the home-manager module on purpose: this file is imported as-is from
+# tower with the x86_64-linux pkgs to build and test the same scripts
+# without a Mac (the Mac rebuilds them with its darwin pkgs).
 {
   pkgs,
   lib,
@@ -22,22 +22,22 @@ let
     ]
     text;
 
-  # Scripts exécutés DANS le devShell du flake winnie : leurs outils (npm, cargo,
-  # tauri, xcrun, simctl) viennent de ce shell, d'où runtimeInputs vide.
+  # Scripts executed INSIDE the winnie flake devShell: their tools (npm, cargo,
+  # tauri, xcrun, simctl) come from this shell, hence empty runtimeInputs.
   inner = name: file: pkgs.writeShellApplication {
     name = "winnie-${name}-inner";
     text = subst (builtins.readFile file);
   };
 
-  # Commandes exposées : cd dans le dépôt puis ré-exécution de l'inner dans
-  # `nix develop`, pour que rien ne dépende du PATH du Mac.
+  # Exposed commands: cd into the repo then re-execution of the inner in
+  # `nix develop`, so that nothing depends on the Mac's PATH.
   dev = name: innerScript: pkgs.writeShellApplication {
     name = "winnie-${name}";
     runtimeInputs = [pkgs.nix];
     text = ''
       repo="$HOME/${cfg.repoRel}"
       if [ ! -f "$repo/flake.nix" ]; then
-        echo "winnie-${name} : dépôt absent ($repo). Lance winnie-sync." >&2
+        echo "winnie-${name}: repo missing ($repo). Run winnie-sync." >&2
         exit 1
       fi
       cd "$repo"
@@ -45,31 +45,31 @@ let
     '';
   };
 
-  # Rafraîchit le dépôt depuis tower : rsync du dépôt local de tower (le dépôt
-  # n'a pas de remote git, tower est le seul original).
+  # Refreshes the repo from tower: rsync of tower's local repo (the repo
+  # has no git remote, tower is the only original).
   sync = pkgs.writeShellApplication {
     name = "winnie-sync";
     runtimeInputs = [pkgs.rsync pkgs.openssh];
     text = subst (builtins.readFile ./scripts/sync.sh);
   };
 
-  # État du poste : Xcode, SDK iOS, runtime du simulateur, node_modules, API.
-  # Xcode n'est pas dans le store Nix (App Store), donc ce diagnostic est la
-  # seule source de vérité, et --fix automatise tout sauf l'installation d'Xcode.
+  # Machine state: Xcode, iOS SDK, simulator runtime, node_modules, API.
+  # Xcode is not in the Nix store (App Store), so this diagnostic is the
+  # only source of truth, and --fix automates everything except installing Xcode.
   doctor = pkgs.writeShellApplication {
     name = "winnie-doctor";
     runtimeInputs = [pkgs.nix pkgs.curl pkgs.coreutils];
     text = subst (builtins.readFile ./scripts/doctor.sh);
   };
 
-  # DevShell interactif du projet, sans deviner le chemin du dépôt.
+  # Interactive project DevShell, without guessing the repo path.
   shell = pkgs.writeShellApplication {
     name = "winnie-shell";
     runtimeInputs = [pkgs.nix];
     text = ''
       repo="$HOME/${cfg.repoRel}"
       if [ ! -f "$repo/flake.nix" ]; then
-        echo "winnie-shell : dépôt absent ($repo). Lance winnie-sync." >&2
+        echo "winnie-shell: repo missing ($repo). Run winnie-sync." >&2
         exit 1
       fi
       cd "$repo"
@@ -79,15 +79,15 @@ let
 in {
   inherit doctor shell sync;
 
-  # Serveur Vite (HMR) du front Svelte.
+  # Vite server (HMR) of the Svelte front.
   front = dev "front" (inner "front" ./scripts/front.sh);
 
-  # App Tauri : macOS (CLT suffisent) et iOS (Xcode requis).
+  # Tauri app: macOS (CLT enough) and iOS (Xcode required).
   macos = dev "macos" (inner "macos" ./scripts/macos-dev.sh);
   macos-build = dev "build-macos" (inner "build-macos" ./scripts/macos-build.sh);
   ios = dev "ios" (inner "ios" ./scripts/ios-dev.sh);
   ios-build = dev "build-ios" (inner "build-ios" ./scripts/ios-build.sh);
 
-  # Contrôles avant commit (front + svelte-check + cargo check).
+  # Pre-commit checks (front + svelte-check + cargo check).
   verify = dev "verify" (inner "verify" ./scripts/verify.sh);
 }

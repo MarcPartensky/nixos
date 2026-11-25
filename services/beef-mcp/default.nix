@@ -1,31 +1,31 @@
 # services/beef-mcp/default.nix
-# Serveur MCP BeEF pour hermes (code dans ./server.py).
+# BeEF MCP server for hermes (code in ./server.py).
 #
-# Pourquoi un MCP maison : BeEF n'a qu'une console web, sans client API. Le
-# module services/beef lui rend un jeton d'API REST deterministe (patch de
-# core/main/crypto.rb + secret sops), ce qui permet a ce serveur de piloter la
-# console en stdio : lister les navigateurs hookes, chercher un module,
-# l'executer sur une session, lire le resultat.
+# Why a homegrown MCP: BeEF only has a web console, with no API client. The
+# services/beef module gives it a deterministic REST API token (patch of
+# core/main/crypto.rb + sops secret), which lets this server drive the
+# console over stdio: list hooked browsers, search for a module,
+# run it on a session, read the result.
 #
-# Transport stdio : hermes spawn le subprocess. Le jeton n'est jamais passe en
-# clair dans la config (relu a chaque appel depuis le fichier sops, via
-# BEEF_API_TOKEN_FILE) ; le secret est en 0440 beef:hermes, donc lisible par le
-# service beef (owner) et par le MCP (groupe hermes).
+# stdio transport: hermes spawns the subprocess. The token is never passed in
+# clear in the config (re-read on every call from the sops file, via
+# BEEF_API_TOKEN_FILE); the secret is 0440 beef:hermes, so readable by the
+# beef service (owner) and by the MCP (group hermes).
 #
-# Les deux tools qui executent du code dans le navigateur de la victime
-# (beef_run_module, beef_unhook) exigent confirm=True ; sans lui ils renvoient
-# l'apercu de l'envoi.
+# The two tools that execute code in the victim's browser
+# (beef_run_module, beef_unhook) require confirm=True; without it they return
+# the preview of the submission.
 #
-# Debug a la main (garder stdin ouvert, un EOF tue la requete) :
+# Manual debug (keep stdin open, an EOF kills the request):
 #   { printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'; sleep 5; } \
 #     | /nix/store/.../bin/beef-mcp
 {self, pkgs, config, ...}: let
-  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
-  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  # Binary built as a flake output (mcp/default.nix): buildable
+  # without evaluating this conf, and no longer rebuilt on every host eval.
   beef-mcp = self.packages.${pkgs.stdenv.hostPlatform.system}.beef-mcp;
 
 in {
-  # Le binaire sur le PATH, et reference par mcpServers.beef.command.
+  # The binary on the PATH, referenced by mcpServers.beef.command.
   environment.systemPackages = [beef-mcp];
 
 }

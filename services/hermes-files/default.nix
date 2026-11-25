@@ -1,11 +1,11 @@
 # services/hermes-files/default.nix
-# Partage HTTP en lecture seule des artefacts produits par l'agent hermes
-# (APK Hermes Pocket, exports, captures) sur le réseau local uniquement.
+# Read-only HTTP sharing of artifacts produced by the hermes agent
+# (Hermes Pocket APK, exports, screenshots) on the local network only.
 #
-# hermes écrit dans /var/lib/hermes-files (son stateDir /var/lib/hermes est en
-# 0770 : nginx ne peut pas le traverser, d'où un répertoire dédié en 0755).
-# nginx le sert sur http://<ip-lan>:8092/ avec autoindex, sans authentification :
-# ne rien y déposer de sensible, et ne jamais router ce port via Pangolin.
+# hermes writes into /var/lib/hermes-files (its stateDir /var/lib/hermes is in
+# 0770: nginx cannot traverse it, hence a dedicated directory in 0755).
+# nginx serves it on http://<lan-ip>:8092/ with autoindex, without authentication:
+# do not put anything sensitive there, and never route this port via Pangolin.
 {...}: let
   port = 8092;
   root = "/var/lib/hermes-files";
@@ -15,7 +15,7 @@ in {
   ];
 
   services.nginx.virtualHosts."hermes-files" = {
-    # pas de serverName utile : seul vhost sur ce port, donc default_server de fait
+    # no useful serverName: only vhost on this port, so de facto default_server
     listen = [
       {
         addr = "0.0.0.0";
@@ -25,7 +25,7 @@ in {
     inherit root;
     locations."/".extraConfig = ''
       autoindex on;
-      # un .apk doit se télécharger, pas s'afficher
+      # an .apk must download, not display
       types {
         application/vnd.android.package-archive apk;
       }

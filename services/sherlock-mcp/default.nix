@@ -1,34 +1,34 @@
 # services/sherlock-mcp/default.nix
-# MCP `username-recon` pour hermes : enumere les comptes publics d'un username
-# ou d'un email, code dans ./server.py.
+# `username-recon` MCP for hermes: enumerates the public accounts of a username
+# or an email, code in ./server.py.
 #
-# Un serveur par CAPACITE, pas un serveur par outil : les trois moteurs
-# (sherlock 414 sites, maigret 3155 sites avec parsing de profil, socialscan
-# 11 plateformes par sondage des endpoints d'inscription) sont derriere un seul
-# jeu de tools, et le choix du moteur est une decision du serveur (`engines=auto`
-# fait sherlock puis bascule, `engines=all` fait l'union), pas un raisonnement a
-# refaire a chaque conversation.
+# One server per CAPABILITY, not one server per tool: the three engines
+# (sherlock 414 sites, maigret 3155 sites with profile parsing, socialscan
+# 11 platforms by probing the signup endpoints) are behind a single
+# set of tools, and the engine choice is a server decision (`engines=auto`
+# does sherlock then switches, `engines=all` does the union), not a reasoning to
+# redo on each conversation.
 #
-# Ce que le serveur ajoute aux moteurs nus : le CONTROLE NEGATIF. Chaque moteur
-# est relance avec un username impossible, et tout site qui le declare existant
-# est rendu `unreliable` au lieu d'etre presente comme un hit. C'est la reponse
-# au defaut structurel de Sherlock (un site qui repond 200 sur tout est annonce
-# « Claimed » pour n'importe quoi). Mesure du 2026-11-11 : 5 sites bruyants pour
-# sherlock, 13 pour maigret, sur un username aleatoire. Le resultat est cache
-# sous SHERLOCK_MCP_STATE (TTL 72 h) : une passe complete coute 1 a 2 minutes,
-# on ne la refait pas a chaque scan.
+# What the server adds to the bare engines: NEGATIVE CONTROL. Each engine
+# is re-run with an impossible username, and any site that declares it existing
+# is marked `unreliable` instead of being presented as a hit. This is the answer
+# to Sherlock's structural flaw (a site that answers 200 to everything is announced
+# "Claimed" for anything). Measurement of 2026-11-11: 5 noisy sites for
+# sherlock, 13 for maigret, on a random username. The result is cached
+# under SHERLOCK_MCP_STATE (TTL 72 h): a full pass costs 1 to 2 minutes,
+# we do not redo it on each scan.
 #
-# Le binaire embarque les moteurs dans son PATH et l'etat sous /var/lib/hermes
-# (ProtectSystem=strict : un sous-processus MCP ne peut ecrire que la). L'etat
-# comprend aussi une copie inscriptible de la base de maigret : le paquet
-# nixpkgs reecrit sa base a la sortie et meurt en PermissionError sur le store.
+# The binary embeds the engines in its PATH and the state under /var/lib/hermes
+# (ProtectSystem=strict: an MCP subprocess can only write there). The state
+# also includes a writable copy of the maigret database: the
+# nixpkgs package rewrites its database on exit and dies with PermissionError on the store.
 #
-# Debug a la main (garder stdin ouvert, un EOF tue la requete en vol) :
+# Manual debug (keep stdin open, an EOF kills the in-flight request):
 #   { printf '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n'; sleep 5; } \
 #     | /nix/store/.../bin/username-recon-hermes
 {self, pkgs, lib, ...}: let
-  # Binaire construit comme sortie du flake (mcp/default.nix) : buildable
-  # sans evaluer cette conf, et plus reconstruit a chaque eval de l'hote.
+  # Binary built as a flake output (mcp/default.nix): buildable
+  # without evaluating this config, and no longer rebuilt on each host eval.
   username-recon = self.packages.${pkgs.stdenv.hostPlatform.system}.username-recon;
 
   wrapper = pkgs.writeShellScript "username-recon-hermes" ''
@@ -45,8 +45,8 @@ in {
   services.hermes-agent.mcpServers.username-recon = {
     command = "${wrapper}";
     args = [];
-    # Un balayage sherlock complet fait 60 a 90 s, maigret environ 1 min, et un
-    # scan `engines=all` avec controle negatif froid atteint 2 a 3 min.
+    # A full sherlock sweep takes 60 to 90 s, maigret about 1 min, and a
+    # scan `engines=all` with a cold negative control reaches 2 to 3 min.
     timeout = 900;
   };
 }

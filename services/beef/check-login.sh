@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
-# Verifie que la console accepte vraiment les identifiants de la config.
+# Checks that the console really accepts the credentials from the config.
 #
-# Pourquoi cette unite existe : le seul symptome d'un mot de passe mal pose est
-# un « impossible de se connecter » cote navigateur, alors que le service, lui,
-# tourne. Ici on rejoue le login depuis un process qui a le droit de lire le
-# secret (User=beef) et on journalise le verdict de BeEF. Le mot de passe n'est
-# jamais ecrit dans le journal : seule la reponse de BeEF l'est.
+# Why this unit exists: the only symptom of a badly set password is
+# an "unable to log in" on the browser side, while the service itself
+# runs. Here we replay the login from a process allowed to read the
+# secret (User=beef) and log BeEF's verdict. The password is
+# never written to the journal: only BeEF's answer is.
 #
-# ATTENTION aux noms de champs : le handler lit `username-cfrm` et
-# `password-cfrm` (Ext.form.FormPanel soumet en x-www-form-urlencoded). Un POST
-# JSON avec `username`/`password` rend `{"success":false}` meme avec le bon mot
-# de passe, parce que les deux champs lus sont vides.
+# WATCH OUT for field names: the handler reads `username-cfrm` and
+# `password-cfrm` (Ext.form.FormPanel submits as x-www-form-urlencoded). A
+# JSON POST with `username`/`password` returns `{"success":false}` even with the right
+# password, because the two fields read are empty.
 set -euo pipefail
 
-: "${BEEF_CONSOLE_URL:?BEEF_CONSOLE_URL manquant}"
-: "${BEEF_PASSWORD_FILE:?BEEF_PASSWORD_FILE manquant}"
+: "${BEEF_CONSOLE_URL:?BEEF_CONSOLE_URL missing}"
+: "${BEEF_PASSWORD_FILE:?BEEF_PASSWORD_FILE missing}"
 
 password=$(cat "$BEEF_PASSWORD_FILE")
 if [ -z "$password" ]; then
-  echo "beef-selfcheck: mot de passe sops VIDE" >&2
+  echo "beef-selfcheck: sops password EMPTY" >&2
   exit 1
 fi
 
-# Attendre que BeEF reponde (le chargement prend quelques dizaines de secondes).
+# Wait for BeEF to answer (loading takes a few tens of seconds).
 ready=no
 for _ in $(seq 1 40); do
   if curl -s -o /dev/null "${BEEF_CONSOLE_URL}/hook.js"; then
@@ -32,11 +32,11 @@ for _ in $(seq 1 40); do
   sleep 3
 done
 if [ "$ready" != yes ]; then
-  echo "beef-selfcheck: BeEF ne repond pas sur ${BEEF_CONSOLE_URL}" >&2
+  echo "beef-selfcheck: BeEF does not answer on ${BEEF_CONSOLE_URL}" >&2
   exit 1
 fi
 
-# Meme requete que le formulaire de la console, champ pour champ.
+# Same request as the console form, field for field.
 answer=$(curl -s -X POST \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   --data-urlencode "username-cfrm=${BEEF_USER}" \
@@ -45,10 +45,10 @@ answer=$(curl -s -X POST \
 
 case "$answer" in
   *'"success":true'*)
-    echo "beef-selfcheck: login console OK (mot de passe de ${#password} caracteres accepte)"
+    echo "beef-selfcheck: console login OK (password of ${#password} characters accepted)"
     ;;
   *)
-    echo "beef-selfcheck: login console REFUSE par BeEF -> $answer" >&2
+    echo "beef-selfcheck: console login REFUSED by BeEF -> $answer" >&2
     exit 1
     ;;
 esac

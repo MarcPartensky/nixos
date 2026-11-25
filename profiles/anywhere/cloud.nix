@@ -13,15 +13,15 @@ in
       443  # HTTPS (Webmail & Management)
 
       # --- Stalwart Mail Server ---
-      # services.stalwart.openFirewall est à false : ces ports sont la liste
-      # qui fait autorité. JMAP/webadmin (8390) et management (8391) écoutent
-      # en 127.0.0.1 et sortent par Traefik, donc rien à ouvrir pour eux.
-      25   # SMTP (Réception de mails)
-      465  # SMTP Submissions (Envoi client)
-      993  # IMAP sécurisé (Lecture client)
+      # services.stalwart.openFirewall is false: these ports are the
+      # authoritative list. JMAP/webadmin (8390) and management (8391) listen
+      # on 127.0.0.1 and go out through Traefik, so nothing to open for them.
+      25   # SMTP (mail reception)
+      465  # SMTP Submissions (client sending)
+      993  # IMAP secure (client reading)
 
 
-      # --- Vos autres services ---
+      # --- Your other services ---
       8080 8081 8082 8083 # Pangolin / Apps
       5432                # PostgreSQL
       3000 3002 3008

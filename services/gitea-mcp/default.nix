@@ -1,16 +1,16 @@
 # services/gitea-mcp/default.nix
-# Serveur MCP Gitea officiel (gitea.com/gitea/gitea-mcp) pour hermes.
-# Transport stdio : hermes spawn le subprocess (mcpServers dans
+# Official Gitea MCP server (gitea.com/gitea/gitea-mcp) for hermes.
+# stdio transport: hermes spawns the subprocess (mcpServers in
 # services/hermes/default.nix, command = "gitea-mcp").
 #
-# Version v1.6.0 et pas la dernière (v1.7.0) : v1.7.0 exige go >= 1.27 alors que
-# la nixpkgs épinglée (26.05) fournit go 1.26.7 -> échec du build des modules.
-# v1.6.0 exige go 1.26.0, donc compatible, ET supporte GITEA_ACCESS_TOKEN_FILE
-# (le secret sops est lu par le binaire, jamais passé en clair dans l'env).
+# Version v1.6.0, not the latest (v1.7.0): v1.7.0 requires go >= 1.27 while
+# the pinned nixpkgs (26.05) provides go 1.26.7 -> module build fails.
+# v1.6.0 requires go 1.26.0, so it is compatible, AND supports GITEA_ACCESS_TOKEN_FILE
+# (the sops secret is read by the binary, never passed in cleartext in the env).
 #
-# Auth : Personal Access Token Gitea (Settings -> Applications -> Generate Token,
+# Auth: Gitea Personal Access Token (Settings -> Applications -> Generate Token,
 # scopes: repo, admin:org, admin:user, notification, user, write:package, read:package).
-# Le token vit dans secrets/gitea-mcp.yml (sops, clé gitea_mcp_pat).
+# The token lives in secrets/gitea-mcp.yml (sops, key gitea_mcp_pat).
 {
   config,
   lib,
@@ -36,10 +36,10 @@
     };
   };
 in {
-  # Le binaire sur le PATH (c'est ce que référence mcpServers.gitea.command)
+  # The binary on PATH (this is what mcpServers.gitea.command references)
   environment.systemPackages = [gitea-mcp];
 
-  # Secret PAT Gitea (créé dans Gitea -> Settings -> Applications)
+  # Gitea PAT secret (created in Gitea -> Settings -> Applications)
   sops.secrets."gitea-mcp/pat" = {
     key = "gitea_mcp_pat";
     sopsFile = ../../secrets/gitea-mcp.yml;

@@ -1,19 +1,19 @@
-# services/finance-dashboard : page de suivi des dépenses (Wise + Chase).
+# services/finance-dashboard: spending tracking page (Wise + Chase).
 #
-# Chaine : Pangolin (finance.marcpartensky.com, SSO) -> newt (site tower)
-#          -> 127.0.0.1:9142 (ce service).
-# Depuis le tailnet, l'URL directe est http://100.64.0.3:9142 (pas de SSO).
+# Chain: Pangolin (finance.marcpartensky.com, SSO) -> newt (tower site)
+#          -> 127.0.0.1:9142 (this service).
+# From the tailnet, the direct URL is http://100.64.0.3:9142 (no SSO).
 #
-# Le service ne calcule rien : il rend /var/lib/hermes/workspace/finance/
-# dashboard.json, ecrit chaque matin par le cron « Daily finances recap »
+# The service computes nothing: it renders /var/lib/hermes/workspace/finance/
+# dashboard.json, written every morning by the "Daily finances recap" cron
 # (/var/lib/hermes/.hermes/scripts/finance_recap.py, Wise + Chase via
-# SimpleFIN). Aucun secret n'est lu ici : le fichier est deja agrege.
+# SimpleFIN). No secret is read here: the file is already aggregated.
 #
-# Pourquoi pas Grafana : les chiffres tiennent dans un JSON de 15 Ko
-# regenere une fois par jour. Une pile Grafana + Prometheus + exposition
-# couterait deux services et un agent pour trois series quotidiennes. Un
-# serveur Python stdlib de 400 lignes fait le meme travail, avec le theme
-# Catppuccin Mocha et l'accent Lavender du reste de l'infra.
+# Why not Grafana: the figures fit in a 15 KB JSON
+# regenerated once a day. A Grafana + Prometheus + exporter stack
+# would cost two services and an agent for three daily series. A
+# 400-line stdlib Python server does the same work, with the
+# Catppuccin Mocha theme and the Lavender accent of the rest of the infra.
 {
   config,
   lib,
@@ -25,25 +25,25 @@
   port = 9142;
   domain = "finance.marcpartensky.com";
 
-  # Donnees produites par le cron Hermes (utilisateur hermes).
+  # Data produced by the Hermes cron (hermes user).
   dataDir = "/var/lib/hermes/workspace/finance";
   dataFile = "${dataDir}/dashboard.json";
 in {
   options.services.financeDashboard = {
-    enable = lib.mkEnableOption "page de suivi des depenses (Wise + Chase)";
+    enable = lib.mkEnableOption "spending tracking page (Wise + Chase)";
   };
 
   config = lib.mkIf cfg.enable {
     systemd.services.finance-dashboard = {
-      description = "Finance dashboard (Wise + Chase, lecture seule)";
+      description = "Finance dashboard (Wise + Chase, read-only)";
       wantedBy = ["multi-user.target"];
       after = ["network-online.target"];
       wants = ["network-online.target"];
 
       serviceConfig = {
         Type = "simple";
-        # Tourne en hermes : c'est cet utilisateur qui ecrit dashboard.json,
-        # pas de groupe partage a maintenir.
+        # Runs as hermes: it is this user that writes dashboard.json,
+        # no shared group to maintain.
         User = "hermes";
         Group = "hermes";
         Environment = [
@@ -55,8 +55,8 @@ in {
         Restart = "always";
         RestartSec = 5;
 
-        # Durcissement : le service ne fait que lire un fichier et servir du
-        # HTTP en clair derriere newt.
+        # Hardening: the service only reads a file and serves
+        # cleartext HTTP behind newt.
         NoNewPrivileges = true;
         ProtectSystem = "strict";
         ProtectHome = true;
@@ -77,8 +77,8 @@ in {
       };
     };
 
-    # Le port reste ferme au firewall : acces par le tailnet (interface de
-    # confiance) ou par le SSO Pangolin via newt, jamais en clair depuis le LAN.
+    # The port stays closed at the firewall: access over the tailnet (trusted
+    # interface) or via Pangolin SSO through newt, never cleartext from the LAN.
     services.newt.blueprint.proxy-resources.finance-dashboard = {
       name = "finance-dashboard";
       protocol = "http";
@@ -110,7 +110,7 @@ in {
     assertions = [
       {
         assertion = !(lib.elem port config.networking.firewall.allowedTCPPorts);
-        message = "finance-dashboard : le port ${toString port} ne doit pas etre ouvert au firewall (acces tailnet + SSO Pangolin uniquement).";
+        message = "finance-dashboard: port ${toString port} must not be open at the firewall (tailnet access + Pangolin SSO only).";
       }
     ];
   };

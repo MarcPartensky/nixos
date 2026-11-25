@@ -2,7 +2,7 @@
   programs.nixvim.plugins.avante = {
     enable = true;
     settings = {
-      # Utilise le CLI claude code au lieu de l'API directe
+      # Use the claude code CLI instead of the direct API
       # provider = "claude";
       provider = "claude";
 
@@ -11,7 +11,7 @@
       };
 
       select = {
-        provider = "native"; # évite le bug dressing select avec tables non-list
+        provider = "native"; # avoids the dressing select bug with non-list tables
       };
 
       providers = {
@@ -27,11 +27,11 @@
       behaviour = {
         auto_suggestions = false;
         support_paste_from_clipboard = true;
-        # Désactive la suggestion auto qui lit tout le projet
+        # Disables the auto suggestion that reads the whole project
         enable_cursor_planning_mode = false;
       };
 
-      # Désactive la repo map (le truc qui scanne tout le codebase)
+      # Disables the repo map (the thing that scans the whole codebase)
       repo_map = {
         ignore_patterns = [
           "*.lock"

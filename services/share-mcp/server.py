@@ -1,35 +1,35 @@
-"""Serveur MCP `share` : publie un fichier et fabrique toute la chaîne de liens.
+"""`share` MCP server: publishes a file and builds the whole chain of links.
 
-Une seule intention, trois jambes, dans cet ordre :
+One single intent, three legs, in this order:
 
-  1. objet    : le fichier est déposé dans le bucket PUBLIC de Garage, donc
-                lisible en anonyme via l'endpoint website ;
-  2. lien court géré : Shlink crée un lien sur s.marcpartensky.com qui pointe
-                sur l'objet (stats, tags, expiration côté Shlink) ;
-  3. façade publique (optionnelle) : un lien de 4 caractères chez x.gd qui
-                pointe sur le lien Shlink, donc un saut de plus à suivre mais
-                une URL brandable et courte à partager.
+  1. object    : the file is dropped into the PUBLIC Garage bucket, therefore
+                readable anonymously via the website endpoint;
+  2. managed short link: Shlink creates a link on s.marcpartensky.com pointing
+                to the object (stats, tags, expiry on the Shlink side);
+  3. public facade (optional): a 4-character link at x.gd that
+                points to the Shlink link, so one more hop to follow but
+                a brandable, short URL to share.
 
-Où vivent les fichiers : le bucket `public` de Garage est le SEUL marqué
-website, tout objet qui y entre est lisible par quiconque connaît l'URL. C'est
-le prix de liens courts qui ne meurent pas (une URL présignée expirerait avant
-le lien). Ne rien publier ici qui doive rester privé.
+Where the files live: the Garage `public` bucket is the ONLY one marked
+website, any object entering it is readable by anyone who knows the URL. That is
+the price of short links that do not die (a presigned URL would expire before
+the link). Do not publish anything here that must stay private.
 
-Nommage des clés : pas de token, ni d'identifiant, ni de nom de personne dans
-la clé S3. Avec front=True, le lien x.gd affiche publiquement l'URL de
-destination (x.gd expose un compteur de clics public sur `<lien>+`), donc la
-clé d'objet se retrouve publiée par un tiers. La façade x.gd de 4 caractères
-est toujours aléatoire : x.gd n'accepte aucun slug custom sans compte, le slug
-choisi ne s'applique donc qu'au lien Shlink.
+Key naming: no token, no identifier, no person's name in
+the S3 key. With front=True, the x.gd link publicly shows the
+destination URL (x.gd exposes a public click counter at `<link>+`), so the
+object key ends up published by a third party. The 4-character x.gd facade
+is always random: x.gd accepts no custom slug without an account, the chosen
+slug therefore only applies to the Shlink link.
 
-Outils :
-  - share_publish : dépose puis chaîne les liens (écriture, exige confirm) ;
-  - share_inventory : ce qui est public en ce moment (objets + liens Shlink) ;
-  - share_unpublish : retire l'objet et supprime le lien géré.
+Tools:
+  - share_publish: drops the file then chains the links (write, requires confirm);
+  - share_inventory: what is public right now (objects + Shlink links);
+  - share_unpublish: removes the object and deletes the managed link.
 
-Identifiants : la clé S3 applicative est lue par le wrapper du module depuis
-/var/lib/garage/s3-key.env (jamais dans le store), et la clé de l'API Shlink
-depuis le fichier sops. Le binaire `aws` vient du PATH posé par le wrapper.
+Credentials: the application S3 key is read by the module wrapper from
+/var/lib/garage/s3-key.env (never in the store), and the Shlink API key
+from the sops file. The `aws` binary comes from the PATH set by the wrapper.
 """
 
 import json
@@ -68,7 +68,7 @@ def _shlink_key():
             key = ""
     key = key or os.environ.get("SHLINK_API_KEY", "")
     if not key:
-        raise RuntimeError("clé d'API Shlink absente (SHLINK_API_KEY_FILE)")
+        raise RuntimeError("Shlink API key missing (SHLINK_API_KEY_FILE)")
     return key
 
 
@@ -94,7 +94,7 @@ def _shlink(method, path, query=None, body=None):
             payload = raw[:1500]
         return {"status": e.code, "error": payload}
     except urllib.error.URLError as e:
-        return {"status": 0, "error": "injoignable: %s" % e.reason}
+        return {"status": 0, "error": "unreachable: %s" % e.reason}
 
 
 def _aws(args, stdin=None):
@@ -103,23 +103,23 @@ def _aws(args, stdin=None):
         p = subprocess.run(cmd, input=stdin, capture_output=True, text=True,
                            timeout=TIMEOUT)
     except FileNotFoundError:
-        return 127, "", "binaire aws absent du PATH (wrapper du module)"
+        return 127, "", "aws binary missing from PATH (module wrapper)"
     except subprocess.TimeoutExpired:
-        return 124, "", "délai dépassé (%ss)" % TIMEOUT
+        return 124, "", "timeout (%ss)" % TIMEOUT
     return p.returncode, p.stdout, p.stderr
 
 
 def _object_key(key):
     key = (key or "").strip().lstrip("/")
     if not key:
-        raise ValueError("clé d'objet vide")
+        raise ValueError("empty object key")
     if ".." in key.split("/"):
-        raise ValueError("clé refusée (chemin relatif)")
+        raise ValueError("key refused (relative path)")
     return key
 
 
 def _xgd_shorten(url):
-    """Façade x.gd : POST JSON, rend le slug ou lève une erreur lisible."""
+    """x.gd facade: POST JSON, returns the slug or raises a readable error."""
     body = json.dumps({"url": url}).encode()
     req = urllib.request.Request(
         "https://x.gd/api/v1/shorten", data=body, method="POST",
@@ -130,9 +130,9 @@ def _xgd_shorten(url):
             d = json.loads(r.read().decode() or "{}")
         code = ((d.get("results") or {}).get("id") or "").strip()
         if not code:
-            return None, "réponse x.gd inattendue: %s" % json.dumps(d)[:200]
+            return None, "unexpected x.gd response: %s" % json.dumps(d)[:200]
         return "https://x.gd/%s" % code, None
-    except Exception as e:  # réseau, 4xx, JSON: on ne casse pas la chaîne
+    except Exception as e:  # network, 4xx, JSON: we do not break the chain
         return None, "x.gd: %s" % e
 
 
@@ -146,18 +146,18 @@ def share_publish(
     valid_until: str | None = None,
     confirm: bool = False,
 ) -> dict:
-    """Publie et chaîne en un appel : S3 -> lien Shlink -> façade x.gd.
+    """Publishes and chains in one call: S3 -> Shlink link -> x.gd facade.
 
-    path        : fichier local à déposer (chemin absolu lisible par le
-                  service hermes : /var/lib/hermes, /tmp, /var/lib/garage).
-    object_key  : clé S3 voulue (défaut: <prefixe>/<nom du fichier>). Si path
-                  est absent, publie un objet DÉJÀ présent dans le bucket.
-    slug        : slug du lien court géré (défaut: aléatoire Shlink).
-    front       : ajoute un lien x.gd de 4 caractères pointant sur le lien géré.
-    valid_until : expiration du lien géré, ISO-8601.
+    path        : local file to drop (absolute path readable by the
+                  hermes service: /var/lib/hermes, /tmp, /var/lib/garage).
+    object_key  : desired S3 key (default: <prefix>/<file name>). If path
+                  is absent, publishes an object ALREADY present in the bucket.
+    slug        : slug of the managed short link (default: random Shlink).
+    front       : adds a 4-character x.gd link pointing to the managed link.
+    valid_until : expiry of the managed link, ISO-8601.
 
-    Écriture réelle seulement si confirm=True (sinon aperçu de ce qui serait
-    publié). Tout objet du bucket public est lisible par n'importe qui.
+    Real write only if confirm=True (otherwise a preview of what would be
+    published). Any object in the public bucket is readable by anyone.
     """
     if path:
         key = _object_key(object_key or "%s/%s" % (PREFIX,
@@ -165,7 +165,7 @@ def share_publish(
     elif object_key:
         key = _object_key(object_key)
     else:
-        return {"error": "donner path (fichier local) ou object_key (déjà en S3)"}
+        return {"error": "give path (local file) or object_key (already in S3)"}
 
     object_url = "%s/%s" % (PUBLIC_BASE, urllib.parse.quote(key))
     plan = {"object_key": key, "object_url": object_url, "slug": slug,
@@ -174,29 +174,29 @@ def share_publish(
     if not ALLOW_WRITES:
         return {"dry_run": True, "reason": "SHARE_ALLOW_WRITES=0", **plan}
     if not confirm:
-        return {"dry_run": True, "reason": "confirm=True requis", **plan}
+        return {"dry_run": True, "reason": "confirm=True required", **plan}
 
     out = dict(plan)
 
-    # 1. dépôt de l'objet
+    # 1. dropping the object
     if path:
         if not os.path.isfile(path):
-            return {"error": "fichier introuvable: %s" % path, **out}
+            return {"error": "file not found: %s" % path, **out}
         ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
         rc, _, err = _aws(["s3", "cp", path, "s3://%s/%s" % (BUCKET, key),
                            "--content-type", ctype, "--only-show-errors"])
         out["upload"] = {"ok": rc == 0, "content_type": ctype}
         if rc != 0:
-            out["error"] = "échec du dépôt S3: %s" % err.strip()[:400]
+            out["error"] = "S3 upload failed: %s" % err.strip()[:400]
             return out
     else:
         rc, _, err = _aws(["s3", "ls", "s3://%s/%s" % (BUCKET, key)])
         if rc != 0 or key.split("/")[-1] not in (_ or ""):
-            out["error"] = "objet absent du bucket %s: %s" % (BUCKET, key)
+            out["error"] = "object absent from bucket %s: %s" % (BUCKET, key)
             return out
         out["upload"] = {"ok": True, "reused": True}
 
-    # 2. lien court géré, avec le lien public enregistré dans les tags
+    # 2. managed short link, with the public link stored in the tags
     link_tags = list(dict.fromkeys(["s3", "public"] + (tags or [])))
     body = {"longUrl": object_url, "tags": link_tags}
     if slug:
@@ -206,20 +206,20 @@ def share_publish(
     created = _shlink("POST", "/short-urls", body=body)
     out["shlink"] = created
     if created.get("status") not in (200, 201):
-        out["error"] = "lien Shlink non créé: %s" % json.dumps(
+        out["error"] = "Shlink link not created: %s" % json.dumps(
             created.get("error"))[:300]
         return out
     short_url = created["body"].get("shortUrl")
     out["short_url"] = short_url
 
-    # 3. façade publique optionnelle (le lien géré est la cible)
+    # 3. optional public facade (the managed link is the target)
     if front:
         front_url, front_err = _xgd_shorten(short_url)
         out["front_url"] = front_url
         if front_err:
             out["front_error"] = front_err
         elif front_url and slug:
-            # Trace sur le lien géré : on relit les tags et on ajoute la façade.
+            # Trace on the managed link: we re-read the tags and add the facade.
             code = created["body"]["shortCode"]
             cur = _shlink("GET", "/short-urls/" + code)
             cur_tags = (cur.get("body") or {}).get("tags") or []
@@ -231,7 +231,7 @@ def share_publish(
 
 @mcp.tool()
 def share_inventory(limit: int = 100) -> dict:
-    """Tout ce qui est public : objets du bucket + liens Shlink tagués `s3`."""
+    """Everything public: bucket objects + Shlink links tagged `s3`."""
     rc, stdout, err = _aws(["s3", "ls", "--recursive", "s3://%s/" % BUCKET])
     objects = []
     if rc == 0:
@@ -264,10 +264,10 @@ def share_inventory(limit: int = 100) -> dict:
 def share_unpublish(
     object_key: str, short_code: str | None = None, confirm: bool = False
 ) -> dict:
-    """Retire un objet public et, si donné, supprime son lien court géré."""
+    """Removes a public object and, if given, deletes its managed short link."""
     key = _object_key(object_key)
     if not confirm:
-        return {"dry_run": True, "reason": "confirm=True requis",
+        return {"dry_run": True, "reason": "confirm=True required",
                 "object_key": key, "short_code": short_code}
     rc, _, err = _aws(["s3", "rm", "s3://%s/%s" % (BUCKET, key)])
     out = {"object_key": key, "deleted_object": rc == 0}

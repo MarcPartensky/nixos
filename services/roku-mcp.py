@@ -1,19 +1,19 @@
 # services/roku-mcp.py
-# Serveur MCP de la TV Roku (ECP, reseau local).
+# MCP server for the Roku TV (ECP, local network).
 #
-# Sorti du module Nix (ou il etait une chaine python inline) pour deux raisons :
-# un fichier .py monte par modules/nixos/mcp-host est relu sans rebuild et sans
-# eval de la conf hote, et l'hote n'evalue plus de paquet python pour lui.
-# Declare dans profiles/tower/configuration.nix : services.mcp-host.servers.roku
-# et env ROKU_URL.
+# Moved out of the Nix module (where it was an inline python string) for two reasons:
+# a .py file mounted by modules/nixos/mcp-host is re-read without a rebuild and without
+# evaluating the host config, and the host no longer evaluates a python package for it.
+# Declared in profiles/tower/configuration.nix: services.mcp-host.servers.roku
+# and env ROKU_URL.
 #
-# A la racine de services/ et non dans services/roku/ : l'ACL de ce sous-dossier
-# ne donne a hermes que r-x (mask), donc un fichier neuf ne peut pas y etre cree
-# par l'agent. A deplacer dans services/roku/ le jour ou l'ACL est reouverte.
+# At the root of services/ and not in services/roku/: the ACL of that subfolder
+# only gives hermes r-x (mask), so a new file cannot be created there
+# by the agent. To be moved into services/roku/ the day the ACL is reopened.
 #
-# Le montage exige un objet FastMCP expose en variable de module (ici `mcp`),
-# sans appel a mcp.run() hors du garde __main__ : modules/nixos/mcp-host le
-# monte dans le serveur unique.
+# The mount requires a FastMCP object exposed as a module variable (here `mcp`),
+# without a call to mcp.run() outside the __main__ guard: modules/nixos/mcp-host
+# mounts it in the single server.
 import os
 import time
 import urllib.request
@@ -27,8 +27,8 @@ except ImportError:
 
 TV = os.environ.get("ROKU_URL", "http://192.168.1.167:8060")
 
-# Touches pour atteindre le réglage de luminosité depuis l'entrée HDMI.
-# À relever une fois à la télécommande (touche ✱ = Info).
+# Keys to reach the brightness setting from the HDMI input.
+# To record once with the remote (key * = Info).
 TO_BRIGHTNESS = ["Info", "Down"]
 CLOSE = ["Back"]
 
@@ -53,9 +53,9 @@ def _keys(keys, delay=0.4):
 
 @mcp.tool()
 def press(keys: list[str]) -> str:
-    """Appuie sur des touches de la télécommande Roku, dans l'ordre.
+    """Presses keys on the Roku remote, in order.
 
-    Touches : Home, Back, Select, Up, Down, Left, Right, Info (✱),
+    Keys: Home, Back, Select, Up, Down, Left, Right, Info (*),
     Play, Rev, Fwd, InstantReplay, VolumeUp, VolumeDown, VolumeMute,
     PowerOn, PowerOff, InputHDMI1, InputHDMI2, InputHDMI3, InputTuner.
     """
@@ -65,7 +65,7 @@ def press(keys: list[str]) -> str:
 
 @mcp.tool()
 def brightness(direction: Literal["up", "down"], steps: int = 1) -> str:
-    """Monte ou baisse la luminosité de la TV de quelques crans."""
+    """Raises or lowers the TV brightness by a few steps."""
     arrow = "Right" if direction == "up" else "Left"
     _keys(TO_BRIGHTNESS + [arrow] * steps + CLOSE)
     return "ok"
@@ -73,7 +73,7 @@ def brightness(direction: Literal["up", "down"], steps: int = 1) -> str:
 
 @mcp.tool()
 def status() -> dict:
-    """État de la TV : alimentation et app ou entrée active."""
+    """TV state: power and active app or input."""
     info = _get("query/device-info")
     app = _get("query/active-app").find("app")
     return {
@@ -84,13 +84,13 @@ def status() -> dict:
 
 @mcp.tool()
 def apps() -> dict:
-    """Apps installées, nom vers id (à passer à launch)."""
+    """Installed apps, name to id (to pass to launch)."""
     return {a.text: a.get("id") for a in _get("query/apps")}
 
 
 @mcp.tool()
 def launch(app_id: str) -> str:
-    """Lance une app par son id (voir apps)."""
+    """Launches an app by its id (see apps)."""
     _post(f"launch/{app_id}")
     return "ok"
 

@@ -4,6 +4,6 @@
   programs.eww = {
     enable = true;
     package = pkgs.eww;
-    configDir = ./.; # Il va prendre tous les fichiers du dossier courant
+    configDir = ./.; # It will take all the files in the current directory
   };
 }

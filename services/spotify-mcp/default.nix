@@ -1,13 +1,13 @@
 # services/spotify-mcp/default.nix
-# Serveur MCP Spotify (marcelmarais/spotify-mcp-server) lancé en stdio par Hermes sur tower.
+# Spotify MCP server (marcelmarais/spotify-mcp-server) launched in stdio by Hermes on tower.
 #
-# flake.nix, dans inputs (remplace l'ancien input varunneal) :
+# flake.nix, in inputs (replaces the old varunneal input):
 #   spotify-mcp = {
 #     url = "github:marcelmarais/spotify-mcp-server/108fd6b26db9bd9627cd4e4a128841a0f8933756";
 #     flake = false;
 #   };
 #
-# secrets sops (fichier par défaut) :
+# sops secrets (default file):
 #   spotify_mcp_env: |
 #     SPOTIFY_CLIENT_ID=...
 #     SPOTIFY_CLIENT_SECRET=...
@@ -24,7 +24,7 @@
   configFile = "${stateDir}/spotify-config.json";
   redirectUri = "http://127.0.0.1:8888/callback";
 
-  # Le projet exige node >= 26.8.1 (package.json, engines).
+  # The project requires node >= 26.8.1 (package.json, engines).
   nodejs = pkgs.nodejs_26;
 
   spotify-mcp = pkgs.buildNpmPackage {
@@ -33,12 +33,12 @@
     src = inputs.spotify-mcp;
     inherit nodejs;
 
-    # 1er build : laisser fakeHash, copier le hash donné par l'erreur, rebuild.
+    # 1st build: leave fakeHash, copy the hash given by the error, rebuild.
     npmDepsHash = lib.fakeHash;
 
-    # Le chemin de config est codé en dur à côté du build, donc dans le store
-    # en lecture seule. On le rend pilotable par variable d'environnement,
-    # sinon le refresh du token échoue au bout d'une heure.
+    # The config path is hardcoded next to the build, so in the read-only
+    # store. We make it controllable via an environment variable,
+    # otherwise the token refresh fails after an hour.
     postPatch = ''
       substituteInPlace src/utils.ts \
         --replace-fail \
@@ -51,9 +51,9 @@
 
   authScript = "${spotify-mcp}/lib/node_modules/spotify-mcp-server/build/auth.js";
 
-  # Le fichier de config contient aussi les tokens, réécrits par le serveur.
-  # À chaque lancement on y réinjecte client id / secret depuis sops,
-  # en conservant accessToken, refreshToken et expiresAt.
+  # The config file also contains the tokens, rewritten by the server.
+  # On each launch we reinject client id / secret from sops into it,
+  # keeping accessToken, refreshToken and expiresAt.
   prepareConfig = ''
     set -euo pipefail
     umask 077
@@ -76,7 +76,7 @@
     exec ${lib.getExe spotify-mcp}
   '';
 
-  # Login OAuth unique, à lancer à la main en tant que hermes.
+  # One-time OAuth login, to launch by hand as hermes.
   login = pkgs.writeShellScriptBin "spotify-mcp-login" ''
     ${prepareConfig}
     exec ${lib.getExe nodejs} ${authScript}
@@ -95,7 +95,7 @@ in {
 
   services.hermes-agent.mcpServers.spotify = {
     command = "${wrapper}";
-    # Optionnel, pour démarrer sans les actions destructives :
+    # Optional, to start without the destructive actions:
     # tools.exclude = [ "removeUsersSavedTracks" "unfollowPlaylist" "removeTracksFromPlaylist" ];
   };
 }

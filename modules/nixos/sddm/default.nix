@@ -3,21 +3,21 @@
   lib,
   ...
 }: {
-  # 1. Activer Niri (gère l'installation et le fichier de session)
+  # 1. Enable Niri (handles the installation and the session file)
   programs.niri.enable = true;
 
-  # 2. Configurer le Display Manager (SDDM)
+  # 2. Configure the Display Manager (SDDM)
   services.displayManager = {
     sddm.enable = lib.mkDefault true;
-    sddm.wayland.enable = true; # Recommandé pour Niri (Wayland natif)
+    sddm.wayland.enable = true; # Recommended for Niri (native Wayland)
 
-    # 3. Configurer l'AutoLogin
+    # 3. Configure AutoLogin
     autoLogin = {
       enable = true;
-      user = "marc"; # <--- Remplace par ton pseudo
+      user = "marc"; # <--- Replace with your username
     };
 
-    # Définir la session par défaut sur niri
+    # Set the default session to niri
     defaultSession = lib.mkDefault "niri";
   };
 }

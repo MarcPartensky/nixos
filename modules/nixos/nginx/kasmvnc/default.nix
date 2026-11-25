@@ -26,19 +26,19 @@ in {
       default = true;
     };
 
-    # Ecoute locale, pour une exposition sans ACME (reverse proxy qui porte le
-    # TLS, ex. newt/Pangolin). listenPort = null garde les defauts du module
-    # nginx (0.0.0.0:80 + 443 ssl).
+    # Local listen, for an exposure without ACME (reverse proxy that carries the
+    # TLS, e.g. newt/Pangolin). listenPort = null keeps the nginx module
+    # defaults (0.0.0.0:80 + 443 ssl).
     listenAddress = mkOption {
       type = types.str;
       default = "127.0.0.1";
-      description = "Adresse d'ecoute quand listenPort est defini";
+      description = "Listen address when listenPort is set";
     };
 
     listenPort = mkOption {
       type = types.nullOr types.port;
       default = null;
-      description = "Port d'ecoute local (HTTP) ; null = defauts nginx (80/443)";
+      description = "Local listen port (HTTP); null = nginx defaults (80/443)";
     };
 
     # WebSocket support for KasmVNC signaling
@@ -72,8 +72,8 @@ in {
           locations."/" = {
             proxyPass = cfg.upstream;
             proxyWebsockets = cfg.websocket;
-            # Idem rustguac : recommendedProxySettings pose deja les en-tetes et
-            # proxy_http_version, un doublon fait echouer `nginx -t`.
+            # Same as rustguac: recommendedProxySettings already sets the headers and
+            # proxy_http_version, a duplicate makes `nginx -t` fail.
             extraConfig = ''
               proxy_buffering off;
               proxy_read_timeout 86400;

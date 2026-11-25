@@ -1,14 +1,14 @@
-// hermes-touch-id : validation biometrique native (Touch ID / Secure Enclave).
+// hermes-touch-id: native biometric validation (Touch ID / Secure Enclave).
 //
-// Sert de preuve humaine pour les actions root demandees par l'agent sur tower.
-// Le broker (root, tower) execute ce binaire a distance par SSH et ne fait
-// confiance QU'AU code de sortie : 0 = empreinte validee.
+// Serves as human proof for root actions requested by the agent on tower.
+// The broker (root, tower) runs this binary remotely over SSH and trusts
+// ONLY the exit code: 0 = fingerprint validated.
 //
-// Le binaire vit dans le store Nix (root-owned, immuable) : l'agent, qui n'a que
-// marc@mac, ne peut pas le remplacer par un "exit 0".
+// The binary lives in the Nix store (root-owned, immutable): the agent, which only has
+// marc@mac, cannot replace it with an "exit 0".
 //
-// Usage : hermes-touch-id "<texte affiche dans le popup>"
-// Sortie : OK / DENIED / UNAVAILABLE / TIMEOUT sur stdout, code 0/1/2/3.
+// Usage: hermes-touch-id "<text displayed in the popup>"
+// Output: OK / DENIED / UNAVAILABLE / TIMEOUT on stdout, code 0/1/2/3.
 
 #include <strings.h>
 #import <Foundation/Foundation.h>
@@ -16,7 +16,7 @@
 
 int main(int argc, const char *argv[]) {
     @autoreleasepool {
-        NSString *reason = @"Hermes demande une approbation root";
+        NSString *reason = @"Hermes requests a root approval";
         if (argc > 1 && argv[1] != NULL) {
             const char *raw = argv[1];
             if (strncasecmp(raw, "b64:", 4) == 0) {
@@ -31,13 +31,13 @@ int main(int argc, const char *argv[]) {
                 if (given.length > 0) reason = given;
             }
         }
-        // Le popup n'affiche pas de titre libre : on met le maximum d'information
-        // utile dans la raison, et on borne la longueur pour rester lisible.
+        // The popup does not display a free title: we put the maximum useful
+        // information in the reason, and bound the length to stay readable.
         if (reason.length > 400) reason = [[reason substringToIndex:400] stringByAppendingString:@"..."];
 
         LAContext *ctx = [[LAContext alloc] init];
-        ctx.localizedFallbackTitle = @"";      // pas de repli mot de passe
-        ctx.localizedCancelTitle = @"Refuser";
+        ctx.localizedFallbackTitle = @"";      // no password fallback
+        ctx.localizedCancelTitle = @"Refuse";
 
         NSError *error = nil;
         if (![ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&error]) {

@@ -4,12 +4,12 @@
   pkgs,
   ...
 }:
-# Client Eternal Terminal : ouvre (ou crée) une session zellij sur l'hôte distant
-# et l'enregistre côté serveur avec asciinema (script `et-session`, cf.
-# services/eternal-terminal/default.nix — module côté serveur).
+# Eternal Terminal client: opens (or creates) a zellij session on the remote host
+# and records it server-side with asciinema (script `et-session`, see
+# services/eternal-terminal/default.nix -- server-side module).
 #
-# et lit ~/.ssh/config : les alias `ssh` existants (modules/home/ssh) servent donc
-# aussi de cibles à `et <alias>`.
+# and reads ~/.ssh/config: the existing `ssh` aliases (modules/home/ssh) therefore also
+# serve as targets for `et <alias>`.
 let
   cfg = config.my.et;
 
@@ -21,29 +21,29 @@ let
           type = lib.types.str;
           default = cfg.remoteCommand;
           description = ''
-            Commande lancée sur l'hôte distant à la connexion. Chemin absolu de
-            préférence : le PATH des shells non interactifs distants n'est pas garanti.
+            Command run on the remote host on connection. Absolute path
+            preferred: the PATH of remote non-interactive shells is not guaranteed.
           '';
         };
         session = lib.mkOption {
           type = lib.types.str;
           default = cfg.defaultSession;
-          description = "Nom de la session zellij à attacher (créée si absente).";
+          description = "Name of the zellij session to attach (created if absent).";
         };
         user = lib.mkOption {
           type = lib.types.nullOr lib.types.str;
           default = null;
-          description = "Utilisateur distant (`et -u`) ; null = celui de ~/.ssh/config.";
+          description = "Remote user (`et -u`); null = the one from ~/.ssh/config.";
         };
         port = lib.mkOption {
           type = lib.types.nullOr lib.types.port;
           default = null;
-          description = "Port de l'etserver distant (`et -p`), défaut ET = 2022 ; null = défaut.";
+          description = "Port of the remote etserver (`et -p`), ET default = 2022; null = default.";
         };
         functionName = lib.mkOption {
           type = lib.types.str;
           default = "et${name}";
-          description = "Nom de la fonction zsh générée.";
+          description = "Name of the generated zsh function.";
         };
       };
     };
@@ -51,20 +51,20 @@ in
 
 {
   options.my.et = {
-    enable = lib.mkEnableOption "connexions Eternal Terminal avec zellij et enregistrement automatiques";
+    enable = lib.mkEnableOption "automatic Eternal Terminal connections with zellij and recording";
 
     defaultSession = lib.mkOption {
       type = lib.types.str;
       default = "main";
-      description = "Session zellij par défaut (surchargée par ET_SESSION).";
+      description = "Default zellij session (overridden by ET_SESSION).";
     };
 
     remoteCommand = lib.mkOption {
       type = lib.types.str;
       default = "/run/current-system/sw/bin/et-session";
       description = ''
-        Commande de session distante. Le défaut est le chemin absolu du script
-        installé par services/eternal-terminal (chemin stable sur NixOS).
+        Remote session command. The default is the absolute path of the script
+        installed by services/eternal-terminal (stable path on NixOS).
       '';
     };
 
@@ -72,9 +72,9 @@ in
       type = lib.types.bool;
       default = true;
       description = ''
-        Redéfinir `et` en fonction zsh : `et <hôte>` attache zellij enregistré,
-        tout appel avec option (`et -v 3 hôte`, `et -t 10080:80 hôte`) passe
-        directement au binaire.
+        Redefine `et` as a zsh function: `et <host>` attaches a recorded zellij,
+        any call with an option (`et -v 3 host`, `et -t 10080:80 host`) goes
+        directly to the binary.
       '';
     };
 
@@ -88,8 +88,8 @@ in
         towerlocal = { };
       };
       description = ''
-        Alias à exposer : chaque entrée `name` génère une fonction zsh `etname`.
-        `name` doit être un hôte/alias présent dans ~/.ssh/config.
+        Aliases to expose: each `name` entry generates a zsh function `etname`.
+        `name` must be a host/alias present in ~/.ssh/config.
       '';
     };
   };
@@ -115,11 +115,11 @@ in
           '';
       in
       ''
-        # --- my.et : Eternal Terminal + zellij + enregistrement asciinema ---
+        # --- my.et: Eternal Terminal + zellij + asciinema recording ---
 
-        # Attache (ou crée) une session zellij distante enregistrée : ets <hôte> [session]
+        # Attach (or create) a recorded remote zellij session: ets <host> [session]
         ets() {
-          local host="${"$"}{1:?usage: ets <hôte> [session]}"
+          local host="${"$"}{1:?usage: ets <host> [session]}"
           shift
           local session="${"$"}{1:-${"$"}{ET_SESSION:-${cfg.defaultSession}}}"
           command et "$host" -c "${"$"}{ET_REMOTE_COMMAND:-${cfg.remoteCommand}} $session"
@@ -128,7 +128,7 @@ in
         ${lib.concatStringsSep "\n" (lib.mapAttrsToList mkFunction cfg.hosts)}
       ''
       + lib.optionalString cfg.wrapEt ''
-        # et <hôte> (sans option) = zellij enregistré ; le reste passe au binaire.
+        # et <host> (no option) = recorded zellij; the rest goes to the binary.
         et() {
           if (( $# >= 1 )) && [[ "$1" != -* ]]; then
             command et "$@" -c "${"$"}{ET_REMOTE_COMMAND:-${cfg.remoteCommand}} ${"$"}{ET_SESSION:-${cfg.defaultSession}}"

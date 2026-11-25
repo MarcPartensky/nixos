@@ -3,25 +3,25 @@ let
   cfg = config.my.zellij;
 in
 {
-  options.my.zellij.autostart = lib.mkEnableOption "lancement auto de zellij dans les shells interactifs";
+  options.my.zellij.autostart = lib.mkEnableOption "auto-launch of zellij in interactive shells";
 
   config.programs.zellij = {
     enable = true;
     enableZshIntegration = cfg.autostart;
     enableBashIntegration = cfg.autostart;
-    attachExistingSession = true;  # se rattache au lieu de créer une nouvelle session
-    exitShellOnExit = true;        # quitter zellij ferme la connexion
+    attachExistingSession = true;  # attaches instead of creating a new session
+    exitShellOnExit = true;        # quitting zellij closes the connection
 
     settings = {
-      on_force_close = "detach";       # coupure = détache, ne tue rien
-      session_serialization = true;    # restaure les sessions après reboot
-      default_mode = "locked";         # pas de conflit de raccourcis (Ctrl+g pour déverrouiller)
-      # mkForce : depuis le bump de l'input catppuccin, son module home-manager
-      # definit aussi programs.zellij.settings.theme (valeur "catppuccin-mocha",
-      # tiree de catppuccin.flavor) et l'eval echoue en "conflicting definition
-      # values" sans priorite explicite. On garde ici le choix de marc.
-      theme = lib.mkForce "catppuccin-latte"; # ou "catppuccin-mocha"
-      default_layout = "compact";      # une seule barre, plus de place
+      on_force_close = "detach";       # cutoff = detach, kills nothing
+      session_serialization = true;    # restores sessions after reboot
+      default_mode = "locked";         # no shortcut conflicts (Ctrl+g to unlock)
+      # mkForce: since the catppuccin input bump, its home-manager module
+      # also defines programs.zellij.settings.theme (value "catppuccin-mocha",
+      # taken from catppuccin.flavor) and the eval fails with "conflicting definition
+      # values" without an explicit priority. We keep marc's choice here.
+      theme = lib.mkForce "catppuccin-latte"; # or "catppuccin-mocha"
+      default_layout = "compact";      # a single bar, more space
       pane_frames = false;
       scroll_buffer_size = 50000;
       copy_on_select = true;

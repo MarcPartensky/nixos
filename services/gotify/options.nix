@@ -1,22 +1,22 @@
 # services/gotify/options.nix
 #
-# Options MAISON du module services/gotify, declarees dans un fichier separe :
-# default.nix porte des attributs de configuration au premier niveau
-# (sops, services, systemd), il ne peut donc pas contenir aussi un attribut
-# `options` (erreur fatale « has an unsupported attribute services »).
+# HOME options of the services/gotify module, declared in a separate file:
+# default.nix carries configuration attributes at the top level
+# (sops, services, systemd), so it cannot also contain an
+# `options` attribute (fatal error "has an unsupported attribute services").
 #
-# Le module sert deux hotes opposes : tower (newt, cluster postgres dedie a
-# gotify) et anywhere (site Pangolin `rack`, cluster postgres partage).
+# The module serves two opposite hosts: tower (newt, postgres cluster dedicated to
+# gotify) and anywhere (Pangolin site `rack`, shared postgres cluster).
 { lib, ... }: {
   options.services.gotify.publishViaNewt = lib.mkOption {
     type = lib.types.bool;
     default = true;
-    description = "Declare la ressource Pangolin via le blueprint newt (hote qui fait tourner newt).";
+    description = "Declares the Pangolin resource via the newt blueprint (host running newt).";
   };
 
   options.services.gotify.managePostgresAuth = lib.mkOption {
     type = lib.types.bool;
     default = true;
-    description = "Impose les regles pg_hba de gotify (a couper sur un cluster postgres partage).";
+    description = "Enforces the gotify pg_hba rules (to be disabled on a shared postgres cluster).";
   };
 }

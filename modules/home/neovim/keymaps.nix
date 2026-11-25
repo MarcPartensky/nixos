@@ -1,9 +1,9 @@
 [
   # ==============================
-  # 1. MAPPINGS GLOBALES ET SYSTÈME
+  # 1. GLOBAL AND SYSTEM MAPPINGS
   # ==============================
 
-  # Enregistrer le fichier (Ctrl+s)
+  # Save the file (Ctrl+s)
   {
     mode = "n";
     key = "<C-s>";
@@ -11,7 +11,7 @@
     options.desc = "Save File";
   }
 
-  # Sélectionner tout (Ctrl+a)
+  # Select all (Ctrl+a)
   {
     mode = "n";
     key = "<C-a>";
@@ -19,7 +19,7 @@
     options.desc = "Select All";
   }
 
-  # Fermer toutes les fenêtres/buffers (Ctrl+w - remappé ici pour la fermeture de Neovim)
+  # Close all windows/buffers (Ctrl+w - remapped here for Neovim quit)
   {
     mode = "n";
     key = "<C-w>";
@@ -27,16 +27,16 @@
     options.desc = "Quit All (Neovim)";
   }
 
-  # Lancer 'make' (Ctrl+m)
+  # Run 'make' (Ctrl+m)
   {
     mode = "n";
     key = "<C-m>";
-    # Note : jobstart est mieux géré directement dans Lua ou en utilisant ToggleTerm
+    # Note: jobstart is better handled directly in Lua or by using ToggleTerm
     action = ":call jobstart(['alacritty', '-e', 'make'])<CR>";
     options.desc = "Run Make in Alacritty";
   }
 
-  # Exécuter le fichier courant (Ctrl+i)
+  # Execute the current file (Ctrl+i)
   {
     mode = "n";
     key = "<C-i>";
@@ -45,10 +45,10 @@
   }
 
   # ==============================
-  # 2. GESTION DES FENÊTRES (SPLIT)
+  # 2. WINDOW MANAGEMENT (SPLIT)
   # ==============================
 
-  # Naviguer entre les splits (Ctrl+h/j/k/l)
+  # Navigate between splits (Ctrl+h/j/k/l)
   {
     mode = "n";
     key = "<C-h>";
@@ -76,10 +76,10 @@
 
 
   # ==============================
-  # 3. MAPPINGS PLUGINS DE BASE
+  # 3. BASE PLUGIN MAPPINGS
   # ==============================
 
-  # 3.1. Telescope (Recherche de fichiers)
+  # 3.1. Telescope (File search)
   {
     mode = "n";
     key = "<C-p>";
@@ -93,7 +93,7 @@
     options.desc = "Telescope Live Grep (Ctrl+g)";
   }
 
-  # 3.2. Neo-tree (Explorateur de fichiers)
+  # 3.2. Neo-tree (File explorer)
   {
     mode = "n";
     key = "<C-o>";
@@ -101,21 +101,21 @@
     options.desc = "Toggle Neo-tree (Ctrl+o)";
   }
 
-  # 3.3. Comment.nvim (Commentaire)
-  # Pour Neovim (nixvim), la meilleure façon de mapper C-/ pour Comment.nvim
-  # est souvent d'utiliser directement l'appel Lua ou le mapping par défaut 'gc'.
-  # Utiliser <Plug>(...):
+  # 3.3. Comment.nvim (Comment)
+  # For Neovim (nixvim), the best way to map C-/ for Comment.nvim
+  # is often to use the Lua call directly or the default mapping 'gc'.
+  # Use <Plug>(...):
   {
     mode = ["n" "v"];
     key = "<C-/>";
     action = "<Plug>(comment_toggle)";
     options.desc = "Toggle Comment (Ctrl+/)";
   }
-  # Note : Si <Plug> ne fonctionne pas pour le mode visuel, vous devrez
-  # probablement utiliser la commande spécifique pour le mode visuel ou 'gc'.
-  # Le mapping "v" pour "gc" est déjà fait ci-dessous.
+  # Note: If <Plug> does not work for visual mode, you will
+  # probably have to use the specific command for visual mode or 'gc'.
+  # The "v" mapping for "gc" is already done below.
 
-  # Mapping spécifique pour le mode visuel (gc)
+  # Specific mapping for visual mode (gc)
   {
     mode = "v";
     key = "gc";
@@ -131,7 +131,7 @@
     options.desc = "Toggle Terminal (F2)";
   }
 
-  # 3.5. BufferLine (Navigation par onglets)
+  # 3.5. BufferLine (Tab navigation)
   {
     mode = "n";
     key = "<tab>";
@@ -171,26 +171,26 @@
     options.desc = "Delete Session";
   }
 
-  # 3.7. Avante (Chat/IA)
-  # Le mapping en mode visuel pour Avante.
+  # 3.7. Avante (Chat/AI)
+  # The visual mode mapping for Avante.
   {
     mode = "v";
     key = "<C-;>";
     action = ":AvanteToggle<cr>";
     options.desc = "Avante: Toggle My Prompt (Visual)";
   }
-  # Remarque : Votre autocommande pour `avante.config` doit être placée
-  # dans la section `programs.nixvim.extraConfigLua` ou `plugins.avante.settings.extraConfig`.
+  # Remark: Your autocommand for `avante.config` must be placed
+  # in the `programs.nixvim.extraConfigLua` section or `plugins.avante.settings.extraConfig`.
 
 
-  # 3.8. Git (Raccourcis shell)
+  # 3.8. Git (Shell shortcuts)
   { mode = "n"; key = "gp"; action = ":!gp<cr>"; options.desc = "Git Push (Shell)"; }
   { mode = "n"; key = "gn"; action = ":!gn "; options.desc = "Git New Branch (Shell)"; }
   { mode = "n"; key = "gt"; action = ":!gt "; options.desc = "Git Tag (Shell)"; }
   { mode = "n"; key = "gl"; action = ":!gpl<cr>"; options.desc = "Git Pull (Shell)"; }
   { mode = "n"; key = "gr"; action = ":!grsh<cr>"; options.desc = "Git Rebase Stash (Shell)"; }
 
-  # 3.9. Lazy/Packer (Mise à jour)
+  # 3.9. Lazy/Packer (Update)
   {
     mode = "n";
     key = "<F1>";

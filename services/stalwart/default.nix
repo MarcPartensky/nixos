@@ -6,7 +6,7 @@
   ...
 }: {
   # ---------------------------------------------------------------------------
-  # SECRETS ACME (certificat) — injectés dans /etc/stalwart/ pour le module stalwart
+  # ACME SECRETS (certificate) - injected into /etc/stalwart/ for the stalwart module
   # ---------------------------------------------------------------------------
   environment.etc = {
     "stalwart/acme-secret".text = config.sops.secrets."stalwart/acme".path;
@@ -54,21 +54,21 @@
   services.stalwart = {
     enable = true;
 
-    # Ce stateVersion n'est PAS celui du système : il sélectionne user/group/
-    # dataDir du module (« stalwart » >= 26.05, sinon « stalwart-mail »).
-    # Les données LIVE sont dans /var/lib/stalwart/db (vérifié le 27/09/2026
-    # sur le VPS : fds ouverts du process + toml du système actif). Repasser à
-    # « 25.11 » pointerait sur /var/lib/stalwart-mail, dont le contenu date de
-    # juillet 2026 (données mortes). NE PAS redescendre sous 26.05.
+    # This stateVersion is NOT the system one: it selects user/group/
+    # dataDir of the module ("stalwart" >= 26.05, otherwise "stalwart-mail").
+    # The LIVE data is in /var/lib/stalwart/db (verified on 27/09/2026
+    # on the VPS: open fds of the process + toml of the active system). Going back to
+    # "25.11" would point to /var/lib/stalwart-mail, whose content dates from
+    # July 2026 (dead data). Do NOT go back below 26.05.
     stateVersion = "26.05";
 
-    # Les ports mail sont ouverts explicitement dans profiles/anywhere/cloud.nix.
-    # openFirewall ouvrirait AUSSI les listeners HTTP locaux (8390/8391) sur
-    # toutes les interfaces, ce qui contournerait le TLS de Traefik.
+    # The mail ports are opened explicitly in profiles/anywhere/cloud.nix.
+    # openFirewall would ALSO open the local HTTP listeners (8390/8391) on
+    # all interfaces, which would bypass Traefik's TLS.
     openFirewall = false;
 
-    # Les credentials sont passés via systemd credentials :
-    # disponibles dans /run/credentials/stalwart.service/<nom>
+    # The credentials are passed via systemd credentials:
+    # available in /run/credentials/stalwart.service/<name>
     credentials = {
       mail-pw = config.sops.secrets."stalwart/mail".path;
       spam-pw = config.sops.secrets."stalwart/spam".path;
@@ -80,18 +80,18 @@
 
     settings = {
       server = {
-        # mx1 est le MX de priorité 1 dans le DNS public (mx2 n'est référencé
-        # par aucun enregistrement MX) : le hostname annoncé en EHLO doit le
-        # suivre, sinon rDNS/HELO ne collent plus.
+        # mx1 is the priority-1 MX in the public DNS (mx2 is not referenced
+        # by any MX record): the hostname announced in EHLO must
+        # follow it, otherwise rDNS/HELO no longer match.
         hostname = "mx1.marcpartensky.com";
 
-        # L'auto-ban de Stalwart (server.auto-ban.auth/scan/loiter, actif par
-        # défaut) écrit chaque IP bannie dans SA config DB, donc le ban survit
-        # aux redémarrages : une IP de domicile peut rester bloquée sur 25/465/993
-        # (connexion acceptée puis reset, log "Blocked IP address") jusqu'à un
-        # déblocage manuel. On autorise donc explicitement le domicile de marc :
-        # allowed-ip contourne l'auto-ban (127.0.0.1/::1 le sont déjà par défaut).
-        # Si l'IP publique change, mettre à jour cette entrée.
+        # Stalwart's auto-ban (server.auto-ban.auth/scan/loiter, active by
+        # default) writes each banned IP into ITS config DB, so the ban survives
+        # restarts: a home IP can stay blocked on 25/465/993
+        # (connection accepted then reset, log "Blocked IP address") until a
+        # manual unblock. We therefore explicitly allow marc's home:
+        # allowed-ip bypasses the auto-ban (127.0.0.1/::1 already are by default).
+        # If the public IP changes, update this entry.
         allowed-ip = {
           "66.108.44.154" = "";
         };
@@ -115,8 +115,8 @@
             protocol = "imap";
             tls.implicit = true;
           };
-          # JMAP + webadmin : écoute uniquement en local, Traefik fait le TLS
-          # (routeur "stalwart" de services/traefik/dynamic.toml -> 127.0.0.1:8390)
+          # JMAP + webadmin: listens only locally, Traefik does the TLS
+          # ("stalwart" router of services/traefik/dynamic.toml -> 127.0.0.1:8390)
           jmap = {
             bind = "127.0.0.1:8390";
             url = "https://mail.vps.marcpartensky.com";
@@ -135,8 +135,8 @@
       };
 
       acme."letsencrypt" = {
-        # Let's Encrypt production : le endpoint est acme-v02 (il n'existe pas
-        # de v03), et le challenge DNS s'écrit "dns-01".
+        # Let's Encrypt production: the endpoint is acme-v02 (there is no
+        # v03), and the DNS challenge is written "dns-01".
         directory = "https://acme-v02.api.letsencrypt.org/directory";
         challenge = "dns-01";
         contact = "marc@marcpartensky.com";
@@ -146,7 +146,7 @@
           "mail.vps.marcpartensky.com"
         ];
         provider = "cloudflare";
-        # Référence le credential systemd injecté ci-dessus
+        # References the systemd credential injected above
         secret = "%{file:/etc/stalwart/acme-secret}%";
       };
 
@@ -213,7 +213,7 @@
   };
 
   # ---------------------------------------------------------------------------
-  # TRAEFIK - reverse proxy pour webadmin + JMAP (remplace Caddy)
+  # TRAEFIK - reverse proxy for webadmin + JMAP (replaces Caddy)
   # ---------------------------------------------------------------------------
   # services.traefik.dynamicConfigOptions.http = {
   #   routers = {

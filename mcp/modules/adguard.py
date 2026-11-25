@@ -1,18 +1,18 @@
-"""Outils AdGuard Home pour mcp-host (API /control, stdlib seule).
+"""AdGuard Home tools for mcp-host (/control API, stdlib only).
 
-Pourquoi ce module plutot qu'un serveur MCP tiers : AdGuard expose deja toute
-sa config et son runtime en HTTP sur /control, et mcp-host sert deja les
-modules a chaud (FileSystemProvider). Un fichier de 150 lignes sans dependance
-npm ni node remplace un process supplementaire.
+Why this module rather than a third-party MCP server: AdGuard already exposes
+all its config and runtime over HTTP on /control, and mcp-host already serves
+modules hot (FileSystemProvider). A 150-line file with no npm or node
+dependency replaces an extra process.
 
-Les ecritures (liste de filtres, clients, rewrites, options DNS) sont EPHEMERES :
-le module NixOS tourne en mutableSettings = false, donc le YAML est regenere a
-chaque nixos-rebuild et tout ce qui est ecrit par l'API disparait. La source de
-verite reste services/adguard/default.nix. Ces outils servent au runtime :
-basculer la protection, purger le cache, tester un amont, inspecter une requete.
+Writes (filter list, clients, rewrites, DNS options) are EPHEMERAL:
+the NixOS module runs with mutableSettings = false, so the YAML is regenerated on
+every nixos-rebuild and everything written through the API disappears. The source of
+truth remains services/adguard/default.nix. These tools are for runtime:
+toggle protection, flush the cache, test an upstream, inspect a query.
 
-Env : ADGUARD_URL (defaut http://127.0.0.1:3000), ADGUARD_USER, ADGUARD_PASS,
-ADGUARD_TIMEOUT (defaut 8 s), ADGUARD_ALLOW_WRITES (defaut 1).
+Env: ADGUARD_URL (default http://127.0.0.1:3000), ADGUARD_USER, ADGUARD_PASS,
+ADGUARD_TIMEOUT (default 8 s), ADGUARD_ALLOW_WRITES (default 1).
 """
 
 import base64
@@ -24,7 +24,7 @@ import urllib.request
 
 try:
     from fastmcp.tools import tool
-except Exception:  # test hors mcp-host : decorateur neutre
+except Exception:  # test outside mcp-host: neutral decorator
 
     def tool(fn=None, **_kw):
         if fn is not None:
@@ -40,7 +40,7 @@ ALLOW_WRITES = os.environ.get("ADGUARD_ALLOW_WRITES", "1") not in ("0", "false",
 
 
 def _call(path, payload=None, method=None):
-    """Appelle l'API /control et rend le JSON decode."""
+    """Call the /control API and return the decoded JSON."""
     data = None if payload is None else json.dumps(payload).encode()
     req = urllib.request.Request(
         BASE + path, data=data, method=method or ("POST" if data is not None else "GET")
@@ -58,20 +58,20 @@ def _call(path, payload=None, method=None):
         detail = exc.read().decode(errors="replace")[:300]
         raise RuntimeError(f"AdGuard {path} -> HTTP {exc.code} {detail}") from None
     except urllib.error.URLError as exc:
-        raise RuntimeError(f"AdGuard injoignable sur {BASE}: {exc.reason}") from None
+        raise RuntimeError(f"AdGuard unreachable at {BASE}: {exc.reason}") from None
 
 
 def _write_guard(what):
     if not ALLOW_WRITES:
-        raise RuntimeError(f"ecriture refusee (ADGUARD_ALLOW_WRITES=0): {what}")
+        raise RuntimeError(f"write refused (ADGUARD_ALLOW_WRITES=0): {what}")
 
 
-# ---------------------------------------------------------------- lecture
+# ---------------------------------------------------------------- read
 
 
 @tool
 def adguard_status() -> dict:
-    """Etat d'AdGuard : version, protection, adresses DNS, filtres actifs."""
+    """AdGuard state: version, protection, DNS addresses, active filters."""
     st = _call("/control/status")
     filt = _call("/control/filtering/status")
     return {
@@ -90,7 +90,7 @@ def adguard_status() -> dict:
 
 @tool
 def adguard_stats(top: int = 5) -> dict:
-    """Statistiques 24 h : volume, part bloquee, top domaines et clients."""
+    """24 h stats: volume, blocked share, top domains and clients."""
     s = _call("/control/stats")
 
     def total(key):
@@ -111,13 +111,13 @@ def adguard_stats(top: int = 5) -> dict:
 
 @tool
 def adguard_check_host(name: str) -> dict:
-    """Dit si un domaine serait bloque et par quelle regle (sans le resoudre)."""
+    """Say whether a domain would be blocked and by which rule (without resolving it)."""
     return _call("/control/filtering/check_host?name=" + urllib.parse.quote(name, safe=""))
 
 
 @tool
 def adguard_filters() -> dict:
-    """Liste les listes de filtres, leur nombre de regles et les regles manuelles."""
+    """List the filter lists, their rule count and the manual rules."""
     st = _call("/control/filtering/status")
     return {
         "filters": [
@@ -138,19 +138,19 @@ def adguard_filters() -> dict:
 
 @tool
 def adguard_clients() -> dict:
-    """Clients configures (identifiants persistants, exceptions, upstreams dedies)."""
+    """Configured clients (persistent IDs, exceptions, dedicated upstreams)."""
     return _call("/control/clients")
 
 
 @tool
 def adguard_rewrites() -> dict:
-    """Reecritures DNS locales (equivalent de /etc/hosts cote AdGuard)."""
+    """Local DNS rewrites (AdGuard's equivalent of /etc/hosts)."""
     return _call("/control/rewrite/list")
 
 
 @tool
 def adguard_blocked_services() -> dict:
-    """Services bloques par identifiant (facebook, tiktok, ...)."""
+    """Services blocked by ID (facebook, tiktok, ...)."""
     return _call("/control/blocked_services/get")
 
 
@@ -159,7 +159,7 @@ def adguard_blocked_services() -> dict:
 
 @tool
 def adguard_protection(enable: bool) -> dict:
-    """Active ou coupe le filtrage a chaud (sans rebuild, non persistant)."""
+    """Turn filtering on or off at runtime (no rebuild, not persistent)."""
     _write_guard("protection")
     _call("/control/protection", {"enabled": bool(enable)})
     return {"protection_enabled": _call("/control/status").get("protection_enabled")}
@@ -167,7 +167,7 @@ def adguard_protection(enable: bool) -> dict:
 
 @tool
 def adguard_flush_cache() -> dict:
-    """Vide le cache DNS d'AdGuard."""
+    """Flush AdGuard's DNS cache."""
     _write_guard("cache")
     _call("/control/cache_clear", {})
     return {"flushed": True}
@@ -175,7 +175,7 @@ def adguard_flush_cache() -> dict:
 
 @tool
 def adguard_test_upstream(upstream: str, bootstrap: str = "1.1.1.1") -> dict:
-    """Teste un ou des amonts (separes par des virgules) et rend OK ou l'erreur par serveur."""
+    """Test one or more upstreams (comma-separated) and return OK or the error per server."""
     _write_guard("test")
     ups = [u.strip() for u in upstream.replace(",", " ").split() if u.strip()]
     boots = [b.strip() for b in bootstrap.replace(",", " ").split() if b.strip()]
@@ -187,7 +187,7 @@ def adguard_test_upstream(upstream: str, bootstrap: str = "1.1.1.1") -> dict:
 
 @tool
 def adguard_rewrite_add(domain: str, answer: str) -> dict:
-    """Ajoute une reecriture DNS (ephemere : effacee au prochain rebuild)."""
+    """Add a DNS rewrite (ephemeral: erased on the next rebuild)."""
     _write_guard("rewrite")
     _call("/control/rewrite/add", {"domain": domain, "answer": answer})
     return {"added": {"domain": domain, "answer": answer}}
@@ -195,7 +195,7 @@ def adguard_rewrite_add(domain: str, answer: str) -> dict:
 
 @tool
 def adguard_rewrite_remove(domain: str, answer: str) -> dict:
-    """Retire une reecriture DNS existante."""
+    """Remove an existing DNS rewrite."""
     _write_guard("rewrite")
     _call("/control/rewrite/delete", {"domain": domain, "answer": answer})
     return {"removed": {"domain": domain, "answer": answer}}
@@ -203,7 +203,7 @@ def adguard_rewrite_remove(domain: str, answer: str) -> dict:
 
 @tool
 def adguard_querylog(limit: int = 20) -> dict:
-    """Dernieres requetes. Vide par choix de conf : querylog est desactive."""
+    """Latest queries. Empty by config choice: querylog is disabled."""
     _write_guard("querylog")
     try:
         data = _call(f"/control/querylog?limit={int(limit)}")

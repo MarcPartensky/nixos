@@ -1,14 +1,14 @@
 { config, pkgs, lib, ... }:
-# Pont vocal Hermes : page web (micro navigateur) -> faster-whisper -> agent Hermes
-# -> Pocket TTS francais. Le venv Python 3.12 vit hors store (pocket-tts n'est pas
-# package dans nixpkgs) : /var/lib/hermes/hermes-voice, cree avec uv.
+# Hermes voice bridge: web page (browser mic) -> faster-whisper -> Hermes agent
+# -> Pocket TTS French. The Python 3.12 venv lives outside the store (pocket-tts is not
+# packaged in nixpkgs): /var/lib/hermes/hermes-voice, created with uv.
 let
   venv = "/var/lib/hermes/hermes-voice";
   app = "/var/lib/hermes/hermes-voice/app";
   envFile = "/var/lib/hermes/.config/hermes-voice.env";
 in {
   systemd.user.services.hermes-voice = {
-    description = "Pont vocal Hermes (STT whisper + agent + TTS Pocket TTS)";
+    description = "Hermes voice bridge (STT whisper + agent + TTS Pocket TTS)";
     wantedBy = [ "default.target" ];
     environment = {
       HOST = "0.0.0.0";
@@ -16,8 +16,8 @@ in {
       WHISPER_SIZE = "small";
       TTS_LANG = "french";
       TTS_VOICE = "estelle";
-      # N'accepter que la boucle locale (newt) et le tailnet : le domaine public
-      # passe par newt, donc arrive en 127.0.0.1 ; le telephone en 100.64/10.
+      # Accept only the loopback (newt) and the tailnet: the public domain
+      # goes through newt, so arrives as 127.0.0.1; the phone as 100.64/10.
       ALLOW_NETS = "127.0.0.1/32,::1/128,100.64.0.0/10,fd7a:115c:a1e0::/48";
     };
     serviceConfig = {
@@ -29,8 +29,8 @@ in {
     };
   };
 
-  # Domaine public derriere SSO Zitadel : l'endpoint donne acces a l'agent
-  # (outils, fichiers), donc jamais sans authentification.
+  # Public domain behind Zitadel SSO: the endpoint gives access to the agent
+  # (tools, files), so never without authentication.
   services.newt.blueprint.proxy-resources.hermes-voice = {
     name = "hermes-voice";
     protocol = "http";

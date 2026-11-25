@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Schemas SVG du README (style des docs droplify).
+"""SVG schemas for the README (droplify docs style).
 
-Principe : un schema = une idee, des objets concrets. Vrais noms de services,
-vrais domaines, aucune prose abstraite dans les boites. Regles de geometrie du
-skill droplify-publishing (largeur monospace = len * size * 0.6, hauteurs
-calculees, 40 px entre deux couches), plus un controle qui fait echouer le build
-si un texte sort de sa boite ou du canevas.
+Principle: one schema = one idea, concrete objects. Real service names,
+real domains, no abstract prose in the boxes. Geometry rules of the
+droplify-publishing skill (monospace width = len * size * 0.6, computed
+heights, 40 px between two layers), plus a check that fails the build
+if a text overflows its box or the canvas.
 
     python3 build.py
 """
@@ -42,10 +42,10 @@ def txt(x, y, s, size=9.5, fill=MUT, weight=None, family=MONO, anchor=None):
 
 def chip(x, y, w, h, title, lines=(), color=LAV, dashed=False, size=9.5):
     if w_of(title, 11.5) > w - 22:
-        warn(f"titre hors chip ({w_of(title, 11.5):.0f} > {w - 22:.0f}): {title}")
+        warn(f"title outside chip ({w_of(title, 11.5):.0f} > {w - 22:.0f}): {title}")
     for ln in lines:
         if w_of(ln, size) > w - 22:
-            warn(f"ligne hors chip ({w_of(ln, size):.0f} > {w - 22:.0f}): {ln}")
+            warn(f"line outside chip ({w_of(ln, size):.0f} > {w - 22:.0f}): {ln}")
     dash = ' stroke-dasharray="4 3"' if dashed else ""
     o = [f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="5" fill="{SURF}"'
          f' stroke="{color}" stroke-opacity="0.55" stroke-width="1"{dash}/>',
@@ -64,9 +64,9 @@ def chip_h(lines, size=9.5):
 
 def pane(x, y, w, h, color, label, sub=None, lab_w=None):
     if w_of(label, 13) > w - 36:
-        warn(f"titre de panneau trop large: {label}")
+        warn(f"panel title too wide: {label}")
     if sub and lab_w and w_of(sub, 9.5) > lab_w - 26:
-        warn(f"sous-titre de panneau trop large ({w_of(sub, 9.5):.0f}): {sub}")
+        warn(f"panel subtitle too wide ({w_of(sub, 9.5):.0f}): {sub}")
     o = [f'<rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="8" fill="{color}"'
          f' fill-opacity="0.06" stroke="{color}" stroke-width="1.2" stroke-opacity="0.75"/>',
          txt(x + 18, y + 26, label, 13, color, 700, SANS)]
@@ -89,13 +89,13 @@ def svg(w, h, label, body):
     for m in re.finditer(r'<text x="([0-9.]+)" y="([0-9.]+)" font-size="([0-9.]+)"[^>]*>([^<]*)</text>', body):
         x_, y_, size_, c_ = float(m.group(1)), float(m.group(2)), float(m.group(3)), m.group(4)
         if x_ + w_of(c_, size_) > w - 10:
-            warn(f"texte hors canevas a droite: {c_}")
+            warn(f"text outside canvas on the right: {c_}")
         if y_ > h - 4:
-            warn(f"texte sous le canevas: {c_}")
+            warn(f"text below the canvas: {c_}")
     for m in re.finditer(r'<rect x="([0-9.-]+)" y="([0-9.-]+)" width="([0-9.]+)" height="([0-9.]+)"', body):
         x_, y_, w_, h_ = (float(m.group(i)) for i in range(1, 5))
         if x_ + w_ > w - 2 or y_ + h_ > h - 2:
-            warn(f"rect hors canevas (x={x_:.0f} y={y_:.0f} w={w_:.0f} h={h_:.0f})")
+            warn(f"rect outside canvas (x={x_:.0f} y={y_:.0f} w={w_:.0f} h={h_:.0f})")
     defs = ('<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6"'
             ' markerHeight="6" orient="auto-start-reverse">'
             f'<path d="M 0 0 L 10 5 L 0 10 z" fill="{DIM}"/></marker></defs>')
@@ -105,7 +105,7 @@ def svg(w, h, label, body):
 
 
 def grid(items, x0, y0, w_total, h, gap=12, color=LAV, title_size=11.5):
-    """Range des chips sur une ligne, largeur repartie, retour du bloc + hauteur."""
+    """Lays out chips on one line, distributed width, returns the block + height."""
     n = len(items)
     cw = (w_total - (n - 1) * gap) / n
     out = []
@@ -114,7 +114,7 @@ def grid(items, x0, y0, w_total, h, gap=12, color=LAV, title_size=11.5):
     return "\n".join(out)
 
 
-# --------------------------------------------------------------- la carte
+# --------------------------------------------------------------- the map
 def d_map():
     W, M = 1240, 24
     out = [txt(M, 30, "the whole system on one page", 13, LAV, 700, SANS)]
@@ -163,7 +163,7 @@ def d_map():
     return svg(W, oy + 96 + 18, "the whole system on one page", "\n".join(out))
 
 
-# --------------------------------------------------------------- inventaire
+# --------------------------------------------------------------- inventory
 def d_inventory():
     W, M = 1240, 24
     out = [txt(M, 30, "what actually runs, by job", 13, LAV, 700, SANS),
@@ -201,7 +201,7 @@ def d_inventory():
     return svg(W, y + (0 if n % cols == 0 else ch) + 22, "what actually runs", "\n".join(out))
 
 
-# --------------------------------------------------------------- une requete
+# --------------------------------------------------------------- one request
 def d_request():
     W, M = 1240, 24
     out = [txt(M, 30, "opening cloud.marcpartensky.com", 13, LAV, 700, SANS),
@@ -231,7 +231,7 @@ def d_request():
     return svg(W, ay + 92 + 18, "one request end to end", "\n".join(out))
 
 
-# --------------------------------------------------------------- sauvegardes
+# --------------------------------------------------------------- backups
 def d_backup():
     W, M = 1240, 24
     out = [txt(M, 30, "backups: the machine holding the data keeps no copy", 13, LAV, 700, SANS)]
@@ -302,9 +302,9 @@ def d_agent():
     return svg(W, by + 76 + 16, "the agent", "\n".join(out))
 
 
-# -------------------------------------------------------------- 6. couche IA
+# -------------------------------------------------------------- 6. AI layer
 def d_ai_layer():
-    """La couche IA: harness, modeles, outils, privilege. Le coeur du repo."""
+    """The AI layer: harness, models, tools, privilege. The heart of the repo."""
     W, M = 1240, 24
     out = [txt(M, 30, "the AI layer: a harness with 35 tool servers, and a bounded privilege", 13, LAV, 700, SANS)]
     top = 52
@@ -365,13 +365,13 @@ def main():
         with open(p, "w") as f:
             f.write(content)
         h = re.search(r'height="(\d+)"', content).group(1)
-        print(f"{name:14} {h:>4} px  {len(content):6} octets")
+        print(f"{name:14} {h:>4} px  {len(content):6} bytes")
     if WARN:
-        print("\ndefauts geometriques:")
+        print("\ngeometric defects:")
         for m in WARN:
             print("  -", m)
         raise SystemExit(1)
-    print("\ngeometrie ok")
+    print("\ngeometry ok")
 
 
 if __name__ == "__main__":

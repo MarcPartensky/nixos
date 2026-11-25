@@ -5,21 +5,21 @@
   pkgs,
   ...
 }: let
-  user = config.jovian.steam.user; # ton user du mode Jeu
+  user = config.jovian.steam.user; # your Game mode user
   home = config.users.users.${user}.home;
   group = config.users.users.${user}.group;
   games = "${home}/Games/switch";
 
-  # Lance MK8DX directement, sans passer par l'UI d'Eden.
-  # Sélection du fichier, par ordre de préférence :
-  #   1. un fichier portant le Title ID de BASE 0100152000022000 ;
-  #   2. sinon un fichier qui n'est ni un update ni un DLC ;
-  #   3. sinon le premier .nsp/.xci trouvé.
-  # Indispensable dès que l'update 4.0.0 (0100152000022800) est posé dans le
-  # dossier : Eden applique tout seul l'update présent à côté du jeu de base,
-  # mais lancer le NSP d'update comme s'il était le jeu échoue.
+  # Launches MK8DX directly, without going through Eden's UI.
+  # File selection, by order of preference:
+  #   1. a file carrying the BASE Title ID 0100152000022000;
+  #   2. otherwise a file that is neither an update nor a DLC;
+  #   3. otherwise the first .nsp/.xci found.
+  # Essential as soon as update 4.0.0 (0100152000022800) is placed in the
+  # folder: Eden automatically applies the update present next to the base game,
+  # but launching the update NSP as if it were the game fails.
   mk8dx = pkgs.writeShellScriptBin "mk8dx" ''
-    # Steam injecte ses libs runtime via LD_LIBRARY_PATH, ce qui peut casser un binaire Nix
+    # Steam injects its runtime libs via LD_LIBRARY_PATH, which can break a Nix binary
     unset LD_LIBRARY_PATH
     list="$(${pkgs.findutils}/bin/find "$HOME/Games/switch" -maxdepth 1 -type f \( -name '*.nsp' -o -name '*.xci' \) 2>/dev/null | ${pkgs.coreutils}/bin/sort)"
     game="$(printf '%s\n' "$list" | ${pkgs.gnugrep}/bin/grep -i '0100152000022000' | ${pkgs.coreutils}/bin/head -n 1)"
@@ -30,13 +30,13 @@
       game="$(printf '%s\n' "$list" | ${pkgs.coreutils}/bin/head -n 1)"
     fi
     if [ -z "$game" ]; then
-      echo "mk8dx : aucun fichier .nsp/.xci dans ~/Games/switch" >&2
+      echo "mk8dx: no .nsp/.xci file in ~/Games/switch" >&2
       exit 1
     fi
     exec ${lib.getExe pkgs.eden} -f -g "$game"
   '';
 
-  # Entrée de menu : apparaît dans « Ajouter un jeu non-Steam »
+  # Menu entry: appears in "Add a non-Steam game"
   mk8dxDesktop = pkgs.makeDesktopItem {
     name = "mk8dx";
     desktopName = "Mario Kart 8 Deluxe";
@@ -46,18 +46,18 @@
   };
 in {
   environment.systemPackages = [
-    pkgs.eden # fork yuzu, le plus fluide sur Deck
-    pkgs.ryubing # fork Ryujinx, plan B en cas de bug graphique
+    pkgs.eden # yuzu fork, the smoothest on Deck
+    pkgs.ryubing # Ryujinx fork, plan B in case of a graphics bug
     mk8dx
     mk8dxDesktop
   ];
 
-  # Tuile « Mario Kart 8 Deluxe » en Gaming Mode : même script que la commande
-  # mk8dx (choix automatique du .nsp/.xci présent dans ${games}).
+  # "Mario Kart 8 Deluxe" tile in Gaming Mode: same script as the mk8dx
+  # command (automatic choice of the .nsp/.xci present in ${games}).
   programs.steam.config.nonSteamApps."Mario Kart 8 Deluxe".target = mk8dx;
 
-  # Clés Switch (prod.keys) : chiffrées dans secrets/switch-keys.yml, écrites
-  # ici à l'activation, owned marc. Mise à jour = réencrypter + rebuild.
+  # Switch keys (prod.keys): encrypted in secrets/switch-keys.yml, written
+  # here at activation, owned marc. Update = re-encrypt + rebuild.
   sops.secrets."prod_keys" = {
     sopsFile = ../../secrets/switch-keys.yml;
     path = "${home}/.local/share/eden/keys/prod.keys";
@@ -66,7 +66,7 @@ in {
     mode = "0600";
   };
 
-  # Mêmes clés pour Ryubing (fork Ryujinx), qui lit ~/.config/Ryujinx/system/
+  # Same keys for Ryubing (Ryujinx fork), which reads ~/.config/Ryujinx/system/
   sops.secrets."prod_keys_ryujinx" = {
     sopsFile = ../../secrets/switch-keys.yml;
     key = "prod_keys";
@@ -76,8 +76,8 @@ in {
     mode = "0600";
   };
 
-  # Dossiers eden (clés ; le nand reste à installer via la GUI ou une copie)
-  # + dossiers Ryubing + dossier des dumps : jeu de base + update + DLC
+  # eden folders (keys; the nand remains to be installed via the GUI or a copy)
+  # + Ryubing folders + dumps folder: base game + update + DLC
   systemd.tmpfiles.rules = [
     "d ${home}/.local/share/eden 0755 ${user} ${group} -"
     "d ${home}/.local/share/eden/keys 0700 ${user} ${group} -"
@@ -87,30 +87,30 @@ in {
     "d ${games} 0755 ${user} ${group} -"
   ];
 
-  # Accès de l'agent hermes (maintenance sans intervention de marc) aux
-  # données des émulateurs + dumps : traverse du home + rwX récursif sur ces
-  # dossiers uniquement, le reste du home de marc reste inaccessible.
-  # Idempotent, réappliqué à chaque activation.
+  # Access of the hermes agent (maintenance without marc's intervention) to
+  # the emulator + dump data: traversal of the home + recursive rwX on these
+  # folders only, the rest of marc's home stays inaccessible.
+  # Idempotent, reapplied on every activation.
   system.activationScripts.hermes-switch-emu-access.text = ''
     ${pkgs.acl}/bin/setfacl -m u:hermes:x ${home} || true
     for d in ${home}/.local/share/eden ${home}/.config/eden ${home}/.config/Ryujinx ${home}/Games; do
       if [ -d "$d" ]; then ${pkgs.acl}/bin/setfacl -R -m u:hermes:rwX "$d" || true; fi
     done
 
-    # Firmware Switch (NCAs copiés par l'agent) : doit appartenir à marc.
-    # Eden l'ouvre en lecture+ÉCRITURE (r+b, cf. mode=3 dans eden_log.txt) et
-    # échoue sinon : « Installed firmware: No firmware available » puis crash
-    # au chargement du menu (cas MK8DX). Un simple chmod 666 ne suffit pas :
-    # marc est dans le groupe hermes, donc l'entrée ACL group::r-- gagne sur
-    # « other ». On remet donc l'ownership attendu par Eden (marc:users).
+    # Switch firmware (NCAs copied by the agent): must belong to marc.
+    # Eden opens it read+WRITE (r+b, cf. mode=3 in eden_log.txt) and
+    # fails otherwise: "Installed firmware: No firmware available" then crash
+    # on loading the menu (MK8DX case). A simple chmod 666 is not enough:
+    # marc is in the hermes group, so the ACL entry group::r-- wins over
+    # "other". So the ownership expected by Eden (marc:users) is restored.
     for d in ${home}/.local/share/eden/nand/system/Contents/registered ${home}/.config/Ryujinx/bis/system/Contents/registered; do
       if [ -d "$d" ]; then ${pkgs.coreutils}/bin/chown -R ${user}:${group} "$d" || true; fi
     done
   '';
 
-  # Manettes BT en plus (Pro Controller, Joy-Con) pour le multi local
+  # Extra BT controllers (Pro Controller, Joy-Con) for local multiplayer
   hardware.bluetooth.enable = true;
 
-  # Uniquement pour HÉBERGER un salon online Eden (port par défaut hérité de yuzu)
+  # Only to HOST an Eden online room (default port inherited from yuzu)
   # networking.firewall.allowedUDPPorts = [ 24872 ];
 }

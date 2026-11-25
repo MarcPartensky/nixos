@@ -15,4 +15,4 @@ sudo openssl req -new -x509 -days 3650 \
 sudo chmod 600 "$KEY"
 sudo chown postgres:postgres "$CERT" "$KEY"
 
-echo "OK: $CERT et $KEY générés"
+echo "OK: $CERT and $KEY generated"

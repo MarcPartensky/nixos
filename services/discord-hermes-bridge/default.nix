@@ -1,18 +1,18 @@
 # services/discord-hermes-bridge/default.nix
 #
-# Gateway Hermes dedie, profil "discord-bridge" (cree a la main sur tower via
-# `hermes profile create discord-bridge`, meme mecanique que le profil pocket :
-# pas de concept d'"instances" dans le module NixOS services.hermes-agent,
-# donc unite systemd ecrite a la main ici plutot que via cette option).
+# Dedicated Hermes gateway, profile "discord-bridge" (created by hand on tower via
+# `hermes profile create discord-bridge`, same mechanics as the pocket profile:
+# no notion of "instances" in the NixOS module services.hermes-agent,
+# so systemd unit written by hand here rather than via that option).
 #
-# Reutilise le MEME paquet hermes-agent (config.services.hermes-agent.package)
-# que le bot Matrix @hermes dans services/hermes : meme build, donc les memes
-# groupes de deps optionnelles (edge-tts, stt-whisper...) sont deja presents,
-# utiles pour la phase 2 (vocal) du pont Discord sans travail supplementaire.
+# Reuses the SAME hermes-agent package (config.services.hermes-agent.package)
+# as the Matrix bot @hermes in services/hermes: same build, so the same
+# groups of optional deps (edge-tts, stt-whisper...) are already present,
+# useful for phase 2 (voice) of the Discord bridge without extra work.
 #
-# Expose seulement l'API Server OpenAI-compatible (/v1/chat/completions) en
-# loopback, consommee par le cog hermes.py du bot (services/discord-bot).
-# Jamais de port ouvert au firewall : c'est le meme host, meme boucle locale.
+# Exposes only the OpenAI-compatible API Server (/v1/chat/completions) on
+# loopback, consumed by the hermes.py cog of the bot (services/discord-bot).
+# Never a port open to the firewall: it is the same host, same loopback.
 {
   config,
   lib,
@@ -28,7 +28,7 @@ in {
   };
 
   systemd.services.hermes-discord-bridge = {
-    description = "Hermes Agent gateway dedie (profil discord-bridge, pont vers discord-bot)";
+    description = "Dedicated Hermes Agent gateway (discord-bridge profile, bridge to discord-bot)";
     after = ["network-online.target"];
     wants = ["network-online.target"];
     wantedBy = ["multi-user.target"];
@@ -37,9 +37,9 @@ in {
       HOME = "/var/lib/hermes";
       HERMES_HOME = "/var/lib/hermes/.hermes";
       HERMES_MANAGED = "true";
-      # API_SERVER_ENABLED/PORT/KEY sont les seules variables documentees
-      # (pas de API_SERVER_HOST : le bind loopback 127.0.0.1 est le defaut,
-      # non configurable). API_SERVER_KEY vient du fichier sops (EnvironmentFile).
+      # API_SERVER_ENABLED/PORT/KEY are the only documented variables
+      # (no API_SERVER_HOST: the 127.0.0.1 loopback bind is the default,
+      # not configurable). API_SERVER_KEY comes from the sops file (EnvironmentFile).
       API_SERVER_ENABLED = "true";
       API_SERVER_PORT = toString port;
     };
@@ -65,7 +65,7 @@ in {
   assertions = [
     {
       assertion = !(lib.elem port config.networking.firewall.allowedTCPPorts);
-      message = "discord-hermes-bridge : le port ${toString port} (API server local) ne doit pas etre ouvert au firewall.";
+      message = "discord-hermes-bridge: port ${toString port} (local API server) must not be open to the firewall.";
     }
   ];
 }

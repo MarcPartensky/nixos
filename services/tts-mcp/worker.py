@@ -1,26 +1,26 @@
 #!/usr/bin/env python3
-"""Worker de rendu TTS : un process par moteur, le modele charge une fois.
+"""TTS render worker: one process per engine, the model loaded once.
 
-Appele par le serveur MCP (`tts-mcp`) DANS l'interpreteur du moteur, donc
-chaque moteur garde ses propres dependances sans contaminer les autres :
+Called by the MCP server (`tts-mcp`) INSIDE the engine's interpreter, so
+each engine keeps its own dependencies without contaminating the others:
 
-    <python-du-moteur> worker.py --engine phonon --serve
+    <engine-python> worker.py --engine phonon --serve
 
-Modes :
+Modes:
 
-  --serve          boucle JSONL sur stdin/stdout, garde le modele chaud
-  --once <json>    un seul texte (JSON en argument ou sur stdin), puis sortie
-  --job  <json>    script A|B en une passe, un wav par replique, reprise
-  --voices         catalogue des voix du moteur, puis sortie
+  --serve          JSONL loop on stdin/stdout, keeps the model warm
+  --once <json>    a single text (JSON as argument or on stdin), then exit
+  --job  <json>    A|B script in one pass, one wav per line, resumable
+  --voices         catalog of the engine's voices, then exit
 
-Requete de rendu :
+Render request:
 
     {"action":"say","text":...,"voice":...,"language":...,"speed":1.0,
-     "out":"/chemin.wav","ref_audio":...,"ref_text":...}
+     "out":"/path.wav","ref_audio":...,"ref_text":...}
 
-Reponse : {"ok":true,"wav":...,"duration":..,"sr":..,"load_s":..,"gen_s":..,
+Response: {"ok":true,"wav":...,"duration":..,"sr":..,"load_s":..,"gen_s":..,
            "rtf":..,"voice":..}
-Erreur : {"ok":false,"error":"..."}
+Error: {"ok":false,"error":"..."}
 """
 
 import argparse
@@ -31,11 +31,11 @@ import sys
 import time
 import wave
 
-import numpy as np  # noqa: F401  (tous les environnements de moteur en ont)
+import numpy as np  # noqa: F401  (all engine environments have it)
 
 SILENCE_S = 0.45
 
-# Vocabulaire ferme des profils OmniVoice (le modele refuse la prose).
+# Closed vocabulary of OmniVoice profiles (the model refuses prose).
 OMNI_PROFILES = [
     "female, young adult, high pitch",
     "female, middle-aged, moderate pitch",
@@ -49,7 +49,7 @@ OMNI_PROFILES = [
 
 
 def write16(path, audio, sr):
-    """Ecrit un wav mono 16 bits normalise en crete (comme le banc d'essai)."""
+    """Write a mono 16-bit wav peak-normalized (like the test bench)."""
     a = np.asarray(audio, dtype=np.float32).squeeze()
     peak = float(np.max(np.abs(a))) if a.size else 0.0
     if peak > 0:
@@ -72,11 +72,11 @@ def env(name, default=None):
     return v if v else default
 
 
-# --------------------------------------------------------------- moteurs
+# --------------------------------------------------------------- engines
 
 
 class Engine:
-    """Un moteur = un modele et une voix par appel."""
+    """One engine = one model and one voice per call."""
 
     name = "base"
     sample_rate = 24000
@@ -102,11 +102,11 @@ class Engine:
 
 
 class Phonon(Engine):
-    """Phonon 31M (gradium, Apache-2.0) : anglais, CPU, rapide.
+    """Phonon 31M (gradium, Apache-2.0): English, CPU, fast.
 
-    Le catalogue (gradium/phonon-voices) couvre en/de/es/fr/pt, mais les voix
-    non anglaises exigent le modele 40m-multilingual, gate sur Hugging Face :
-    sans HF_TOKEN accepte, seul l'anglais est disponible.
+    The catalog (gradium/phonon-voices) covers en/de/es/fr/pt, but the
+    non-English voices require the 40m-multilingual model, gated on Hugging Face:
+    without an accepted HF_TOKEN, only English is available.
     """
 
     name = "phonon"
@@ -149,7 +149,7 @@ class Phonon(Engine):
 
 
 class Kokoro(Engine):
-    """Kokoro 82M v1.0 (hexgrad, Apache-2.0) : FR (1 voix) et EN, CPU."""
+    """Kokoro 82M v1.0 (hexgrad, Apache-2.0): FR (1 voice) and EN, CPU."""
 
     name = "kokoro"
     lang_codes = {
@@ -218,10 +218,10 @@ class Kokoro(Engine):
 
 
 class Omni(Engine):
-    """OmniVoice 0,6B (k2-fsa) : 600+ langues, GPU, poids CC-BY-NC.
+    """OmniVoice 0.6B (k2-fsa): 600+ languages, GPU, CC-BY-NC weights.
 
-    Pas de multi-locuteur : la voix est un profil du vocabulaire ferme
-    OMNI_PROFILES, ou un clonage par wav de reference (`ref_audio`).
+    No multi-speaker: the voice is a profile from the closed vocabulary
+    OMNI_PROFILES, or a clone via a reference wav (`ref_audio`).
     """
 
     name = "omni"
@@ -263,13 +263,13 @@ class Omni(Engine):
 
     def voices(self):
         return [
-            {"name": p, "language": "fr,en,600+", "kind": "profil instruct"}
+            {"name": p, "language": "fr,en,600+", "kind": "instruct profile"}
             for p in OMNI_PROFILES
-        ] + [{"name": "<chemin.wav>", "language": "*", "kind": "clonage (ref_audio)"}]
+        ] + [{"name": "<path.wav>", "language": "*", "kind": "clone (ref_audio)"}]
 
 
 class Ming(Engine):
-    """Ming-3.0-tts 0,5B (inclusionAI, MIT) : FR/EN et 5 autres, GPU."""
+    """Ming-3.0-tts 0.5B (inclusionAI, MIT): FR/EN and 5 others, GPU."""
 
     name = "ming"
     gpu = True
@@ -322,17 +322,17 @@ class Ming(Engine):
 
     def voices(self):
         return [
-            {"name": "US_Emma", "language": "en-us", "kind": "voix interne"},
-            {"name": "UK_George", "language": "en-gb", "kind": "voix interne"},
+            {"name": "US_Emma", "language": "en-us", "kind": "builtin voice"},
+            {"name": "UK_George", "language": "en-gb", "kind": "builtin voice"},
             {"name": "freeform:<instruction>", "language": "*", "kind": "description"},
-            {"name": "<chemin.wav>", "language": "fr,en", "kind": "clonage (ref_audio + ref_text)"},
+            {"name": "<path.wav>", "language": "fr,en", "kind": "clone (ref_audio + ref_text)"},
         ]
 
 
 class Chatterbox(Engine):
-    """Chatterbox Multilingual V3 (Resemble AI, MIT, retire en 2026) : GPU.
+    """Chatterbox Multilingual V3 (Resemble AI, MIT, retired in 2026): GPU.
 
-    Sortie filigranee (Perth) : a savoir avant publication.
+    Watermarked output (Perth): worth knowing before publishing.
     """
 
     name = "cb"
@@ -365,13 +365,13 @@ class Chatterbox(Engine):
 
     def voices(self):
         return [
-            {"name": "builtin", "language": "en", "kind": "voix interne"},
-            {"name": "<chemin.wav>", "language": "23 langues", "kind": "clonage (ref_audio)"},
+            {"name": "builtin", "language": "en", "kind": "builtin voice"},
+            {"name": "<path.wav>", "language": "23 languages", "kind": "clone (ref_audio)"},
         ]
 
 
 class Breeze(Engine):
-    """Breeze TTS 2 (GGUF q4_k, binaire Vulkan) : EN/ZH, GPU, licence recherche."""
+    """Breeze TTS 2 (GGUF q4_k, Vulkan binary): EN/ZH, GPU, research license."""
 
     name = "breeze"
     gpu = True
@@ -381,10 +381,10 @@ class Breeze(Engine):
         self.bin = env("TTS_BREEZE_BIN")
         self.gguf = env("TTS_BREEZE_GGUF")
         if not self.bin or not os.path.exists(self.bin):
-            raise RuntimeError(f"binaire breeze absent : {self.bin}")
+            raise RuntimeError(f"breeze binary missing: {self.bin}")
         if not self.gguf or not os.path.exists(self.gguf):
-            raise RuntimeError(f"poids breeze absents : {self.gguf}")
-        self.load_s = 1.0  # le binaire charge le modele a chaque appel
+            raise RuntimeError(f"breeze weights missing: {self.gguf}")
+        self.load_s = 1.0  # the binary loads the model on each call
 
     def say(self, req):
         import subprocess
@@ -407,7 +407,7 @@ class Breeze(Engine):
         ]
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
         if p.returncode != 0 or not os.path.exists(out):
-            raise RuntimeError("breeze-cli : " + (p.stderr or p.stdout)[-800:])
+            raise RuntimeError("breeze-cli: " + (p.stderr or p.stdout)[-800:])
         return None, 24000, out
 
     def voices(self):
@@ -418,10 +418,10 @@ class Breeze(Engine):
                 [self.bin, self.gguf, "--list-voices"], capture_output=True, text=True, timeout=60
             )
         except Exception as exc:  # noqa: BLE001
-            return [{"name": "builtin", "language": "en,zh", "kind": f"erreur: {exc}"}]
+            return [{"name": "builtin", "language": "en,zh", "kind": f"error: {exc}"}]
         names = [ln.strip() for ln in p.stdout.splitlines() if ln.strip()]
         return [{"name": "builtin", "language": "en,zh", "kind": "instruction"}] + [
-            {"name": n, "language": "en,zh", "kind": "voix sauvee"} for n in names[:50]
+            {"name": n, "language": "en,zh", "kind": "saved voice"} for n in names[:50]
         ]
 
 
@@ -487,14 +487,14 @@ def do_job(engine, req, log=print):
         turns = turns[: req["limit"]]
     voices = req.get("voices") or {}
     refs = req.get("refs") or {}
-    log(f"moteur {engine.name} | {len(turns)} repliques | voix {voices}")
+    log(f"engine {engine.name} | {len(turns)} lines | voices {voices}")
     total = 0.0
     t_gen = time.time()
     for i, (spk, txt) in enumerate(turns):
         out = os.path.join(outdir, f"{i:03d}.wav")
         if os.path.exists(out) and os.path.getsize(out) > 1000:
             total += wav_duration(out)
-            log(f"[{i + 1}/{len(turns)}] deja fait")
+            log(f"[{i + 1}/{len(turns)}] already done")
             continue
         t = time.time()
         sub = {
@@ -517,9 +517,9 @@ def do_job(engine, req, log=print):
         dur = wav_duration(out)
         total += dur
         log(
-            f"[{i + 1}/{len(turns)}] {spk} {len(txt)} car -> {dur:.1f}s audio "
-            f"en {time.time() - t:.1f}s | cumul {total / 60:.1f} min audio, "
-            f"{(time.time() - t_gen) / 60:.1f} min calcul"
+            f"[{i + 1}/{len(turns)}] {spk} {len(txt)} chars -> {dur:.1f}s audio "
+            f"in {time.time() - t:.1f}s | total {total / 60:.1f} min audio, "
+            f"{(time.time() - t_gen) / 60:.1f} min compute"
         )
     sil = os.path.join(outdir, "_silence.wav")
     if not os.path.exists(sil):
@@ -530,8 +530,8 @@ def do_job(engine, req, log=print):
             if os.path.exists(p):
                 f.write(f"file '{p}'\nfile '{sil}'\n")
     log(
-        f"RENDU {engine.name} TERMINE | {total / 60:.1f} min d'audio en "
-        f"{(time.time() - t_gen) / 60:.1f} min de calcul"
+        f"RENDER {engine.name} DONE | {total / 60:.1f} min of audio in "
+        f"{(time.time() - t_gen) / 60:.1f} min of compute"
     )
     return {"ok": True, "parts": len(turns), "audio_min": round(total / 60, 2)}
 
@@ -545,10 +545,10 @@ def main():
     ap.add_argument("--voices", action="store_true")
     args = ap.parse_args()
 
-    # Certains moteurs ecrivent sur stdout (loguru de ming, avertissements de
-    # huggingface) : le protocole JSONL garde un canal prive (dup de fd 1) et
-    # tout le reste part sur stderr, sinon une ligne de bruit fait echouer le
-    # decodage cote serveur.
+    # Some engines write to stdout (ming's loguru, Hugging Face
+    # warnings): the JSONL protocol keeps a private channel (dup of fd 1) and
+    # everything else goes to stderr, otherwise a line of noise makes
+    # server-side decoding fail.
     chan = os.fdopen(os.dup(1), "w", buffering=1)
     os.dup2(2, 1)
 
@@ -565,19 +565,19 @@ def main():
         outdir = req["outdir"]
         os.makedirs(outdir, exist_ok=True)
         logf = open(os.path.join(outdir, "job.log"), "a", buffering=1)
-        logf.write(f"=== debut {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        logf.write(f"=== start {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
         def log(line):
             print(line, flush=True)
             logf.write(line + "\n")
 
         engine = ENGINES[args.engine]()
-        log(f"modele charge en {engine.load_s:.1f}s")
+        log(f"model loaded in {engine.load_s:.1f}s")
         try:
             res = do_job(engine, req, log)
             log("DONE " + json.dumps(res))
         except Exception as exc:  # noqa: BLE001
-            log(f"ERREUR {type(exc).__name__}: {exc}")
+            log(f"ERROR {type(exc).__name__}: {exc}")
             raise
         return
 
@@ -599,7 +599,7 @@ def main():
         try:
             req = json.loads(line)
         except Exception as exc:  # noqa: BLE001
-            emit({"ok": False, "error": f"json invalide: {exc}"})
+            emit({"ok": False, "error": f"invalid json: {exc}"})
             continue
         action = req.get("action", "say")
         if action == "quit":

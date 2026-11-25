@@ -9,12 +9,12 @@ in {
   options.services.rustdesk = {
     enable = mkEnableOption "RustDesk server (hbbs + hbbr)";
 
-    # La CLI de rustdesk-server 1.1.16 n'a que : hbbs -p <port id/rendezvous>,
-    # -r <relais>, -k <cle>, -R, -M, -s, -u ; hbbr -p <port relais>, -k <cle>.
-    # Il n'y a NI -i (bind) NI -a (autre port) : passer ces drapeaux fait sortir
-    # le binaire en « Found argument '-i' which wasn't expected ».
-    # hbbs se lie tout seul sur 21115 (test NAT) / 21116 (ID, TCP+UDP) /
-    # 21118 (websocket), hbbr sur 21117 (relais) et 21119 (websocket).
+    # The rustdesk-server 1.1.16 CLI only has: hbbs -p <id/rendezvous port>,
+    # -r <relay>, -k <key>, -R, -M, -s, -u ; hbbr -p <relay port>, -k <key>.
+    # There is NEITHER -i (bind) NOR -a (other port): passing these flags makes
+    # the binary exit with "Found argument '-i' which wasn't expected".
+    # hbbs binds by itself on 21115 (NAT test) / 21116 (ID, TCP+UDP) /
+    # 21118 (websocket), hbbr on 21117 (relay) and 21119 (websocket).
     hbbs = mkOption {
       type = types.submodule {
         options = {
@@ -27,7 +27,7 @@ in {
           relayServers = mkOption {
             type = types.nullOr types.str;
             default = null;
-            description = "Relais annonces aux clients (-r), virgule-separes";
+            description = "Relay servers advertised to clients (-r), comma-separated";
           };
           keyPath = mkOption { type = types.nullOr types.path; default = null; };
         };
@@ -42,7 +42,7 @@ in {
           port = mkOption {
             type = types.port;
             default = 21117;
-            description = "Port relais (TCP)";
+            description = "Relay port (TCP)";
           };
           keyPath = mkOption { type = types.nullOr types.path; default = null; };
         };
@@ -87,9 +87,9 @@ in {
       serviceConfig = {
         User = cfg.user;
         Group = cfg.group;
-        # hbbs ecrit sa paire de cles dans le repertoire courant quand -k n'est
-        # pas fourni : sans WorkingDirectory il tente d'ecrire dans / et sort en
-        # erreur (le service sortait en status=1 avant meme de se lier).
+        # hbbs writes its key pair into the current directory when -k is not
+        # provided: without WorkingDirectory it tries to write to / and exits
+        # with an error (the service exited with status=1 even before binding).
         WorkingDirectory = "/var/lib/rustdesk";
         ExecStart = "${pkgs.rustdesk-server}/bin/hbbs -p ${toString cfg.hbbs.idPort}"
           + optionalString (cfg.hbbs.relayServers != null) " -r ${cfg.hbbs.relayServers}"
@@ -129,8 +129,8 @@ in {
       };
     };
 
-    # Ports reels des deux binaires (pas de drapeau pour les deplacer) :
-    # 21115 test NAT, 21116 ID TCP+UDP, 21117 relais, 21118/21119 websocket.
+    # Real ports of the two binaries (no flag to move them):
+    # 21115 NAT test, 21116 ID TCP+UDP, 21117 relay, 21118/21119 websocket.
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall ([ 21115 21116 21117 21118 21119 ]);
     networking.firewall.allowedUDPPorts = lib.mkIf cfg.openFirewall [ 21116 ];
   };

@@ -1,20 +1,20 @@
-# btop : TUI themee Catppuccin Mocha (accent Lavender) ouverte sur le
-# classement CPU des process.
+# btop: Catppuccin Mocha themed TUI (Lavender accent) opened on the
+# CPU ranking of processes.
 #
-# Pourquoi btop en plus de htop : htop ne sait PAS prendre des couleurs
-# arbitraires (seulement ses schemes internes 0 a 6, qui heritent du palette
-# ANSI du terminal). btop lit un vrai fichier de theme en 24 bits, donc il est
-# le seul des trois a pouvoir porter le mocha exact avec l'accent lavender.
-# atop, lui, n'a aucun systeme de theme (couleurs figees dans le binaire).
+# Why btop in addition to htop: htop does NOT know how to take arbitrary
+# colors (only its internal schemes 0 to 6, which inherit from the terminal's
+# ANSI palette). btop reads a real 24-bit theme file, so it is
+# the only one of the three able to carry the exact mocha with the lavender accent.
+# atop, for its part, has no theme system (colors hardcoded in the binary).
 #
-# Ce module ecrit deux fichiers dans ~/.config/btop :
-#   btop.conf                        la conf, boites "cpu" + "proc" seulement
-#   themes/catppuccin_mocha.theme    le palette mocha, accent lavender
+# This module writes two files into ~/.config/btop:
+#   btop.conf                        the conf, "cpu" + "proc" boxes only
+#   themes/catppuccin_mocha.theme    the mocha palette, lavender accent
 {
   xdg.configFile = {
-    # force = true : remplace un btop.conf edite a la main. Le lien pointe
-    # dans le store, donc btop ne peut plus y ecrire (save_config_on_exit est
-    # desactive dans la conf pour eviter l'avertissement en sortie).
+    # force = true: replaces a hand-edited btop.conf. The link points
+    # into the store, so btop can no longer write to it (save_config_on_exit is
+    # disabled in the conf to avoid the warning on exit).
     "btop/btop.conf" = {
       source = ./btop.conf;
       force = true;

@@ -4,53 +4,53 @@ let
   routesArg = lib.concatStringsSep "," cfg.advertiseRoutes;
   setFlags = [
     "--advertise-exit-node=${lib.boolToString cfg.advertiseExitNode}"
-    # une valeur vide efface les routes annoncées précédemment (idempotence :
-    # un nœud qui ne doit plus annoncer est activement nettoyé)
+    # an empty value erases the previously advertised routes (idempotence:
+    # a node that must no longer advertise is actively cleaned up)
     "--advertise-routes=${routesArg}"
   ];
 in
 {
-  # Nœud tailscale du mesh headscale de marc (voir services/headscale pour le
-  # contrôleur, qui tourne sur le VPS `anywhere`). À importer sur chaque machine
-  # NixOS du flake : tower, deck, anywhere, laptop...
+  # tailscale node of marc's headscale mesh (see services/headscale for the
+  # controller, which runs on the `anywhere` VPS). To import on each NixOS
+  # machine of the flake: tower, deck, anywhere, laptop...
   #
-  # Enrôlement automatique : clé de pré-authentification réutilisable commune,
-  # dans secrets/headscale.yml (clé `preauth_key` ; destinataires anywhere,
-  # tower, mac, deck-host). Rotation : voir le bas du module headscale.
+  # Automatic enrollment: shared reusable pre-authentication key,
+  # in secrets/headscale.yml (key `preauth_key`; recipients anywhere,
+  # tower, mac, deck-host). Rotation: see the bottom of the headscale module.
   #
-  # Durcissement : disableUpstreamLogging coupe l'envoi de logs de tailscaled
-  # vers Tailscale Inc (équivalent de --no-logs-no-support) ; le contrôleur
-  # n'annonce que le DERP du VPS, jamais la flotte tailscale.com.
+  # Hardening: disableUpstreamLogging cuts the sending of tailscaled logs
+  # to Tailscale Inc (equivalent of --no-logs-no-support); the controller
+  # only advertises the VPS's DERP, never the tailscale.com fleet.
   #
-  # Exit node / sous-réseaux : c'est PAR HÔTE, via les options meshTailscale.
-  # Les routes annoncées doivent ensuite être approuvées côté contrôleur :
+  # Exit node / subnets: this is PER HOST, via the meshTailscale options.
+  # The advertised routes must then be approved on the controller side:
   #   headscale nodes approve-routes --identifier <id> --routes 0.0.0.0/0,::/0,192.168.1.0/24
   options.meshTailscale = {
-    advertiseExitNode = lib.mkEnableOption "annoncer ce nœud comme exit node du tailnet";
+    advertiseExitNode = lib.mkEnableOption "advertise this node as a tailnet exit node";
 
-    # Nœuds déjà enrôlés dans headscale (le portable, dont l'état vit dans
-    # /var/lib/tailscale) : la clé de pré-authentification n'est plus nécessaire,
-    # et surtout secrets/headscale.yml ne liste pas leur clé age, donc la
-    # déclarer fait échouer le manifeste sops de TOUT l'hôte.
+    # Nodes already enrolled in headscale (the laptop, whose state lives in
+    # /var/lib/tailscale): the pre-authentication key is no longer needed,
+    # and above all secrets/headscale.yml does not list their age key, so
+    # declaring it fails the sops manifest of the WHOLE host.
     enablePreauthKey = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Déclarer secrets/headscale.yml (clé de pré-authentification) sur cet hôte.";
+      description = "Declare secrets/headscale.yml (pre-authentication key) on this host.";
     };
 
     advertiseRoutes = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
-      description = "Sous-réseaux annoncés au tailnet (ex. le LAN maison depuis tower).";
+      description = "Subnets advertised to the tailnet (e.g. the home LAN from tower).";
     };
   };
 
   config = {
-    # Piège du premier enrôlement : tailscaled-autoconnect.service a 90 s pour
-    # joindre le contrôleur. Si l'endpoint public n'est pas encore prêt (cert
-    # Traefik en cours d'émission, route absente), il part en timeout et le nœud
-    # reste non enrôlé. Une fois l'endpoint OK :
-    #   sudo systemctl restart tailscaled-autoconnect.service   (ou un reboot)
+    # First-enrollment pitfall: tailscaled-autoconnect.service has 90 s to
+    # reach the controller. If the public endpoint is not ready yet (Traefik
+    # cert being issued, route absent), it times out and the node
+    # stays unenrolled. Once the endpoint is OK:
+    #   sudo systemctl restart tailscaled-autoconnect.service   (or a reboot)
     sops.secrets."headscale/preauth_key" = lib.mkIf cfg.enablePreauthKey {
       sopsFile = ../../secrets/headscale.yml;
       key = "preauth_key";
@@ -65,11 +65,11 @@ in
     services.tailscale = {
       enable = true;
       openFirewall = true;
-      # "both" : ce nœud peut aussi annoncer des sous-réseaux / être exit node.
+      # "both": this node can also advertise subnets / be an exit node.
       useRoutingFeatures = "both";
       authKeyFile = lib.mkIf cfg.enablePreauthKey config.sops.secrets."headscale/preauth_key".path;
       extraUpFlags = [
-        "--login-server=https://headscale.marcpartensky.com" # contrôleur auto-hébergé, pas Tailscale Inc
+        "--login-server=https://headscale.marcpartensky.com" # self-hosted controller, not Tailscale Inc
         "--accept-routes"
       ]
       ++ lib.optional cfg.advertiseExitNode "--advertise-exit-node"
@@ -79,12 +79,12 @@ in
 
     networking.firewall.trustedInterfaces = [ "tailscale0" ];
 
-    # Les flags passés à `tailscale up` ne sont appliqués par
-    # tailscaled-autoconnect qu'au moment d'un login : sur un nœud déjà connecté
-    # il faut `tailscale set`. Cette unité rend l'annonce déclarative et
-    # idempotente, réappliquée à chaque démarrage.
+    # The flags passed to `tailscale up` are only applied by
+    # tailscaled-autoconnect at login time: on an already connected node
+    # `tailscale set` is needed. This unit makes the advertisement declarative and
+    # idempotent, reapplied on every boot.
     systemd.services.tailscale-advertise = {
-      description = "Tailscale : annonce exit node / sous-réseaux";
+      description = "Tailscale: advertise exit node / subnets";
       wantedBy = [ "multi-user.target" ];
       requires = [ "tailscaled.service" ];
       after = [ "tailscaled.service" "tailscaled-autoconnect.service" ];

@@ -102,7 +102,7 @@ pub fn probe_mac(sh: &Shared) {
     let mut dev = sh.mac.lock().unwrap();
     let Some((host, f)) = res else {
         ssh_close(&sh.state_dir, &used);
-        dev.set_offline(&format!("ssh {used} injoignable"));
+        dev.set_offline(&format!("ssh {used} unreachable"));
         dev.map.insert("host".into(), Value::from(used));
         return;
     };
@@ -140,11 +140,11 @@ pub fn probe_mac(sh: &Shared) {
         "inactif"
     };
     let why = if state == "active" {
-        format!("Mac actif (idle {:.0} s)", idle.unwrap_or(0.0))
+        format!("Mac active (idle {:.0} s)", idle.unwrap_or(0.0))
     } else {
         match idle {
-            Some(i) => format!("Mac joignable, {state} (idle {i:.0} s)"),
-            None => format!("Mac joignable, {state}"),
+            Some(i) => format!("Mac reachable, {state} (idle {i:.0} s)"),
+            None => format!("Mac reachable, {state}"),
         }
     };
     dev.set(vec![
@@ -172,7 +172,7 @@ pub fn probe_phone(sh: &Shared) {
     let f = kv(&out);
     let mut dev = sh.phone.lock().unwrap();
     if code != 0 || !f.contains_key("screen_state") {
-        dev.set_offline("téléphone injoignable");
+        dev.set_offline("phone unreachable");
         return;
     }
     let screen: i64 = f.get("screen_state").and_then(|v| v.parse().ok()).unwrap_or(-1);
@@ -209,7 +209,7 @@ pub fn probe_phone(sh: &Shared) {
         ("online", Value::Bool(true)),
         ("active", Value::Bool(active)),
         ("state", Value::from(state)),
-        ("why", Value::from(if active { "Téléphone actif".to_string() } else { format!("Téléphone joignable, {state}") })),
+        ("why", Value::from(if active { "Phone active".to_string() } else { format!("Phone reachable, {state}") })),
         ("screen_state", Value::from(screen)),
         ("device_state", Value::from(dstate)),
         ("battery", Value::from(f.get("battery").cloned().unwrap_or_default())),

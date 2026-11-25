@@ -1,27 +1,27 @@
 # services/hermes-broker
 #
-# La seule porte vers root pour l'agent Hermes. L'agent (utilisateur `hermes`)
-# depose une demande sur un socket unix ; le broker, lui, tourne en root et
-# n'execute rien tant qu'une preuve humaine n'est pas arrivee.
+# The only door to root for the Hermes agent. The agent (user `hermes`)
+# deposits a request on a unix socket; the broker runs as root and
+# executes nothing until a human proof has arrived.
 #
-# Preuves acceptees, toutes armees en meme temps pour chaque demande :
-#   - Touch ID natif : popup macOS sur le Mac de marc (canal par defaut, aucun
-#     navigateur implique). Le broker joint le Mac par SSH et lance un helper
-#     LocalAuthentication compile par Nix (packages/hermes-touch-id du flake).
-#   - mot de passe systeme de marc, verifie par PAM (pamtester) : aucun secret
-#     n'est stocke par le broker
-#   - passkey WebAuthn, n'importe quel authentificateur : Touch ID du Mac via
-#     Chrome, empreinte du telephone, Bitwarden, cle materielle. La verification
-#     exige le flag de verification utilisateur, donc un geste biometrie ou PIN
+# Accepted proofs, all armed at the same time for each request:
+#   - native Touch ID: macOS popup on marc's Mac (default channel, no
+#     browser involved). The broker reaches the Mac over SSH and launches a
+#     LocalAuthentication helper compiled by Nix (packages/hermes-touch-id of the flake).
+#   - marc's system password, verified by PAM (pamtester): no secret
+#     is stored by the broker
+#   - WebAuthn passkey, any authenticator: Mac Touch ID via
+#     Chrome, phone fingerprint, Bitwarden, hardware key. The verification
+#     requires the user verification flag, so a biometric gesture or PIN
 #
-# Les deux premiers sont natifs. La page WebAuthn reste le secours quand le Mac
-# est absent (reseau, capot ferme) : elle exige un navigateur, d'ou le lien.
+# The first two are native. The WebAuthn page remains the fallback when the Mac
+# is absent (network, lid closed): it requires a browser, hence the link.
 #
-# Le canal "cle Secure Enclave signataire dans un binaire maison" reste abandonne :
-# macOS exige un entitlement keychain-access-groups pour creer une cle protegee
-# par biometrie, ce qui demande une identite Apple Developer (-34018 en ad-hoc).
-# Le helper actuel n'a pas besoin de cle : il ne fait que rendre un code de
-# sortie apres un match d'empreinte, et c'est le broker root qui le lance.
+# The "signing Secure Enclave key in a home-made binary" channel remains abandoned:
+# macOS requires a keychain-access-groups entitlement to create a key protected
+# by biometrics, which needs an Apple Developer identity (-34018 in ad-hoc).
+# The current helper does not need a key: it only returns an exit
+# code after a fingerprint match, and it is the root broker that launches it.
 {
   config,
   lib,
@@ -30,8 +30,8 @@
 }: let
   python = pkgs.python3;
 
-  # broker.py importe p256.py : les deux fichiers doivent vivre dans le meme
-  # dossier, d'ou cette petite derivation plutot qu'un simple writeText.
+  # broker.py imports p256.py: the two files must live in the same
+  # folder, hence this small derivation rather than a simple writeText.
   src = pkgs.runCommandLocal "hermes-broker-src" {} ''
     mkdir -p $out
     install -m 0644 ${./broker.py} $out/broker.py
@@ -41,7 +41,7 @@
   port = 9188;
 in {
   systemd.services.hermes-broker = {
-    description = "Broker d'approbation root pour Hermes (PAM + WebAuthn)";
+    description = "Root approval broker for Hermes (PAM + WebAuthn)";
     wantedBy = ["multi-user.target"];
     after = ["network.target"];
     serviceConfig = {
@@ -49,17 +49,17 @@ in {
       User = "root";
       ExecStart = "${python}/bin/python3 ${src}/broker.py";
       WorkingDirectory = src;
-      # /run/hermes-broker : le socket, proprietaire root:hermes (le broker
-      # ajuste le groupe au demarrage)
+      # /run/hermes-broker: the socket, owner root:hermes (the broker
+      # adjusts the group at startup)
       RuntimeDirectory = "hermes-broker";
       RuntimeDirectoryMode = "0750";
-      # /var/lib/hermes-broker : creds.json (cles publiques) + audit.jsonl
+      # /var/lib/hermes-broker: creds.json (public keys) + audit.jsonl
       StateDirectory = "hermes-broker";
       StateDirectoryMode = "0700";
       Restart = "always";
       RestartSec = 2;
-      # pamtester a besoin de lire /etc/shadow via PAM ; pas de durcissement
-      # qui couperait l'acces au systeme d'authentification.
+      # pamtester needs to read /etc/shadow via PAM; no hardening
+      # that would cut access to the authentication system.
       PrivateTmp = true;
     };
     environment = {
@@ -71,19 +71,19 @@ in {
       BROKER_TTL = "300";
       BROKER_PAM_USER = "marc";
       BROKER_PAMTESTER = "${pkgs.pamtester}/bin/pamtester";
-      # Canal Touch ID : le broker (root) joint le Mac par SSH et lance un helper
-      # du store Nix du Mac. La cle et la config sont celles de hermes, mais le
-      # known_hosts est FIGE sous /etc/hermes-broker : l'agent ne peut pas le
-      # reecrire pour detourner la connexion vers un faux Mac.
+      # Touch ID channel: the broker (root) reaches the Mac over SSH and launches a helper
+      # from the Mac's Nix store. The key and config are hermes's, but the
+      # known_hosts is FROZEN under /etc/hermes-broker: the agent cannot
+      # rewrite it to divert the connection to a fake Mac.
       BROKER_TOUCHID_SSH = "${pkgs.openssh}/bin/ssh -F /etc/hermes-broker/ssh_config mac-touchid";
       BROKER_TOUCHID_REMOTE = "/run/current-system/sw/bin/hermes-touch-id";
       BROKER_TOUCHID_TIMEOUT = "110";
     };
   };
 
-  # Configuration SSH de root vers le Mac de marc, dediee au popup Touch ID.
-  # Le known_hosts est en clair et fixe les deux cles d'hote : un saut par le VPS
-  # (rack) ne suffit donc pas a usurper le Mac.
+  # SSH configuration of root to marc's Mac, dedicated to the Touch ID popup.
+  # The known_hosts is in clear and pins the two host keys: a hop via the VPS
+  # (rack) is therefore not enough to impersonate the Mac.
   environment.etc."hermes-broker/ssh_config".text = ''
     Host rack
       HostName marcpartensky.com
@@ -114,16 +114,16 @@ in {
     [localhost]:2223 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID6c+5hXtBvpgtWKuC1DexczmCdKwrSqlYoa5e1qOHoB
   '';
 
-  # Client cote agent : hermes-request --reason "..." -- cmd arg...
+  # Client on the agent side: hermes-request --reason "..." -- cmd arg...
   environment.systemPackages = [
     (pkgs.writeShellScriptBin "hermes-request" ''
       exec ${python}/bin/python3 ${src}/broker.py client "$@"
     '')
   ];
 
-  # Page d'approbation publique. Pas de SSO Pangolin : c'est la page qui porte
-  # l'authentification (mot de passe PAM ou assertion WebAuthn), et une
-  # redirection Zitadel ferait perdre la WebAuthn (origine differente).
+  # Public approval page. No Pangolin SSO: it is the page that carries
+  # the authentication (PAM password or WebAuthn assertion), and a
+  # Zitadel redirect would lose the WebAuthn (different origin).
   services.newt.blueprint.proxy-resources.hermes-broker = {
     name = "hermes-broker";
     protocol = "http";

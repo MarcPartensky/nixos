@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""taskq CLI : poser, lire et piloter les taches lourdes de tower.
+"""taskq CLI: submit, read and drive tower's heavy tasks.
 
   taskq unit winnie-gmaps-scrape --class heavy --llm paid --mem 3000 --est 120
   taskq run 'cargo build --release' --workdir /home/marc/git/winnie/backend --class medium
   taskq list --status queued
-  taskq why 12                 # pourquoi cette tache tourne ou pas
-  taskq metrics                # etat machine vu par le dispatcher
-  taskq presence               # fenetres sommeil/travail + overrides (off/wfh)
-  taskq digest --ack           # resume pour marc, marque les decisions comme notifiees
+  taskq why 12                 # why this task runs or not
+  taskq metrics                # machine state seen by the dispatcher
+  taskq presence               # sleep/work windows + overrides (off/wfh)
+  taskq digest --ack           # summary for marc, marks decisions as notified
   taskq pause | resume
 """
 
@@ -43,13 +43,13 @@ def rows(sql: str) -> list[dict]:
 
 
 def jrows(sql: str) -> list[dict]:
-    """Comme rows(), mais avec la requete brute : l'agregation JSON est ajoutee."""
+    """Like rows(), but with the raw query: the JSON aggregation is added."""
     return rows(f"select coalesce(json_agg(row_to_json(x)), '[]') from ({sql}) x")
 
 
 def table(items: list[dict], cols: list[str]) -> None:
     if not items:
-        print("(vide)")
+        print("(empty)")
         return
     widths = {c: max(len(c), *(len(str(i.get(c, "") or "")[:44]) for i in items)) for c in cols}
     print("  ".join(c.ljust(widths[c]) for c in cols))
@@ -90,7 +90,7 @@ def cmd_submit(a) -> None:
         f"({tid}, 'submit', {q(a.by or 'cli')}, {q(f'{kind} {target} ({a.cpu_class}, llm {a.llm})')})",
         tuples=False,
     )
-    print(f"tache #{tid} en file : {kind} {target}")
+    print(f"task #{tid} queued: {kind} {target}")
 
 
 def cmd_list(a) -> None:
@@ -107,37 +107,37 @@ def cmd_list(a) -> None:
 def cmd_show(a) -> None:
     t = jrows(f"select * from tasks where id = {int(a.id)}")
     if not t:
-        print("tache inconnue")
+        print("unknown task")
         return
     print(json.dumps(t[0], indent=2, default=str))
     ds = jrows(
         "select to_char(at, 'HH24:MI:SS') as at, action, actor, left(reason, 70) as reason "
         f"from decisions where task_id = {int(a.id)} order by at desc limit 10"
     )
-    print("\ndecisions :")
+    print("\ndecisions:")
     table(ds, ["at", "action", "actor", "reason"])
 
 
 def cmd_why(a) -> None:
     m = jrows("select value from state where key='last_metrics'")
     if not m:
-        print("pas encore de metriques (dispatcher arrete ?)")
+        print("no metrics yet (dispatcher stopped?)")
         return
     m = m[0]["value"]
     b = m.get("budget", {})
     print(
-        f"load {m['load1']} / {m['threads']} threads | RAM libre {m['mem_avail_mb']} Mo | "
+        f"load {m['load1']} / {m['threads']} threads | free RAM {m['mem_avail_mb']} MB | "
         f"marc cpu {m['marc_cpu_pct']}% busy={m['marc_busy']} present={m['marc_present']} "
-        f"connecte={m.get('marc_connected', '?')} | "
-        f"gpu: {m['gpu'] or 'aucun'} | modele local: {m['local_model_running']} | "
-        f"budget payant restant {b.get('left_cents')} c | pause={m.get('paused')}"
+        f"connected={m.get('marc_connected', '?')} | "
+        f"gpu: {m['gpu'] or 'none'} | local model: {m['local_model_running']} | "
+        f"paid budget left {b.get('left_cents')} c | pause={m.get('paused')}"
     )
     if m.get("marc_connected") and m.get("marc_connected_why"):
-        print(f"connecte: {m['marc_connected_why']}")
+        print(f"connected: {m['marc_connected_why']}")
     if m.get("presence"):
         until = (m.get("presence_until") or "")[11:16]
         print(f"presence: {m['presence']} ({m.get('presence_why')})"
-              + (f" jusqu'a {until}" if until else ""))
+              + (f" until {until}" if until else ""))
     if getattr(a, "id", None):
         t = jrows(
             "select id, status, cpu_class, mem_min_mb, llm_cost, priority, while_busy,"
@@ -169,17 +169,17 @@ def cmd_set(a, key: str, value: str) -> None:
 
 def cmd_cancel(a) -> None:
     psql(f"update tasks set status='cancelled', finished_at=now(), updated_at=now(), "
-         f"note={q(a.reason or 'annule par le cli')} where id={int(a.id)} and status in ('queued','blocked')",
+         f"note={q(a.reason or 'cancelled by cli')} where id={int(a.id)} and status in ('queued','blocked')",
          tuples=False)
     psql("insert into decisions (task_id, action, actor, reason) values "
-         f"({int(a.id)}, 'skip', 'cli', {q(a.reason or 'annule par le cli')})", tuples=False)
-    print(f"tache {a.id} annulee")
+         f"({int(a.id)}, 'skip', 'cli', {q(a.reason or 'cancelled by cli')})", tuples=False)
+    print(f"task {a.id} cancelled")
 
 
 def cmd_retry(a) -> None:
     psql(f"update tasks set status='queued', not_before=now(), attempts=0, updated_at=now() where id={int(a.id)}",
          tuples=False)
-    print(f"tache {a.id} remise en file")
+    print(f"task {a.id} requeued")
 
 
 def cmd_digest(a) -> None:
@@ -191,28 +191,28 @@ def cmd_digest(a) -> None:
         pres = v.get("presence") or "?"
         until = (v.get("presence_until") or "")[11:16]
         print(
-            f"machine: load {v['load1']}/{v['threads']}, RAM libre {v['mem_avail_mb']} Mo, "
+            f"machine: load {v['load1']}/{v['threads']}, free RAM {v['mem_avail_mb']} MB, "
             f"marc busy={v['marc_busy']}, presence={pres}"
-            + (f" jusqu'a {until}" if until else "") + ", "
-            f"gpu={'oui' if v['gpu'] else 'non'}, "
-            f"budget payant restant {b.get('left_cents')} c"
+            + (f" until {until}" if until else "") + ", "
+            f"gpu={'yes' if v['gpu'] else 'no'}, "
+            f"paid budget left {b.get('left_cents')} c"
         )
     pend = jrows("select id, action, left(reason, 60) as reason, to_char(at, 'HH24:MI') as at "
                  "from decisions where not notified order by at limit 30")
-    print("\ndecisions non notifiees :")
+    print("\nunnotified decisions:")
     table(pend, ["at", "id", "action", "reason"])
     q_ = jrows("select id, status, priority, left(target, 30) as target, left(coalesce(note,''), 40) as note from queue "
                "where status in ('queued','running','failed','blocked') limit 20")
-    print("\nfile :")
+    print("\nqueue:")
     table(q_, ["id", "status", "priority", "target", "note"])
     if a.ack:
         n = psql("update decisions set notified = true where not notified returning id")
-        print(f"\n{n.count(chr(10)) + 1 if n else 0} decisions marquees notifiees")
+        print(f"\n{n.count(chr(10)) + 1 if n else 0} decisions marked as notified")
 
 
 def cmd_state(a) -> None:
-    """Etat deterministe (pas d'horodatage): sert de detecteur de changement
-    pour le cerveau cron -- il ne se reveille que si quelque chose a bouge."""
+    """Deterministic state (no timestamp): serves as a change detector
+    for the cron brain -- it only wakes up if something moved."""
     m = jrows("select value from state where key='last_metrics'")
     v = m[0]["value"] if m else {}
     counts = jrows("select status, count(*) as n from tasks group by status")
@@ -245,12 +245,12 @@ def _save_overrides(overrides: dict) -> None:
 
 
 def cmd_presence(a) -> None:
-    """Presence de marc : fenetres sommeil/travail et overrides par date.
+    """marc's presence: sleep/work windows and per-date overrides.
 
-    taskq presence                    -> config, etat courant, prochaines bornes
-    taskq presence off demain [note]  -> jour libre (pas de fenetre travail)
-    taskq presence wfh 2026-11-04     -> teletravail (idem, autre etiquette)
-    taskq presence clear demain       -> supprime l'override du jour
+    taskq presence                    -> config, current state, next boundaries
+    taskq presence off demain [note]  -> day off (no work window)
+    taskq presence wfh 2026-11-04     -> remote work (same, other label)
+    taskq presence clear demain       -> removes the day's override
     """
     action = getattr(a, "action", None) or "show"
     cfg = presence.load_config()
@@ -263,50 +263,50 @@ def cmd_presence(a) -> None:
         try:
             day = presence.resolve_day(cfg, a.when, now)
         except ValueError:
-            print(f"date invalide: {a.when!r} (today | demain | YYYY-MM-DD)")
+            print(f"invalid date: {a.when!r} (today | demain | YYYY-MM-DD)")
             return
         key = day.isoformat()
         if action == "clear":
             if overrides.pop(key, None) is None:
-                print(f"{key}: aucun override")
+                print(f"{key}: no override")
                 return
             _save_overrides(overrides)
-            print(f"{key}: override supprime")
+            print(f"{key}: override removed")
             return
         overrides[key] = {"kind": action, "note": getattr(a, "note", None) or "",
                           "by": "cli", "at": now.isoformat(timespec="seconds")}
         _save_overrides(overrides)
-        print(f"{key} ({presence.DAY_NAMES[day.weekday()]}): {action} enregistre"
+        print(f"{key} ({presence.DAY_NAMES[day.weekday()]}): {action} saved"
               + (f" ({a.note})" if getattr(a, "note", None) else ""))
         return
-    # show : config + etat courant vu par le dispatcher + prochaines bornes
+    # show: config + current state seen by the dispatcher + next boundaries
     sleep, work = cfg["sleep"], cfg["work"]
     days = ",".join(presence.DAY_NAMES[int(d) - 1] for d in work.get("days", []))
-    print(f"fuseau {cfg.get('tz')} | sommeil {sleep['start']}-{sleep['end']} tous les jours "
-          f"| travail {work['start']}-{work['end']} {days}")
+    print(f"timezone {cfg.get('tz')} | sleep {sleep['start']}-{sleep['end']} every day "
+          f"| work {work['start']}-{work['end']} {days}")
     m = jrows("select value, round(extract(epoch from (now() - updated_at))) as age "
               "from state where key='last_metrics'")
     if m and m[0]["value"].get("presence"):
         v = m[0]["value"]
         until = (v.get("presence_until") or "")[11:16]
-        print(f"maintenant: {v['presence']} ({v.get('presence_why')})"
-              + (f" jusqu'a {until}" if until else "") + f" [lu il y a {int(m[0]['age'] or 0)} s]")
+        print(f"now: {v['presence']} ({v.get('presence_why')})"
+              + (f" until {until}" if until else "") + f" [read {int(m[0]['age'] or 0)} s ago]")
     else:
-        print("maintenant: inconnu (dispatcher pas encore a jour)")
-    print("prochaines bornes:")
+        print("now: unknown (dispatcher not up to date yet)")
+    print("next boundaries:")
     for at, label in presence.transitions(cfg, overrides, now):
         print(f"  {presence.DAY_NAMES[at.weekday()]} {at:%d/%m %H:%M} {label}")
     ahead = sorted(k for k in overrides if k >= now.date().isoformat())[:7]
     if ahead:
-        print("overrides a venir:")
+        print("upcoming overrides:")
         for k in ahead:
             o = overrides.get(k) or {}
             print(f"  {k} {o.get('kind')}" + (f" ({o.get('note')})" if o.get("note") else ""))
 
 
 def cmd_unblock(a) -> None:
-    psql("update tasks set status='queued', note='debloque', updated_at=now() where status='blocked'", tuples=False)
-    print("taches bloquees remises en file")
+    psql("update tasks set status='queued', note='unblocked', updated_at=now() where status='blocked'", tuples=False)
+    print("blocked tasks requeued")
 
 
 def main() -> int:
@@ -314,31 +314,31 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    s = sub.add_parser("submit", aliases=["run"], help="poser une tache (commande shell ou unite systemd)")
+    s = sub.add_parser("submit", aliases=["run"], help="submit a task (shell command or systemd unit)")
     s.add_argument("target")
     s.add_argument("--kind", choices=["command", "systemd_unit"])
-    s.add_argument("--unit", action="store_true", help="raccourci: kind=systemd_unit")
-    s.add_argument("--key", help="cle d'idempotence")
+    s.add_argument("--unit", action="store_true", help="shortcut: kind=systemd_unit")
+    s.add_argument("--key", help="idempotency key")
     s.add_argument("--class", dest="cpu_class", default="medium", choices=["light", "medium", "heavy"])
-    s.add_argument("--mem", type=int, default=512, help="Mo de RAM libre exiges")
+    s.add_argument("--mem", type=int, default=512, help="MB of free RAM required")
     s.add_argument("--llm", default="none", choices=["none", "free", "paid"])
-    s.add_argument("--paid-cap", type=int, default=0, help="centimes payants max consommes")
-    s.add_argument("--est", type=int, help="duree estimee en minutes")
-    s.add_argument("--priority", type=int, default=100, help="plus petit = plus urgent")
-    s.add_argument("--not-before", type=int, help="demarrer au plus tot dans N minutes")
-    s.add_argument("--deadline", type=int, help="doit demarrer dans N minutes")
-    s.add_argument("--while-busy", action="store_true", help="peut tourner pendant que marc travaille")
+    s.add_argument("--paid-cap", type=int, default=0, help="max paid cents consumed")
+    s.add_argument("--est", type=int, help="estimated duration in minutes")
+    s.add_argument("--priority", type=int, default=100, help="smaller = more urgent")
+    s.add_argument("--not-before", type=int, help="start at the earliest in N minutes")
+    s.add_argument("--deadline", type=int, help="must start within N minutes")
+    s.add_argument("--while-busy", action="store_true", help="can run while marc is working")
     s.add_argument("--absence", dest="needs_absence", action="store_true",
-                   help="ne tourne QUE pendant une absence de marc (fenetres sommeil/travail, "
-                        "ou 15 min sans interaction hermes/ssh/webui); interrompue a son retour")
+                   help="runs ONLY during an absence of marc (sleep/work windows, "
+                        "or 15 min without hermes/ssh/webui interaction); interrupted on his return")
     s.add_argument("--requires-gpu", action="store_true")
     s.add_argument("--run-as", default="hermes")
     s.add_argument("--workdir")
     s.add_argument("--env", action="append", metavar="K=V")
-    s.add_argument("--by", help="auteur")
+    s.add_argument("--by", help="author")
     s.set_defaults(func=cmd_submit)
 
-    s2 = sub.add_parser("unit", help="raccourci pour une unite systemd")
+    s2 = sub.add_parser("unit", help="shortcut for a systemd unit")
     s2.add_argument("unit")
     s2.set_defaults(func=lambda a: cmd_submit(argparse.Namespace(
         target=a.unit, kind=None, unit=True, key=a.key, cpu_class=a.cpu_class, mem=a.mem, llm=a.llm,
@@ -359,10 +359,10 @@ def main() -> int:
     s = sub.add_parser("unblock"); s.set_defaults(func=cmd_unblock)
     s = sub.add_parser("state"); s.set_defaults(func=cmd_state)
     s = sub.add_parser("presence",
-                       help="presence de marc: fenetres sommeil/travail, overrides off/wfh")
+                       help="marc's presence: sleep/work windows, off/wfh overrides")
     s.add_argument("action", nargs="?", default="show", choices=["show", "off", "wfh", "clear"])
     s.add_argument("when", nargs="?", help="today | demain | YYYY-MM-DD")
-    s.add_argument("note", nargs="?", help="note libre pour off/wfh")
+    s.add_argument("note", nargs="?", help="free-form note for off/wfh")
     s.set_defaults(func=cmd_presence)
     s = sub.add_parser("digest"); s.add_argument("--ack", action="store_true"); s.set_defaults(func=cmd_digest)
 

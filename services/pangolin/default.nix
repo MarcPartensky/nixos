@@ -20,15 +20,15 @@
 
   services.pangolin = {
     enable = true;
-    # Patch « stub de licence » (décision marc, 2026-10-23) : les builds
-    # open-source compilent server/lib/isLicencedOrSubscribed.ts, un stub figé
-    # à `return false` (l'édition oss de nixpkgs supprime même server/private,
-    # qui contient la vraie logique réservée aux builds saas/enterprise).
-    # Conséquence : toutes les features « gated » — dont les ressources privées
-    # http/ssh, nécessaires au P2P nextcloud depuis NYC — renvoient 403
-    # "Please upgrade". On remplace le stub par `return true`.
-    # À assumer : contourne le gate commercial de Fossorial sur notre instance.
-    # Alternative propre si un jour : edition = "enterprise" + une licenseKey.
+    # "license stub" patch (marc's decision, 2026-10-23): the
+    # open-source builds compile server/lib/isLicencedOrSubscribed.ts, a stub hardcoded
+    # to `return false` (the oss edition of nixpkgs even removes server/private,
+    # which contains the real logic reserved for saas/enterprise builds).
+    # Consequence: all the "gated" features - including the private
+    # http/ssh resources, needed for nextcloud P2P from NYC - return 403
+    # "Please upgrade". We replace the stub with `return true`.
+    # To be acknowledged: bypasses Fossorial's commercial gate on our instance.
+    # Clean alternative if ever: edition = "enterprise" + a licenseKey.
     package = pkgs.fosrl-pangolin.overrideAttrs (old: {
       postPatch = (old.postPatch or "") + ''
         substituteInPlace server/lib/isLicencedOrSubscribed.ts \
@@ -55,21 +55,21 @@
         internal_port = 3008;
         internal_hostname = "127.0.0.1";
       };
-      # API d'intégration v1 (auth par clé Bearer, table apiKeys du
-      # dashboard) : utilisée par le MCP pangolin de hermes. Le module ajoute
-      # alors le routeur traefik + le service vers localhost:3003, exposés
-      # sur api.marcpartensky.com (Host exact, cf. int-api-router du module).
-      # Défaut : désactivée.
+      # Integration API v1 (Bearer key auth, apiKeys table of the
+      # dashboard): used by hermes's pangolin MCP. The module then adds
+      # the traefik router + the service to localhost:3003, exposed
+      # on api.marcpartensky.com (exact Host, cf. the module's int-api-router).
+      # Default: disabled.
       flags = {
         enable_integration_api = true;
       };
       postgres = {
-        # Pas de mot de passe ici : la vraie connection string arrive par
-        # l'environnement du service (variable POSTGRES_CONNECTION_STRING du
-        # environmentFile sops ci-dessus, clé "pangolin_env" de
-        # secrets/common.yml) et écrase cette valeur au démarrage. Ce fichier
-        # part dans le store et le repo (public), donc aucun secret ne doit y
-        # figurer, même masqué.
+        # No password here: the real connection string arrives via
+        # the service environment (POSTGRES_CONNECTION_STRING variable of the
+        # sops environmentFile above, "pangolin_env" key of
+        # secrets/common.yml) and overrides this value on startup. This file
+        # goes into the store and the repo (public), so no secret must
+        # appear there, even masked.
         connection_string = "postgresql://pangolin@127.0.0.1:5432/pangolin";
       };
     };

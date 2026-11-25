@@ -1,10 +1,10 @@
-# Tunnel SSH inverse permanent Mac -> rack (VPS) : expose le sshd du Mac sur
-# 127.0.0.1:2223 du VPS (GatewayPorts no : jamais exposé publiquement).
-# Importé par profiles/macos/configuration.nix (module nix-darwin) ; la clé
-# du Mac (marc@Air-de-Marc) est déjà autorisée pour root@rack.
-# Depuis tower (alias `mac` dans ~/.ssh/config de hermes) :
+# Permanent reverse SSH tunnel Mac -> rack (VPS): exposes the Mac's sshd on
+# 127.0.0.1:2223 of the VPS (GatewayPorts no: never exposed publicly).
+# Imported by profiles/macos/configuration.nix (nix-darwin module); the Mac's
+# key (marc@Air-de-Marc) is already authorized for root@rack.
+# From tower (alias `mac` in hermes's ~/.ssh/config):
 #   ssh -J rack -p 2223 marc@localhost
-# Nécessite Remote Login activé (services.openssh.enable dans le profil).
+# Requires Remote Login enabled (services.openssh.enable in the profile).
 { pkgs, ... }: {
   environment.systemPackages = [ pkgs.autossh ];
 
@@ -16,8 +16,8 @@
         "-N"
         "-o" "ServerAliveInterval=30"
         "-o" "ServerAliveCountMax=3"
-        # Sans ça, un forward raté (port pris, sshd down au boot) laisserait
-        # une session inutile ; avec, autossh sort et launchd réessaie.
+        # Without this, a failed forward (port taken, sshd down at boot) would leave
+        # a useless session; with it, autossh exits and launchd retries.
         "-o" "ExitOnForwardFailure=yes"
         "-R" "2223:localhost:22"
         "root@marcpartensky.com"

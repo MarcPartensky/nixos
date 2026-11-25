@@ -19,17 +19,17 @@ in {
     # inputs.microvm.nixosModules.microvm
     inputs.home-manager.nixosModules.default
 
-    # Racine de la CA interne du tailnet (Smallstep, modules/nixos/intra-ca) :
-    # signe les noms courts du proxy de tower (`https://mesh`,
-    # `https://jellyfin`). Certificat public, la cle racine n'est sur aucune
-    # machine du flake.
+    # Root of the tailnet's internal CA (Smallstep, modules/nixos/intra-ca):
+    # signs the short names of the tower proxy (`https://mesh`,
+    # `https://jellyfin`). Public certificate, the root key is on no
+    # machine of the flake.
     ../../modules/nixos/intra-ca-trust.nix
 
     ../../users.nix
 
-    # Disponibilite de la flotte : tuptime tient l'historique local
-    # uptime/downtime de la machine (il survit a une coupure reseau), et l'agent
-    # Zabbix pousse vers le serveur qui vit sur le VPS. Cf. services/tuptime et
+    # Fleet availability: tuptime keeps the local uptime/downtime
+    # history of the machine (it survives a network outage), and the Zabbix
+    # agent pushes to the server that lives on the VPS. See services/tuptime and
     # services/zabbix.
     ../../services/tuptime
     ../../services/zabbix/agent.nix
@@ -51,7 +51,7 @@ in {
     ../../modules/nixos/xdg
     ../../modules/nixos/sddm # greetd or ly
     ../../modules/nixos/polkit
-    # htop : /etc/htoprc commun (colonnes et ecrans CPU/RAM, cf le htoprc).
+    # htop: shared /etc/htoprc (columns and CPU/RAM screens, see the htoprc).
     ../../modules/nixos/htop
     # ../../modules/generations
     # ../../modules/git
@@ -73,7 +73,7 @@ in {
 
   services.gnome.gnome-keyring.enable = true;
   security.pam.services.login.enableGnomeKeyring = true;
-  # Le fichier est chiffré avec SOPS, donc pas besoin de désactiver la validation
+  # The file is encrypted with SOPS, so no need to disable validation
 
   nix.settings = {
     experimental-features = "nix-command flakes";
@@ -104,15 +104,15 @@ in {
   # };
   # nixpkgs.overlays = [ inputs.claude-code.overlays.default ];
 
-  # TEMPORAIRE
+  # TEMPORARY
   nixpkgs.config.allowUnfree = true;
-  # nixpkgs.config.permittedInsecurePackages est un attrs "dernier gagne" :
-  # plusieurs modules (matrix-whatsapp, pangolin, packages.nix) le redefinissent
-  # chacun de leur cote et s'ecrasent silencieusement. Union explicite ici en
-  # attendant de centraliser pour de bon.
+  # nixpkgs.config.permittedInsecurePackages is a "last wins" attrs:
+  # several modules (matrix-whatsapp, pangolin, packages.nix) redefine it
+  # each on their side and silently overwrite each other. Explicit union here while
+  # waiting to centralize for good.
   nixpkgs.config.permittedInsecurePackages = [
     "libsoup-2.74.3"
-    "olm-3.2.16" # deps crypto mautrix (whatsapp/discord/...)
+    "olm-3.2.16" # mautrix crypto deps (whatsapp/discord/...)
     "pangolin-1.10.3"
     "beekeeper-studio-5.3.4"
   ];
@@ -121,22 +121,22 @@ in {
 
   services.xserver.videoDrivers = ["nvidia"];
 
-  services.openssh.settings.MaxAuthTries = 10; # défaut = 6
+  services.openssh.settings.MaxAuthTries = 10; # default = 6
 
   hardware.nvidia = {
     modesetting.enable = true;
     powerManagement.enable = false;
-    open = false; # La MX150 est ancienne, utilise les drivers propriétaires
+    open = false; # The MX150 is old, uses proprietary drivers
     nvidiaSettings = true;
 
-    # Configuration PRIME (Offload)
+    # PRIME configuration (Offload)
     prime = {
       offload = {
         enable = true;
         enableOffloadCmd = true;
       };
-      # Trouve tes IDs avec `lspci | grep -E "VGA|3D"`
-      # Généralement pour un i7-8550U + MX150 c'est :
+      # Find your IDs with `lspci | grep -E "VGA|3D"`
+      # Usually for an i7-8550U + MX150 it is:
       intelBusId = "PCI:0:2:0";
       nvidiaBusId = "PCI:1:0:0";
     };
@@ -167,7 +167,7 @@ in {
   nixpkgs.config.allowUnfreePredicate = pkg:
     builtins.elem (lib.getName pkg) (map (p: lib.getName p) packages.unfree);
 
-  # Dans votre configuration.nix (système)
+  # In your configuration.nix (system)
   services.dbus.enable = true;
   xdg.portal.enable = true;
 
@@ -194,7 +194,7 @@ in {
   programs.nix-ld.libraries = with pkgs; [
     stdenv.cc.cc
     zlib
-    # Ajoute d'autres libs ici si d'autres packages pleurent
+    # Add other libs here if other packages complain
   ];
 
   # Enable CUPS to print documents.

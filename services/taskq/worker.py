@@ -1,32 +1,32 @@
 #!/usr/bin/env python3
-"""taskq-worker : agent de flotte (deck, laptop, anywhere, mac).
+"""taskq-worker: fleet agent (deck, laptop, anywhere, mac).
 
-Modele PULL : le worker n'ouvre aucun port et n'a besoin d'etre joignable par
-personne. Il appelle le master (taskq-api, route /worker/*) toutes les
-TASKQ_WORKER_BEAT secondes ; chaque appel sert de battement de coeur (il
-renouvelle le bail des taches en cours) ET de demande de travail.
+PULL model: the worker opens no port and does not need to be reachable by
+anyone. It calls the master (taskq-api, route /worker/*) every
+TASKQ_WORKER_BEAT seconds; each call serves as a heartbeat (it
+renews the lease of the running tasks) AND as a request for work.
 
-Consequence d'une coupure (deck en veille, wifi qui tombe, reboot) : le worker
-cesse de battre, le master voit le bail expirer et remet la tache en file. Le
-worker n'a AUCUN etat local : rien a reconcilier au retour, il rebat et reprend
-ce que le master lui redonne.
+Consequence of an outage (deck asleep, wifi drops, reboot): the worker
+stops beating, the master sees the lease expire and requeues the task. The
+worker has NO local state: nothing to reconcile on return, it beats again and picks up
+what the master gives it back.
 
-Semantique : au moins une fois. Une tache reprise apres coupure peut avoir deja
-produit ses effets ; c'est pour cela que les taches de flotte portent une `key`
-d'idempotence et que les cibles doivent etre idempotentes (unite systemd,
-commande rejouable).
+Semantics: at least once. A task resumed after an outage may have already
+produced its effects; that is why fleet tasks carry an idempotency `key`
+and why the targets must be idempotent (systemd unit,
+replayable command).
 
-Env :
-  TASKQ_MASTER_URL        http://100.64.0.3:9078 (obligatoire)
-  TASKQ_WORKER_NAME       deck | laptop | anywhere | mac (obligatoire)
-  TASKQ_WORKER_TOKEN_FILE /run/keys/taskq-worker-token (obligatoire)
-  TASKQ_WORKER_BEAT       15 (secondes)
-  TASKQ_WORKER_SLOTS      1 (taches simultanees)
-  TASKQ_WORKER_MAX_LOAD   0 = jamais refuse ; sinon pas de nouvelle tache
-                          au-dessus de cette charge (deck qui joue)
-  TASKQ_WORKER_ALLOW_UNITS  liste separee par des virgules, allowlist stricte
-  TASKQ_WORKER_ALLOW_COMMANDS 1 pour autoriser kind=command (shell)
-  TASKQ_WORKER_CAPS       liste separee par des virgules (ex: nix,render,heavy)
+Env:
+  TASKQ_MASTER_URL        http://100.64.0.3:9078 (required)
+  TASKQ_WORKER_NAME       deck | laptop | anywhere | mac (required)
+  TASKQ_WORKER_TOKEN_FILE /run/keys/taskq-worker-token (required)
+  TASKQ_WORKER_BEAT       15 (seconds)
+  TASKQ_WORKER_SLOTS      1 (simultaneous tasks)
+  TASKQ_WORKER_MAX_LOAD   0 = never refuse; otherwise no new task
+                          above this load (deck that is playing)
+  TASKQ_WORKER_ALLOW_UNITS  comma-separated list, strict allowlist
+  TASKQ_WORKER_ALLOW_COMMANDS 1 to allow kind=command (shell)
+  TASKQ_WORKER_CAPS       comma-separated list (e.g. nix,render,heavy)
 """
 
 from __future__ import annotations
@@ -133,10 +133,10 @@ def run_command(task: dict, handle: dict) -> tuple[int, str]:
 def run_unit(task: dict, handle: dict) -> tuple[int, str]:
     unit = task["target"]
     if unit not in UNITS:
-        return 126, f"unite {unit} hors allowlist locale ({', '.join(UNITS) or 'vide'})"
+        return 126, f"unit {unit} outside the local allowlist ({', '.join(UNITS) or 'empty'})"
     subprocess.run(["systemctl", "start", unit], check=False, timeout=120)
     handle["unit"] = unit
-    # Attendre la fin reelle : start ne bloque pas quand le service fork.
+    # Wait for the real end: start does not block when the service forks.
     while not STOP.is_set():
         out = subprocess.run(
             ["systemctl", "show", unit, "-p", "ActiveState", "-p", "Result",
@@ -150,7 +150,7 @@ def run_unit(task: dict, handle: dict) -> tuple[int, str]:
             ok = state != "failed" and info.get("Result", "success") == "success"
             return (0 if ok else (code or 1)), f"{unit}: {state}/{info.get('Result')}"
         time.sleep(5)
-    return 130, f"{unit}: interrompu"
+    return 130, f"{unit}: interrupted"
 
 
 def execute(task: dict) -> None:
@@ -158,15 +158,15 @@ def execute(task: dict) -> None:
     handle: dict = {}
     with LOCK:
         RUNNING[tid] = handle
-    code, note = 1, "worker: pas d'execution"
+    code, note = 1, "worker: no execution"
     try:
         if task["kind"] == "systemd_unit":
             code, note = run_unit(task, handle)
         elif task["kind"] == "command" and ALLOW_COMMANDS:
             code, note = run_command(task, handle)
         else:
-            code, note = 126, f"kind {task['kind']} refuse par ce worker"
-    except Exception as e:  # un echec ne doit jamais tuer le worker
+            code, note = 126, f"kind {task['kind']} refused by this worker"
+    except Exception as e:  # a failure must never kill the worker
         code, note = 1, f"worker: {e!r}"[:500]
     status = "done" if code == 0 else "failed"
     for attempt in range(6):
@@ -176,7 +176,7 @@ def execute(task: dict) -> None:
             log(f"#{tid} {status} ({code}) {note[:120]}")
             break
         except Exception as e:
-            log(f"report #{tid} impossible ({attempt + 1}/6): {e!r}")
+            log(f"report #{tid} failed ({attempt + 1}/6): {e!r}")
             time.sleep(min(60, 5 * (attempt + 1)))
     with LOCK:
         RUNNING.pop(tid, None)
@@ -187,7 +187,7 @@ def abort(tid: int) -> None:
         handle = RUNNING.get(tid)
     if not handle:
         return
-    log(f"#{tid} annule sur ordre du master")
+    log(f"#{tid} cancelled on master's order")
     proc = handle.get("proc")
     if proc and proc.poll() is None:
         try:
@@ -223,17 +223,17 @@ def beat_once() -> None:
         with LOCK:
             if len(RUNNING) >= SLOTS:
                 break
-        log(f"#{task['id']} recu ({task['cpu_class']}) {task['target'][:90]}")
+        log(f"#{task['id']} received ({task['cpu_class']}) {task['target'][:90]}")
         threading.Thread(target=execute, args=(task,), daemon=True).start()
 
 
 def main() -> None:
     if not (MASTER and NAME and TOKEN_FILE):
-        print("TASKQ_MASTER_URL, TASKQ_WORKER_NAME et TASKQ_WORKER_TOKEN_FILE sont requis",
+        print("TASKQ_MASTER_URL, TASKQ_WORKER_NAME and TASKQ_WORKER_TOKEN_FILE are required",
               file=sys.stderr)
         return 2
     if not shutil.which("systemctl") and not ALLOW_COMMANDS:
-        log("attention: ni systemctl ni les commandes autorisees, ce worker ne peut rien executer")
+        log("warning: neither systemctl nor commands are allowed, this worker cannot execute anything")
     log(f"worker {NAME} -> {MASTER} (slots {SLOTS}, caps {', '.join(CAPS) or '-'})")
     backoff = 5.0
     while not STOP.is_set():
@@ -242,17 +242,17 @@ def main() -> None:
             beat_once()
             backoff = 5.0
         except urllib.error.HTTPError as e:
-            log(f"master refuse le battement: HTTP {e.code} {e.reason}")
+            log(f"master refuses the beat: HTTP {e.code} {e.reason}")
             if e.code in (401, 403):
                 time.sleep(BEAT)
                 continue
         except Exception as e:
-            log(f"master injoignable ({e!r}), nouvel essai dans {int(backoff)} s")
+            log(f"master unreachable ({e!r}), retry in {int(backoff)} s")
             time.sleep(backoff)
             backoff = min(120.0, backoff * 2)
             continue
         STOP.wait(max(1.0, BEAT - (time.time() - t0)))
-    log("arret propre")
+    log("clean shutdown")
 
 
 if __name__ == "__main__":

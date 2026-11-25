@@ -7,7 +7,7 @@ eval "$(mcfly init zsh)"
 export MCFLY_FUZZY=true
 export MCFLY_RESULTS=50
 
-# Chargement du thème P10K
+# Loading the P10K theme
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
 

@@ -5,15 +5,15 @@
   ...
 }:
 
-# Serveur média Jellyfin.
+# Jellyfin media server.
 #
-# Transcodage matériel : l'iGPU AMD Renoir (Radeon Vega) est exposé en VA-API
-# par le driver mesa (radeonsi). Profils réellement annoncés par le matériel
-# (mesuré avec `vainfo --display drm --device /dev/dri/renderD128`) :
-#   décodage VLD : MPEG2, VC1, H264, HEVC Main/Main10, VP9 Profile0/2, JPEG
-#   encodage     : H264, HEVC Main/Main10 (pas d'AV1 : Renoir = VCN 2.0)
-# Ce sont exactement les codecs activés ci-dessous. Le tone mapping HDR n'est
-# pas couvert : il exige un runtime OpenCL absent ici.
+# Hardware transcoding: the AMD Renoir iGPU (Radeon Vega) is exposed as VA-API
+# by the mesa driver (radeonsi). Profiles actually announced by the hardware
+# (measured with `vainfo --display drm --device /dev/dri/renderD128`):
+#   VLD decoding: MPEG2, VC1, H264, HEVC Main/Main10, VP9 Profile0/2, JPEG
+#   encoding    : H264, HEVC Main/Main10 (no AV1: Renoir = VCN 2.0)
+# These are exactly the codecs enabled below. HDR tone mapping is not
+# covered: it requires an OpenCL runtime absent here.
 {
   services.jellyfin = {
     enable = true;
@@ -38,24 +38,24 @@
     };
   };
 
-  # Les bibliothèques vivent dans /srv/media (groupe `media`, dossiers setgid,
-  # créés par systemd-tmpfiles : cf. services/media). Ne PAS les mettre sous
-  # /home/marc : systemd-tmpfiles refuse de créer un dossier là-bas
-  # (« unsafe path transition », exit 73) et tout service devrait recevoir un
-  # droit de traversée sur un home en 0700. Les racines à sélectionner dans
-  # l'assistant web sont : /srv/media/movies, /srv/media/tvshows, /srv/media/music.
+  # The libraries live in /srv/media (group `media`, setgid folders,
+  # created by systemd-tmpfiles: cf. services/media). Do NOT put them under
+  # /home/marc: systemd-tmpfiles refuses to create a folder there
+  # ("unsafe path transition", exit 73) and any service would need a
+  # traverse permission on a home in 0700. The roots to select in
+  # the web assistant are: /srv/media/movies, /srv/media/tvshows, /srv/media/music.
   #
-  # UMask : le module impose 0077. Le média est partagé, donc les fichiers que
-  # Jellyfin écrit dans la bibliothèque (pochettes, NFO s'ils sont activés)
-  # doivent rester lisibles et modifiables par les autres membres du groupe.
+  # UMask: the module sets 0077. The media is shared, so the files that
+  # Jellyfin writes into the library (covers, NFO if enabled)
+  # must remain readable and writable by the other members of the group.
   systemd.services.jellyfin.serviceConfig.UMask = lib.mkForce "0002";
 
-  # Exposition publique via Pangolin (newt, site "tower") : jellyfin.marcpartensky.com
-  # -> 127.0.0.1:8096. `site` omis : Pangolin affecte le site qui applique le
-  # blueprint. Cle `proxy-resources` + champ `protocol` = schema reellement
-  # compris par le Pangolin du VPS (cf. commentaire detaille dans services/newt).
-  # Pas d'auth Pangolin : Jellyfin a sa propre authentification et les apps
-  # natives (Roku, mobile) ne savent pas passer un SSO par navigateur.
+  # Public exposure via Pangolin (newt, site "tower"): jellyfin.marcpartensky.com
+  # -> 127.0.0.1:8096. `site` omitted: Pangolin assigns the site that applies the
+  # blueprint. `proxy-resources` key + `protocol` field = schema actually
+  # understood by the VPS Pangolin (cf. detailed comment in services/newt).
+  # No Pangolin auth: Jellyfin has its own authentication and the native
+  # apps (Roku, mobile) do not know how to go through a browser SSO.
   services.newt.blueprint.proxy-resources.jellyfin = {
     name = "jellyfin";
     protocol = "http";
@@ -84,10 +84,10 @@
   };
 
   networking.firewall = {
-    allowedTCPPorts = [ 8096 ]; # interface web + clients (Roku, mobile)
-    allowedUDPPorts = [ 7359 ]; # découverte automatique du serveur sur le LAN
+    allowedTCPPorts = [ 8096 ]; # web interface + clients (Roku, mobile)
+    allowedUDPPorts = [ 7359 ]; # automatic server discovery on the LAN
   };
 
-  # Pas d'ouverture directe sur Internet : tower est derrière le NAT, seul le
-  # tunnel Pangolin (newt) expose Jellyfin, et l'auth Jellyfin filtre les accès.
+  # No direct opening to the Internet: tower is behind NAT, only the
+  # Pangolin tunnel (newt) exposes Jellyfin, and the Jellyfin auth filters access.
 }

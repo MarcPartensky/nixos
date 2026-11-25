@@ -1,21 +1,21 @@
 # services/wise-mcp/default.nix
-# Serveur MCP Wise (BlanketByte/wise-mcp) lancé en stdio par Hermes sur tower.
+# Wise MCP server (BlanketByte/wise-mcp) launched over stdio by Hermes on tower.
 #
-# LECTURE SEULE : WRITES_ENABLED=false retire les tools d'écriture (devis,
-# bénéficiaires, virements, annulations). Il reste 7 tools de lecture :
-# list_profiles, list_balances, get_transactions (activité + paiements carte),
+# READ-ONLY: WRITES_ENABLED=false removes the write tools (quotes,
+# recipients, transfers, cancellations). 7 read tools remain:
+# list_profiles, list_balances, get_transactions (activity + card payments),
 # list_transfers, get_transfer, list_recipients, get_exchange_rate.
 #
-# Le serveur valide le token AU DÉMARRAGE en appelant Wise : un token absent,
-# expiré ou révoqué fait mourir le process avec « Wise rejected
-# WISE_API_TOKEN », donc le serveur ne peut pas rester inerte en silence.
+# The server validates the token AT STARTUP by calling Wise: a missing,
+# expired or revoked token makes the process die with "Wise rejected
+# WISE_API_TOKEN", so the server cannot stay silently inert.
 #
 # Token : wise.com -> Settings -> API tokens -> Add new token (Read only),
-# puis secrets/wise.yml (clé wise_api_token, chiffré vers la clé age de tower).
+# then secrets/wise.yml (key wise_api_token, encrypted to tower's age key).
 #
-# Limite connue de l'API Wise avec un token personnel (comptes EU/UK, PSD2) :
-# pas de relevé de compte (solde courant par transaction) ni de liste des
-# cartes. Le flux d'activité, lui, contient bien les paiements par carte.
+# Known limitation of the Wise API with a personal token (EU/UK accounts, PSD2):
+# no account statement (running balance per transaction) and no list of
+# cards. The activity feed, however, does contain the card payments.
 {
   config,
   pkgs,
@@ -34,12 +34,12 @@
 
     npmDepsHash = "sha256-M6ubVdsYic4NB8OBptwsS+8eaPkdX/Ev9VhjDmvCnIM=";
 
-    # Le tarball publie un dist/ déjà compilé.
+    # The published tarball ships a precompiled dist/.
     dontNpmBuild = true;
 
-    # Le tarball publié n'embarque pas de package-lock.json et garde ses
-    # devDependencies ; la lock committée à côté ne couvre que le runtime
-    # (rien n'est compilé ici), donc on retire les devDeps du manifeste.
+    # The published tarball does not include a package-lock.json and keeps its
+    # devDependencies; the lock committed alongside only covers the runtime
+    # (nothing is compiled here), so we drop the devDeps from the manifest.
     postPatch = ''
       cp ${./package-lock.json} package-lock.json
       ${lib.getExe pkgs.jq} 'del(.devDependencies)' package.json > package.json.tmp

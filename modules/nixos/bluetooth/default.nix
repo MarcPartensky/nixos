@@ -13,12 +13,12 @@
       FastConnectable = true;
       Disable = "input";
       ClassicBondedOnly = false;
-      # Indispensable pour l'appairage avec la Switch
+      # Essential for pairing with the Switch
       Class = "0x000540";
       # ControllerMode = "dual";
       # Enable = "Source,Sink,Media,Socket";
-      AutoConnect = true; # Tente de se connecter aux périphériques connus
-      # Tente de se reconnecter même si le périphérique semble "éteint"
+      AutoConnect = true; # Tries to connect to known devices
+      # Tries to reconnect even if the device seems "off"
       ReconnectAttempts = 7;
       ReconnectIntervals = "1, 2, 4, 8, 16, 32, 64";
     };
@@ -41,7 +41,7 @@
       "bluez5.enable-sbc-xq" = true;
       "bluez5.enable-msbc" = true;
       "bluez5.enable-hw-volume" = true;
-      "bluez5.roles" = ["a2dp_sink" "a2dp_source" "hsp_hs" "hsp_ag" "hfp_hf" "hfp_ag"]; # bap_* retirés
+      "bluez5.roles" = ["a2dp_sink" "a2dp_source" "hsp_hs" "hsp_ag" "hfp_hf" "hfp_ag"]; # bap_* removed
     };
   };
   systemd.user.services.mpris-proxy = {
@@ -58,9 +58,9 @@
     serviceConfig = {
       Type = "oneshot";
       ExecStart = pkgs.writeShellScript "bt-auto" ''
-        # On attend que l'agent blueman soit bien up
+        # Wait until the blueman agent is really up
         sleep 5
-        # On tente de connecter tous les appareils de confiance (trusted)
+        # Try to connect all trusted devices
         ${pkgs.bluez}/bin/bluetoothctl devices Paired | cut -d ' ' -f 2 | while read -r mac; do
           ${pkgs.bluez}/bin/bluetoothctl connect "$mac"
         done

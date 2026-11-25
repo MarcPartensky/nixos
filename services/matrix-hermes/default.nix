@@ -1,16 +1,16 @@
 # services/matrix-hermes/default.nix
-# Accès de l'agent Hermes au serveur Matrix de tower.
+# Access of the Hermes agent to tower's Matrix server.
 #
-# Principe : un compte admin dédié @hermes-admin est créé automatiquement au boot à
-# partir du registration_shared_secret de Synapse (le secret vit dans
-# /var/lib/matrix-synapse/secrets.yaml, lisible par root seulement, d'où le
-# service root). Son access_token est déposé dans un fichier lisible par le seul
-# utilisateur hermes. Aucun mot de passe de marc n'est nécessaire pour ça.
+# Principle: a dedicated admin account @hermes-admin is created automatically at boot
+# from Synapse's registration_shared_secret (the secret lives in
+# /var/lib/matrix-synapse/secrets.yaml, readable by root only, hence the
+# root service). Its access_token is deposited in a file readable by the
+# hermes user only. No marc password is needed for that.
 #
-# À partir de ce token, l'admin API de Synapse permet entre autres de fabriquer
-# un token pour n'importe quel compte local, @marc compris :
+# From this token, the Synapse admin API allows, among other things, forging
+# a token for any local account, including @marc:
 #   POST /_synapse/admin/v1/users/@marc:matrix.marcpartensky.com/login
-# (cf. skill hermes-matrix-access pour les commandes prêtes à l'emploi)
+# (cf. skill hermes-matrix-access for ready-to-use commands)
 {
   config,
   pkgs,
@@ -20,14 +20,14 @@
   dataDir = "/var/lib/hermes/.matrix";
   baseUrl = "http://127.0.0.1:8008";
   serverName = config.services.matrix-synapse.settings.server_name;
-  # compte dédié, distinct du bot @hermes créé côté services/hermes (qui n'est
-  # pas admin) : celui-ci est le point d'entrée admin de l'agent.
+  # dedicated account, distinct from the @hermes bot created in services/hermes
+  # (which is not admin): this one is the agent's admin entry point.
   adminUser = "hermes-admin";
-  # compte bot existant, promu admin par ce service pour que son token sops
-  # serve aussi à administrer le serveur
+  # existing bot account, promoted to admin by this service so that its sops token
+  # also serves to administer the server
   promoteUser = "hermes";
 
-  # Outil unique pour parler à l'API Matrix depuis une session Hermes :
+  # Single tool to talk to the Matrix API from a Hermes session:
   # mxc api/as/rooms/users/members/info/send (cf. skill hermes-matrix-access)
   mxc = pkgs.writeShellScriptBin "mxc" ''
     set -euo pipefail
@@ -39,7 +39,7 @@
 
     die() { echo "mxc: $*" >&2; exit 1; }
 
-    [ -r "$admin_token" ] || die "token admin illisible ($admin_token)"
+    [ -r "$admin_token" ] || die "admin token unreadable ($admin_token)"
 
     api() {
       local method="$1" path="$2" body="''${3:-}"
@@ -67,7 +67,7 @@
       local tok
       tok=$(api POST "/_synapse/admin/v1/users/$uid/login" \
         "$(jq -n --arg d "MXC-$localpart" '{device_id: $d}')" | jq -r '.access_token // empty')
-      [ -n "$tok" ] || die "pas de token pour $localpart"
+      [ -n "$tok" ] || die "no token for $localpart"
       umask 077
       printf '%s' "$tok" > "$cache"
       chmod 400 "$cache"
@@ -79,16 +79,16 @@
     case "$cmd" in
       help|-h|--help)
         cat <<'EOF'
-mxc <commande> [args]
-  api <methode> <chemin> [json]   appel brut avec le token admin
-  as <localpart>                  access token d'un compte local (@marc par ex.)
-  rooms [limite]                  liste des salles du serveur
-  users [limite]                  liste des comptes locaux
-  members <room_id>               membres d'une salle
-  info <room_id>                  details d'une salle
-  send <room_id> <texte>          envoie un message en tant que @marc
-                                  (salles NON chiffrees uniquement : sur une salle
-                                  chiffree, un client sans E2EE passe mal)
+mxc <command> [args]
+  api <method> <path> [json]      raw call with the admin token
+  as <localpart>                  access token of a local account (@marc for ex.)
+  rooms [limit]                   list of the server's rooms
+  users [limit]                   list of local accounts
+  members <room_id>               members of a room
+  info <room_id>                  details of a room
+  send <room_id> <text>           sends a message as @marc
+                                  (NON encrypted rooms only: on an encrypted
+                                  room, a client without E2EE does poorly)
 EOF
         ;;
       api)
@@ -99,7 +99,7 @@ EOF
         ;;
       rooms)
         api GET "/_synapse/admin/v1/rooms?limit=''${1:-100}" \
-          | jq -r '.rooms[] | "\(.room_id)\t\(.name // "-")\t\(.joined_members) membres"'
+          | jq -r '.rooms[] | "\(.room_id)\t\(.name // "-")\t\(.joined_members) members"'
         ;;
       users)
         api GET "/_synapse/admin/v2/users?limit=''${1:-100}" \
@@ -125,7 +125,7 @@ EOF
           | jq -c '{event_id}'
         ;;
       *)
-        die "commande inconnue : $cmd (voir mxc help)"
+        die "unknown command: $cmd (see mxc help)"
         ;;
     esac
   '';
@@ -133,7 +133,7 @@ in {
   environment.systemPackages = [mxc];
 
   systemd.services.matrix-hermes-admin-token = {
-    description = "Compte admin Matrix @hermes-admin et token d'API pour l'agent";
+    description = "Matrix admin account @hermes-admin and API token for the agent";
     wantedBy = ["multi-user.target"];
     after = ["matrix-synapse.service"];
     requires = ["matrix-synapse.service"];
@@ -149,7 +149,7 @@ in {
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      # pas d'After=network-online : on tape en loopback sur synapse local
+      # no After=network-online: we hit local synapse over loopback
     };
 
     script = ''
@@ -161,7 +161,7 @@ in {
 
       urlencode() { jq -rn --arg v "$1" '$v|@uri'; }
 
-      # promeut le compte bot @hermes en admin du serveur ; idempotent
+      # promotes the @hermes bot account to server admin; idempotent
       promote() {
         local token="$1"
         local target
@@ -170,7 +170,7 @@ in {
         isadmin=$(curl -s -H "Authorization: Bearer $token" \
           "$base/_synapse/admin/v2/users/$target" | jq -r '.admin // false')
         if [ "$isadmin" = true ]; then
-          echo "@${promoteUser} déjà admin"
+          echo "@${promoteUser} already admin"
           return 0
         fi
         local code
@@ -178,18 +178,18 @@ in {
           -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
           -d '{"admin": true}' \
           "$base/_synapse/admin/v1/users/$target/admin" || true)
-        echo "promotion admin de @${promoteUser} : http $code"
+        echo "admin promotion of @${promoteUser}: http $code"
       }
 
-      # idempotence : si le token en place fonctionne encore, ne rien recréer
-      # (sinon on ajouterait un appareil à chaque boot)
+      # idempotence: if the token in place still works, recreate nothing
+      # (otherwise a device would be added on every boot)
       if [ -s "$dir/admin_token" ]; then
         token=$(cat "$dir/admin_token")
         code=$(curl -s -o /dev/null -w '%{http_code}' \
           -H "Authorization: Bearer $token" \
           "$base/_synapse/admin/v1/server_version" || true)
         if [ "$code" = 200 ]; then
-          echo "token admin @${adminUser} toujours valide"
+          echo "admin token @${adminUser} still valid"
           promote "$token"
           exit 0
         fi
@@ -202,7 +202,7 @@ in {
 
       secret=$(sed -n 's/^registration_shared_secret: *//p' /var/lib/matrix-synapse/secrets.yaml)
       if [ -z "$secret" ]; then
-        echo "registration_shared_secret introuvable, abandon"
+        echo "registration_shared_secret not found, aborting"
         exit 1
       fi
 
@@ -226,19 +226,19 @@ in {
 
       if [ "$code" = 200 ]; then
         token=$(jq -r '.access_token // empty' "$response")
-        echo "compte @${adminUser} créé (admin)"
+        echo "account @${adminUser} created (admin)"
       else
-        # 400 : le compte existe déjà, on se connecte simplement dessus
+        # 400: the account already exists, we simply log in on it
         token=$(curl -s -X POST -H 'Content-Type: application/json' \
           -d "$(jq -n --arg u "${adminUser}" --arg p "$password" \
                 '{type: "m.login.password", identifier: {type: "m.id.user", user: $u}, password: $p, device_id: "HERMESAGENT"}')" \
           "$base/_matrix/client/v3/login" | jq -r '.access_token // empty')
-        echo "compte @${adminUser} déjà présent, connexion (register http $code)"
+        echo "account @${adminUser} already present, login (register http $code)"
       fi
       rm -f "$response"
 
       if [ -z "$token" ] || [ "$token" = null ]; then
-        echo "échec : aucun access_token obtenu"
+        echo "failure: no access_token obtained"
         exit 1
       fi
 
@@ -248,20 +248,20 @@ in {
 
       promote "$token"
 
-      # petit rappel sur disque de ce à quoi sert ce compte
+      # small reminder on disk of what this account is for
       cat > "$dir/README" <<'EOF'
-admin_token              access_token du compte admin @hermes-admin (0400 hermes)
-hermes_admin_password    mot de passe de @hermes-admin, généré par le service
-cf. skill hermes-matrix-access pour les appels admin API prêts à l'emploi
+admin_token              access_token of the admin account @hermes-admin (0400 hermes)
+hermes_admin_password    password of @hermes-admin, generated by the service
+cf. skill hermes-matrix-access for ready-to-use admin API calls
 EOF
       chown hermes:hermes "$dir/README"
       chmod 400 "$dir/README"
     '';
   };
 
-  # Le mot de passe de @marc, nécessaire au login de pantalaimon (proxy E2EE).
-  # Volontairement commenté tant que la clé n'existe pas dans secrets/tower.yml :
-  # sops-nix fait échouer l'activation si un secret déclaré est absent du fichier.
+  # The password of @marc, needed for the pantalaimon login (E2EE proxy).
+  # Deliberately commented out as long as the key does not exist in secrets/tower.yml:
+  # sops-nix fails the activation if a declared secret is absent from the file.
   #
   # sops.secrets."matrix_marc_password" = {
   #   owner = "hermes";

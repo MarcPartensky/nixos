@@ -27,19 +27,19 @@ in {
       description = "Enable ACME/Let's Encrypt";
     };
 
-    # Ecoute locale, pour une exposition sans ACME (typiquement derriere un
-    # reverse proxy qui porte deja le TLS, ex. newt/Pangolin).
-    # listenPort = null garde les defauts du module nginx (0.0.0.0:80 + 443 ssl).
+    # Local listen, for an exposure without ACME (typically behind a
+    # reverse proxy that already carries the TLS, e.g. newt/Pangolin).
+    # listenPort = null keeps the nginx module defaults (0.0.0.0:80 + 443 ssl).
     listenAddress = mkOption {
       type = types.str;
       default = "127.0.0.1";
-      description = "Adresse d'ecoute quand listenPort est defini";
+      description = "Listen address when listenPort is defined";
     };
 
     listenPort = mkOption {
       type = types.nullOr types.port;
       default = null;
-      description = "Port d'ecoute local (HTTP) ; null = defauts nginx (80/443)";
+      description = "Local listen port (HTTP); null = nginx defaults (80/443)";
     };
 
     # WebSocket support
@@ -72,11 +72,11 @@ in {
           locations."/" = {
             proxyPass = cfg.upstream;
             proxyWebsockets = cfg.websocket;
-            # recommendedProxySettings pose deja proxy_http_version, Upgrade,
-            # Connection, Host, X-Real-IP, X-Forwarded-* (includes) : les
-            # redeclarer fait echouer « nginx -t » (directive is duplicate) et
-            # tombe TOUT nginx, donc tout ce qui est derriere. Ne garder ici que
-            # ce que le module nginx ne pose pas.
+            # recommendedProxySettings already sets proxy_http_version, Upgrade,
+            # Connection, Host, X-Real-IP, X-Forwarded-* (includes): redeclaring
+            # them makes "nginx -t" fail (directive is duplicate) and
+            # takes down ALL nginx, hence everything behind it. Keep here only
+            # what the nginx module does not set.
             extraConfig = ''
               proxy_buffering off;
               proxy_read_timeout 86400;

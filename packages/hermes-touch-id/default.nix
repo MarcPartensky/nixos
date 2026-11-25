@@ -10,8 +10,8 @@ in
     version = "1.0.0";
     src = ./.;
 
-    # LocalAuthentication n'est pas dans les frameworks « legacy » de nixpkgs :
-    # on compile contre le SDK complet (pkgs.apple-sdk) fourni par nixpkgs-darwin.
+    # LocalAuthentication is not in nixpkgs' "legacy" frameworks:
+    # we compile against the full SDK (pkgs.apple-sdk) provided by nixpkgs-darwin.
     buildPhase = ''
       runHook preBuild
       $CC -fobjc-arc -O2 ''${NIX_CFLAGS_COMPILE:-} \
@@ -29,7 +29,7 @@ in
 
     doCheck = false;
     meta = {
-      description = "Validation biometrique native (Touch ID) pour les approbations root d'Hermes";
+      description = "Native biometric validation (Touch ID) for Hermes root approvals";
       platforms = lib.platforms.darwin;
       mainProgram = "hermes-touch-id";
     };

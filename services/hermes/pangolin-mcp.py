@@ -1,10 +1,10 @@
-"""Serveur MCP Pangolin : Integration API v1 self-hosted.
+"""Pangolin MCP server: self-hosted Integration API v1.
 
-Tools curatés (sites, ressources, targets, users, roles,
-blueprints...) + un tool auto-généré par endpoint depuis
-/openapi.json de l'instance + api_request en échappatoire.
-La clé (root API key) est relue à chaque appel depuis le
-fichier sops.
+Curated tools (sites, resources, targets, users, roles,
+blueprints...) + one auto-generated tool per endpoint from
+the instance's /openapi.json + api_request as an escape hatch.
+The key (root API key) is re-read on every call from the
+sops file.
 """
 
 import base64
@@ -42,9 +42,9 @@ def _api_key():
     key = key or os.environ.get("PANGOLIN_API_KEY", "")
     if not key:
         raise RuntimeError(
-            "Clé API absente : "
+            "API key missing: "
             + KEY_FILE
-            + " illisible et PANGOLIN_API_KEY vide"
+            + " unreadable and PANGOLIN_API_KEY empty"
         )
     return key
 
@@ -71,12 +71,12 @@ def _request(method, path, body=None, query=None, auth=True,
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="replace")
         raise RuntimeError(
-            "HTTP %s sur %s %s : %s"
+            "HTTP %s on %s %s: %s"
             % (e.code, method, path, detail[:600])
         )
     except OSError as e:
         raise RuntimeError(
-            "%s %s injoignable : %s" % (method, path, e)
+            "%s %s unreachable: %s" % (method, path, e)
         )
     if not raw:
         return {"ok": True}
@@ -104,16 +104,16 @@ def _call(method, path, body=None, query=None, timeout=60):
 def _write():
     if READ_ONLY:
         raise RuntimeError(
-            "PANGOLIN_READ_ONLY=1 : écriture refusée"
+            "PANGOLIN_READ_ONLY=1: write refused"
         )
 
 
 @mcp.tool()
 def status() -> dict:
-    """Teste la connexion à l'API Pangolin (clé + URL de base).
+    """Tests the connection to the Pangolin API (key + base URL).
 
-    Renvoie base_url, read_only et le nombre d'organisations
-    visibles ; en cas d'échec l'erreur HTTP brute remonte ici.
+    Returns base_url, read_only and the number of visible
+    organizations; on failure the raw HTTP error is raised here.
     """
     out = {"base_url": BASE_URL, "read_only": READ_ONLY}
     try:
@@ -130,25 +130,25 @@ def status() -> dict:
 
 @mcp.tool()
 def list_orgs() -> dict:
-    """Liste les organisations (orgId, nom, compteurs d'usage)."""
+    """Lists the organizations (orgId, name, usage counters)."""
     return _call("GET", "/orgs")
 
 
 @mcp.tool()
 def get_org(org_id: str) -> dict:
-    """Détail d'une organisation par son orgId."""
+    """Details of an organization by its orgId."""
     return _call("GET", "/org/" + org_id)
 
 
 @mcp.tool()
 def list_sites(org_id: str) -> dict:
-    """Liste les sites de l'organisation (siteId, niceId, type)."""
+    """Lists the organization's sites (siteId, niceId, type)."""
     return _call("GET", "/org/" + org_id + "/sites")
 
 
 @mcp.tool()
 def get_site(org_id: str, nice_id: str) -> dict:
-    """Détail d'un site par orgId + niceId (id lisible)."""
+    """Details of a site by orgId + niceId (readable id)."""
     return _call(
         "GET", "/org/" + org_id + "/site/" + nice_id
     )
@@ -158,11 +158,11 @@ def get_site(org_id: str, nice_id: str) -> dict:
 def create_site(
     org_id: str, name: str, subnet: str = "", exit_node_id: int = 0
 ) -> dict:
-    """Crée un site de type newt (tunnel) dans l'organisation.
+    """Creates a newt-type site (tunnel) in the organization.
 
-    Renvoie newtId + secret à réutiliser dans la config newt de
-    la machine. subnet/exit_node_id : défauts via
-    pick_site_defaults. Effet de bord (delete_site pour annuler).
+    Returns newtId + secret to reuse in the machine's newt
+    config. subnet/exit_node_id: defaults via
+    pick_site_defaults. Side effect (delete_site to cancel).
     """
     _write()
     body = {"name": name, "type": "newt"}
@@ -175,16 +175,16 @@ def create_site(
 
 @mcp.tool()
 def pick_site_defaults(org_id: str) -> dict:
-    """Défauts pour créer un site (exit node, subnet, newtId...).
+    """Defaults for creating a site (exit node, subnet, newtId...).
 
-    À lire avant create_site pour reprendre subnet/exitNodeId.
+    Read before create_site to reuse subnet/exitNodeId.
     """
     return _call("GET", "/org/" + org_id + "/pick-site-defaults")
 
 
 @mcp.tool()
 def approve_site(site_id: int) -> dict:
-    """Approuve un site en attente (et active ses ressources)."""
+    """Approves a pending site (and activates its resources)."""
     _write()
     return _call(
         "POST", "/site/%d/approve" % site_id, {}
@@ -193,9 +193,9 @@ def approve_site(site_id: int) -> dict:
 
 @mcp.tool()
 def delete_site(site_id: int) -> dict:
-    """Supprime un site et toutes ses données associées.
+    """Deletes a site and all its associated data.
 
-    Irréversible.
+    Irreversible.
     """
     _write()
     return _call("DELETE", "/site/%d" % site_id)
@@ -203,13 +203,13 @@ def delete_site(site_id: int) -> dict:
 
 @mcp.tool()
 def list_domains(org_id: str) -> dict:
-    """Liste les domaines de l'organisation (domainId, base)."""
+    """Lists the organization's domains (domainId, base)."""
     return _call("GET", "/org/" + org_id + "/domains")
 
 
 @mcp.tool()
 def list_resources(org_id: str) -> dict:
-    """Liste les ressources publiques de l'organisation."""
+    """Lists the organization's public resources."""
     return _call(
         "GET", "/org/" + org_id + "/public-resources"
     )
@@ -217,7 +217,7 @@ def list_resources(org_id: str) -> dict:
 
 @mcp.tool()
 def get_resource(resource_id: int) -> dict:
-    """Détail d'une ressource publique (avec targets et policy)."""
+    """Details of a public resource (with targets and policy)."""
     return _call(
         "GET", "/public-resource/%d" % resource_id
     )
@@ -231,11 +231,11 @@ def create_resource(
     subdomain: str = "",
     domain_id: str = "",
 ) -> dict:
-    """Crée une ressource publique dans l'organisation.
+    """Creates a public resource in the organization.
 
-    mode : http (défaut), ssh, rdp, vnc, tcp, udp, inference.
-    subdomain/domain_id optionnels (auto sinon). Ajouter ensuite
-    la cible avec add_target. Effet de bord.
+    mode: http (default), ssh, rdp, vnc, tcp, udp, inference.
+    subdomain/domain_id optional (auto otherwise). Then add
+    the target with add_target. Side effect.
     """
     _write()
     body = {"name": name, "mode": mode}
@@ -250,10 +250,10 @@ def create_resource(
 
 @mcp.tool()
 def update_resource(resource_id: int, fields: dict) -> dict:
-    """Met à jour une ressource publique (POST partiel).
+    """Updates a public resource (partial POST).
 
-    fields : dict des champs modifiés, ex. {"name": "x"} ou
-    {"subdomain": "y", "domainId": "1"}. Effet de bord.
+    fields: dict of modified fields, e.g. {"name": "x"} or
+    {"subdomain": "y", "domainId": "1"}. Side effect.
     """
     _write()
     return _call(
@@ -263,9 +263,9 @@ def update_resource(resource_id: int, fields: dict) -> dict:
 
 @mcp.tool()
 def delete_resource(resource_id: int) -> dict:
-    """Supprime une ressource publique et ses targets.
+    """Deletes a public resource and its targets.
 
-    Irréversible.
+    Irreversible.
     """
     _write()
     return _call(
@@ -275,7 +275,7 @@ def delete_resource(resource_id: int) -> dict:
 
 @mcp.tool()
 def list_targets(resource_id: int) -> dict:
-    """Liste les cibles (targets) d'une ressource publique."""
+    """Lists the targets of a public resource."""
     return _call(
         "GET", "/public-resource/%d/targets" % resource_id
     )
@@ -289,11 +289,11 @@ def add_target(
     port: int,
     method: str = "http",
 ) -> dict:
-    """Ajoute une cible (target) à une ressource publique.
+    """Adds a target to a public resource.
 
-    site_id : site qui joint la cible. ip/port : destination vue
-    depuis ce site (ex. "127.0.0.1", 8070). method : http, ssh,
-    rdp, vnc. Effet de bord.
+    site_id: site that reaches the target. ip/port: destination
+    seen from that site (e.g. "127.0.0.1", 8070). method: http, ssh,
+    rdp, vnc. Side effect.
     """
     _write()
     body = {
@@ -309,10 +309,10 @@ def add_target(
 
 @mcp.tool()
 def update_target(target_id: int, fields: dict) -> dict:
-    """Met à jour une cible (target) par targetId.
+    """Updates a target by targetId.
 
-    fields : dict des champs modifiés (ip, port, enabled...).
-    Effet de bord.
+    fields: dict of modified fields (ip, port, enabled...).
+    Side effect.
     """
     _write()
     return _call(
@@ -322,14 +322,14 @@ def update_target(target_id: int, fields: dict) -> dict:
 
 @mcp.tool()
 def delete_target(target_id: int) -> dict:
-    """Supprime une cible (target). Irréversible."""
+    """Deletes a target. Irreversible."""
     _write()
     return _call("DELETE", "/target/%d" % target_id)
 
 
 @mcp.tool()
 def list_private_resources(org_id: str) -> dict:
-    """Liste les ressources privées (site resources) de l'org."""
+    """Lists the organization's private resources (site resources)."""
     return _call(
         "GET", "/org/" + org_id + "/private-resources"
     )
@@ -353,16 +353,16 @@ def create_private_resource(
     role_ids: list | None = None,
     client_ids: list | None = None,
 ) -> dict:
-    """Crée une ressource privée (site resource) dans l'org.
+    """Creates a private resource (site resource) in the org.
 
-    mode : host, cidr, http ou ssh. destination/destination_port :
-    hôte et port joints par le site ; alias : FQDN interne
-    optionnel ; domain_id/scheme : requis pour le mode http
-    (ex. domain1 + http) ; subdomain : sous-domaine à réserver
-    dans domain_id (ex. cloud → cloud.marcpartensky.com), exclusif
-    avec alias ; tcp_range/udp_range : plages "1000-2000" ;
-    user_ids/role_ids/client_ids : accès (vides par défaut).
-    Effet de bord.
+    mode: host, cidr, http or ssh. destination/destination_port:
+    host and port reached by the site; alias: optional internal
+    FQDN; domain_id/scheme: required for http mode
+    (e.g. domain1 + http); subdomain: subdomain to reserve
+    in domain_id (e.g. cloud -> cloud.marcpartensky.com), exclusive
+    with alias; tcp_range/udp_range: ranges "1000-2000";
+    user_ids/role_ids/client_ids: access (empty by default).
+    Side effect.
     """
     _write()
     body = {
@@ -396,7 +396,7 @@ def create_private_resource(
 
 @mcp.tool()
 def get_private_resource(org_id: str, site_resource_id: int) -> dict:
-    """Détail d'une ressource privée par siteResourceId."""
+    """Details of a private resource by siteResourceId."""
     return _call(
         "GET",
         "/private-resource/%d" % site_resource_id,
@@ -406,7 +406,7 @@ def get_private_resource(org_id: str, site_resource_id: int) -> dict:
 
 @mcp.tool()
 def delete_private_resource(site_resource_id: int) -> dict:
-    """Supprime une ressource privée. Irréversible."""
+    """Deletes a private resource. Irreversible."""
     _write()
     return _call(
         "DELETE", "/private-resource/%d" % site_resource_id
@@ -415,11 +415,11 @@ def delete_private_resource(site_resource_id: int) -> dict:
 
 @mcp.tool()
 def update_private_resource(site_resource_id: int, fields: dict) -> dict:
-    """Met à jour une ressource privée (POST partiel).
+    """Updates a private resource (partial POST).
 
-    fields : champs à modifier (ex. {"subdomain": "cloud.p2p"} ou
-    {"enabled": false}) ; les champs omis restent inchangés. Pour
-    les modes http, domainId + subdomain vont ensemble. Effet de bord.
+    fields: fields to modify (e.g. {"subdomain": "cloud.p2p"} or
+    {"enabled": false}); omitted fields stay unchanged. For
+    http modes, domainId + subdomain go together. Side effect.
     """
     _write()
     return _call(
@@ -429,13 +429,13 @@ def update_private_resource(site_resource_id: int, fields: dict) -> dict:
 
 @mcp.tool()
 def list_roles(org_id: str) -> dict:
-    """Liste les rôles de l'organisation (roleId, nom)."""
+    """Lists the organization's roles (roleId, name)."""
     return _call("GET", "/org/" + org_id + "/roles")
 
 
 @mcp.tool()
 def list_users(org_id: str) -> dict:
-    """Liste les utilisateurs de l'organisation."""
+    """Lists the organization's users."""
     return _call("GET", "/org/" + org_id + "/users")
 
 
@@ -447,10 +447,10 @@ def create_user(
     name: str = "",
     role_ids: list | None = None,
 ) -> dict:
-    """Crée un utilisateur interne dans l'organisation.
+    """Creates an internal user in the organization.
 
-    Sans mot de passe ni invitation envoyée, il ne peut pas se
-    connecter. Effet de bord, vérifier username/email avant.
+    With no password and no invitation sent, it cannot log
+    in. Side effect, check username/email first.
     """
     _write()
     body = {"username": username}
@@ -465,17 +465,17 @@ def create_user(
 
 @mcp.tool()
 def list_blueprints(org_id: str) -> dict:
-    """Liste les blueprints appliqués à l'organisation."""
+    """Lists the blueprints applied to the organization."""
     return _call("GET", "/org/" + org_id + "/blueprints")
 
 
 @mcp.tool()
 def apply_blueprint(org_id: str, blueprint_json: str) -> dict:
-    """Applique un blueprint JSON à l'organisation.
+    """Applies a JSON blueprint to the organization.
 
-    blueprint_json : JSON brut en texte (pas du YAML ni du
-    base64, l'encodage base64 est fait ici). Peut créer/modifier
-    sites, ressources et cibles. Effet de bord important.
+    blueprint_json: raw JSON as text (not YAML nor
+    base64, base64 encoding is done here). Can create/modify
+    sites, resources and targets. Major side effect.
     """
     _write()
     b64 = base64.b64encode(
@@ -489,7 +489,7 @@ def apply_blueprint(org_id: str, blueprint_json: str) -> dict:
 
 @mcp.tool()
 def list_api_keys(org_id: str) -> dict:
-    """Liste les clés API de l'org (jamais la valeur, l'id seul)."""
+    """Lists the org's API keys (never the value, only the id)."""
     return _call("GET", "/org/" + org_id + "/api-keys")
 
 
@@ -500,16 +500,16 @@ def api_request(
     body: dict | None = None,
     query: dict | None = None,
 ) -> dict | list | str:
-    """Appelle un endpoint v1 arbitraire (couverture complète).
+    """Calls an arbitrary v1 endpoint (full coverage).
 
-    method : GET, POST, PUT, PATCH ou DELETE. path : chemin
-    après /v1, ex. "/org/{orgId}/sites". body/query : dicts
-    JSON optionnels. Voir list_api_endpoints pour trouver la
-    route adéquate.
+    method: GET, POST, PUT, PATCH or DELETE. path: path
+    after /v1, e.g. "/org/{orgId}/sites". body/query: optional
+    JSON dicts. See list_api_endpoints to find the
+    appropriate route.
     """
     m = method.upper()
     if m not in METHODS:
-        raise RuntimeError("méthode non supportée : " + method)
+        raise RuntimeError("unsupported method: " + method)
     if not path.startswith("/"):
         path = "/" + path
     if m != "GET":
@@ -519,10 +519,10 @@ def api_request(
 
 @mcp.tool()
 def list_api_endpoints(search: str = "") -> list:
-    """Liste les endpoints de la spec de l'instance (filtré).
+    """Lists the instance spec's endpoints (filtered).
 
-    Renvoie "METHOD /chemin | résumé" des opérations contenant
-    `search` (défaut : tout, plafonné à 300). Sert à préparer un
+    Returns "METHOD /path | summary" of the operations containing
+    `search` (default: everything, capped at 300). Used to prepare an
     api_request.
     """
     spec = _request(
@@ -591,7 +591,7 @@ def _endpoint_fn(method, path_tpl, param_names):
 def _register(fn, name, doc):
     if hasattr(mcp, "add_tool"):
         mcp.add_tool(fn, name=name, description=doc)
-    else:  # pragma: no cover - vieux FastMCP
+    else:  # pragma: no cover - old FastMCP
         fn.__name__ = name
         fn.__doc__ = doc
         mcp.tool()(fn)
@@ -631,8 +631,8 @@ def _register_endpoint_tools():
             if tags:
                 bits.append("tags: " + tags)
             bits.append(
-                "Auto-généré depuis /openapi.json (spec de "
-                "l'instance) ; body/query = dicts JSON optionnels."
+                "Auto-generated from /openapi.json (instance "
+                "spec); body/query = optional JSON dicts."
             )
             fn = _endpoint_fn(
                 m, path_tpl, _path_params(path_tpl)

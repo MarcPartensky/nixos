@@ -58,22 +58,22 @@
     "layout.css.prefers-color-scheme.content-override" = 0;
     "extensions.activeThemeID" = "firefox-compact-dark@mozilla.org";
 
-    # Configuration des telechargements
+    # Download configuration
     "browser.download.dir" = "/home/marc/downloads";
     "browser.download.folderList" = 2;
     "browser.download.useDownloadDir" = true;
     "browser.download.manager.showWhenStarting" = false;
     "browser.helperApps.alwaysAsk.force" = false;
 
-    # Confidentialite (Hardening LibreWolf/Arkenfox)
-    # Pas besoin de se reco apres un reboot
+    # Privacy (LibreWolf/Arkenfox hardening)
+    # No need to log back in after a reboot
     "network.cookie.cookieBehavior" = 1;
     "privacy.clearOnShutdown.cookies" = false;
     "privacy.clearOnShutdown.history" = false;
     "privacy.sanitize.sanitizeOnShutdown" = false;
     "privacy.resistFingerprinting" = false;
 
-    # Le reste on protege
+    # The rest we protect
     "privacy.trackingprotection.enabled" = true;
     "privacy.trackingprotection.fingerprinting.enabled" = true;
     "privacy.trackingprotection.cryptomining.enabled" = true;
@@ -82,14 +82,14 @@
     "network.prefetch-next" = false;
     "dom.event.clipboardevents.enabled" = false;
 
-    # Telemetrie et services inutiles
+    # Telemetry and useless services
     "browser.newtabpage.activity-stream.feeds.telemetry" = false;
     "browser.ping-centre.telemetry" = false;
     "extensions.pocket.enabled" = false;
     "toolkit.telemetry.enabled" = false;
     "toolkit.telemetry.unified" = false;
 
-    # Interface et divers
+    # Interface and misc
     "extensions.autoDisableScopes" = 0;
     "toolkit.legacyUserProfileCustomizations.stylesheets" = true;
     "browser.startup.homepage" = "https://duckduckgo.com";
@@ -101,7 +101,7 @@
     "signon.rememberSignons" = false;
   };
 
-  # LA FONCTION MAGIQUE
+  # THE MAGIC FUNCTION
   mkPWA = {
     name,
     url,
