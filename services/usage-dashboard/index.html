@@ -145,10 +145,15 @@
   input[type="search"]:focus { outline:none; border-color:var(--lavender); }
   .table-tools { display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
 
-  /* Vue par session : le titre est long et porte l'information, il est donc
-     tronque visuellement mais lisible en entier au survol. */
+  /* Sessions view: the title is long and carries the information, so it is
+     visually truncated but fully readable on hover. The technical id is
+     hidden by default (unreadable and of no everyday interest): a click on the
+     title cell reveals it. */
   #sessions td .st, #sessions td .sid { display:block; max-width:430px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #sessions td .sid { color:var(--overlay0); font-size:11px; font-variant-numeric:tabular-nums; }
+  #sessions td .sid { color:var(--overlay0); font-size:11px; font-variant-numeric:tabular-nums; display:none; }
+  #sessions td.show-id .sid { display:block; }
+  #sessions td.sess { cursor:pointer; }
+  #sessions td.sess:hover .st { color:var(--lavender); }
 
   .plan { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px 22px; }
   .plan .lim .head { display:flex; justify-content:space-between; gap:8px; font-size:13px; }
@@ -173,17 +178,17 @@
   <header>
     <div>
       <h1>Usage <span class="accent">LLM</span></h1>
-      <div class="sub">tower · Hermes · tous les providers · coût par modèle</div>
+      <div class="sub">tower · Hermes · all providers · cost per model</div>
     </div>
     <div class="spacer"></div>
     <div class="seg" id="spans">
       <button data-span="1">24 h</button>
-      <button data-span="7">7 j</button>
-      <button data-span="30" class="on">30 j</button>
-      <button data-span="90">90 j</button>
+      <button data-span="7">7 d</button>
+      <button data-span="30" class="on">30 d</button>
+      <button data-span="90">90 d</button>
     </div>
-    <div class="sub" id="freshness">chargement…</div>
-    <button id="reload" title="Rafraîchir maintenant">rafraîchir</button>
+    <div class="sub" id="freshness">loading…</div>
+    <button id="reload" title="Refresh now">refresh</button>
   </header>
 
   <div class="banner" id="banner"></div>
@@ -191,7 +196,7 @@
   <div class="kpis" id="kpis"></div>
 
   <div id="claude-plan-block" style="display:none">
-    <h2>Forfait Claude <span class="hint" id="claude-plan-hint"></span></h2>
+    <h2>Claude plan <span class="hint" id="claude-plan-hint"></span></h2>
     <div class="card" id="claude-plan"></div>
   </div>
 
@@ -199,15 +204,15 @@
   <div class="pgrid" id="providers"></div>
   <div class="recharge" id="recharge"></div>
 
-  <h2>Dépense quotidienne <span class="hint">une barre par jour, empilée ; survolez pour le détail</span></h2>
+  <h2>Daily spend <span class="hint">one bar per day, stacked; hover for details</span></h2>
   <div class="card">
     <div class="chart-tools">
       <div class="seg" id="stack-by">
-        <button data-by="provider" class="on">par provider</button>
-        <button data-by="model">par modèle</button>
+        <button data-by="provider" class="on">by provider</button>
+        <button data-by="model">by model</button>
       </div>
       <div class="seg" id="unit">
-        <button data-unit="cost" class="on">coût</button>
+        <button data-unit="cost" class="on">cost</button>
         <button data-unit="tokens">tokens</button>
       </div>
       <span class="muted" id="chart-scale" style="align-self:center;font-size:11.5px"></span>
@@ -220,7 +225,7 @@
     <div class="legend" id="chart-legend"></div>
   </div>
 
-  <h2>Par modèle <span class="hint" id="models-hint"></span></h2>
+  <h2>By model <span class="hint" id="models-hint"></span></h2>
   <div class="card">
     <div class="table-tools">
       <select id="model-filter"></select>
@@ -229,14 +234,14 @@
     <div class="scroll">
       <table id="models">
         <thead><tr>
-          <th class="sortable" data-sort="model">Modèle</th>
+          <th class="sortable" data-sort="model">Model</th>
           <th class="sortable" data-sort="provider">Provider</th>
-          <th class="sortable sorted" data-sort="cost">Coût</th>
-          <th>Part</th>
+          <th class="sortable sorted" data-sort="cost">Cost</th>
+          <th>Share</th>
           <th class="sortable" data-sort="tokens">Tokens</th>
-          <th class="sortable" data-sort="calls">Appels</th>
+          <th class="sortable" data-sort="calls">Calls</th>
           <th>$/Mtok</th>
-          <th>Coût</th>
+          <th>Cost</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -245,30 +250,30 @@
 
   <div class="two">
     <div>
-      <h2>Par surface <span class="hint">quelle interface appelle Hermes</span></h2>
+      <h2>By surface <span class="hint">which interface calls Hermes</span></h2>
       <div class="card scroll">
         <table id="surfaces">
-          <thead><tr><th>Surface</th><th>Coût</th><th>Part</th><th>Tokens</th><th>Appels</th></tr></thead>
+          <thead><tr><th>Surface</th><th>Cost</th><th>Share</th><th>Tokens</th><th>Calls</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
     </div>
     <div>
-      <h2>Hors conversation <span class="hint">tâches annexes</span></h2>
+      <h2>Outside conversation <span class="hint">side tasks</span></h2>
       <div class="card tasks" id="tasks"></div>
     </div>
   </div>
 
-  <h2>Par session <span class="hint" id="sessions-hint"></span></h2>
+  <h2>By session <span class="hint" id="sessions-hint"></span></h2>
   <div class="card">
     <div class="table-tools">
       <select id="session-surface"></select>
-      <input id="session-search" type="search" placeholder="titre ou id de session…">
+      <input id="session-search" type="search" placeholder="title or session id…">
       <select id="session-limit">
-        <option value="25">25 premières</option>
-        <option value="50">50 premières</option>
-        <option value="100">100 premières</option>
-        <option value="0">toutes</option>
+        <option value="25">first 25</option>
+        <option value="50">first 50</option>
+        <option value="100">first 100</option>
+        <option value="0">all</option>
       </select>
       <span class="muted" id="sessions-count"></span>
     </div>
@@ -277,12 +282,12 @@
         <thead><tr>
           <th class="sortable" data-sort="title">Session</th>
           <th class="sortable" data-sort="source">Surface</th>
-          <th class="sortable" data-sort="model">Modèle</th>
-          <th class="sortable sorted" data-sort="cost">Coût</th>
-          <th>Part</th>
+          <th class="sortable" data-sort="model">Model</th>
+          <th class="sortable sorted" data-sort="cost">Cost</th>
+          <th>Share</th>
           <th class="sortable" data-sort="tokens">Tokens</th>
-          <th class="sortable" data-sort="calls">Appels</th>
-          <th class="sortable" data-sort="last">Dernière activité</th>
+          <th class="sortable" data-sort="calls">Calls</th>
+          <th class="sortable" data-sort="last">Last activity</th>
         </tr></thead>
         <tbody></tbody>
       </table>
@@ -303,7 +308,7 @@ const PALETTE = ["#cba6f7","#89b4fa","#94e2d5","#fab387","#a6e3a1","#f5c2e7","#f
 const state = { span: "30", by: "provider", unit: "cost", sort: "cost", desc: true, filter: "all", payload: null, age: null,
                 sSort: "cost", sDesc: true, sSurface: "all", sQuery: "", sLimit: 25 };
 
-// L'URL porte la vue (partageable, rechargeable) : #span=7&by=model&unit=tokens
+// The URL carries the view (shareable, reloadable): #span=7&by=model&unit=tokens
 function readHash() {
   const p = new URLSearchParams(location.hash.replace(/^#/, ""));
   if (["1", "7", "30", "90"].includes(p.get("span"))) state.span = p.get("span");
@@ -323,11 +328,11 @@ function syncControls() {
   [...$("stack-by").children].forEach((c) => c.classList.toggle("on", c.dataset.by === state.by));
   [...$("unit").children].forEach((c) => c.classList.toggle("on", c.dataset.unit === state.unit));
 }
-const LABELS = { "1": "24 h", "7": "7 derniers jours", "30": "30 derniers jours", "90": "90 derniers jours" };
+const LABELS = { "1": "24 h", "7": "last 7 days", "30": "last 30 days", "90": "last 90 days" };
 const SURFACES = { desktop: "desktop", cron: "cron", matrix: "matrix", oneshot: "oneshot", cli: "cli",
-                   tui: "tui", local: "local", subagent: "subagent", api_server: "api", inconnu: "inconnu" };
-const TASKS = { background_review: "revue arrière-plan", compression: "compression de contexte",
-                title_generation: "titres de session", vision: "vision", approval: "approbations" };
+                   tui: "tui", local: "local", subagent: "subagent", api_server: "api", inconnu: "unknown" };
+const TASKS = { background_review: "background review", compression: "context compression",
+                title_generation: "session titles", vision: "vision", approval: "approvals" };
 
 function usd(v, digits) {
   if (v === null || v === undefined || isNaN(v)) return "·";
@@ -379,11 +384,11 @@ function sliceModelSeries(span) {
   return series.slice(Math.max(0, series.length - days));
 }
 
-// ------------------------------------------------ vue par session (dynamique)
-// L'axe du graphe et la vue par session partagent le meme decoupage quotidien :
-// la fenetre choisie (24 h, 7, 30, 90 j) est donc recalculee dans le navigateur,
-// sans nouvel appel a /api/data. Une session qui a deborde sur deux jours est
-// comptee au prorata de ses messages, comme les totaux par modele.
+// ------------------------------------------------ sessions view (dynamic)
+// The chart axis and the sessions view share the same daily split:
+// the chosen window (24 h, 7, 30, 90 d) is therefore recomputed in the browser,
+// with no new call to /api/data. A session that spilled over two days is
+// counted pro rata of its messages, like the per-model totals.
 function spanDays(span) {
   const series = (state.payload && state.payload.series) || [];
   const days = Number(span);
@@ -419,14 +424,14 @@ function sessionRows() {
   return rows;
 }
 
-// ---------------------------------------------------------------- rendu
+// ---------------------------------------------------------------- render
 function render(payload, ageSeconds) {
   state.payload = payload;
   state.age = ageSeconds;
   const fx = payload && payload.fx ? payload.fx.usd_eur : null;
   const win = window_(state.span);
 
-  // bandeau d'état
+  // status banner
   const errors = (payload && payload.errors) || [];
   const banner = $("banner");
   if (errors.length) {
@@ -466,18 +471,18 @@ function renderKpis(win, fx) {
   const sess = sessionRows();
   const sessCost = sess.reduce((s, r) => s + r.cost, 0);
   const kpis = [
-    { label: "Crédits consommés", value: usd(cash),
-      note: "estimé · " + (eur(cash, fx) || "taux indisponible") + " · " + LABELS[state.span] },
-    { label: "Équivalent abonnement", value: usd(sub),
-      note: sub ? "Claude : au tarif API, non facturé au token" : "aucun usage d'abonnement" },
-    { label: "Tokens facturables", value: compact(tokens),
-      note: tokens ? "dont " + pct(cache / tokens) + " servis par le cache" : "aucun token" },
-    { label: "Appels API", value: nb(calls),
-      note: total ? usd(total / calls, 4) + " par appel en moyenne" : "—" },
+    { label: "Credits consumed", value: usd(cash),
+      note: "estimated · " + (eur(cash, fx) || "rate unavailable") + " · " + LABELS[state.span] },
+    { label: "Subscription equivalent", value: usd(sub),
+      note: sub ? "Claude: at API rates, not billed per token" : "no subscription usage" },
+    { label: "Billable tokens", value: compact(tokens),
+      note: tokens ? "of which " + pct(cache / tokens) + " served from cache" : "no tokens" },
+    { label: "API calls", value: nb(calls),
+      note: total ? usd(total / calls, 4) + " per call on average" : "—" },
     { label: "Sessions", value: nb(sess.length),
-      note: sess.length ? usd(sessCost / sess.length) + " par session en moyenne" : "aucune session" },
-    { label: "Hors conversation", value: usd(aux),
-      note: total ? pct(aux / total) + " du coût (titres, compressions, revue)" : "—" },
+      note: sess.length ? usd(sessCost / sess.length) + " per session on average" : "no sessions" },
+    { label: "Outside conversation", value: usd(aux),
+      note: total ? pct(aux / total) + " of the cost (titles, compressions, review)" : "—" },
   ];
   $("kpis").innerHTML = kpis.map((k) => `
     <div class="kpi">
@@ -490,9 +495,9 @@ function renderKpis(win, fx) {
 function renderProviders(payload, fx) {
   const providers = (payload.providers || []).filter((p) =>
     providerWindow(p, state.span).cost > 0 || p.balance || p.kind === "subscription" || p.kind === "local");
-  $("providers-hint").textContent = "· " + LABELS[state.span] + " · solde, consommation et reste à courir";
+  $("providers-hint").textContent = "· " + LABELS[state.span] + " · balance, spend and runway left";
   if (!providers.length) {
-    $("providers").innerHTML = `<div class="card muted">Aucun provider actif sur la période.</div>`;
+    $("providers").innerHTML = `<div class="card muted">No active provider in this period.</div>`;
     $("recharge").innerHTML = "";
     return;
   }
@@ -503,17 +508,17 @@ function renderProviders(payload, fx) {
     const w = providerWindow(p, state.span);
     const share = (w.cost || 0) / total;
     const b = p.balance;
-    const kindLabel = { cash: "crédits", subscription: "abonnement", local: "local", other: "?" }[p.kind] || p.kind;
+    const kindLabel = { cash: "credits", subscription: "subscription", local: "local", other: "?" }[p.kind] || p.kind;
 
     let big, bigSub, bigCls = "big";
     const h = (payload.health || {})[p.id];
     if (p.kind === "subscription") {
-      big = p.monthly_usd ? usd(p.monthly_usd) + " / mois" : "abonnement";
-      bigSub = "équivalent API " + usd(w.cost) + " sur la période, non facturé au token";
+      big = p.monthly_usd ? usd(p.monthly_usd) + " / month" : "subscription";
+      bigSub = "API equivalent " + usd(w.cost) + " over the period, not billed per token";
       bigCls += " muted";
     } else if (p.kind === "local") {
-      big = "gratuit";
-      bigSub = "GPU maison, coût marginal nul";
+      big = "free";
+      bigSub = "home GPU, zero marginal cost";
       bigCls += " muted";
     } else if (b) {
       big = usd(b.amount);
@@ -521,55 +526,55 @@ function renderProviders(payload, fx) {
       if (b.amount <= 0) bigCls += " bad";
       else if (p.runway_days !== null && p.runway_days !== undefined && p.runway_days < 14) bigCls += " warn";
     } else if (h) {
-      // Provider sans endpoint de solde (Google) : la carte porte la sonde de
-      // sante a la place du montant, sinon elle n'afficherait rien d'utile.
-      big = !h.key_ok ? "clé refusée" : (h.state === "ok" ? "clé OK" : "génération KO");
+      // Provider with no balance endpoint (Google): the card carries the health
+      // probe instead of the amount, otherwise it would show nothing useful.
+      big = !h.key_ok ? "key refused" : (h.state === "ok" ? "key OK" : "generation failed");
       bigSub = (h.detail || []).slice(0, 2).join(" · ");
       if (!h.key_ok) bigCls += " bad";
       else if (h.state !== "ok") bigCls += " warn";
       else bigCls += " muted";
     } else {
-      big = "pas de solde";
-      bigSub = "aucun endpoint de solde chez ce provider";
+      big = "no balance";
+      bigSub = "no balance endpoint at this provider";
       bigCls += " muted";
     }
 
     let foot;
     if (p.kind === "cash") {
       if (b && p.runway_days !== null && p.runway_days !== undefined) {
-        const src = p.burn_30 && p.burn_30.source === "history" ? "réel" : "estimé";
+        const src = p.burn_30 && p.burn_30.source === "history" ? "actual" : "estimated";
         foot = b.amount <= 0
-          ? `crédit épuisé · ${usd(p.burn_30.per_day)}/j (${src})`
-          : `≈ ${Math.round(p.runway_days)} j de crédit à ${usd(p.burn_30.per_day)}/j (${src})`;
+          ? `credit exhausted · ${usd(p.burn_30.per_day)}/d (${src})`
+          : `≈ ${Math.round(p.runway_days)} d of credit at ${usd(p.burn_30.per_day)}/d (${src})`;
       } else if (b) {
-        foot = "historique de solde trop court pour projeter : premier relevé " +
-               (p.history_since ? "le " + p.history_since.slice(0, 10) : "à venir");
+        foot = "balance history too short to project: first reading " +
+               (p.history_since ? "on " + p.history_since.slice(0, 10) : "pending");
       } else if (h) {
         const g = h.gen || {};
         const when = g.checked_at ? new Date(g.checked_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
         foot = g.state === "ok"
-          ? `sonde ${g.model} : OK en ${g.latency_ms} ms${when ? " (test " + when + ")" : ""}`
-          : `sonde ${g.model || "gemini"} : ${g.state === "timeout" ? "pas de réponse" : (g.message || "en échec")}${when ? " (test " + when + ")" : ""}`;
+          ? `probe ${g.model}: OK in ${g.latency_ms} ms${when ? " (test " + when + ")" : ""}`
+          : `probe ${g.model || "gemini"}: ${g.state === "timeout" ? "no response" : (g.message || "failed")}${when ? " (test " + when + ")" : ""}`;
       } else {
-        foot = "coût estimé aux tarifs Hermes uniquement";
+        foot = "cost estimated at Hermes rates only";
       }
     } else if (p.kind === "subscription") {
-      foot = p.monthly_usd ? "abonnement déclaré, hors facturation au token" : "abonnement : pas de coût au token";
+      foot = p.monthly_usd ? "declared subscription, not billed per token" : "subscription: no per-token cost";
     } else if (p.kind === "local") {
-      foot = "modèle servi sur le laptop, pas de facturation";
+      foot = "model served on the laptop, not billed";
     } else {
       foot = p.note || "";
     }
-    // Pour OpenRouter, le seul chiffre REELLEMENT facture disponible sans cle
-    // management est l'usage de la cle d'inference : le montrer a cote de
-    // l'estime evite de prendre l'estimation pour une facture.
+    // For OpenRouter, the only ACTUALLY billed figure available without a
+    // management key is the inference key usage: showing it next to
+    // the estimate avoids taking the estimate for an invoice.
     if (p.id === "openrouter" && payload.openrouter && payload.openrouter.key) {
       const key = payload.openrouter.key;
-      foot += " · clé : " + usd(key.usage_monthly) + " facturés sur 30 j";
+      foot += " · key: " + usd(key.usage_monthly) + " billed over 30 d";
     }
 
-    // Echelle propre a chaque provider : une sparkline relative au plus gros
-    // provider ne montrerait rien pour les petits.
+    // Scale specific to each provider: a sparkline relative to the biggest
+    // provider would show nothing for the small ones.
     const daily = sliceSeries(state.span).map((day) => ({ v: (day.p[p.id] || [0, 0, 0])[0] }));
     const ownMax = daily.reduce((s, d) => Math.max(s, d.v), 0) || 1;
     const spark = daily.map((d) => ({ v: d.v, h: Math.round(100 * d.v / ownMax) }));
@@ -587,16 +592,16 @@ function renderProviders(payload, fx) {
       <div class="rows">
         <div><span>${LABELS[state.span]}</span><b>${usd(w.cost)}</b></div>
         <div><span>tokens</span><b>${compact(w.tokens)}</b></div>
-        <div><span>appels</span><b>${nb(w.calls)}</b></div>
-        <div><span>part coût</span><b>${pct(share)}</b></div>
+        <div><span>calls</span><b>${nb(w.calls)}</b></div>
+        <div><span>cost share</span><b>${pct(share)}</b></div>
       </div>
       <div class="spark">${spark.map((s) => `<i style="height:${Math.max(3, s.h)}%;background:${p.color}aa" title="${usd(s.v)}"></i>`).join("")}</div>
       <div class="foot">${escapeHtml(foot)}</div>
     </div>`;
   }).join("");
 
-  // Rechargements à prévoir : uniquement les providers à crédits dont le solde
-  // ne couvre pas un mois au rythme observé.
+  // Top-ups to plan: only credit providers whose balance
+  // does not cover a month at the observed rate.
   const rows = providers.filter((p) => p.kind === "cash" && p.balance && p.burn_30 &&
     (p.runway_days === null || p.runway_days === undefined || p.runway_days < 30))
     .sort((a, b) => (a.runway_days || 0) - (b.runway_days || 0));
@@ -606,10 +611,10 @@ function renderProviders(payload, fx) {
     return `<div class="row ${urgent ? "" : "warn"}">
       <span class="dot" style="background:${p.color}"></span>
       <b>${escapeHtml(p.label)}</b>
-      <span>${p.balance.amount <= 0 ? "crédit épuisé" : "reste " + usd(p.balance.amount) + (p.runway_days !== null ? " (≈ " + Math.round(p.runway_days) + " j)" : "")}</span>
-      <span class="muted">à ce rythme : ${usd(month)} par mois</span>
+      <span>${p.balance.amount <= 0 ? "credit exhausted" : "left " + usd(p.balance.amount) + (p.runway_days !== null ? " (≈ " + Math.round(p.runway_days) + " d)" : "")}</span>
+      <span class="muted">at this rate: ${usd(month)} per month</span>
       <span class="spacer"></span>
-      <span>recharge conseillée <b>${usd(Math.max(month, 10))}</b></span>
+      <span>top-up advised <b>${usd(Math.max(month, 10))}</b></span>
     </div>`;
   }).join("") : "";
 }
@@ -628,7 +633,7 @@ function renderChart(payload) {
     colorOf = (k) => providerMeta(k).color;
   } else {
     days = sliceModelSeries(span).map((d) => ({ date: d.date, parts: d.m }));
-    // Couleurs par modèle : on colore les plus coûteux, le reste en gris.
+    // Colors per model: the most expensive are colored, the rest in grey.
     const totals = new Map();
     sliceModelSeries(span).forEach((d) => Object.entries(d.m).forEach(([k, v]) => {
       const cur = totals.get(k) || [0, 0, ""];
@@ -644,13 +649,13 @@ function renderChart(payload) {
   }
 
   if (!days.length) {
-    el.innerHTML = ""; axisEl.innerHTML = `<span class="muted">Aucune donnée.</span>`; legendEl.innerHTML = "";
+    el.innerHTML = ""; axisEl.innerHTML = `<span class="muted">No data.</span>`; legendEl.innerHTML = "";
     $("chart-scale").textContent = "";
     $("chart-y").innerHTML = "";
     return;
   }
 
-  // Totaux par clé sur la fenêtre : sert à l'ordre d'empilement et à la légende.
+  // Totals per key over the window: used for the stacking order and the legend.
   const sums = new Map();
   days.forEach((d) => Object.entries(d.parts || {}).forEach(([k, v]) => {
     sums.set(k, (sums.get(k) || 0) + (v[unitIndex] || 0));
@@ -674,8 +679,8 @@ function renderChart(payload) {
     return `<div class="col" title="${escapeAttr(title)}">${segs}</div>`;
   }).join("");
 
-  // Echelle verticale : trois reperes (0, moitie, max) alignes sur les
-  // lignes de grille de la carte.
+  // Vertical scale: three marks (0, half, max) aligned with the
+  // card's grid lines.
   const short = (v) => state.unit === "cost"
     ? (v >= 10 ? "$" + Math.round(v) : v >= 1 ? "$" + v.toFixed(1) : v > 0 ? "<$1" : "$0")
     : compact(v);
@@ -686,11 +691,11 @@ function renderChart(payload) {
     shortDate(days[Math.round(f * (days.length - 1))].date)) : [shortDate(days[0].date), shortDate(days[days.length - 1].date)];
   axisEl.innerHTML = ticks.map((d) => `<span>${d}</span>`).join("");
   const grand = order.reduce((s, k) => s + (sums.get(k) || 0), 0);
-  $("chart-scale").textContent = "max " + fmt(maxDay) + " par jour · total " + (state.unit === "cost" ? usd(grand) : compact(grand) + " tok");
+  $("chart-scale").textContent = "max " + fmt(maxDay) + " per day · total " + (state.unit === "cost" ? usd(grand) : compact(grand) + " tok");
   const fmtTotal = (v) => state.unit === "cost" ? usd(v) : compact(v) + " tok";
   legendEl.innerHTML = order.slice(0, 10).map((k) =>
     `<span><i class="dot" style="background:${colorOf(k)}"></i>${escapeHtml(labelOf(k))} ${fmtTotal(sums.get(k) || 0)}</span>`).join("") +
-    (order.length > 10 ? `<span class="muted">+ ${order.length - 10} autres</span>` : "");
+    (order.length > 10 ? `<span class="muted">+ ${order.length - 10} others</span>` : "");
 }
 
 function renderModels(payload, fx) {
@@ -699,12 +704,12 @@ function renderModels(payload, fx) {
   const total = models.reduce((s, m) => s + (m.cost || 0), 0) || 1;
   const maxCost = models.reduce((s, m) => Math.max(s, m.cost || 0), 0) || 1;
 
-  // Filtre par provider, reconstruit seulement si la liste a changé.
+  // Provider filter, rebuilt only if the list changed.
   const select = $("model-filter");
   const pids = [...new Set(((payload.windows && payload.windows[state.span] || {}).models || []).map((m) => m.provider))];
   if (select.dataset.pids !== pids.join(",")) {
     select.dataset.pids = pids.join(",");
-    select.innerHTML = `<option value="all">tous les providers</option>` + pids.map((pid) =>
+    select.innerHTML = `<option value="all">all providers</option>` + pids.map((pid) =>
       `<option value="${escapeAttr(pid)}">${escapeHtml(providerMeta(pid).label)}</option>`).join("");
     select.value = state.filter;
     if (select.value !== state.filter) { state.filter = "all"; select.value = "all"; }
@@ -724,17 +729,17 @@ function renderModels(payload, fx) {
     const hidden = state.filter !== "all" && m.provider !== state.filter;
     if (!hidden) shown++;
     const perMtok = m.tokens > 0 ? (m.cost / m.tokens) * 1e6 : null;
-    // Un abonnement n'est jamais facture au token : son montant est un
-    // equivalent, l'afficher comme une depense serait mensonger.
+    // A subscription is never billed per token: its amount is an
+    // equivalent, showing it as an expense would be misleading.
     const status = meta.kind === "subscription"
-      ? `<span class="chip eq" title="usage valorise au tarif API, non facture">équiv.</span>`
-      : m.cost_status === "actual" ? `<span class="chip real">réel</span>`
-      : m.cost_status === "estimated" ? `<span class="chip est">estimé</span>`
-      : `<span class="chip unk">inconnu</span>`;
+      ? `<span class="chip eq" title="usage valued at API rates, not billed">equiv.</span>`
+      : m.cost_status === "actual" ? `<span class="chip real">actual</span>`
+      : m.cost_status === "estimated" ? `<span class="chip est">estimated</span>`
+      : `<span class="chip unk">unknown</span>`;
     return `
     <tr class="${hidden ? "hidden" : ""}">
       <td><div class="model">${escapeHtml(m.model)}</div>
-          ${m.aux_cost > 0 ? `<div class="muted" style="font-size:11px">dont ${usd(m.aux_cost)} hors conversation</div>` : ""}</td>
+          ${m.aux_cost > 0 ? `<div class="muted" style="font-size:11px">of which ${usd(m.aux_cost)} outside conversation</div>` : ""}</td>
       <td><span class="tag"><span class="dot" style="background:${meta.color};width:7px;height:7px"></span>${escapeHtml(meta.label)}</span></td>
       <td>${meta.kind === "subscription" ? "≈ " : ""}${usd(m.cost)}<div class="muted" style="font-size:11px">${escapeHtml(eur(m.cost, fx))}</div></td>
       <td><div>${pct((m.cost || 0) / total)}</div>
@@ -744,9 +749,9 @@ function renderModels(payload, fx) {
       <td>${perMtok === null ? "·" : usd4(perMtok)}</td>
       <td>${status}</td>
     </tr>`;
-  }).join("") || `<tr><td colspan="8" class="muted">Aucun usage sur la période.</td></tr>`;
-  $("models-count").textContent = shown + " modèle" + (shown > 1 ? "s" : "") + " · " + LABELS[state.span];
-  $("models-hint").textContent = "· estimé = tokens × tarifs Hermes · équiv. = abonnement valorisé au tarif API, jamais facturé · réel = facturé";
+  }).join("") || `<tr><td colspan="8" class="muted">No usage in this period.</td></tr>`;
+  $("models-count").textContent = shown + " model" + (shown > 1 ? "s" : "") + " · " + LABELS[state.span];
+  $("models-hint").textContent = "· estimated = tokens × Hermes rates · equiv. = subscription valued at API rates, never billed · actual = billed";
   document.querySelectorAll("#models th.sortable").forEach((th) => {
     th.classList.toggle("sorted", th.dataset.sort === state.sort);
   });
@@ -762,7 +767,7 @@ function renderSurfaces(win, fx) {
       <td>${pct((r.cost || 0) / total)}</td>
       <td>${compact(r.tokens)}</td>
       <td>${nb(r.calls)}</td>
-    </tr>`).join("") : `<tr><td colspan="5" class="muted">Aucune donnée.</td></tr>`;
+    </tr>`).join("") : `<tr><td colspan="5" class="muted">No data.</td></tr>`;
 }
 
 function renderTasks(win, fx) {
@@ -770,7 +775,7 @@ function renderTasks(win, fx) {
   const total = rows.reduce((s, t) => s + (t.cost || 0), 0) || 1;
   const globalCost = (win.totals && win.totals.cost) || 0;
   if (!rows.length) {
-    $("tasks").innerHTML = `<div class="muted">Aucune tâche annexe sur la période.</div>`;
+    $("tasks").innerHTML = `<div class="muted">No side task in this period.</div>`;
     return;
   }
   $("tasks").innerHTML = rows.map((t) => `
@@ -780,7 +785,7 @@ function renderTasks(win, fx) {
       <span class="v">${usd(t.cost)}</span>
       <span class="muted" style="font-size:11px">${nb(t.calls)}</span>
     </div>`).join("") +
-    `<div class="muted" style="margin-top:10px;font-size:11.5px">${usd(total)} au total, soit ${pct(globalCost ? total / globalCost : 0)} du coût de la période.</div>`;
+    `<div class="muted" style="margin-top:10px;font-size:11.5px">${usd(total)} in total, i.e. ${pct(globalCost ? total / globalCost : 0)} of the period cost.</div>`;
 }
 
 function renderSessions(payload, fx) {
@@ -788,13 +793,13 @@ function renderSessions(payload, fx) {
   const total = rows.reduce((s, r) => s + r.cost, 0) || 1;
   const maxCost = rows.reduce((s, r) => Math.max(s, r.cost), 0) || 1;
 
-  // Filtre par surface, reconstruit seulement si la liste a change (sinon la
-  // selection saute a chaque rafraichissement de 60 s).
+  // Surface filter, rebuilt only if the list changed (otherwise the
+  // selection jumps on every 60 s refresh).
   const sel = $("session-surface");
   const sources = [...new Set(rows.map((r) => r.source))].sort();
   if (sel.dataset.srcs !== sources.join(",")) {
     sel.dataset.srcs = sources.join(",");
-    sel.innerHTML = `<option value="all">toutes les surfaces</option>` + sources.map((s) =>
+    sel.innerHTML = `<option value="all">all surfaces</option>` + sources.map((s) =>
       `<option value="${escapeAttr(s)}">${escapeHtml(SURFACES[s] || s)}</option>`).join("");
     sel.value = state.sSurface;
     if (sel.value !== state.sSurface) { state.sSurface = "all"; sel.value = "all"; }
@@ -822,11 +827,12 @@ function renderSessions(payload, fx) {
   $("sessions").querySelector("tbody").innerHTML = shown.length ? shown.map((r) => {
     const others = r.models.slice(1);
     const extra = others.length
-      ? `<div class="muted" style="font-size:11px" title="${escapeAttr(r.models.map((m) => m[0] + " " + usd(m[1])).join("\n"))}">+${others.length} modèle${others.length > 1 ? "s" : ""}</div>`
+      ? `<div class="muted" style="font-size:11px" title="${escapeAttr(r.models.map((m) => m[0] + " " + usd(m[1])).join("\n"))}">+${others.length} model${others.length > 1 ? "s" : ""}</div>`
       : "";
     return `
     <tr>
-      <td><span class="st" title="${escapeAttr(r.title)}">${escapeHtml(r.title)}</span>
+      <td class="sess" title="${escapeAttr(r.title)}">
+          <span class="st">${escapeHtml(r.title)}</span>
           ${r.hasTitle ? `<div class="sid">${escapeHtml(r.id)}</div>` : ""}</td>
       <td>${escapeHtml(SURFACES[r.source] || r.source)}</td>
       <td><div class="model">${escapeHtml(r.model)}</div>${extra}</td>
@@ -836,17 +842,17 @@ function renderSessions(payload, fx) {
       <td>${compact(r.tokens)}</td>
       <td>${nb(r.calls)}</td>
       <td title="${escapeAttr(dayTitle(r.first) + " → " + dayTitle(r.last))}">${day(r.last)}
-          ${r.first !== r.last ? `<div class="muted" style="font-size:11px">depuis ${day(r.first)}</div>` : ""}</td>
+          ${r.first !== r.last ? `<div class="muted" style="font-size:11px">since ${day(r.first)}</div>` : ""}</td>
     </tr>`;
-  }).join("") : `<tr><td colspan="8" class="muted">Aucune session sur la période.</td></tr>`;
+  }).join("") : `<tr><td colspan="8" class="muted">No session in this period.</td></tr>`;
 
-  const filtered = list.length !== rows.length ? shown.length + " affichées sur " + list.length + " filtrées, " + rows.length + " au total" : shown.length + " session" + (shown.length > 1 ? "s" : "");
+  const filtered = list.length !== rows.length ? shown.length + " shown of " + list.length + " filtered, " + rows.length + " in total" : shown.length + " session" + (shown.length > 1 ? "s" : "");
   $("sessions-count").textContent = filtered + " · " + usd(rows.reduce((s, r) => s + r.cost, 0)) + " · " + LABELS[state.span];
-  // Hors reseau prive le service retire les titres : le dire, sinon la colonne
-  // ressemble a un bug d'affichage.
+  // Outside the private network the service strips the titles: say so, otherwise the column
+  // looks like a display bug.
   const masked = rows.length > 0 && !rows.some((r) => r.hasTitle);
-  $("sessions-hint").textContent = "· une ligne par session, agrégée sur la fenêtre choisie par le navigateur · coût = tous ses appels, tous modèles"
-    + (masked ? " · titres masqués hors réseau privé (accès tailnet)" : "");
+  $("sessions-hint").textContent = "· one row per session, aggregated over the window chosen by the browser · cost = all its calls, all models · click a row = technical id"
+    + (masked ? " · titles hidden outside the private network (tailnet access)" : "");
   document.querySelectorAll("#sessions th.sortable").forEach((th) => {
     th.classList.toggle("sorted", th.dataset.sort === state.sSort);
   });
@@ -856,9 +862,9 @@ function resetLabel(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   const mins = Math.round((d - Date.now()) / 60000);
-  const rel = mins <= 0 ? "maintenant" : mins < 60 ? mins + " min" :
-    mins < 1440 ? Math.floor(mins / 60) + " h " + String(mins % 60).padStart(2, "0") : Math.floor(mins / 1440) + " j " + Math.floor((mins % 1440) / 60) + " h";
-  return "réinitialisation " + d.toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" }) + " (dans " + rel + ")";
+  const rel = mins <= 0 ? "now" : mins < 60 ? mins + " min" :
+    mins < 1440 ? Math.floor(mins / 60) + " h " + String(mins % 60).padStart(2, "0") : Math.floor(mins / 1440) + " d " + Math.floor((mins % 1440) / 60) + " h";
+  return "reset " + d.toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" }) + " (in " + rel + ")";
 }
 function renderClaudePlan(payload) {
   const plan = payload && payload.claude_plan;
@@ -868,13 +874,13 @@ function renderClaudePlan(payload) {
   const d = plan.data;
   const fetched = plan.fetched_at ? new Date(plan.fetched_at) : null;
   const age = fetched ? Math.round((Date.now() - fetched) / 60000) : null;
-  $("claude-plan-hint").textContent = "· mêmes chiffres que /usage dans Claude Code · relevé il y a " +
-    (age === null ? "?" : age + " min") + (plan.state !== "ok" && plan.message ? " · " + plan.message : "");
+  $("claude-plan-hint").textContent = "· same figures as /usage in Claude Code · read " +
+    (age === null ? "?" : age + " min ago") + (plan.state !== "ok" && plan.message ? " · " + plan.message : "");
   const rows = [
-    ["Session actuelle (5 h)", d.session],
-    ["Cette semaine", d.weekly],
-    ["Semaine · Opus", d.weekly_opus],
-    ["Semaine · Sonnet", d.weekly_sonnet],
+    ["Current session (5 h)", d.session],
+    ["This week", d.weekly],
+    ["Week · Opus", d.weekly_opus],
+    ["Week · Sonnet", d.weekly_sonnet],
   ].filter((r) => r[1]);
   const lim = rows.map(([label, w]) => {
     const p = Math.max(0, Math.min(100, Number(w.percent) || 0));
@@ -886,23 +892,23 @@ function renderClaudePlan(payload) {
     </div>`;
   }).join("");
   const brk = (d.breakdown || []).filter((b) => b.share);
-  const brkHtml = brk.length ? `<div class="brk">Semaine par usage : ` +
-    brk.map((b) => `${escapeHtml(b.name)} ${b.share} % (${b.percent_of_limit} % de la limite)`).join(" · ") + `</div>` : "";
+  const brkHtml = brk.length ? `<div class="brk">Week by usage: ` +
+    brk.map((b) => `${escapeHtml(b.name)} ${b.share} % (${b.percent_of_limit} % of the limit)`).join(" · ") + `</div>` : "";
   $("claude-plan").innerHTML = `<div class="plan">${lim}</div>${brkHtml}`;
 }
 
 function renderFooter(payload) {
   const status = (payload && payload.status) || {};
   const labels = {
-    "hermes/usage": "usage Hermes",
-    "openrouter/credits": "solde OpenRouter",
-    "openrouter/key": "clé d'inférence",
-    "openrouter/analytics": "analytics OpenRouter",
-    "moonshot": "solde Moonshot",
-    "deepseek": "solde DeepSeek",
-    "gemini/health": "santé Gemini",
-    "frankfurter": "taux EUR",
-    "claude/plan": "forfait Claude",
+    "hermes/usage": "Hermes usage",
+    "openrouter/credits": "OpenRouter balance",
+    "openrouter/key": "inference key",
+    "openrouter/analytics": "OpenRouter analytics",
+    "moonshot": "Moonshot balance",
+    "deepseek": "DeepSeek balance",
+    "gemini/health": "Gemini health",
+    "frankfurter": "EUR rate",
+    "claude/plan": "Claude plan",
   };
   $("sources").innerHTML = Object.entries(status).map(([k, v]) => {
     const cls = v.state === "ok" ? "ok" : (v.state === "missing" ? "warn" : "bad");
@@ -913,27 +919,27 @@ function renderFooter(payload) {
   const agent = (payload && payload.agent) || null;
   const homes = agent && agent.homes ? agent.homes.filter((h) => !h.error) : [];
   const bits = [];
-  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Coût estimé</b> : tokens enregistrés par Hermes × tarifs connus, cache inclus. <b style="color:var(--subtext0);font-weight:500">Coût réel</b> : baisse de solde relevée chez le provider, seule source non estimée, disponible au niveau du compte seulement.</p>`);
-  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Répartition quotidienne</b> : au prorata des messages de chaque session ce jour-là (les lignes d'usage sont des agrégats de session, pas des événements datés) ; le total reste exact au token près.</p>`);
-  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Vue par session</b> : une ligne par session Hermes (titre, surface, modèle dominant), coût de tous ses appels tous modèles confondus. Elle est agrégée dans le navigateur sur la fenêtre choisie, à partir du même découpage quotidien que le graphe : la somme des sessions d'une fenêtre égale donc exactement le total de cette fenêtre. Les sessions sans coût ni token connu sont écartées.</p>`);
+  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Estimated cost</b>: tokens recorded by Hermes × known rates, cache included. <b style="color:var(--subtext0);font-weight:500">Real cost</b>: balance drop read at the provider, the only non-estimated source, available at the account level only.</p>`);
+  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Daily split</b>: pro rata of each session's messages that day (the usage rows are session aggregates, not dated events); the total stays exact to the token.</p>`);
+  bits.push(`<p><b style="color:var(--subtext0);font-weight:500">Sessions view</b>: one row per Hermes session (title, surface, dominant model), cost of all its calls across all models. It is aggregated in the browser over the chosen window, from the same daily split as the chart: the sum of a window's sessions therefore equals exactly that window's total. Sessions with no known cost or token are left out.</p>`);
   if (agent) {
     const age = agent.age_seconds === null || agent.age_seconds === undefined ? "?" : Math.round(agent.age_seconds / 60);
-    bits.push(`<p>Usage Hermes collecté il y a ${age} min · ${homes.length} base${homes.length > 1 ? "s" : ""} (${homes.map((h) => h.profile).join(", ")}) · ${homes.reduce((s, h) => s + (h.rows || 0), 0)} lignes d'usage.</p>`);
+    bits.push(`<p>Hermes usage collected ${age} min ago · ${homes.length} database${homes.length > 1 ? "s" : ""} (${homes.map((h) => h.profile).join(", ")}) · ${homes.reduce((s, h) => s + (h.rows || 0), 0)} usage rows.</p>`);
   }
   if (payload && payload.openrouter && payload.openrouter.key) {
     const k = payload.openrouter.key;
-    bits.push(`<p>Clé d'inférence OpenRouter : ${usd(k.usage_monthly)} sur 30 j, ${usd(k.usage_weekly)} sur 7 j, total ${usd(k.usage)} (expire le ${(k.expires_at || "").slice(0, 10)}).</p>`);
+    bits.push(`<p>OpenRouter inference key: ${usd(k.usage_monthly)} over 30 d, ${usd(k.usage_weekly)} over 7 d, total ${usd(k.usage)} (expires ${(k.expires_at || "").slice(0, 10)}).</p>`);
   }
   $("method").innerHTML = bits.join("");
 
   const when = payload && payload.generated_at ? new Date(payload.generated_at) : null;
   $("stamp").textContent = when
-    ? "collecté " + when.toLocaleString("fr-FR") +
-      (state.age !== null && state.age !== undefined ? " (il y a " + Math.round(state.age) + " s)" : "")
+    ? "collected " + when.toLocaleString("fr-FR") +
+      (state.age !== null && state.age !== undefined ? " (" + Math.round(state.age) + " s ago)" : "")
     : "";
 }
 
-// ---------------------------------------------------------------- pilotage
+// ---------------------------------------------------------------- controls
 $("spans").addEventListener("click", (ev) => {
   const b = ev.target.closest("button");
   if (!b) return;
@@ -992,6 +998,13 @@ document.querySelectorAll("#sessions th.sortable").forEach((th) => {
     if (state.payload) renderSessions(state.payload, forex());
   });
 });
+// A click on a session's title cell reveals its technical id
+// (hidden by default): the listener is set on the tbody, which survives
+// re-renders, not on the rows themselves.
+$("sessions").querySelector("tbody").addEventListener("click", (ev) => {
+  const cell = ev.target.closest("td.sess");
+  if (cell) cell.classList.toggle("show-id");
+});
 window.addEventListener("hashchange", () => {
   readHash();
   syncControls();
@@ -1006,13 +1019,13 @@ async function load() {
     lastFetch = Date.now();
     render(body.data, body.age_seconds);
   } catch (err) {
-    $("freshness").innerHTML = `<span class="bad">service injoignable : ${escapeHtml(err)}</span>`;
+    $("freshness").innerHTML = `<span class="bad">service unreachable: ${escapeHtml(err)}</span>`;
   }
 }
 function tick() {
   if (!lastFetch) return;
   const s = (Date.now() - lastFetch) / 1000;
-  $("freshness").innerHTML = `données il y a <b>${Math.round(s)} s</b> · auto 60 s`;
+  $("freshness").innerHTML = `data <b>${Math.round(s)} s</b> ago · auto 60 s`;
 }
 $("reload").addEventListener("click", load);
 readHash();
