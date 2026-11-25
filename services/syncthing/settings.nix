@@ -1,13 +1,21 @@
 # Réglages Syncthing communs à toute la flotte de marc.
 #
 # Utilisé par le module home-manager (modules/home/syncthing), qui est le même
-# pour tower, laptop, deck et le Mac : la config est donc IDENTIQUE partout, à
-# part le chemin du dossier (home macOS vs Linux).
+# pour tower, laptop, deck et le Mac. La flotte partage une seule
+# `homeConfigurations.marc` pour les trois machines Linux : aucune d'entre elles
+# ne peut se distinguer à l'évaluation. La seule différence exploitable est donc
+# l'OS, et elle suffit ici : le Mac ne prend que les documents, les Linux
+# prennent aussi les photos.
 #
-# Principe : aucun contact avec l'infrastructure de Syncthing (pas de découverte
-# globale, pas de relais public, pas de NAT/STUN vers l'extérieur, pas de
-# télémétrie, pas de vérification de mise à jour). Les nœuds se joignent par
-# leur adresse fixe dans le mesh headscale, plus la découverte locale (LAN,
+# Les types sont sendreceive partout, sinon la config ne serait plus identique
+# d'une machine Linux à l'autre. La protection contre une suppression
+# accidentelle vient du versioning `staggered` (30 jours), stocké HORS de
+# l'arbre photos pour ne pas polluer la bibliothèque Immich.
+#
+# Principe réseau : aucun contact avec l'infrastructure de Syncthing (pas de
+# découverte globale, pas de relais public, pas de NAT/STUN vers l'extérieur,
+# pas de télémétrie, pas de vérification de mise à jour). Les nœuds se joignent
+# par leur adresse fixe dans le mesh headscale, plus la découverte locale (LAN,
 # 21027/udp) qui ne sort pas du réseau.
 {
   lib,
@@ -17,10 +25,41 @@
 
   nodes = lib.filterAttrs (_: node: node.id != null) mesh.nodes;
 
-  folderPath =
+  folderPath = folder:
     if isDarwin
-    then mesh.folder.macPath
-    else mesh.folder.linuxPath;
+    then folder.macPath
+    else folder.linuxPath;
+
+  # Un dossier sans chemin pour l'OS courant n'est pas déclaré du tout.
+  myFolders = lib.filter (folder: folderPath folder != null) mesh.folders;
+
+  versionsRoot =
+    if isDarwin
+    then "/Users/marc/Library/Application Support/syncthing-versions"
+    else "/home/marc/.local/share/syncthing-versions";
+
+  mkFolder = folder: {
+    label = folder.label;
+    path = folderPath folder;
+    type = "sendreceive";
+    # Syncthing tolère le nœud local dans cette liste (il y est de toute façon
+    # et un renvoi est un 400 sans conséquence). Ça garde une seule config pour
+    # toute la flotte.
+    devices = folder.members;
+    fsWatcherEnabled = true;
+    rescanIntervalS = 3600;
+    ignorePatterns = [".DS_Store"];
+    # Historique des suppressions et remplacements : 30 jours, hors de l'arbre
+    # partagé (sans quoi Immich indexerait .stversions).
+    versioning = {
+      type = "staggered";
+      params = {
+        maxAge = "2592000"; # 30 jours, en secondes
+        cleanInterval = "3600";
+        versionsPath = "${versionsRoot}/${folder.id}";
+      };
+    };
+  };
 in {
   inherit folderPath;
 
@@ -53,19 +92,6 @@ in {
     startBrowser = false;
   };
 
-  folder = {
-    label = mesh.folder.label;
-    path = folderPath;
-    type = "sendreceive";
-    # Comme la config est commune à tous les nœuds Linux, cette liste contient
-    # aussi le nœud local : Syncthing le garde dans le dossier (il y est toujours
-    # de toute façon) et refuse avec un 400 sans conséquence de le ré-ajouter
-    # comme appareil. Ça évite d'avoir une config par machine.
-    devices = lib.attrNames nodes;
-    fsWatcherEnabled = true;
-    rescanIntervalS = 3600;
-    ignorePatterns = [".DS_Store"];
-  };
-
-  folderId = mesh.folder.id;
+  # Un dossier par identifiant, tel que l'attend le module home-manager.
+  folders = lib.listToAttrs (map (folder: lib.nameValuePair folder.id (mkFolder folder)) myFolders);
 }

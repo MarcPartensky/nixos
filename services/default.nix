@@ -7,35 +7,36 @@
     ./nextcloud
     ./cpu-priority
     ./postgres
-    # Labo de hook navigateur (BeEF) : console d'operateur sur
-    # beef.marcpartensky.com (SSO Pangolin), leurre diffuse par un tunnel rapide
-    # Cloudflare. Le module porte les trois unites (filtre, tunnel, beef) et la
-    # ressource Pangolin. Voir services/beef/default.nix.
+    # Browser hook lab (BeEF): operator console on
+    # beef.marcpartensky.com (Pangolin SSO), lure served by a fast Cloudflare
+    # tunnel. The module carries the three units (filter, tunnel, beef) and the
+    # Pangolin resource. See services/beef/default.nix.
     ./beef
-    # Les serveurs MCP maison (beef, shlink, shorturl, meetup, mac, roku...) ne
-    # sont PAS importes ici : leur code est monte par modules/nixos/mcp-host
-    # depuis les fichiers .py, et leur binaire reste disponible en sortie de
-    # flake (`nix build .#shlink-mcp`). Les garder en module ne leur ajoutait
-    # qu'un `environment.systemPackages`, donc une evaluation de paquet a
-    # chaque eval de l'hote pour un binaire que personne n'appelait plus.
-    # Un MCP maison encore en stdio (arena-elo, username-recon, share, tts)
-    # garde son module : c'est sa declaration mcpServers qui le rend vivant.
-    # Sauvegardes chiffrées de tower (pqbox : ML-KEM-768) : trois étages,
-    # timers coeur (quotidien) et volume (hebdomadaire). Détail dans le module.
+    # The in-house MCP servers (shorturl, meetup, mac, roku...) are NOT
+    # imported here: their code is mounted by modules/nixos/mcp-host from the
+    # .py files, and their binary remains available as a flake output
+    # (`nix build .#shorturl-mcp`). Keeping them as a module only added an
+    # `environment.systemPackages` for them, hence a package evaluation at each host
+    # eval for a binary that no one called anymore.
+    # An in-house MCP still in stdio (shlink in Rust, arena-elo, username-recon,
+    # share, tts) keeps its module: it is its mcpServers declaration that
+    # makes it live.
+    # Encrypted backups of tower (pqbox: ML-KEM-768): three tiers,
+    # core timers (daily) and volume (weekly). Details in the module.
     ./backup-pqbox
-    # ./vaultwarden  # NON : le coffre ne vit plus sur tower ni sur le portable.
-    # Source de verite unique = l'instance du VPS anywhere (profil anywhere
-    # importe ../../services/vaultwarden), servie par vault.marcpartensky.com
-    # depuis le 14/11/2026 (cible Pangolin = site "rack", 127.0.0.1:8222).
-    # Ce module etant partage, il faisait tourner une instance par hote et un
-    # rebuild du portable recreait une troisieme base vide. tower garde le
-    # secret du compte technique de l'agent (services/hermes) pour vault-get.sh.
-    # Les bases locales tower sont conservees en lecture seule : vw_old_* sur le
-    # VPS et l'ancienne base de tower (a supprimer apres verification).
+    # ./vaultwarden  # NO: the vault no longer lives on tower or on the laptop.
+    # Single source of truth = the anywhere VPS instance (anywhere profile
+    # imports ../../services/vaultwarden), served by vault.marcpartensky.com
+    # since 14/11/2026 (Pangolin target = site "rack", 127.0.0.1:8222).
+    # This module being shared, it ran one instance per host and a
+    # laptop rebuild recreated a third empty DB. tower keeps the
+    # secret of the agent's technical account (services/hermes) for vault-get.sh.
+    # The local tower DBs are kept read-only: vw_old_* on the
+    # VPS and tower's old DB (to be deleted after verification).
     ./newt
-    # thClaws : harness d'agent en Rust (webapp + CLI), paquet du flake projet
-    # /home/marc/git/thclaws, expose sur thclaws.marcpartensky.com via le
-    # blueprint newt ci-dessus (SSO Pangolin). Etat sur disque, pas de base.
+    # thClaws: agent harness in Rust (webapp + CLI), package of the project flake
+    # /home/marc/git/thclaws, exposed on thclaws.marcpartensky.com via the
+    # newt blueprint above (Pangolin SSO). State on disk, no DB.
     ./thclaws
     ./readarr
     ./radarr
@@ -57,127 +58,131 @@
     ./matrix-meta
     ./matrix-linkedin
     ./matrix-marc-agent
-    # ./matrix-telegram # attendre api_id/api_hash de my.telegram.org
+    # ./matrix-telegram # wait for api_id/api_hash from my.telegram.org
     ./navidrome
     ./aonsoku.nix
     ./jellyfin
-    # Agregateur de flux camera (tablette, tel...) et page web a plusieurs flux
-    # sur cam.marcpartensky.com. Voir services/go2rtc/default.nix.
+    # Camera stream aggregator (tablet, phone...) and a multi-stream web page
+    # on cam.marcpartensky.com. See services/go2rtc/default.nix.
     ./go2rtc
-    # Comparaison de plateformes de documentation (5 générateurs statiques +
-    # Wiki.js 3 sur wiki.marcpartensky.com, OIDC Zitadel).
+    # Documentation platform comparison (5 static generators +
+    # Wiki.js 3 on wiki.marcpartensky.com, Zitadel OIDC).
     ./docs-compare
     ./audiobookshelf
     ./media
     ./arr-mcp
     ./tor
     # ./minio
-    # ./jupyterhub  # HOTE UNIQUEMENT (tower) : declare
-    # jupyterhub/secret_token, absent de secrets/common.yml. Importe par
-    # profiles/tower, meme motif que ./gotify et ./discord-bot.
+    # ./jupyterhub  # HOST ONLY (tower): declares
+    # jupyterhub/secret_token, absent from secrets/common.yml. Imported by
+    # profiles/tower, same pattern as ./gotify and ./discord-bot.
     ./hermes
     ./hermes-webui
-    # Front du desktop servi en navigateur (le VRAI renderer Hermes Desktop)
-    # sur hermes.marcpartensky.com. Voir services/hermes-webapp/default.nix :
-    # remplace le WebUI tiers sur ce domaine, qui reste joignable en loopback.
+    # Desktop front served in a browser (the REAL Hermes Desktop renderer)
+    # on hermes.marcpartensky.com. See services/hermes-webapp/default.nix:
+    # replaces the third-party WebUI on this domain, which stays reachable on loopback.
     ./hermes-webapp
     ./hermes-dashboard
     ./hermes-mobile
-    # Terminal web REEL sur terminal.marcpartensky.com (ttyd + session zellij
-    # persistante, SSO Pangolin). C'est ce domaine qui servait avant le panneau
-    # d'admin Hermes, deplace sur dash.marcpartensky.com.
+    # REAL web terminal on terminal.marcpartensky.com (ttyd + persistent
+    # zellij session, Pangolin SSO). It is this domain that served before the Hermes
+    # admin panel, moved to dash.marcpartensky.com.
     ./terminal
-    # ./discord-bot  # HOTE UNIQUEMENT (tower) : le module n'a pas d'option
-    # enable, donc l'importer ici l'activait sur TOUS les hotes qui importent
-    # ./services (laptop, laptop-iso). Or son secret discord_bot_env n'existe que
-    # dans secrets/tower.yml : le build du portable echouait en
-    # « sops-install-secrets: the key 'discord_bot_env' cannot be found ».
-    # Deplace dans profiles/tower/configuration.nix.
-    # ./discord-hermes-bridge  # inutile : un seul gateway par hote, celui du
-    # profil default sert deja le profil discord-bridge (l'unite faisait
-    # crash-looper un second gateway, exit 75 « The host gateway already serves
-    # profile 'discord-bridge' »). Le cog Discord tape la route multiplexee
+    # ./discord-bot  # HOST ONLY (tower): the module has no enable
+    # option, so importing it here activated it on ALL hosts that import
+    # ./services (laptop, laptop-iso). But its discord_bot_env secret only exists
+    # in secrets/tower.yml: the laptop build failed with
+    # "sops-install-secrets: the key 'discord_bot_env' cannot be found".
+    # Moved to profiles/tower/configuration.nix.
+    # ./discord-hermes-bridge  # useless: only one gateway per host, the one of the
+    # default profile already serves the discord-bridge profile (the unit made
+    # a second gateway crash-loop, exit 75 "The host gateway already serves
+    # profile 'discord-bridge'"). The Discord cog hits the multiplexed route
     # http://127.0.0.1:8642/p/discord-bridge/v1/chat/completions.
     ./eternal-terminal
     ./nextcloud-mcp
     ./mcp-lan-access
     ./amazon-mcp
     ./hinge-auto
-    # ./stalwart-mcp  # importé par profiles/tower uniquement (voir le commentaire
-    # dans le module : sur anywhere la clé sops entre en conflit avec services/stalwart)
-    # ./gotify  # HOTE UNIQUEMENT (tower) : declare le secret
-    # gotify_admin_password, absent de secrets/common.yml (donc de laptop, deck
-    # et anywhere). Meme motif que ./discord-bot : importe par profiles/tower.
-    # Pont Gotify <-> Matrix (salle « 🪽 Hermes ») : relais gotify-matrix-relay
-    # + provisionnement des jetons Gotify. Le hook Matrix -> Gotify est lui
-    # vendorise dans services/hermes/hooks. Voir le module pour les pieges E2EE.
+    # ./stalwart-mcp  # imported by profiles/tower only (see the comment
+    # in the module: on anywhere the sops key conflicts with services/stalwart)
+    # ./gotify  # HOST ONLY (tower): declares the secret
+    # gotify_admin_password, absent from secrets/common.yml (so from laptop, deck
+    # and anywhere). Same pattern as ./discord-bot: imported by profiles/tower.
+    # Gotify <-> Matrix bridge (room "🪽 Hermes"): relay gotify-matrix-relay
+    # + provisioning of the Gotify tokens. The Matrix -> Gotify hook is
+    # vendored in services/hermes/hooks. See the module for the E2EE pitfalls.
     ./gotify-matrix
     ./zitadel
-    # ./zitadel-mcp  # FIXME: secret zitadel_mcp_env manquant dans zitadel.yml
+    # ./zitadel-mcp  # FIXME: zitadel_mcp_env secret missing in zitadel.yml
     # ./roku
-    # Module mort : son unique contenu etait `mcpServers.roku` en stdio, et
-    # services/roku/ est en lecture seule pour l'agent (mask r--), donc il n'a
-    # pas pu etre vide. Le serveur vit maintenant dans services/roku-mcp.py,
-    # monte par modules/nixos/mcp-host. A supprimer le jour ou l'ACL redevient
-    # inscriptible ; l'import est commente pour qu'il ne revienne pas.
+    # Dead module: its only content was `mcpServers.roku` in stdio, and
+    # services/roku/ is read-only for the agent (mask r--), so it could
+    # not be emptied. The server now lives in services/roku-mcp.py,
+    # mounted by modules/nixos/mcp-host. To delete the day the ACL becomes
+    # writable again; the import is commented out so it does not come back.
     ./codeberg-mcp
     ./ibkr-mcp
-    # ./vaultwarden-mcp  # prêt et testé (binaire + wrapper + secret) : à
-    # décommenter lors d'un rebuild où couper hermes-agent ne gêne pas, car
-    # ajouter un mcpServer régénère hermes-config.yaml et redémarre le gateway.
-    # En attendant, l'accès passe par ~/.hermes/scripts/vault-get.sh (CLI bw).
+    # ./vaultwarden-mcp  # ready and tested (binary + wrapper + secret): to
+    # uncomment during a rebuild where cutting hermes-agent is not a problem, since
+    # adding an mcpServer regenerates hermes-config.yaml and restarts the gateway.
+    # Meanwhile, access goes through ~/.hermes/scripts/vault-get.sh (bw CLI).
     ./gitea
     ./gitea-mcp
     ./openrouter-mcp
     ./reactive-resume
     ./open-notebook
-    # Shlink : raccourcisseur d'URL (s.marcpartensky.com) + son MCP hermes.
+    # Shlink: URL shortener (s.marcpartensky.com) + its hermes MCP.
     ./shlink
-    # Console d'admin de Shlink (PWA officielle) sur shlink.marcpartensky.com,
-    # derriere le SSO Pangolin.
+    # Shlink MCP server in Rust (stdio, mcp/shlink-mcp-rs): it is no longer
+    # mounted by mcp-host, so its module must be imported for
+    # mcpServers.shlink to exist.
+    ./shlink-mcp
+    # Shlink admin console (official PWA) on shlink.marcpartensky.com,
+    # behind the Pangolin SSO.
     ./shlink-web-client
-    # Partage de fichiers par lien court : bucket public Garage exposé en
-    # files.marcpartensky.com + MCP `share` (S3 -> Shlink -> façade x.gd).
+    # File sharing via short link: public Garage bucket exposed at
+    # files.marcpartensky.com + `share` MCP (S3 -> Shlink -> x.gd facade).
     ./share-mcp
-    # Classements Elo d'Arena (ex-LMArena) sans auth, lus depuis le dataset
-    # public lmarena-ai/leaderboard-dataset (CC BY 4.0). MCP hermes "arena-elo".
+    # Arena Elo rankings (ex-LMArena) without auth, read from the public
+    # dataset lmarena-ai/leaderboard-dataset (CC BY 4.0). hermes MCP "arena-elo".
     ./arena-elo-mcp
-    # Garage : S3 pour les artifacts de build (remplace rustfs, retire pour son
-    # CPU au repos) + MCP S3 cote hermes.
+    # Garage: S3 for build artifacts (replaces rustfs, removed for its
+    # idle CPU) + S3 MCP on the hermes side.
     ./garage
-    # Photos du telephone (camera, WhatsApp, Messenger) : arborescence sur le
-    # dataset media + miroir S3 dans Garage, un bucket par source.
+    # Phone photos (camera, WhatsApp, Messenger): tree on the
+    # media dataset + S3 mirror in Garage, one bucket per source.
     ./photos
     ./anki-sync-server
     ./anki-mcp
-    # Winnie n'est PLUS dans la conf hote (decision marc du 13/11) : le module
-    # lisait le flake du projet avec `builtins.getFlake`, ce qui forcait Nix a
-    # relire et hacher les 16 Go de son arbre de travail (11,5 Go de*/target/,
-    # 72 570 fichiers) a CHAQUE evaluation : eval de tower a 863 s mesuree.
-    # C'est aussi ce getFlake, et lui seul, qui rendait --impure obligatoire.
+    # Winnie is NO LONGER in the host config (marc's decision of 13/11): the module
+    # read the project flake with `builtins.getFlake`, which forced Nix to
+    # re-read and hash the 16 GB of its working tree (11.5 GB of */target/,
+    # 72,570 files) at EACH evaluation: tower eval measured at 863 s.
+    # It is also this getFlake, and it alone, that made --impure mandatory.
     #
-    # Attention : un switch qui part de cet etat RETIRE les unites winnie
-    # (backend, front, dev, ingest, schema, bucket, jwt-secret) et son
-    # provisionnement Postgres. Winnie doit donc etre redeploye hors de la conf
-    # hote AVANT le prochain switch (meme schema que deploy/containers.nix).
+    # Warning: a switch starting from this state REMOVES the winnie units
+    # (backend, front, dev, ingest, schema, bucket, jwt-secret) and its
+    # Postgres provisioning. Winnie must therefore be redeployed outside the host
+    # config BEFORE the next switch (same scheme as deploy/containers.nix).
     # ./winnie
     ./wise-mcp
     ./bank-mcp
-    # Enumeration de comptes par username / email (sherlock + maigret +
-    # socialscan) avec controle negatif : MCP hermes "username-recon".
+    # Account enumeration by username / email (sherlock + maigret +
+    # socialscan) with negative control: hermes MCP "username-recon".
     ./sherlock-mcp
     ./llm-steamdeck
     ./android-capture
-    # Seule porte vers root pour l'agent : mot de passe PAM ou passkey WebAuthn,
-    # premiere preuve valide gagne, tout est audite. Voir services/hermes-broker.
+    # The only door to root for the agent: PAM password or WebAuthn passkey,
+    # first valid proof wins, everything is audited. See services/hermes-broker.
     ./hermes-broker
     # ./kanidm
     # ./syncserver
-    # ./newt # attendre maj flakes
+    # ./newt # wait for flakes update
 
-    # Remote desktop gateway & access (WIP, non activé sur aucun profil : les
-    # modules définissent juste les options, `enable` reste à false partout.
-    # Domaines/secrets encore en placeholder dans les modules, cf TODO internes.)
+    # Remote desktop gateway & access (WIP, not enabled on any profile: the
+    # modules only define the options, `enable` stays false everywhere.
+    # Domains/secrets still placeholders in the modules, cf. internal TODOs.)
     ../modules/nixos/vault-rustguac
     ../modules/nixos/rustguac
     ../modules/nixos/kasmvnc
@@ -185,5 +190,9 @@
     ../modules/nixos/rustdesk
     ../modules/nixos/nginx/rustguac
     ../modules/nixos/nginx/kasmvnc
+    # Local vhost that injects the Catppuccin theme into the AdGuard UI (the
+    # resolver only listens on loopback: it is the only themed access, mesh
+    # included).
+    ../modules/nixos/nginx/adguard-theme
   ];
 }

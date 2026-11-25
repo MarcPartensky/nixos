@@ -1,74 +1,74 @@
 # services/android-capture/default.nix
-# Capture reseau des Android emules sur tower, isolee par cible.
+# Network capture of emulated Androids on tower, isolated per target.
 #
-# POURQUOI au niveau reseau et pas via un proxy : un proxy ne voit que ce qui
-# accepte de passer par lui. QUIC, Google Play Services et les SDK qui parlent
-# en direct lui echappent. La capture au niveau de l'interface voit tout, y
-# compris le chiffre, mais sans le contenu (TLS) : c'est du metadonnee, pas du
-# clair. Pour le clair il faut un proxy avec un certificat de confiance, ce qui
-# est un autre sujet.
+# WHY at the network level and not via a proxy: a proxy only sees what
+# agrees to go through it. QUIC, Google Play Services and the SDKs that talk
+# directly escape it. Interface-level capture sees everything, in-
+# cluding the encrypted part, but without the content (TLS): it is metadata, not
+# plaintext. For plaintext you need a proxy with a trusted certificate, which
+# is another topic.
 #
-# COMMENT ON ISOLE UNE APPLI : une cible = une instance Android, donc une
-# interface et des pcaps a elle. C'est la seule isolation franche, et elle ne
-# demande aucun root : l'instance A ne peut pas apparaitre dans les fichiers de
-# l'instance B. Mettre une appli par instance (une AVD pour l'appli de travail,
-# le conteneur Waydroid pour une autre) donne donc un pcap par appli.
+# HOW AN APP IS ISOLATED: one target = one Android instance, hence one
+# interface and its own pcaps. It is the only clean isolation, and it
+# requires no root: instance A cannot appear in the files of
+# instance B. Putting one app per instance (an AVD for the work app,
+# the Waydroid container for another) thus gives one pcap per app.
 #
-# Ce qui ne marche PAS pour isoler sans root sur une meme instance : separer les
-# pcaps par appli. Les applis d'un conteneur partagent un seul namespace reseau,
-# tout arrive melange sur le bridge. Android sait rattacher chaque socket a un
-# uid (`dumpsys netstats` pour les volumes par paquet, `/proc/net/tcp` pour l'uid
-# de chaque connexion vivante), ce qui permet d'attribuer les flux d'un pcap aux
-# applis par jointure sur les ports, mais c'est une reconstitution, pas une
-# capture separee. Une capture par uid demande de marquer en iptables avec
-# `-m owner --uid-owner <uid> -j NFLOG --nflog-group N` puis de capturer sur
-# `nflog:N`, donc root dans l'instance.
+# What does NOT work to isolate without root on the same instance: separating the
+# pcaps per app. The apps of a container share a single network namespace,
+# everything arrives mixed on the bridge. Android can attach each socket to a
+# uid (`dumpsys netstats` for per-packet volumes, `/proc/net/tcp` for the uid
+# of each live connection), which lets you attribute the flows of a pcap to the
+# apps by joining on the ports, but that is a reconstruction, not a
+# separate capture. A per-uid capture requires marking in iptables with
+# `-m owner --uid-owner <uid> -j NFLOG --nflog-group N` then capturing on
+# `nflog:N`, hence root in the instance.
 #
-# POURQUOI pas root cote hote : un tcpdump n'a besoin que de CAP_NET_RAW (et
-# CAP_NET_ADMIN pour la capture en mode promiscue sur un bridge). On donne ces
-# deux capacites au process par AmbientCapabilities, ce qui est plus etroit que
-# de faire tourner la capture en root. Corollaire : NoNewPrivileges doit rester a
-# false, systemd refuse la combinaison AmbientCapabilities + NoNewPrivileges.
-# L'utilisateur est statique (pas DynamicUser) parce que plusieurs unites
-# partagent le meme arbre d'etat : avec des uid transitoires, chaque demarrage
-# reattribuerait les dossiers.
+# WHY not root on the host side: a tcpdump only needs CAP_NET_RAW (and
+# CAP_NET_ADMIN for promiscuous-mode capture on a bridge). We give these
+# two capabilities to the process via AmbientCapabilities, which is narrower than
+# running the capture as root. Corollary: NoNewPrivileges must stay
+# false, systemd refuses the combination AmbientCapabilities + NoNewPrivileges.
+# The user is static (not DynamicUser) because several units
+# share the same state tree: with transient uids, each startup
+# would reattribute the directories.
 #
-# CIBLES ALIMENTEES PAR UN EMULATEUR : un AVD sort par la pile reseau de l'hote,
-# il n'a donc pas d'interface a capturer. On lui declare une liste d'interfaces
-# vide : le module cree le dossier et le digest, et c'est le `-tcpdump` de
-# l'emulateur qui ecrit dedans, par exemple
+# TARGETS FED BY AN EMULATOR: an AVD goes out through the host network stack,
+# so it has no interface to capture. We declare an empty interface
+# list for it: the module creates the directory and the digest, and it is the `-tcpdump` of
+# the emulator that writes into it, for example
 #   NIX_ANDROID_EMULATOR_FLAGS="... -tcpdump /var/lib/android-capture/pcap/avd/emu.pcap"
-# Les dossiers de cible sont en 0770 pour que l'utilisateur qui lance l'emulateur
-# (hermes) puisse y ecrire, alors que les pcaps restent au groupe.
+# The target directories are in 0770 so that the user who launches the emulator
+# (hermes) can write there, while the pcaps stay with the group.
 #
-# LIRE LE RESULTAT :
-#   ls /var/lib/android-capture/pcap/<cible>/            # fichiers de 10 min, 12 h d'historique
-#   cat /var/lib/android-capture/digest/<cible>.txt      # hotes du dernier fichier
-#   cat /var/lib/android-capture/digest/<cible>-all.txt  # hotes vus, cumules
-#   tshark -r <fichier>.pcap -Y 'tls.handshake.extensions_server_name' \
+# READING THE RESULT:
+#   ls /var/lib/android-capture/pcap/<target>/            # 10-min files, 12 h of history
+#   cat /var/lib/android-capture/digest/<target>.txt      # hosts of the latest file
+#   cat /var/lib/android-capture/digest/<target>-all.txt  # hosts seen, cumulative
+#   tshark -r <file>.pcap -Y 'tls.handshake.extensions_server_name' \
 #       -T fields -e tls.handshake.extensions_server_name | sort -u
 #
-# DEPENDANCE : l'interface waydroid0 n'existe que si waydroid-container tourne.
-# BindsTo lie le cycle de vie, pour ne pas laisser tcpdump echouer en boucle
-# Android arrete.
+# DEPENDENCY: the waydroid0 interface only exists if waydroid-container runs.
+# BindsTo ties the lifecycle, so as not to let tcpdump fail in a loop when
+# Android is stopped.
 { pkgs, lib, ... }:
 let
-  # Une cible par instance Android. La liste d'interfaces est celle de l'hote :
-  # vide = alimentee par le -tcpdump d'un emulateur.
+  # One target per Android instance. The interface list is that of the host:
+  # empty = fed by an emulator's -tcpdump.
   captures = {
     waydroid = [ "waydroid0" ];
     avd = [ ];
   };
 
-  # Rotation : un fichier toutes les 10 minutes, 72 conserves, soit 12 h.
+  # Rotation: one file every 10 minutes, 72 kept, i.e. 12 h.
   rotateSeconds = 600;
   rotateKeep = 72;
 
   user = "android-capture";
   stateDir = "/var/lib/android-capture";
 
-  # tcpdump ecrit des fichiers horodates et ecrase les plus vieux quand la
-  # limite -W est atteinte.
+  # tcpdump writes timestamped files and overwrites the oldest when the
+  # -W limit is reached.
   captureScript = target: ifaces: pkgs.writeShellScript "android-capture-${target}" ''
     set -eu
     exec ${pkgs.tcpdump}/bin/tcpdump \
@@ -77,16 +77,16 @@ let
       -G ${toString rotateSeconds} -W ${toString rotateKeep}
   '';
 
-  # Digest par cible : resume du dernier fichier ecrit sous un nom stable, plus
-  # une liste cumulee des hotes deja vus. Sert a repondre « cette appli parle a
-  # qui » sans ouvrir wireshark, et a reperer un SDK qui reapparait. Le fichier
-  # brut est dedoublonne a chaque passage, donc il ne grossit pas sans fin.
+  # Digest per target: summary of the last file written under a stable name, plus
+  # a cumulative list of hosts already seen. Used to answer "this app talks to
+  # whom" without opening wireshark, and to spot an SDK that reappears. The raw
+  # file is deduplicated on each pass, so it does not grow endlessly.
   digestScript = target: pkgs.writeShellScript "android-capture-digest-${target}" ''
     set -eu
     dir="${stateDir}/pcap/${target}"
     out="${stateDir}/digest"
     latest=$(ls -1t "$dir"/*.pcap 2>/dev/null | head -1 || true)
-    [ -n "$latest" ] || { echo "${target}: aucun pcap pour l'instant"; exit 0; }
+    [ -n "$latest" ] || { echo "${target}: no pcap yet"; exit 0; }
 
     ${pkgs.tshark}/bin/tshark -r "$latest" \
       -Y 'dns.flags.response==0 or tls.handshake.extensions_server_name' \
@@ -101,64 +101,64 @@ let
     echo "${target}: $latest"
   '';
 
-  # ---- Emulateur AVD en service -------------------------------------------
-  # Le runner d'androidenv cree l'AVD dans un dossier temporaire, boote, puis sort
-  # en laissant qemu tourner. Lance tel quel comme ExecStart, systemd verrait le
-  # service « termine » alors que l'emulateur tourne encore : on l'enveloppe pour
-  # rester vivant tant que qemu tient la capture, ce qui donne un service que
-  # systemd suit vraiment et qu'un `systemctl stop` arrete, emulateur compris.
+  # ---- AVD emulator as a service -------------------------------------------
+  # The androidenv runner creates the AVD in a temporary directory, boots, then exits
+  # leaving qemu running. Launched as-is as ExecStart, systemd would see the
+  # service as "finished" while the emulator is still running: we wrap it to
+  # stay alive as long as qemu holds the capture, which gives a service that
+  # systemd really follows and that a `systemctl stop` stops, emulator included.
   #
-  # Le chemin du runner est epingle volontairement : il vient d'une flake separee
-  # (le projet hinge-re, qui construit l'image Play Store). Si cette flake change
-  # d'image ou d'options, ce chemin change et il faut le mettre a jour ici comme
-  # dans son justfile.
+  # The runner path is pinned on purpose: it comes from a separate flake
+  # (the hinge-re project, which builds the Play Store image). If this flake changes
+  # image or options, this path changes and it must be updated here as
+  # in its justfile.
   emulatorRunner = "/nix/store/kyfmkz5jayxkz1gg6s1p9lsgdgjf6mf2-hinge-test/bin/run-test-emulator";
 
   emulatorScript = pkgs.writeShellScript "android-emulator" ''
     set -eu
     export HOME=${stateDir}
-    # avdmanager (qui cree l'AVD) est du Java et reclame JAVA_HOME : le runner
-    # appelle la version NON encapsulee de l'Android SDK, celle qui n'embarque
-    # pas le JDK. On reprend le JDK qu'androidenv utilise lui-meme dans son
-    # wrapper (openjdk 17), un JDK plus recent fait echouer ces cmdline-tools.
+    # avdmanager (which creates the AVD) is Java and requires JAVA_HOME: the runner
+    # calls the NON-wrapped version of the Android SDK, the one that does not embed
+    # the JDK. We reuse the JDK that androidenv itself uses in its
+    # wrapper (openjdk 17), a more recent JDK makes these cmdline-tools fail.
     export JAVA_HOME=${pkgs.jdk17}
     export PATH=${pkgs.jdk17}/bin:${pkgs.procps}/bin:${pkgs.coreutils}/bin:$PATH
     export NIX_ANDROID_EMULATOR_FLAGS="-no-window -no-audio -gpu swiftshader_indirect -no-snapshot -memory 3072 -no-metrics -tcpdump ${stateDir}/pcap/avd/emu.pcap"
-    # Le dossier des APK est cree par le service lui-meme : c'est lui qui le
-    # consomme, et une regle tmpfiles ne garantit pas sa presence au premier
-    # demarrage qui suit l'ajout de la regle.
+    # The APK directory is created by the service itself: it is the one that
+    # consumes it, and a tmpfiles rule does not guarantee its presence at the first
+    # startup following the addition of the rule.
     install -d -m 0770 ${stateDir}/apks
     ${emulatorRunner} &
     runner=$!
 
-    # On attend l'apparition de la capture, borne dans le temps, et on
-    # echoue si l'emulateur ne demarre pas plutot que de rester en vie pour rien.
+    # We wait for the capture to appear, time-bounded, and we
+    # fail if the emulator does not start rather than staying alive for nothing.
     demarre=0
     for _ in $(seq 1 90); do
       if pgrep -f "tcpdump ${stateDir}/pcap/avd/emu.pcap" >/dev/null 2>&1; then
         demarre=1
         break
       fi
-      # Runner sorti sans lancer qemu : inutile d'attendre la fin du delai.
+      # Runner exited without launching qemu: no point waiting for the timeout to end.
       kill -0 "$runner" 2>/dev/null || break
       sleep 2
     done
     if [ "$demarre" != 1 ]; then
-      echo "l'emulateur n'a pas demarre" >&2
+      echo "the emulator did not start" >&2
       exit 1
     fi
 
-    # Reste vivant tant que la capture de cette cible est ouverte : aucun autre
-    # process de la machine ne porte ce chemin de fichier.
+    # Stays alive as long as this target's capture is open: no other
+    # process on the machine carries this file path.
     while pgrep -f "tcpdump ${stateDir}/pcap/avd/emu.pcap" >/dev/null 2>&1; do
       sleep 10
     done
   '';
 
-  # Installe les APK de travail des que l'appareil a fini de booter. L'AVD etant
-  # recree a chaque demarrage, l'installation fait partie du cycle de vie du
-  # service : on depose un fichier dans apks/ (dossier accessible en ecriture au
-  # groupe) et c'est repris au boot suivant.
+  # Installs the work APKs as soon as the device has finished booting. The AVD being
+  # recreated on each startup, the installation is part of the lifecycle of the
+  # service: we drop a file in apks/ (directory writable by the
+  # group) and it is picked up at the next boot.
   installApkScript = pkgs.writeShellScript "android-avd-install" ''
     set -u
     adb=${pkgs.android-tools}/bin/adb
@@ -172,8 +172,8 @@ let
     done
     for apk in ${stateDir}/apks/*.apk; do
       [ -f "$apk" ] || continue
-      echo "installation de $apk"
-      $adb install -r "$apk" || echo "echec de l'installation de $apk"
+      echo "installing $apk"
+      $adb install -r "$apk" || echo "failed to install $apk"
     done
   '';
 
@@ -191,14 +191,14 @@ in
     isSystemUser = true;
     group = user;
     home = stateDir;
-    description = "Capture reseau Android";
+    description = "Android network capture";
   };
   users.groups.${user} = { };
 
-  # marc doit pouvoir lire les captures sans root, et hermes aussi pour lancer
-  # les emulateurs qui ecrivent dedans. Les dossiers restent en 0770 : lecture et
-  # ecriture pour le groupe, rien pour les autres. Appartenir a un groupe ne
-  # prend effet qu'a la prochaine ouverture de session (ou `newgrp`).
+  # marc must be able to read the captures without root, and hermes too to launch
+  # the emulators that write into them. The directories stay in 0770: read and
+  # write for the group, nothing for others. Belonging to a group only
+  # takes effect at the next login (or `newgrp`).
   users.users.marc.extraGroups = [ user ];
   users.users.hermes.extraGroups = [ user ];
 
@@ -212,64 +212,64 @@ in
       (target: _: "d ${stateDir}/pcap/${target} 0770 ${user} ${user} -")
       captures;
 
-  # Une seule affectation a systemd.services : en declarer deux dans le meme
-  # attrebat (services.android-emulator puis services = ...) est une erreur
-  # d'evaluation, donc tout est fusionne ici.
+  # A single assignment to systemd.services: declaring two in the same
+  # attribute (services.android-emulator then services = ...) is an evaluation
+  # error, so everything is merged here.
   systemd.services =
     {
-      # L'emulateur lui-meme, en service : sans lui la cible avd ne vit que tant
-      # qu'une session interactive veut bien le lancer. L'AVD est recree a chaque
-      # demarrage (le runner d'androidenv travaille dans un dossier temporaire),
-      # d'ou l'installation des APK deposes dans apks/ juste apres le boot.
+      # The emulator itself, as a service: without it the avd target lives only as long
+      # as an interactive session is willing to launch it. The AVD is recreated on each
+      # startup (the androidenv runner works in a temporary directory),
+      # hence the installation of the APKs dropped in apks/ just after boot.
       android-emulator = {
-        description = "Emulateur Android (AVD) alimentant la cible de capture avd";
+        description = "Android emulator (AVD) feeding the avd capture target";
         wantedBy = [ "multi-user.target" ];
         after = [ "network.target" ];
-        # Le runner vient d'une flake SEPAREE (hinge-re) et son chemin dans le
-        # store est epingle ci-dessus : quand cette flake n'est plus dans le GC
-        # roots, le chemin disparait et l'unite bouclait toutes les 20 s
-        # (releve 17/11/2026 : 342 redemarrages, ~1,4 s de CPU par tour, sans
-        # jamais lancer qemu). ConditionPathExists fait SAUTER l'unite
-        # proprement au lieu de la faire echouer en boucle ; il suffit de
-        # reconstruire la flake pour que le service reparte au boot suivant.
+        # The runner comes from a SEPARATE flake (hinge-re) and its path in the
+        # store is pinned above: when this flake is no longer in the GC
+        # roots, the path disappears and the unit looped every 20 s
+        # (observed 17/11/2026: 342 restarts, ~1,4 s of CPU per round, without
+        # ever launching qemu). ConditionPathExists makes the unit SKIP
+        # cleanly instead of making it fail in a loop; it suffices to
+        # rebuild the flake for the service to restart at the next boot.
         unitConfig.ConditionPathExists = emulatorRunner;
-        # PATH n'est pas herite d'une session interactive : sans jdk explicite,
-        # avdmanager (Java) sort en « JAVA_HOME is not set » et l'AVD n'est jamais
-        # cree. Sans procps ni coreutils, les `seq` et `pgrep` du script sont
-        # introuvables et l'unite se croit terminee aussitot.
+        # PATH is not inherited from an interactive session: without an explicit jdk,
+        # avdmanager (Java) exits with "JAVA_HOME is not set" and the AVD is never
+        # created. Without procps or coreutils, the `seq` and `pgrep` of the script are
+        # not found and the unit thinks it is finished immediately.
         path = with pkgs; [ jdk procps coreutils android-tools ];
         serviceConfig = hardening // {
-          # Type simple : l'unite est consideree demarree des le fork, donc un
-          # switch n'attend jamais le boot de l'AVD. Le script reste vivant pour
-          # que systemd suive l'emulateur, et echoue borne dans le temps si
-          # l'emulateur ne demarre pas.
+          # Type simple: the unit is considered started as soon as it forks, so a
+          # switch never waits for the AVD to boot. The script stays alive so
+          # that systemd follows the emulator, and fails time-bounded if
+          # the emulator does not start.
           ExecStart = "${emulatorScript}";
           Restart = "on-failure";
           RestartSec = "20s";
-          # qemu demande du temps pour rendre la main proprement.
+          # qemu needs time to hand back control cleanly.
           TimeoutStopSec = "60s";
-          # /dev/kvm est en 0666 sur cette machine : aucun groupe kvm a rejoindre.
+          # /dev/kvm is in 0666 on this machine: no kvm group to join.
         };
       };
 
-      # L'installation des APK de travail attend le boot d'un AVD neuf, donc
-      # plusieurs minutes : unite separee pour que l'emulateur demarre tout de
-      # suite et que le systeme n'attende pas un boot Android.
+      # The installation of the work APKs waits for a fresh AVD to boot, so
+      # several minutes: a separate unit so that the emulator starts right
+      # away and the system does not wait for an Android boot.
       android-avd-install = {
-        description = "Installation des APK de travail dans l'AVD";
-        # Sans emulateur il n'y a aucun device a servir : cette oneshot
-        # attendait adb 5 min puis se faisait tuer par TimeoutStartSec=900
-        # (releve 16/11/2026). Meme condition que android-emulator.
+        description = "Installation of the work APKs into the AVD";
+        # Without an emulator there is no device to serve: this oneshot
+        # waited for adb 5 min then got killed by TimeoutStartSec=900
+        # (observed 16/11/2026). Same condition as android-emulator.
         unitConfig.ConditionPathExists = emulatorRunner;
-        # Pas de wantedBy : une oneshot tiree par multi-user.target retient toute
-        # l'activation, donc le demarrage du systeme, pendant le boot Android.
-        # C'est un timer qui la declenche, et un timer ne retient rien.
+        # No wantedBy: a oneshot pulled by multi-user.target holds back all
+        # activation, hence system startup, during the Android boot.
+        # It is a timer that triggers it, and a timer holds nothing back.
         after = [ "android-emulator.service" ];
         path = with pkgs; [ android-tools coreutils ];
         serviceConfig = hardening // {
           Type = "oneshot";
           ExecStart = "${installApkScript}";
-          # Un AVD neuf peut mettre dix minutes a booter sur un hote charge.
+          # A fresh AVD can take ten minutes to boot on a loaded host.
           TimeoutStartSec = "900";
         };
       };
@@ -278,7 +278,7 @@ in
     lib.mapAttrs'
       (target: ifaces:
         lib.nameValuePair "android-capture-${target}" {
-          description = "Capture reseau Android (${target})";
+          description = "Android network capture (${target})";
           wantedBy = [ "multi-user.target" ];
           after = [ "network.target" ]
             ++ lib.optional (builtins.elem "waydroid0" ifaces) "waydroid-container.service";
@@ -289,7 +289,7 @@ in
             RestartSec = "10s";
             AmbientCapabilities = [ "CAP_NET_RAW" "CAP_NET_ADMIN" ];
             CapabilityBoundingSet = [ "CAP_NET_RAW" "CAP_NET_ADMIN" ];
-            # Obligatoire pour que les capacites ambiantes prennent effet.
+            # Required for the ambient capabilities to take effect.
             NoNewPrivileges = false;
           };
         })
@@ -297,7 +297,7 @@ in
     // lib.mapAttrs'
       (target: _:
         lib.nameValuePair "android-capture-digest-${target}" {
-          description = "Digest des hotes contactes (${target})";
+          description = "Digest of contacted hosts (${target})";
           serviceConfig = hardening // {
             Type = "oneshot";
             ExecStart = "${digestScript target}";
@@ -308,7 +308,7 @@ in
   systemd.timers =
     {
       android-avd-install = {
-        description = "Installation des APK de travail dans l'AVD apres le boot";
+        description = "Installation of the work APKs in the AVD after boot";
         wantedBy = [ "timers.target" ];
         timerConfig = {
           OnBootSec = "2min";
@@ -319,7 +319,7 @@ in
     // lib.mapAttrs'
     (target: _:
       lib.nameValuePair "android-capture-digest-${target}" {
-        description = "Digest periodique de la capture Android (${target})";
+        description = "Periodic digest of the Android capture (${target})";
         wantedBy = [ "timers.target" ];
         timerConfig = {
           OnBootSec = "5min";

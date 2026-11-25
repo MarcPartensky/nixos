@@ -1,36 +1,36 @@
 # services/beef/default.nix
-# BeEF (Browser Exploitation Framework) : labo de hook navigateur.
+# BeEF (Browser Exploitation Framework): browser hook lab.
 #
-# Trois briques, chacune avec sa raison d'etre :
+# Three bricks, each with its reason to be:
 #
-#   beef (3010, loopback)          le framework. Construit depuis un commit
-#                                  epingle : BeEF n'est pas dans nixpkgs et
-#                                  l'image Docker officielle est figee a
-#                                  octobre 2022 (0.5.x, avant la 0.6.0.0).
-#                                  Console d'operateur sur /ui/panel.
-#   beef-lure-filter (3011)        relais qui sert le leurre et /hook.js et
-#                                  refuse /ui et /api. Indispensable : un tunnel
-#                                  sortant arrive par la loopback, donc les
-#                                  restrictions d'IP de BeEF ne peuvent pas
-#                                  separer le public du local.
-#   cloudflared-lure               tunnel rapide Cloudflare (nom aleatoire
-#                                  *.trycloudflare.com, aucun compte, aucun
-#                                  domaine a marc) pointe sur le filtre. Le nom
-#                                  change a chaque demarrage : d'ou
-#                                  beef-render-config (regenere config.yaml
-#                                  avec l'URL courante) et beef-tunnel-sync
-#                                  (redemarre beef quand le nom a change).
+#   beef (3010, loopback)          the framework. Built from a pinned
+#                                  commit: BeEF is not in nixpkgs and
+#                                  the official Docker image is frozen at
+#                                  October 2022 (0.5.x, before 0.6.0.0).
+#                                  Operator console on /ui/panel.
+#   beef-lure-filter (3011)        relay that serves the lure and /hook.js and
+#                                  refuses /ui and /api. Essential: an outbound
+#                                  tunnel arrives via loopback, so BeEF's IP
+#                                  restrictions cannot
+#                                  separate public from local.
+#   cloudflared-lure               fast Cloudflare tunnel (random name
+#                                  *.trycloudflare.com, no account, no
+#                                  domain owned by marc) pointed at the filter. The name
+#                                  changes at each startup: hence
+#                                  beef-render-config (regenerates config.yaml
+#                                  with the current URL) and beef-tunnel-sync
+#                                  (restarts beef when the name changed).
 #
-# Exposition :
-#   - console : https://beef.marcpartensky.com (SSO Pangolin/Zitadel) -> 3010.
-#     NB : `auth.sso-enabled` gate la ressource, mais le blueprint ne porte pas
-#     de champ pour aller directement a l'IdP ; `resources.skipToIdpId` est pose
-#     en base Pangolin comme pour navidrome et aonsoku, sinon la page de login
-#     interne du proxy s'affiche avant Zitadel.
-#   - leurre : l'URL du tunnel, a diffuser par un lien court Shlink (voir le
-#     skill short-link-operations) et a ne jamais publier ailleurs.
+# Exposure:
+#   - console: https://beef.marcpartensky.com (Pangolin/Zitadel SSO) -> 3010.
+#     NB: `auth.sso-enabled` gates the resource, but the blueprint carries no
+#     field to go directly to the IdP; `resources.skipToIdpId` is set
+#     in the Pangolin DB as for navidrome and aonsoku, otherwise the login page
+#     internal to the proxy shows before Zitadel.
+#   - lure: the tunnel URL, to be shared via a Shlink short link (see the
+#     short-link-operations skill) and never published elsewhere.
 #
-# Rien n'est ouvert au firewall : les deux ports restent en loopback.
+# Nothing is open on the firewall: both ports stay on loopback.
 {
   config,
   lib,
@@ -42,17 +42,17 @@
   domain = "beef.marcpartensky.com";
   stateDir = "/var/lib/beef";
 
-  # Groupes du Gemfile.lock installes. Le groupe `test` est le seul exclu : ses
-  # gems (capybara, selenium, curb, geckodriver-helper...) ne servent pas au
-  # runtime et sont les plus fragiles a construire. Les groupes d'extensions
-  # sont installes parce que des gems du groupe default en dependent
-  # (msgpack <- msfrpc-client en ext_msf) : les exclure retire ces gems du load
-  # path de bundler et BeEF meurt au require de loader.rb.
+  # Gemfile.lock groups installed. The `test` group is the only one excluded: its
+  # gems (capybara, selenium, curb, geckodriver-helper...) are not used at
+  # runtime and are the most fragile to build. The extension groups
+  # are installed because gems of the default group depend on them
+  # (msgpack <- msfrpc-client in ext_msf): excluding them removes these gems from bundler's load
+  # path and BeEF dies at the require of loader.rb.
   withoutGroups = "test";
   installedGroups = ["default" "geoip" "ext_msf" "ext_notifications" "ext_dns" "ext_qrcode"];
 
-  # Source epinglee (master du 11/11/2026). gemset.nix est genere par bundix
-  # depuis le Gemfile.lock de ce meme commit ; le bump des deux va ensemble.
+  # Pinned source (master of 11/11/2026). gemset.nix is generated by bundix
+  # from the Gemfile.lock of this same commit; bumping both goes together.
   src = pkgs.fetchFromGitHub {
     owner = "beefproject";
     repo = "beef";
@@ -60,44 +60,44 @@
     hash = "sha256-KJiKC2p45T2HCR7SZ8ZEUKibb1yJxok1EBDbGwXQj9k=";
   };
 
-  # Source + gemset.nix : ce dossier sert a la fois de gemdir a bundlerEnv et de
-  # racine applicative (BeEF calcule ses chemins depuis __FILE__).
+  # Source + gemset.nix: this folder serves both as gemdir for bundlerEnv and as
+  # application root (BeEF computes its paths from __FILE__).
   beefSrc = pkgs.runCommand "beef-src-0.6.0.0" {nativeBuildInputs = [pkgs.python3];} ''
     cp -r ${src}/. $out
     chmod -R u+w $out
     cp ${./gemset.nix} $out/gemset.nix
-    # Le lockfile upstream ne liste que des variantes de plateforme
-    # (x86_64-linux-gnu, aarch64-linux-musl, arm64-darwin...) que nixpkgs ne
-    # construit pas : bundler echoue au demarrage sur « Could not find
-    # sqlite3-2.10.2-x86_64-linux-gnu in locally installed gems ». On ramene
-    # les specs a la version generique et PLATFORMS a `ruby`, ce que bundlerEnv
-    # fournit exactement. Fait ICI et pas dans le lanceur : bundlerEnv fige sa
-    # propre copie (gemfile-and-lockfile) a la construction.
+    # The upstream lockfile only lists platform variants
+    # (x86_64-linux-gnu, aarch64-linux-musl, arm64-darwin...) that nixpkgs does not
+    # build: bundler fails at startup with "Could not find
+    # sqlite3-2.10.2-x86_64-linux-gnu in locally installed gems". We bring
+    # the specs back to the generic version and PLATFORMS to `ruby`, which bundlerEnv
+    # provides exactly. Done HERE and not in the launcher: bundlerEnv freezes its
+    # own copy (gemfile-and-lockfile) at build time.
     python3 ${./fix-lockfile.py} $out/Gemfile.lock
-    # Les pages de demonstration sont desactivees en amont : le leurre
-    # /demos/basic.html vient de la.
+    # The demo pages are disabled upstream: the lure
+    # /demos/basic.html comes from there.
     substituteInPlace $out/extensions/demos/config.yaml \
       --replace-fail "enable: false" "enable: true"
-    # Jeton d'API REST deterministe : BeEF en genere un aleatoire a chaque
-    # demarrage et ne le persiste nulle part (ni en base, ni dans un fichier),
-    # donc aucun client REST (le MCP) ne pourrait s'authentifier. Le module
-    # alimente BEEF_API_TOKEN depuis un secret sops.
+    # Deterministic REST API token: BeEF generates a random one at each
+    # startup and does not persist it anywhere (neither in DB nor in a file),
+    # so no REST client (the MCP) could authenticate. The module
+    # feeds BEEF_API_TOKEN from a sops secret.
     substituteInPlace $out/core/main/crypto.rb \
       --replace-fail "token = SecureRandom.random_bytes(token_length).unpack1('H*')" \
       "token = ENV.fetch('BEEF_API_TOKEN') { SecureRandom.random_bytes(token_length).unpack1('H*') }"
-    # Le lanceur calcule le dossier des migrations en RELATIF au repertoire
-    # courant, alors que le service tourne dans /var/lib/beef (la base beef.db
-    # doit rester inscriptible, le store nix ne l'est pas). Sans ce patch :
-    # aucune migration appliquee, puis « Could not update 'beef.db' database
-    # file: Could not find table 'command_modules' » au premier demarrage.
+    # The launcher computes the migrations folder RELATIVE to the current
+    # directory, while the service runs in /var/lib/beef (the beef.db DB
+    # must stay writable, the nix store is not). Without this patch:
+    # no migration applied, then "Could not update 'beef.db' database
+    # file: Could not find table 'command_modules'" at first startup.
     substituteInPlace $out/beef \
       --replace-fail "ActiveRecord::Migrator.migrations_paths = [File.join('core', 'main', 'ar-migrations')]" \
       "ActiveRecord::Migrator.migrations_paths = ['$out/core/main/ar-migrations']"
-    # Rack::Protection::HostAuthorization n'autorise que *.localhost, *.test, les
-    # IP litterales et beef.http.public.host (l'hote du tunnel du leurre) : la
-    # console arrive avec le Host de son domaine (SSO Pangolin) et chaque appel
-    # API repond alors 403 « Host not permitted ». On autorise en plus l'hote
-    # de la console, passe par BEEF_CONSOLE_HOST depuis le lanceur.
+    # Rack::Protection::HostAuthorization only allows *.localhost, *.test,
+    # literal IPs and beef.http.public.host (the lure tunnel host): the
+    # console arrives with the Host of its domain (Pangolin SSO) and each
+    # API call then answers 403 "Host not permitted". We additionally allow the
+    # console host, passed via BEEF_CONSOLE_HOST from the launcher.
     substituteInPlace $out/core/main/router/router.rb \
       --replace-fail "          permitted << public_host unless public_host.empty?" \
       "          permitted << public_host unless public_host.empty?
@@ -110,13 +110,13 @@
     gemdir = beefSrc;
     ruby = pkgs.ruby_3_4;
     groups = installedGroups;
-    # nokogiri 1.19.5 : deux pieges de construction.
-    #   - `--use-system-libraries` en buildFlag ne suffit pas (extconf retombe
-    #     sur mini_portile2, absent du sandbox et de toute facon sans reseau) :
-    #     la variable d'environnement, equivalente documentee, est bien lue.
-    #   - libgumbo n'a PAS de variante systeme : sans `--gumbo-dev`, extconf le
-    #     compile via mini_portile2 et echoue. Avec ce flag il compile les
-    #     sources gumbo-parser embarquees dans la gem.
+    # nokogiri 1.19.5: two build pitfalls.
+    #   - `--use-system-libraries` in buildFlag is not enough (extconf falls back
+    #     on mini_portile2, absent from the sandbox and anyway without network):
+    #     the environment variable, the documented equivalent, is read.
+    #   - libgumbo has NO system variant: without `--gumbo-dev`, extconf
+    #     compiles it via mini_portile2 and fails. With this flag it compiles the
+    #     gumbo-parser sources bundled in the gem.
     gemConfig = pkgs.defaultGemConfig // {
       nokogiri = attrs: let
         base = pkgs.defaultGemConfig.nokogiri attrs;
@@ -133,8 +133,8 @@
     };
   };
 
-  # nodejs : uglifier passe par execjs et minifie le JS au demarrage.
-  # espeak-ng : module text_to_voice.
+  # nodejs: uglifier goes through execjs and minifies the JS at startup.
+  # espeak-ng: text_to_voice module.
   beef = pkgs.writeShellApplication {
     name = "beef";
     runtimeInputs = [pkgs.nodejs pkgs.espeak-ng];
@@ -142,23 +142,23 @@
       export HOME=${stateDir}
       export BUNDLE_GEMFILE=${beefSrc}/Gemfile
       export BUNDLE_WITHOUT='${withoutGroups}'
-      # Host autorise pour la console d'operateur (voir le patch de
-      # core/main/router/router.rb) : son domaine n'est pas celui du leurre.
+      # Host allowed for the operator console (see the patch to
+      # core/main/router/router.rb): its domain is not the lure's.
       export BEEF_CONSOLE_HOST='${domain}'
-      # Jeton d'API REST fixe, lu depuis le secret sops : sans lui BeEF en
-      # genere un aleatoire a chaque demarrage et le client REST (beef-mcp) ne
-      # pourrait plus s'authentifier.
+      # Fixed REST API token, read from the sops secret: without it BeEF
+      # generates a random one at each startup and the REST client (beef-mcp)
+      # could no longer authenticate.
       if [ ! -r ${config.sops.secrets.beef_api_token.path} ]; then
-        echo "beef: jeton d'API illisible (${config.sops.secrets.beef_api_token.path})" >&2
+        echo "beef: unreadable API token (${config.sops.secrets.beef_api_token.path})" >&2
         exit 1
       fi
       BEEF_API_TOKEN="$(cat ${config.sops.secrets.beef_api_token.path})"
       export BEEF_API_TOKEN
-      # L'arbre doit etre INSCRIPTIBLE : au demarrage BeEF minifie le JS de sa
-      # console et l'ecrit dans extensions/admin_ui/media/javascript-min/, ce
-      # qui est impossible depuis le store nix (« Read-only file system »). On
-      # travaille donc sur une copie dans le repertoire d'etat, refaite a chaque
-      # demarrage ; la base vit a cote (chemin absolu pose par render-config).
+      # The tree must be WRITABLE: at startup BeEF minifies the JS of its
+      # console and writes it to extensions/admin_ui/media/javascript-min/, which
+      # is impossible from the nix store ("Read-only file system"). We
+      # therefore work on a copy in the state directory, redone at each
+      # startup; the DB lives beside it (absolute path set by render-config).
       src="${stateDir}/src"
       rm -rf "$src"
       mkdir -p "$src"
@@ -195,7 +195,7 @@
     text = builtins.readFile ./check-login.sh;
   };
 in {
-  # La derivation est exposee pour pouvoir la builder hors tower :
+  # The derivation is exposed to be able to build it off tower:
   #   nix build --impure --expr '...config.system.build.beef'
   system.build.beef = beef;
 
@@ -206,8 +206,8 @@ in {
     mode = "0400";
   };
 
-  # Lu par le service beef (owner) et par le MCP beef-mcp (groupe hermes) :
-  # c'est le meme jeton des deux cotes, d'ou le 0440.
+  # Read by the beef service (owner) and by the beef-mcp MCP (hermes group):
+  # it is the same token on both sides, hence the 0440.
   sops.secrets.beef_api_token = {
     key = "beef_api_token";
     sopsFile = ../../secrets/beef.yml;
@@ -225,7 +225,7 @@ in {
   };
 
   systemd.services.beef-lure-filter = {
-    description = "Filtre public du leurre BeEF (console et API refusees)";
+    description = "Public filter for the BeEF lure (console and API refused)";
     wantedBy = ["multi-user.target"];
     after = ["network.target"];
     environment = {
@@ -246,7 +246,7 @@ in {
   };
 
   systemd.services.cloudflared-lure = {
-    description = "Tunnel rapide Cloudflare vers le filtre du leurre BeEF";
+    description = "Fast Cloudflare tunnel to the BeEF lure filter";
     wantedBy = ["multi-user.target"];
     after = ["network-online.target" "beef-lure-filter.service"];
     wants = ["network-online.target" "beef-lure-filter.service"];
@@ -262,7 +262,7 @@ in {
   };
 
   systemd.services.beef = {
-    description = "BeEF (Browser Exploitation Framework), labo de hook navigateur";
+    description = "BeEF (Browser Exploitation Framework), browser hook lab";
     wantedBy = ["multi-user.target"];
     after = ["cloudflared-lure.service" "beef-lure-filter.service"];
     wants = ["cloudflared-lure.service"];
@@ -277,8 +277,8 @@ in {
       Group = "beef";
       StateDirectory = "beef";
       WorkingDirectory = stateDir;
-      # Attend le nom du tunnel puis ecrit config.yaml (public.host, mot de
-      # passe, loopback) et verifie le resultat avant de rendre la main.
+      # Waits for the tunnel name then writes config.yaml (public.host, pass-
+      # word, loopback) and checks the result before returning.
       ExecStartPre = "${renderConfig}/bin/beef-render-config";
       ExecStart = "${beef}/bin/beef";
       Restart = "always";
@@ -287,11 +287,11 @@ in {
     };
   };
 
-  # Le nom du tunnel rapide change a chaque redemarrage de cloudflared : ce
-  # timer compare le nom courant a celui rendu dans la config et redemarre beef
-  # si besoin (son ExecStartPre regenere alors la config).
+  # The fast tunnel name changes at each cloudflared restart: this
+  # timer compares the current name to the one rendered in the config and restarts beef
+  # if needed (its ExecStartPre then regenerates the config).
   systemd.services.beef-tunnel-sync = {
-    description = "Realigne BeEF sur le nom courant du tunnel rapide";
+    description = "Realigns BeEF on the current fast tunnel name";
     environment.BEEF_STATE_DIR = stateDir;
     serviceConfig = {
       Type = "oneshot";
@@ -307,14 +307,14 @@ in {
     };
   };
 
-  # Verifie que la console accepte VRAIMENT les identifiants de la config : le
-  # seul symptome d'un mot de passe mal pose est un « login impossible » cote
-  # navigateur, sans rien dans les journaux. Ce controle rejoue le login depuis
-  # un process qui peut lire le secret (User=beef) et journalise le verdict.
-  # Lance par un timer, pas par beef.service : un ExecStartPost bloquant
-  # retarderait l'etat « started » du service.
+  # Checks that the console REALLY accepts the config credentials: the
+  # only symptom of a badly set password is a "login impossible" on the
+  # browser side, with nothing in the logs. This check replays the login from
+  # a process that can read the secret (User=beef) and logs the verdict.
+  # Launched by a timer, not by beef.service: a blocking ExecStartPost
+  # would delay the "started" state of the service.
   systemd.services.beef-selfcheck = {
-    description = "Verifie que la console BeEF accepte les identifiants de la config";
+    description = "Checks that the BeEF console accepts the config credentials";
     after = ["beef.service"];
     wants = ["beef.service"];
     environment = {
@@ -339,9 +339,9 @@ in {
     };
   };
 
-  # Console d'operateur : domaine a marc, SSO en amont. Le leurre ne passe pas
-  # par ici (il passe par le tunnel et le filtre), donc aucun conflit de
-  # chemin : Pangolin ne sait pas decouper une ressource par path.
+  # Operator console: domain owned by marc, SSO upstream. The lure does not go
+  # through here (it goes through the tunnel and the filter), so no path
+  # conflict: Pangolin does not know how to split a resource by path.
   services.newt.blueprint.proxy-resources.beef = {
     name = "beef";
     protocol = "http";
@@ -356,8 +356,8 @@ in {
           enabled = true;
           hostname = "127.0.0.1";
           port = port;
-          # /hook.js repond 200 sans authentification ; "/" rend 404, ce qui
-          # sortirait la cible du load-balancer.
+          # /hook.js answers 200 without authentication; "/" returns 404, which
+          # would take the target out of the load-balancer.
           path = "/hook.js";
           scheme = "http";
           mode = "http";
@@ -377,7 +377,7 @@ in {
       assertion =
         !(lib.elem port config.networking.firewall.allowedTCPPorts)
         && !(lib.elem filterPort config.networking.firewall.allowedTCPPorts);
-      message = "beef : les ports ${toString port} et ${toString filterPort} doivent rester en loopback (exposition par le tunnel et Pangolin uniquement).";
+      message = "beef: ports ${toString port} and ${toString filterPort} must stay on loopback (exposure via the tunnel and Pangolin only).";
     }
   ];
 }
