@@ -1,131 +1,135 @@
 # services/anki-mcp/default.nix
-# Serveur MCP Anki headless : Anki (sans bureau, sous Xvfb) + addon AnkiMCP
-# (ankimcp.ai), qui expose la collection en HTTP MCP sur la loopback.
+# Headless Anki MCP server: Anki (no desktop, under Xvfb) + AnkiMCP addon
+# (ankimcp.ai), which exposes the collection over MCP HTTP on loopback.
 #
-# Choix d'architecture : l'addon AnkiMCP tourne DANS Anki (aucun processus
-# séparé, aucun AnkiConnect à installer), donc la seule façon d'en faire un
-# service est de faire tourner un Anki sans écran. La collection de ce service
-# et celle de ton Anki de bureau (Mac, téléphone) se réconcilient par le
-# serveur de sync auto-hébergé (services/anki-sync-server), dont ce module
-# emprunte le secret : un seul compte, une seule collection, plusieurs clients.
+# Architecture choice: the AnkiMCP addon runs INSIDE Anki (no separate
+# process, no AnkiConnect to install), so the only way to make it a
+# service is to run Anki without a screen. This service's collection
+# and your desktop Anki's (Mac, phone) reconcile through the
+# self-hosted sync server (services/anki-sync-server), whose secret this module
+# borrows: a single account, a single collection, several clients.
 #
-# Détails qui coûtent du temps si on les ignore :
-#  - Anki lit sa liste d'addons dans $ANKI_ADDONS quand cette variable est
-#    posée (patch nixpkgs), sinon dans <base>/addons21. On construit donc un
-#    dossier d'addons dédié : l'addon AnkiMCP plus un petit addon d'amorçage,
-#    car Anki n'offre AUCUN chemin non interactif pour renseigner le serveur de
-#    sync et le compte (la saisie passe par la boîte de dialogue des
-#    préférences). L'addon d'amorçage fait le login au chargement du profil et
-#    persiste la clé, ce que lit ensuite mw.pm.sync_auth() donc l'outil `sync`.
-#  - L'addon "nixos" livré par pkgs.anki.withAddons n'est PAS repris ici : il
-#    remplace addonManager.writeConfig par une boîte de dialogue modale,
-#    intenable sans écran.
-#  - Anki vient du nixpkgs de l'input anki-mcp, celui qui a construit l'addon :
-#    l'addon y est lié contre son interpréteur python (3.14) via vendor/shared,
-#    un autre nixpkgs casse l'ABI des modules compilés (pydantic_core).
-#  - Pas de -p <profil> au premier démarrage : le profil n'existe pas encore et
-#    Anki afficherait alors le sélecteur de profils (modal). Sans -p, Anki crée
-#    le profil unique tout seul puis le charge silencieusement.
+# Details that cost time if ignored:
+#  - Anki reads its addon list from $ANKI_ADDONS when this variable is
+#    set (nixpkgs patch), otherwise from <base>/addons21. We therefore build a
+#    dedicated addon folder: the AnkiMCP addon plus a small bootstrap addon,
+#    because Anki offers NO non-interactive path to enter the sync server
+#    and account (entry goes through the preferences
+#    dialog). The bootstrap addon logs in on profile load and
+#    persists the key, which mw.pm.sync_auth() then reads, hence the `sync` tool.
+#  - The "nixos" addon shipped by pkgs.anki.withAddons is NOT used here: it
+#    replaces addonManager.writeConfig with a modal dialog,
+#    unworkable without a screen.
+#  - Anki comes from the nixpkgs of the anki-mcp input, the one that built the addon:
+#    the addon there is linked against its python interpreter (3.14) via vendor/shared,
+#    another nixpkgs breaks the ABI of the compiled modules (pydantic_core).
+#  - No -p <profile> on first startup: the profile does not exist yet and
+#    Anki would then show the profile selector (modal). Without -p, Anki creates
+#    the single profile on its own then loads it silently.
 { config, lib, pkgs, inputs, ... }:
 let
   cfg = config.services.anki-mcp;
 
   system = pkgs.stdenv.hostPlatform.system;
 
-  # nixpkgs qui a construit l'addon ET le paquet Anki (cf en-tête).
+  # nixpkgs that built the addon AND the Anki package (cf header).
   ankiPkgs = inputs.anki-mcp.inputs.nixpkgs.legacyPackages.${system};
   mcpAddon = inputs.anki-mcp.packages.${system}.addon;
 
-  # Addon d'amorçage : rattache le profil au serveur de sync (login une fois).
+  # Bootstrap addon: attaches the profile to the sync server (login once).
   bootstrapAddon = pkgs.runCommand "anki-addon-ankimcp-sync-bootstrap" { } ''
     mkdir -p $out/share/anki/addons/ankimcp_sync_bootstrap
     cp ${./bootstrap/__init__.py} $out/share/anki/addons/ankimcp_sync_bootstrap/__init__.py
     cp ${./bootstrap/manifest.json} $out/share/anki/addons/ankimcp_sync_bootstrap/manifest.json
   '';
 
-  # AnkiMCP protège son transport HTTP contre le DNS-rebinding : le Host de
-  # l'URL LAN (192.168.1.44:3141) n'est accepté que s'il figure dans
-  # http_allowed_hosts, sinon le serveur répond 421 Misdirected Request. Le
-  # dossier d'addon de l'input est en lecture seule (store), on en fait donc
-  # une copie dont seul config.json change. La copie n'est utilisée que quand
-  # l'accès LAN est activé.
-  mcpAddonForLan = pkgs.runCommand "anki-addon-anki-mcp-server-lan" { } ''
+  # The addon folder of the input is read-only (store), so we always build a
+  # writable copy. It carries two changes:
+  #  - extra_tools/delete_deck_tool.py: a `delete_deck` tool the upstream addon
+  #    lacks. Deck restructurings leave empty shells that cannot be deleted
+  #    through the API. Tools are auto-discovered by pkgutil in
+  #    primitives/essential/tools/, a plain cp is enough. Drop the injection if
+  #    upstream ever ships delete_deck.
+  #  - AnkiMCP protects its HTTP transport against DNS-rebinding: the Host of the
+  #    LAN URL (192.168.1.44:3141) is accepted only if it appears in
+  #    http_allowed_hosts, otherwise the server answers 421 Misdirected Request.
+  #    Patched only when LAN access is enabled.
+  mcpAddonPatched = pkgs.runCommand "anki-addon-anki-mcp-server-patched" { } (''
     mkdir -p $out
     cp -r ${mcpAddon}/share/anki/addons/anki-mcp-server/. $out/
     chmod -R u+w $out
+    cp ${./extra_tools/delete_deck_tool.py} \
+      $out/primitives/essential/tools/delete_deck_tool.py
+  '' + lib.optionalString config.services.mcp-lan-access.enable ''
     ${pkgs.jq}/bin/jq --arg host "${config.services.mcp-lan-access.host}:${toString port}" \
       '.http_allowed_hosts = [$host]' $out/config.json > $out/config.json.new
     mv $out/config.json.new $out/config.json
-  '';
+  '');
 
-  # Dossier d'addons d'Anki ($ANKI_ADDONS) : un simple répertoire de liens.
+  # Anki's addon folder ($ANKI_ADDONS): a simple directory of links.
   addonsDir = pkgs.runCommand "ankimcp-addons" { } ''
     mkdir -p $out
-    ln -s ${
-      if config.services.mcp-lan-access.enable
-      then mcpAddonForLan
-      else "${mcpAddon}/share/anki/addons/anki-mcp-server"
-    } $out/anki-mcp-server
+    ln -s ${mcpAddonPatched} $out/anki-mcp-server
     ln -s ${bootstrapAddon}/share/anki/addons/ankimcp_sync_bootstrap $out/ankimcp_sync_bootstrap
   '';
 
   stateDir = "/var/lib/anki-mcp";
   port = 3141;
 
-  # Tant que prefs21.db n'existe pas, Anki se croit au premier lancement et
-  # ouvre un sélecteur de langue modal qui bloque l'ouverture du profil : on
-  # amorce le fichier une fois (cf l'en-tête de seed-prefs.py).
+  # As long as prefs21.db does not exist, Anki thinks it is the first launch and
+  # opens a modal language selector that blocks opening the profile: we
+  # seed the file once (cf the header of seed-prefs.py).
   seedPrefs = pkgs.writeShellScript "anki-mcp-seed-prefs" ''
     exec ${pkgs.python3}/bin/python3 ${./seed-prefs.py} ${stateDir}/anki/prefs21.db
   '';
 
   start = pkgs.writeShellScript "anki-mcp-start" ''
     set -eu
-    # Tout l'état d'Anki vit sous $HOME (profil, collection, medias, logs).
+    # All of Anki's state lives under $HOME (profile, collection, media, logs).
     export HOME=${stateDir}
     export ANKI_SYNC_USER=${cfg.syncUser}
     export ANKI_SYNC_ENDPOINT=${cfg.syncEndpoint}
     export ANKI_SYNC_PASSWORD_FILE="$CREDENTIALS_DIRECTORY/anki-sync-password"
 
-    # Anki écrit dans son profil : le chemin -b reste sous $HOME pour que
-    # DynamicUser et StateDirectory suffisent (aucun /home/user en jeu).
+    # Anki writes into its profile: the -b path stays under $HOME so that
+    # DynamicUser and StateDirectory are enough (no /home/user involved).
     exec ${pkgs.xvfb-run}/bin/xvfb-run -a -s "-screen 0 1280x1024x24" \
       ${ankiPkgs.anki}/bin/anki -b ${stateDir}/anki
   '';
 in {
   options.services.anki-mcp = {
-    enable = lib.mkEnableOption "serveur MCP Anki headless (Anki + addon AnkiMCP)";
+    enable = lib.mkEnableOption "headless Anki MCP server (Anki + AnkiMCP addon)";
 
     syncUser = lib.mkOption {
       type = lib.types.str;
       default = "marc";
-      description = "Compte du serveur de sync Anki utilisé par l'instance headless.";
+      description = "Anki sync server account used by the headless instance.";
     };
 
     syncEndpoint = lib.mkOption {
       type = lib.types.str;
       default = "https://anki.marcpartensky.com";
       description = ''
-        URL du serveur de sync (services/anki-sync-server). Le mot de passe
-        vient du secret anki-sync-server/password, lu par LoadCredential.
+        Sync server URL (services/anki-sync-server). The password
+        comes from the anki-sync-server/password secret, read by LoadCredential.
       '';
     };
   };
 
   config = lib.mkIf cfg.enable {
     systemd.services.anki-mcp = {
-      description = "Anki + AnkiMCP headless (serveur MCP Anki pour l'agent)";
+      description = "Anki + AnkiMCP headless (Anki MCP server for the agent)";
       wantedBy = ["multi-user.target"];
       after = ["network-online.target"];
       wants = ["network-online.target"];
-      # La sync est pilotée par l'outil `sync` du MCP, pas au démarrage :
-      # cf l'addon d'amorçage (autoSync désactivé).
+      # Sync is driven by the MCP's `sync` tool, not at startup:
+      # cf the bootstrap addon (autoSync disabled).
       serviceConfig = {
         DynamicUser = true;
         StateDirectory = "anki-mcp";
         RuntimeDirectory = "anki-mcp";
         WorkingDirectory = stateDir;
-        # Même compte que le serveur de sync : le secret est déjà là.
+        # Same account as the sync server: the secret is already there.
         LoadCredential = "anki-sync-password:${config.sops.secrets."anki-sync-server/password".path}";
         ExecStartPre = seedPrefs;
         ExecStart = start;
@@ -135,8 +139,8 @@ in {
       };
       environment = {
         ANKI_ADDONS = "${addonsDir}";
-        # Qt/WebEngine sans écran : rendu logiciel, pas de bac à sable.
-        # DISPLAY est posé par xvfb-run (display libre choisi à l'exécution).
+        # Qt/WebEngine without a screen: software rendering, no sandbox.
+        # DISPLAY is set by xvfb-run (free display chosen at runtime).
         QTWEBENGINE_DISABLE_SANDBOX = "1";
         QTWEBENGINE_CHROMIUM_FLAGS = "--disable-gpu";
         LIBGL_ALWAYS_SOFTWARE = "1";
@@ -146,14 +150,14 @@ in {
       };
     };
 
-    # Câblage Hermes : le MCP est consommé par URL (transport HTTP), comme
-    # nextcloud ou arrmcp. Le port reste sur la loopback et rien n'est ouvert au
-    # firewall. L'URL LAN du module services/mcp-lan-access ne fait que rendre
-    # le lien cliquable depuis Hermes Desktop sur le Mac ; le firewall la
-    # restreint au Mac et tower la joint par lo.
-    # Exposition publique éventuelle : passer par une ressource Pangolin/newt
-    # dédiée (services/newt) avec http_api_key + http_allowed_hosts posés dans
-    # la config de l'addon, jamais sans clé.
+    # Hermes wiring: the MCP is consumed by URL (HTTP transport), like
+    # nextcloud or arrmcp. The port stays on loopback and nothing is opened on the
+    # firewall. The LAN URL of the services/mcp-lan-access module only makes
+    # the link clickable from Hermes Desktop on the Mac; the firewall
+    # restricts it to the Mac and tower reaches it via lo.
+    # Possible public exposure: go through a dedicated Pangolin/newt
+    # resource (services/newt) with http_api_key + http_allowed_hosts set in
+    # the addon config, never without a key.
     services.hermes-agent.mcpServers.anki = {
       url =
         if config.services.mcp-lan-access.enable

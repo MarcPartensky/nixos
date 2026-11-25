@@ -29,13 +29,19 @@ _TAG = "[ankimcp-sync-bootstrap]"
 # Évite d'empiler les tentatives si le profil est rouvert dans le même run.
 _done = False
 
+# Retries after a failure: in a headless service the profile_did_open hook never
+# fires again, so without them a transient failure (network at boot, sync server
+# briefly unavailable) leaves the instance permanently unattached.
+_retries_left = 8
+_retry_delay_ms = 60_000
+
 
 def _log(message: str) -> None:
     print(f"{_TAG} {message}", flush=True)
 
 
 def _bootstrap() -> None:
-    global _done
+    global _done, _retries_left
     if _done or mw is None or mw.col is None or mw.pm is None:
         return
     _done = True
@@ -69,6 +75,16 @@ def _bootstrap() -> None:
     except Exception as exc:  # réseau, identifiants, schéma : on réessaiera
         _done = False
         _log(f"amorçage échoué ({type(exc).__name__}: {exc})")
+        if _retries_left > 0:
+            _retries_left -= 1
+            _log(f"retry in {_retry_delay_ms // 1000} s "
+                 f"({_retries_left} left)")
+            try:
+                from aqt.qt import QTimer
+
+                QTimer.singleShot(_retry_delay_ms, _bootstrap)
+            except Exception as timer_exc:  # no Qt: give up
+                _log(f"cannot reschedule: {timer_exc}")
 
 
 gui_hooks.profile_did_open.append(_bootstrap)

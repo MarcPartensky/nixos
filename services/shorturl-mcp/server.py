@@ -1,39 +1,39 @@
-"""Serveur MCP shorturl : raccourcisseurs publics ANONYMES a domaine 4 car.
+"""shorturl MCP server: public ANONYMOUS shorteners with a 4-char domain.
 
-Trois backends seulement, retenus apres sondage des 55 domaines de 4
-caracteres des listes korlabs/urlshortener, PeterDaveHello et hagezi : ce sont
-les seuls qui cumulent pas de compte, pas de captcha, URL de destination
-libre et creation programmatique verifiee.
+Only three backends, kept after probing the 55 four-character domains from
+the korlabs/urlshortener, PeterDaveHello and hagezi lists: they are the only
+ones that combine no account, no captcha, free destination URL and verified
+programmatic creation.
 
-  1. xgd  (x.gd, 4 car) : API JSON POST /api/v1/shorten, repond 200 avec
-     results.id, redirection 302 directe, liens permanents, operateur non
-     lucratif. Aucun slug custom sans compte. Backend par defaut.
-  2. vgd  (v.gd, 4 car) : API publique GET /create.php?format=json, accepte
-     un slug custom (shorturl), liens IMMUABLES (jamais supprimables ni
-     modifiables, par design anti-abus), refuse les IP litterales et les
-     chaines de raccourcisseurs. Le clic passe par une page d'avertissement.
-  3. ttl  (t.tl, 4 car) : POST de formulaire, accepte keyword (slug) et
-     expiration. Dernier recours : le domaine est EN VENTE, donc l'operateur
-     peut disparaitre du jour au lendemain.
+  1. xgd  (x.gd, 4 chars): JSON API POST /api/v1/shorten, answers 200 with
+     results.id, direct 302 redirect, permanent links, non-profit
+     operator. No custom slug without an account. Default backend.
+  2. vgd  (v.gd, 4 chars): public API GET /create.php?format=json, accepts
+     a custom slug (shorturl), IMMUTABLE links (never deletable nor
+     modifiable, by anti-abuse design), refuses literal IPs and
+     shortener chains. The click goes through a warning page.
+  3. ttl  (t.tl, 4 chars): form POST, accepts keyword (slug) and
+     expiration. Last resort: the domain is FOR SALE, so the operator
+     can disappear overnight.
 
-Ecartes volontairement (mesure, pas supposition) : tg.pe et is.gd (5 car),
-t.ly / s.ee / s.id / r.im / d.pr (compte ou captcha), 0.gp / 2.gp / 4.gp /
+Deliberately discarded (measurement, not guess): tg.pe and is.gd (5 chars),
+t.ly / s.ee / s.id / r.im / d.pr (account or captcha), 0.gp / 2.gp / 4.gp /
 6.gp / 2.ly / 3.ly / 7.ly / 8.ly (Cloudflare Turnstile), t.im / t.mr / l.tl
-(reCAPTCHA, refus dur), z.sh (URLs GitHub uniquement, 403 hors de sa page),
-d.to (payant), t.co / t.cn / g.co / a.co (plateformes), 4.gg (page de pub).
+(reCAPTCHA, hard refusal), z.sh (GitHub URLs only, 403 outside its page),
+d.to (paid), t.co / t.cn / g.co / a.co (platforms), 4.gg (ad page).
 
-Aucun secret : ces trois services sont sans compte. Le journal local des
-creations (SHORTURL_STATE_DIR, defaut ~/.local/state/shorturl-mcp) sert de
-memoire, puisque sans compte il n'existe aucun historique cote service.
+No secret: these three services are account-less. The local log of the
+creations (SHORTURL_STATE_DIR, default ~/.local/state/shorturl-mcp) serves as
+memory, since without an account there is no history on the service side.
 
-PRIORITE DE CONTEXTE : x.gd est le backend par defaut et le seul qui ne
-degrade rien de ce que la cible recoit. Mesure du 2026-11-11 : 302 direct,
-zero hop, Location identique a la cible, et la cible voit l'IP reelle du
-visiteur, son UA reel et le Referer d'origine du shortener. v.gd et t.tl
-intercalent une page (un hop de plus, Referer reecrit). Limite commune aux
-trois : la query ajoutee au lien court n'est pas forwardee (x.gd et v.gd la
-jettent, t.tl l'ajoute a la cible). Pour transmettre des parametres de clic,
-c'est shlink avec forward_query=true, pas un backend public.
+CONTEXT PRIORITY: x.gd is the default backend and the only one that
+degrades nothing of what the target receives. Measurement of 2026-11-11: direct 302,
+zero hop, Location identical to the target, and the target sees the real IP of the
+visitor, its real UA and the original Referer of the shortener. v.gd and t.tl
+insert a page (one more hop, rewritten Referer). Limit common to the
+three: the query added to the short link is not forwarded (x.gd and v.gd
+throw it away, t.tl adds it to the target). To transmit click parameters,
+it is shlink with forward_query=true, not a public backend.
 """
 
 import json
@@ -58,8 +58,8 @@ MAX_CODE_LEN = 15
 
 mcp = FastMCP("shorturl")
 
-# Matrice de capacites. "kind" decrit la maniere de creer, "caps" ce que le
-# backend sait faire sans compte, "risk" le risque de disparition du service.
+# Capability matrix. "kind" describes the way to create, "caps" what the
+# backend can do without an account, "risk" the risk of the service disappearing.
 BACKENDS = {
     "xgd": {
         "domain": "x.gd",
@@ -67,19 +67,19 @@ BACKENDS = {
         "service": "X.gd",
         "caps": ["shorten", "permanent", "direct_302", "anonymous"],
         "no_caps": ["custom_slug", "expiration", "delete", "edit_afterwards"],
-        "risk": "faible (non lucratif, 120M redirections/mois annonces)",
-        "notes": "API JSON non documentee mais stable, analytics publiques "
-                 "via <lien>+ (compte requis pour les rendre privees)",
+        "risk": "low (non-profit, 120M redirects/month advertised)",
+        "notes": "undocumented but stable JSON API, public analytics "
+                 "via <link>+ (account required to make them private)",
     },
     "vgd": {
         "domain": "v.gd",
         "domain_len": 4,
-        "service": "v.gd (meme operateur que is.gd)",
+        "service": "v.gd (same operator as is.gd)",
         "caps": ["shorten", "custom_slug", "anonymous"],
         "no_caps": ["expiration", "delete", "edit_afterwards"],
-        "risk": "faible mais CGU strictes (UK), liens definitifs",
-        "notes": "le clic affiche une page d'avertissement avant la cible, "
-                 "refuse les IP litterales et les raccourcisseurs en chaine",
+        "risk": "low but strict ToS (UK), permanent links",
+        "notes": "the click shows a warning page before the target, "
+                 "refuses literal IPs and chained shorteners",
     },
     "ttl": {
         "domain": "t.tl",
@@ -87,50 +87,50 @@ BACKENDS = {
         "service": "T.TL",
         "caps": ["shorten", "custom_slug", "expiration", "anonymous"],
         "no_caps": ["delete"],
-        "risk": "ELEVE : le domaine est en vente, service non fiable",
-        "notes": "redirection en JS, pas de 302 ; dernier recours seulement",
+        "risk": "HIGH: the domain is for sale, unreliable service",
+        "notes": "JS redirect, no 302; last resort only",
     },
 }
 
-# Ordre de repli par defaut (robustesse -> capacites).
+# Default fallback order (robustness -> capabilities).
 AUTO_ORDER = ["xgd", "vgd", "ttl"]
 
-# Ce que la CIBLE recoit apres un clic, par backend. Mesure, pas supposition :
-# seul x.gd laisse la cible devant une requete intacte (302 direct). Les deux
-# autres intercalent une page, donc un hop de plus et un Referer reecrit.
+# What the TARGET receives after a click, per backend. Measurement, not guess:
+# only x.gd leaves the target in front of an intact request (direct 302). The two
+# others insert a page, hence one more hop and a rewritten Referer.
 CONTEXT = {
     "xgd": {
-        "niveau": "riche",
+        "niveau": "rich",
         "hops": 0,
-        "referer_vu_par_la_cible": "https://x.gd/ (origine seule)",
+        "referer_vu_par_la_cible": "https://x.gd/ (origin only)",
         "query_du_clic_forwardee": False,
-        "detail": "302 direct, IP et UA reels du visiteur, "
-                  "aucun en-tete ajoute",
+        "detail": "direct 302, real IP and UA of the visitor, "
+                  "no header added",
     },
     "vgd": {
-        "niveau": "appauvri",
+        "niveau": "degraded",
         "hops": 1,
         "referer_vu_par_la_cible": "https://v.gd/<slug> "
-                                   "(page d'avertissement)",
+                                   "(warning page)",
         "query_du_clic_forwardee": False,
-        "detail": "page de confirmation cliquable, query du clic jetee",
+        "detail": "clickable confirmation page, click query discarded",
     },
     "ttl": {
-        "niveau": "appauvri",
+        "niveau": "degraded",
         "hops": 1,
-        "referer_vu_par_la_cible": "origine t.tl (page de saut)",
+        "referer_vu_par_la_cible": "t.tl origin (jump page)",
         "query_du_clic_forwardee": True,
-        "detail": "page de saut, mais la query du clic est ajoutee a la cible",
+        "detail": "jump page, but the click query is added to the target",
     },
 }
 
-# Version lisible du serveur, pour verifier quel binaire repond reellement
-# (un gateway non redemarre sert encore l'ancien chemin du store).
+# Human-readable version of the server, to check which binary really answers
+# (a gateway not restarted still serves the old store path).
 REV = "2026-11-11 xgd-first"
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    """Laisse remonter les 3xx au lieu de les suivre."""
+    """Lets 3xx bubble up instead of following them."""
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -142,10 +142,10 @@ _OPENER_MANUAL = urllib.request.build_opener(_NoRedirect)
 
 def _request(method, url, body=None, form=None, json_body=None,
              follow=True, timeout=None, allow_3xx=False):
-    """Requete HTTP minimale. Rend un dict normalise.
+    """Minimal HTTP request. Returns a normalized dict.
 
-    Ne leve jamais pour un code HTTP : les 3xx/4xx/5xx sont rendus au
-    modele avec le corps brut, ce qui rend l'echec diagnosticable.
+    Never raises for an HTTP code: 3xx/4xx/5xx are returned to the
+    model with the raw body, which makes the failure diagnosable.
     """
     data = None
     headers = {"User-Agent": UA, "Accept": "*/*"}
@@ -192,7 +192,7 @@ def _request(method, url, body=None, form=None, json_body=None,
 
 def _fail(backend, action, res, extra=""):
     return RuntimeError(
-        "%s: %s refuse (HTTP %s) %s corps: %s" % (
+        "%s: %s refused (HTTP %s) %s body: %s" % (
             backend, action, res.get("status"), extra,
             (res.get("body") or "")[:400],
         )
@@ -200,7 +200,7 @@ def _fail(backend, action, res, extra=""):
 
 
 def _ok_code(value, limit=MAX_CODE_LEN):
-    """Valide un slug : alphanumerique, tiret, underscore, taille bornee."""
+    """Validates a slug: alphanumeric, hyphen, underscore, bounded size."""
     if not value:
         return None
     code = value.strip().strip("/")
@@ -212,7 +212,7 @@ def _ok_code(value, limit=MAX_CODE_LEN):
 
 
 def _journal(entry):
-    """Ajoute une creation au journal local (le seul historique ici)."""
+    """Adds a creation to the local log (the only history here)."""
     try:
         os.makedirs(STATE_DIR, exist_ok=True)
         path = os.path.join(STATE_DIR, "history.jsonl")
@@ -220,7 +220,7 @@ def _journal(entry):
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         return path
     except OSError as e:
-        return "journal indisponible: %s" % e
+        return "journal unavailable: %s" % e
 
 
 def _read_journal(limit=50):
@@ -242,10 +242,10 @@ _ASSET_RE = re.compile(
     r"\.(js|css|png|ico|svg|jpg|jpeg|gif|webp|woff2?|ttf)(\?|$)", re.I
 )
 
-# Marqueurs des pages de confirmation : v.gd affiche "The full original link
-# is shown below", t.tl "Please confirm the URL". Sans un de ces marqueurs on
-# ne suit PAS les liens d'une page : sinon n'importe quelle page 200 (GitHub,
-# un blog) serait prise pour un saut et la resolution partirait en vrille.
+# Markers of the confirmation pages: v.gd shows "The full original link
+# is shown below", t.tl "Please confirm the URL". Without one of these markers we
+# do NOT follow the links of a page: otherwise any 200 page (GitHub,
+# a blog) would be taken for a jump and the resolution would go haywire.
 _CONSENT_MARKERS = (
     "destination shown",
     "confirm the url",
@@ -256,7 +256,7 @@ _CONSENT_MARKERS = (
 
 
 def _page_target(body, host):
-    """Rend (genre, cible) si la page se declare redirigeante, sinon (None)."""
+    """Returns (kind, target) if the page declares itself redirecting, otherwise (None)."""
     if not body:
         return (None, None)
     text = unescape(body)
@@ -286,7 +286,7 @@ def _page_target(body, host):
 
 
 def _resolve(short_url, max_hops=10):
-    """Suit la chaine de redirections, HTTP et pages de confirmation."""
+    """Follows the chain of redirections, HTTP and confirmation pages."""
     hops = []
     current = short_url.strip()
     for _ in range(max(1, int(max_hops))):
@@ -327,12 +327,12 @@ def _xgd_shorten(url):
     try:
         payload = json.loads(res["body"])
     except ValueError:
-        raise _fail("xgd", "reponse non JSON", res)
+        raise _fail("xgd", "non-JSON response", res)
     code = (payload.get("status") or {}).get("code")
     results = payload.get("results") or {}
     if code != 200 or not results.get("id"):
         raise RuntimeError(
-            "xgd: refus (code=%s) %s" % (code, res["body"][:300])
+            "xgd: refused (code=%s) %s" % (code, res["body"][:300])
         )
     return {
         "backend": "xgd",
@@ -354,10 +354,10 @@ def _vgd_shorten(url, slug=None):
     try:
         payload = json.loads(res["body"])
     except ValueError:
-        raise _fail("vgd", "reponse non JSON", res)
+        raise _fail("vgd", "non-JSON response", res)
     if "shorturl" not in payload:
         raise RuntimeError(
-            "vgd: refus errorcode=%s %s" % (
+            "vgd: refused errorcode=%s %s" % (
                 payload.get("errorcode"), payload.get("errormessage"),
             )
         )
@@ -386,7 +386,7 @@ def _ttl_shorten(url, slug=None, expiration=None):
     )
     if not m:
         raise RuntimeError(
-            "ttl: lien absent de la reponse (HTTP %s) corps: %s"
+            "ttl: link missing from the response (HTTP %s) body: %s"
             % (res["status"], res["body"][:300])
         )
     short = m.group(1)
@@ -397,7 +397,7 @@ def _ttl_shorten(url, slug=None, expiration=None):
         "long_url": url,
         "expires": expiration,
         "raw": {"unstable": True,
-                "warning": "domaine en vente, service non fiable"},
+                "warning": "domain for sale, unreliable service"},
     }
 
 
@@ -405,32 +405,32 @@ def _create(backend, url, slug=None, expiration=None):
     if backend == "xgd":
         if slug:
             raise RuntimeError(
-                "xgd: slug custom impossible sans compte, utiliser vgd ou ttl"
+                "xgd: custom slug impossible without an account, use vgd or ttl"
             )
         return _xgd_shorten(url)
     if backend == "vgd":
         if expiration:
             raise RuntimeError(
-                "vgd: pas d'expiration, utiliser ttl"
+                "vgd: no expiration, use ttl"
             )
         return _vgd_shorten(url, slug)
     if backend == "ttl":
         return _ttl_shorten(url, slug, expiration)
-    raise RuntimeError("backend inconnu: %s" % backend)
+    raise RuntimeError("unknown backend: %s" % backend)
 
 
 def _candidates(backend, slug=None, expiration=None, allow_degrade=False):
-    """Backends a essayer, x.gd d'abord.
+    """Backends to try, x.gd first.
 
-    Par defaut 'auto' ne propose que x.gd : un repli sur v.gd ou t.tl coute un
-    hop intermediaire et un Referer reecrit, donc il faut le demander
-    explicitement (allow_degrade=True) au lieu de le subir.
+    By default 'auto' proposes only x.gd: a fallback to v.gd or t.tl costs an
+    intermediate hop and a rewritten Referer, so it must be requested
+    explicitly (allow_degrade=True) instead of suffered.
     """
     if backend and backend != "auto":
         name = backend.lower()
         if name not in BACKENDS:
             raise RuntimeError(
-                "backend inconnu: %s (disponibles: %s)"
+                "unknown backend: %s (available: %s)"
                 % (backend, ", ".join(BACKENDS))
             )
         return [name]
@@ -455,9 +455,9 @@ def _probe_one(backend):
             "destination_finale": final,
             "mode_redirection": hops[0]["via"],
             "detail": "creation + resolution OK" if reachable
-                      else "lien cree mais cible non resolue",
+                      else "link created but target not resolved",
         }
-    except Exception as e:  # noqa: BLE001 - remonte au modele tel quel
+    except Exception as e:  # noqa: BLE001 - bubbles up to the model as-is
         return {
             "ok": False,
             "latence_ms": int((time.monotonic() - started) * 1000),
@@ -467,10 +467,10 @@ def _probe_one(backend):
 
 @mcp.tool()
 def shorturl_backends() -> dict:
-    """Matrice des backends : domaine, longueur, capacites, risques.
+    """Matrix of the backends: domain, length, capabilities, risks.
 
-    A lire avant tout choix de backend. Aucun de ces services ne demande de
-    compte ni de captcha, et leurs domaines font 4 caracteres.
+    To be read before any backend choice. None of these services asks for an
+    account nor a captcha, and their domains are 4 characters.
     """
     return {
         "backends": BACKENDS,
@@ -478,23 +478,23 @@ def shorturl_backends() -> dict:
         "defaut": AUTO_ORDER[0],
         "contexte": CONTEXT,
         "rev": REV,
-        "rappel": "x.gd par defaut : seul backend sans hop intermediaire ; "
-                  "t.tl = domaine en vente",
+        "rappel": "x.gd by default: only backend without an intermediate hop; "
+                  "t.tl = domain for sale",
     }
 
 
 @mcp.tool()
 def shorturl_status(probe: bool = True) -> dict:
-    """Etat de chaque backend. probe=True cree un vrai lien jetable et le suit.
+    """State of each backend. probe=True creates a real disposable link and follows it.
 
-    C'est le smoke test du serveur : une creation reelle plus une resolution
-    reelle par backend, avec latence et erreur brute si ca casse.
+    This is the smoke test of the server: a real creation plus a real
+    resolution per backend, with latency and raw error if it breaks.
     """
     if not probe:
         return {
             "backends": list(BACKENDS),
             "probe": False,
-            "rappel": "probe=True pour tester une creation reelle",
+            "rappel": "probe=True to test a real creation",
         }
     return {
         "horodatage": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -507,26 +507,26 @@ def shorturl_shorten(url: str, backend: str = "auto", slug: str | None = None,
                      expiration: str | None = None, verify: bool = True,
                      memo: str | None = None,
                      allow_degrade: bool = False) -> dict:
-    """Cree un lien court anonyme, puis verifie qu'il pointe bien sur url.
+    """Creates an anonymous short link, then verifies it points to url.
 
-    Backend par defaut x.gd, et 'auto' garde x.gd : c'est le seul backend qui
-    laisse la cible devant une requete intacte (302 direct, zero hop, IP et UA
-    reels du visiteur). allow_degrade=True autorise le repli sur v.gd ou t.tl,
-    au prix d'une page intermediaire et d'un Referer reecrit.
+    Default backend x.gd, and 'auto' keeps x.gd: it is the only backend that
+    leaves the target in front of an intact request (direct 302, zero hop, real IP and UA
+    of the visitor). allow_degrade=True allows the fallback to v.gd or t.tl,
+    at the cost of an intermediate page and a rewritten Referer.
 
-    backend: xgd (defaut), vgd (slug custom, lien immuable, page
-    d'avertissement), ttl (slug custom + expiration, domaine en vente), ou
-    auto. url: destination complete http(s). slug: vgd ou ttl seulement.
-    expiration: ttl seulement. verify: suit la redirection une fois le lien
-    cree. memo: note libre rangee dans le journal local.
+    backend: xgd (default), vgd (custom slug, immutable link, warning
+    page), ttl (custom slug + expiration, domain for sale), or
+    auto. url: full http(s) destination. slug: vgd or ttl only.
+    expiration: ttl only. verify: follows the redirect once the link is
+    created. memo: free note stored in the local log.
     """
     if not url.lower().startswith(("http://", "https://")):
-        raise RuntimeError("url doit commencer par http:// ou https://")
+        raise RuntimeError("url must start with http:// or https://")
     if slug:
         cleaned = _ok_code(slug)
         if not cleaned:
             raise RuntimeError(
-                "slug invalide : alphanumerique, - et _ uniquement, <= %d car"
+                "invalid slug: alphanumeric, - and _ only, <= %d chars"
                 % MAX_CODE_LEN
             )
         slug = cleaned
@@ -535,7 +535,7 @@ def shorturl_shorten(url: str, backend: str = "auto", slug: str | None = None,
     for name in candidates:
         try:
             created = _create(name, url, slug, expiration)
-        except Exception as e:  # noqa: BLE001 - on tente le suivant
+        except Exception as e:  # noqa: BLE001 - we try the next one
             errors.append({"backend": name, "erreur": str(e)[:300]})
             continue
         out = dict(created)
@@ -547,14 +547,14 @@ def shorturl_shorten(url: str, backend: str = "auto", slug: str | None = None,
         ctx = dict(CONTEXT[out["backend"]])
         if out["backend"] != "xgd":
             ctx["alerte"] = (
-                "backend %s : un hop intermediaire s'ajoute et le Referer vu "
-                "par la cible devient celui du shortener" % out["backend"]
+                "backend %s: an intermediate hop is added and the Referer seen "
+                "by the target becomes that of the shortener" % out["backend"]
             )
         ctx["conseil"] = (
-            "query du clic transmise a la cible"
+            "click query forwarded to the target"
             if ctx["query_du_clic_forwardee"] else
-            "parametres de clic (?utm, click_id) non transmis : pour les "
-            "garder, utiliser shlink avec forward_query=true"
+            "click parameters (?utm, click_id) not forwarded: to "
+            "keep them, use shlink with forward_query=true"
         )
         out["contexte"] = ctx
         if verify:
@@ -577,17 +577,17 @@ def shorturl_shorten(url: str, backend: str = "auto", slug: str | None = None,
         return out
     detail = json.dumps(errors, ensure_ascii=False)
     raise RuntimeError(
-        "aucun backend n'a accepte ce lien : %s (allow_degrade=True pour "
-        "accepter un hop intermediaire v.gd/t.tl)" % detail
+        "no backend accepted this link: %s (allow_degrade=True to "
+        "accept an intermediate hop v.gd/t.tl)" % detail
     )
 
 
 @mcp.tool()
 def shorturl_expand(short_url: str, max_hops: int = 10) -> dict:
-    """Dedouble un lien court : chaine complete des sauts jusqu'a la cible.
+    """Unfolds a short link: full chain of hops up to the target.
 
-    Gere les redirections HTTP (302) et les redirections ecrites en HTML
-    (page d'avertissement v.gd, JS de t.tl), qui sont les deux cas de ces
+    Handles HTTP redirections (302) and redirections written in HTML
+    (v.gd warning page, t.tl JS), which are the two cases of these
     backends.
     """
     hops = _resolve(short_url, max_hops)
@@ -601,22 +601,22 @@ def shorturl_expand(short_url: str, max_hops: int = 10) -> dict:
 
 @mcp.tool()
 def shorturl_check(short_url: str) -> dict:
-    """Verifie un lien court sans le suivre : code HTTP, Location, type.
+    """Checks a short link without following it: HTTP code, Location, type.
 
-    Utile pour savoir si un lien est vivant, s'il redirige en 302 ou par une
-    page HTML, et si le service a supprime la cible (404).
+    Useful to know whether a link is alive, whether it redirects in 302 or via an
+    HTML page, and whether the service has removed the target (404).
     """
     res = _request("GET", short_url, follow=False)
     host = urllib.parse.urlsplit(short_url).netloc
     kind, target = _page_target(res["body"], host)
     if res["status"] == 404:
-        state = "mort/retire (404)"
+        state = "dead/removed (404)"
     elif res["location"]:
-        state = "redirection HTTP directe"
+        state = "direct HTTP redirect"
     elif target:
-        state = "page de confirmation (%s) vers %s" % (kind, target)
+        state = "confirmation page (%s) to %s" % (kind, target)
     else:
-        state = "page finale (pas une redirection)"
+        state = "final page (not a redirect)"
     return {
         "url": short_url,
         "status": res["status"],
@@ -634,11 +634,11 @@ def shorturl_check(short_url: str) -> dict:
 def shorturl_bulk_shorten(urls: list[str], backend: str = "auto",
                           slug_prefix: str | None = None,
                           allow_degrade: bool = False) -> dict:
-    """Cree plusieurs liens courts d'un coup, en continuant malgre les echecs.
+    """Creates several short links at once, continuing despite failures.
 
-    slug_prefix n'est utilise que si le backend accepte les slugs custom
-    (vgd, ttl) : le numero du lien est suffixe. Renvoie aussi le compte
-    d'echecs pour ne pas conclure sur un lot partiel.
+    slug_prefix is used only if the backend accepts custom slugs
+    (vgd, ttl): the link number is suffixed. Also returns the failure
+    count so as not to conclude on a partial batch.
     """
     results = []
     ok = 0
@@ -652,7 +652,7 @@ def shorturl_bulk_shorten(urls: list[str], backend: str = "auto",
             results.append({"url": url, "short_url": out["short_url"],
                             "backend": out["backend"],
                             "replis": out.get("replis")})
-        except Exception as e:  # noqa: BLE001 - on continue le lot
+        except Exception as e:  # noqa: BLE001 - we continue the batch
             results.append({"url": url, "erreur": str(e)[:300]})
     return {
         "demandes": len(urls),
@@ -664,9 +664,9 @@ def shorturl_bulk_shorten(urls: list[str], backend: str = "auto",
 
 @mcp.tool()
 def shorturl_history(limit: int = 25, search: str | None = None) -> dict:
-    """Journal local des liens crees par ce serveur (le seul historique, vu
-    qu'aucun de ces services n'en tient sans compte). search filtre sur l'URL
-    longue, le lien court ou la note memo."""
+    """Local log of the links created by this server (the only history, since
+    none of these services keeps one without an account). search filters on the long
+    URL, the short link or the memo note."""
     entries = _read_journal(limit=200 if search else limit)
     if search:
         needle = search.lower()
@@ -679,10 +679,10 @@ def shorturl_history(limit: int = 25, search: str | None = None) -> dict:
 
 @mcp.tool()
 def shorturl_verify(short_url: str, expected_url: str) -> dict:
-    """Controle qu'un lien court pointe bien sur l'URL attendue.
+    """Checks that a short link points to the expected URL.
 
-    A utiliser apres une creation sur un service dont on ne controle pas la
-    destination, ou avant de partager un lien ancien.
+    To be used after a creation on a service whose destination we do not
+    control, or before sharing an old link.
     """
     def _norm(value):
         return value.strip().rstrip("/")
@@ -701,25 +701,25 @@ def shorturl_verify(short_url: str, expected_url: str) -> dict:
 
 @mcp.tool()
 def shorturl_analytics(short_url: str) -> dict:
-    """Tente de lire les statistiques publiques d'un lien cree.
+    """Attempts to read the public statistics of a created link.
 
-    Seul x.gd expose des compteurs lisibles sans compte (page <lien>+), et
-    elle est servie par une application JS, donc le resultat peut etre vide :
-    renvoyer un compteur absent ne veut pas dire zero clic. v.gd et t.tl
-    n'offrent aucune statistique sans compte.
+    Only x.gd exposes counters readable without an account (<link>+ page), and
+    it is served by a JS application, so the result may be empty:
+    returning an absent counter does not mean zero clicks. v.gd and t.tl
+    offer no statistics without an account.
     """
     host = urllib.parse.urlsplit(short_url).netloc
     backend = next(
         (b for b, v in BACKENDS.items() if v["domain"] in host), None
     )
     if backend is None:
-        return {"erreur": "lien hors des backends de ce serveur",
+        return {"erreur": "link outside the backends of this server",
                 "hote": host}
     if backend != "xgd":
         return {
             "backend": backend,
             "statistiques": None,
-            "raison": "aucune statistique publique sans compte sur ce "
+            "raison": "no public statistics without an account on this "
                       "backend",
         }
     res = _request("GET", short_url.rstrip("/") + "+", follow=True)
@@ -733,7 +733,7 @@ def shorturl_analytics(short_url: str) -> dict:
         "nombres_lus": numbers,
         "liens_vus": links[:5],
         "texte_extrait": text[:400],
-        "reserve": "page JS : un compteur absent ne signifie pas zero clic",
+        "reserve": "JS page: an absent counter does not mean zero clicks",
     }
 
 

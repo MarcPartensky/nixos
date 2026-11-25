@@ -31,6 +31,8 @@ NIX = "nix --extra-experimental-features 'nix-command flakes'"
 # commande contient le motif) de se compter lui-meme.
 LOGS = {
     "runtime": "[d]ownloadPlatform",
+    "ios-init": "[t]auri ios init",
+    "ios-dev": "[t]auri ios dev",
     "ios-build": "[t]auri ios build",
     "macos-build": "[t]auri build",
 }
@@ -160,11 +162,32 @@ def ios_init() -> str:
     pod install) dans le devShell winnie. Bloque quelques minutes ; sans
     effet si app/src-tauri/gen/apple existe deja.
     """
+    # npm and NOT ./node_modules/.bin/tauri: the CLI copies its own invocation
+    # into the "Build Rust Code" phase of the Xcode project. Launched directly it
+    # writes "node tauri ios xcode-script ...", which resolves nothing at build
+    # time (Cannot find module '.../gen/apple/tauri'); through npm it writes
+    # "npm run -- tauri ios xcode-script ...", which works.
     inner = ("cd app && { [ -d node_modules ] || npm ci; }"
              " && { [ -d src-tauri/gen/apple ]"
-             " || ./node_modules/.bin/tauri ios init; }")
+             " || npm run tauri -- ios init --ci; }")
     return _ssh("cd %s && %s" % (REPO, _dev(inner)), timeout=1500)
 
+
+@mcp.tool()
+def ios_dev(device: str = "") -> str:
+    """Dev client iOS en live reload sur le simulateur (tauri ios dev), en
+    arriere-plan ; suivre avec log_tail('ios-dev').
+
+    C'est l'equivalent iOS du dev client Android : l'app charge le devUrl de
+    app/src-tauri/tauri.ios.conf.json, c'est-a-dire le serveur de dev de tower
+    (https://dev.winnie.marcpartensky.com), donc une edition du front sur tower
+    s'y applique sans rebuild. device vide = premier simulateur iPhone
+    disponible (choisi par le wrapper winnie-ios). Pre-requis : runtime du
+    simulateur (runtime_install), gen/apple (ios_init) et l'unite winnie-dev
+    active sur tower.
+    """
+    arg = " " + shlex.quote(device) if device else ""
+    return _start("ios-dev", "%s/winnie-ios%s" % (BIN, arg))
 
 @mcp.tool()
 def ios_build_sim() -> str:
