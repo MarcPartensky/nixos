@@ -57,7 +57,6 @@
     casks = [
       "librewolf"
       "rqbit"
-      "beeper"
     ];
 
     masApps = {

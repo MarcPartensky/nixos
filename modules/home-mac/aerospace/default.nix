@@ -4,7 +4,7 @@ let
   aerospaceConfig = {
     config-version = 2;
     after-startup-command = [ ];
-    start-at-login = true;
+    start-at-login = false;  # Paneru gere la bande scrollable (niri-like) ; AeroSpace reste installe en secours
     enable-normalization-flatten-containers = true;
     enable-normalization-opposite-orientation-for-nested-containers = true;
     accordion-padding = 30;
@@ -31,7 +31,11 @@ let
 
     mode.main.binding = {
       "cmd-m"           = "fullscreen";
-      "cmd-enter"       = "exec Alacritty";
+      # AeroSpace 0.20 : le sous-commande est `exec-and-forget` (pas `exec`).
+      # Un `exec` nu fait echouer le parsing du fichier ENTIER, et AeroSpace
+      # retombe silencieusement sur default-config.toml (toutes les touches
+      # de marc ignorees, start-at-login perdu).
+      "cmd-enter"       = "exec-and-forget /Applications/Alacritty.app/Contents/MacOS/alacritty";
       "cmd-slash"       = "layout tiles horizontal vertical";
       "cmd-comma"       = "layout accordion horizontal vertical";
       "cmd-h"           = "focus left";
@@ -47,7 +51,6 @@ let
       "cmd-tab"         = "workspace-back-and-forth";
       "cmd-shift-tab"   = "move-workspace-to-monitor --wrap-around next";
       "cmd-shift-semicolon" = "mode service";
-      "cmd-shift-c" = "exec-and-forget cnam";
       "cmd-shift-s" = "exec-and-forget screencapture -i ~/Desktop/screenshot-$(date +%Y%m%d-%H%M%S).png";
       "cmd-1" = "workspace 1"; "alt-shift-1" = "move-node-to-workspace 1";
       "cmd-2" = "workspace 2"; "alt-shift-2" = "move-node-to-workspace 2";
@@ -71,16 +74,20 @@ let
       "cmd-shift-l" = [ "join-with right" "mode main" ];
     };
 
+    # Motifs de moniteur, pas des noms figes : "Mi Monitor" n'existe plus
+    # (l'externe s'appelle maintenant 32S331) et un nom fige casse au moindre
+    # changement de cable/ecran. "built-in" = regex sur le nom interne,
+    # "secondary" = l'ecran externe quand il n'y en a qu'un.
     workspace-to-monitor-force-assignment = {
-      "1" = "Built-in Retina Display";
-      "2" = "Built-in Retina Display";
-      "3" = "Built-in Retina Display";
-      "4" = "Built-in Retina Display";
-      "5" = "Built-in Retina Display";
-      "6" = "Built-in Retina Display";
-      "7" = "Built-in Retina Display";
-      "8" = "Mi Monitor";
-      "9" = "Mi Monitor";
+      "1" = "built-in";
+      "2" = "built-in";
+      "3" = "built-in";
+      "4" = "built-in";
+      "5" = "built-in";
+      "6" = "built-in";
+      "7" = "built-in";
+      "8" = "secondary";
+      "9" = "secondary";
     };
   };
 
