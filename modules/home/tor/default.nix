@@ -24,10 +24,6 @@
         UseBridges = true;
         ClientTransportPlugin = "obfs4 exec ${pkgs.obfs4}/bin/lyrebird";
         Bridge = "obfs4 IP:ORPort [fingerprint]";
-        DNSPort = [{
-          addr = "127.0.0.1";
-          port = 53;
-        }];
         TransPort = [ 9040 ];
         DNSPort = 5353;
         VirtualAddrNetworkIPv4 = "172.30.0.0/16";
