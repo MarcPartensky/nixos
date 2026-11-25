@@ -197,7 +197,6 @@ in {
         {argv = ["alacritty"];}
         {argv = ["zen"];}
         {argv = ["spotify"];}
-        {argv = ["beeper"];}
       ];
 
       overview.zoom = 0.2;
@@ -235,10 +234,6 @@ in {
         {
           matches = [{app-id = "Spotify";}];
           open-on-workspace = "3";
-        }
-        {
-          matches = [{app-id = "beeper";}];
-          open-on-workspace = "4";
         }
         {
           matches = [{is-active = false;}];

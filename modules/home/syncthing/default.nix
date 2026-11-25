@@ -2,8 +2,9 @@
 #
 # Le même fichier est importé par users/marc/home.nix (Linux, partagé par
 # tower/laptop/deck) et par users/mac/home.nix (Mac, via nix-darwin). La liste
-# des pairs, le dossier partagé et le durcissement réseau viennent de
-# services/syncthing/{mesh,settings}.nix.
+# des pairs, les dossiers partagés et le durcissement réseau viennent de
+# services/syncthing/{mesh,settings}.nix ; settings.nix ne retient que les
+# dossiers qui ont un chemin pour l'OS courant (le Mac n'a pas les photos).
 {
   pkgs,
   lib,
@@ -25,7 +26,7 @@ in {
         # côté API : Syncthing répond 404/405 et le réglage est perdu.
         options = fleet.options;
         devices = fleet.devices;
-        folders.${fleet.folderId} = fleet.folder;
+        folders = fleet.folders;
       }
       // lib.optionalAttrs (!isDarwin) {
         # L'UI est derrière la ressource Pangolin syncthing.marcpartensky.com :

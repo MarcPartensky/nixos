@@ -104,14 +104,6 @@ in {
     SAL_USE_VCLPLUGIN = "gtk4";
   };
 
-  xdg.desktopEntries.beeper = {
-    name = "Beeper";
-    exec = "beeper --enable-features=WebUIDarkMode --force-dark-mode %U";
-    terminal = false;
-    icon = "beeper";
-    categories = ["Network" "Chat"];
-  };
-
   xdg.desktopEntries.electron-mail = {
     name = "Electron Mail";
     exec = "electron-mail --ozone-platform-hint=auto --enable-features=WaylandWindowDecorations --force-dark-mode %U";

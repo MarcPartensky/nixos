@@ -1,21 +1,21 @@
 # modules/nixos/mcp-host/default.nix
-# Un seul processus MCP pour tous les serveurs maison.
+# A single MCP process for all the home servers.
 #
-# Probleme mesure : chaque session Hermes lance un processus par serveur (32 par
-# session, 133 mesures sur tower), chacun avec son interpreteur Python et sa
-# copie du SDK. Cout mesure par processus : 54 Mo de RSS et 910 ms de demarrage,
-# dont 33 ms d'interpreteur et 1005 ms d'import du SDK. Les outils inactifs
-# finissent en swap et pesent 4 Go.
+# Measured problem: each Hermes session launches one process per server (32 per
+# session, 133 measured on tower), each with its own Python interpreter and its
+# copy of the SDK. Measured cost per process: 54 MB of RSS and 910 ms of startup,
+# of which 33 ms for the interpreter and 1005 ms for importing the SDK. Idle tools
+# end up in swap and weigh 4 GB.
 #
-# Ce module lance un demon unique qui monte les serveurs existants sans les
-# modifier (shim d'import dans mcp/main.py) et sert le tout sur une seule URL
-# loopback, en HTTP streamable. Mesure avec 8 serveurs reels : 90 outils, 85 Mo
-# de RSS, 2 processus.
+# This module launches a single daemon that mounts the existing servers without
+# modifying them (import shim in mcp/main.py) and serves everything on a single
+# loopback URL, over streamable HTTP. Measured with 8 real servers: 90 tools, 85 MB
+# of RSS, 2 processes.
 #
-# Le code des serveurs reste dans le depot, mais leur liste est figee ici : la
-# modifier demande un switch. Les NOUVEAUX outils vont dans le dossier de
-# modules (mcp/modules du depot, deploye par `just mcp-deploy`), qui est relu
-# sans redemarrer.
+# The server code stays in the repo, but their list is frozen here:
+# modifying it requires a switch. NEW tools go into the modules
+# folder (mcp/modules of the repo, deployed by `just mcp-deploy`), which is re-read
+# without restarting.
 {
   config,
   lib,
@@ -26,21 +26,41 @@
 
   pythonEnv = pkgs.python3.withPackages (ps: [ps.fastmcp] ++ cfg.extraPythonPackages);
 
-  # Liste nom -> chemin de fichier .py, consommee par mcp/main.py.
+  # List name -> .py file path, consumed by mcp/main.py.
   manifest = pkgs.writeText "mcp-host-servers.json" (builtins.toJSON cfg.servers);
+  # Hermes stdio servers that this daemon takes charge of (Rust binaries,
+  # python packages, npx). The LIST of names is an option (stdioServers, in
+  # the profile) and not a derivation of `config.services.hermes-agent.
+  # mcpServers`: this module itself defines entries in that option
+  # (enabled = false), so deriving the names from the result forms a loop
+  # (`hostedStdio = f (attrNames (g hostedStdio))`) and the eval dies with
+  # "infinite recursion encountered" (observed on 21/11/2026).
+  # We therefore read the VALUES from a constant list of names.
+  hostedStdio = lib.filterAttrs
+    (n: v: (v.command or null) != null)
+    (lib.getAttrs cfg.stdioServers config.services.hermes-agent.mcpServers);
+
+  stdioManifest = pkgs.writeText "mcp-host-stdio.json" (builtins.toJSON
+    (lib.mapAttrs
+      (n: v: {
+        command = v.command;
+        args = v.args or [];
+        env = v.env or {};
+      })
+      hostedStdio));
 in {
   options.services.mcp-host = {
-    enable = lib.mkEnableOption "serveur MCP unique hebergeant les serveurs maison";
+    enable = lib.mkEnableOption "single MCP server hosting the home servers";
 
     servers = lib.mkOption {
       type = lib.types.attrsOf lib.types.path;
       default = {};
-      example = lib.literalExpression ''{shlink = ../../services/shlink-mcp/server.py;}'';
+      example = lib.literalExpression ''{shorturl = ../../services/shorturl-mcp/server.py;}'';
       description = ''
-        Serveurs existants a monter, sous la forme nom = chemin du fichier
-        python. Chaque fichier doit exposer une instance FastMCP dans une
-        variable `mcp`, `app` ou `server`. Un fichier qui echoue est ignore et
-        journalise, les autres continuent de servir.
+        Existing servers to mount, in the form name = path of the
+        python file. Each file must expose a FastMCP instance in a
+        variable `mcp`, `app` or `server`. A file that fails is ignored and
+        logged, the others keep serving.
       '';
     };
 
@@ -48,42 +68,42 @@ in {
       type = lib.types.str;
       default = "/var/lib/mcp/modules";
       description = ''
-        Dossier relu a chaque requete pour les outils ajoutes a chaud
-        (decorateur `from fastmcp.tools import tool`). C'est la seule partie
-        mutable du systeme, alimentee par `just mcp-deploy`.
+        Folder re-read on each request for the hot-added tools
+        (decorator `from fastmcp.tools import tool`). It is the only
+        mutable part of the system, fed by `just mcp-deploy`.
       '';
     };
 
     port = lib.mkOption {
       type = lib.types.port;
       default = 4780;
-      description = "Port loopback du demon. Ne pas ouvrir au firewall : seul Hermes le joint.";
+      description = "Loopback port of the daemon. Do not open on the firewall: only Hermes reaches it.";
     };
 
     user = lib.mkOption {
       type = lib.types.str;
       default = "hermes";
       description = ''
-        Utilisateur du demon. Garder `hermes` reproduit les droits actuels des
-        serveurs MCP (lances par l'agent) ; passer a `root` seulement si un
-        outil a besoin de privileges que hermes n'a pas.
+        Daemon user. Keeping `hermes` reproduces the current rights of the
+        MCP servers (launched by the agent); switch to `root` only if a
+        tool needs privileges that hermes does not have.
       '';
     };
 
     extraPythonPackages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
       default = [];
-      description = "Bibliotheques supplementaires pour les nouveaux modules (httpx, etc.).";
+      description = "Additional libraries for the new modules (httpx, etc.).";
     };
 
     env = lib.mkOption {
       type = lib.types.attrsOf lib.types.str;
       default = {};
       description = ''
-        Variables d'environnement du demon. Indispensable quand des serveurs
-        montes lisent leur configuration a l'import (URLs d'API, chemins de
-        fichiers de secrets) : ils partagent alors un seul environnement, donc
-        il faut l'union de ce que chaque module recevait en stdio.
+        Daemon environment variables. Indispensable when mounted servers
+        read their configuration at import (API URLs, secret file
+        paths): they then share a single environment, so
+        you need the union of what each module received over stdio.
       '';
     };
 
@@ -91,39 +111,148 @@ in {
       type = lib.types.bool;
       default = false;
       description = ''
-        Bascule les sessions Hermes sur l'URL unique du demon au lieu de lancer
-        un processus par serveur. A n'activer qu'apres avoir retire les entrees
-        mcpServers en stdio des serveurs concernes : sinon les outils sont
-        exposes deux fois, sous deux namespaces differents.
+        Switches Hermes sessions to the daemon's single URL instead of launching
+        one process per server. Only enable after removing the stdio
+        mcpServers entries for the servers concerned: otherwise the tools are
+        exposed twice, under two different namespaces.
+      '';
+    };
+
+    hostHermesStdio = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Takes charge of ALL the stdio servers of `services.hermes-agent.
+        mcpServers` (Rust binaries, python packages, npx) by proxying them
+        from this daemon, and sets `enabled = false` on their Hermes entries.
+
+        Measurement of 21/11/2026 on tower: 26 stdio servers x 5 sessions = 103
+        processes, 322 threads, 10.6 GB of RSS, for the same list of tools
+        served five times. A single instance here brings that back to one set of
+        processes, launched on demand and shared by all sessions.
+
+        The servers are mounted with `namespace = <name>`, so the tools
+        are called `<name>_<tool>` (gitea_create_issue). Without namespace, 57
+        tools of the same name overwrite each other across servers (459 tools instead of
+        516, measured): do not remove the namespace without recounting.
+      '';
+    };
+
+    stdioServers = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [];
+      example = ["gitea" "shlink" "stalwart"];
+      description = ''
+        Names of the stdio servers of `services.hermes-agent.mcpServers` taken
+        charge of by this daemon. The list is explicit (not derived): see the
+        comment on `hostedStdio` about the eval loop. Adding a server
+        here is therefore a second declaration, to be done at the same time as
+        the Hermes entry.
+
+        To leave aside: vaultwarden (client_id missing) and codeberg
+        (python-dotenv missing from its venv), broken at the source: proxying
+        them would only move the failure.
+      '';
+    };
+
+    purgedServers = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [];
+      example = ["beeper"];
+      description = ''
+        Entries permanently removed from config.yaml on each activation
+        (not merely turned off): integrations abandoned for good.
+      '';
+    };
+
+    staleStdioServers = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [];
+      example = ["roku" "zitadel"];
+      description = ''
+        Entries present in config.yaml whose Nix module has been commented out.
+        The deep merge of activation keeps them, so each session still
+        launches them: they are turned off (`enabled = false`) without their
+        configuration being erased. An entry listed here must be either
+        redeclared, or removed from the file by hand.
       '';
     };
   };
 
   config = lib.mkIf cfg.enable {
-    # Le dossier des modules doit exister et appartenir a l'utilisateur du
-    # demon, sinon le FileSystemProvider ignore ses fichiers en silence.
+    # The modules folder must exist and belong to the daemon's
+    # user, otherwise the FileSystemProvider silently ignores its files.
     systemd.tmpfiles.rules = [
       "d ${cfg.modulesDir} 0755 ${cfg.user} ${cfg.user} -"
     ];
 
-    # Bascule Hermes : une seule entree URL au lieu d'un processus par serveur.
-    # Les noms d'outils deviennent mcp__hermes-tools__<outil>, donc toute skill
-    # ou cron qui cite un nom complet doit etre mis a jour.
+    # Hermes switch: a single URL entry instead of one process per server.
+    # The tool names become mcp__hermes-tools__<tool>, so any skill
+    # or cron that cites a full name must be updated.
+    #
+    # The URL points to /sse, NOT /mcp: mcp/main.py runs in SSE transport (the
+    # Hermes runtime of tower does not have mcp.client.streamable_http), and this
+    # transport mounts the stream on /sse and the messages on /messages. A URL
+    # /mcp answers 404 and hermes marks the server as connection failure
+    # (observed on 15/11/2026: 30+ home tools unreachable).
+    # The `transport: sse` key is NOT settable here: the mcpServers option
+    # is a typed submodule without a transport key. It is declared in
+    # services/hermes (settings.mcp_servers.hermes-tools.transport).
     services.hermes-agent.mcpServers = lib.mkIf cfg.hermesGateway {
-      hermes-tools.url = "http://127.0.0.1:${toString cfg.port}/mcp";
+      hermes-tools.url = "http://127.0.0.1:${toString cfg.port}/sse";
     };
 
+    # Turning off the servers taken charge of (and the ghost entries), written
+    # into config.yaml by activation, AFTER the Nix merge.
+    #
+    # Why not `services.hermes-agent.mcpServers.<n>.enabled = false`:
+    # this module already reads that option to build the manifest, and defining
+    # an entry in an option that we read forces the merge of ALL the
+    # definitions to know the names, hence `hostedStdio = f (attrNames (g
+    # hostedStdio))`: "infinite recursion encountered" (observed on
+    # 21/11/2026, twice).
+    # Why not `settings.mcp_servers.<n>.enabled`: the conversion
+    # mcpServersToConfig rewrites all of `mcp_servers` at normal priority and
+    # wins, the entries stayed `enabled: true` (observed too).
+    # What remains is activation: it runs before the units start, the list
+    # comes from Nix, and the result is the same on each switch.
+    system.activationScripts."hermes-mcp-host-takeover" =
+      lib.mkIf cfg.hostHermesStdio
+        (lib.stringAfter [ "hermes-agent-setup" ] ''
+          ${pkgs.python3.withPackages (ps: [ps.pyyaml])}/bin/python ${./disable-stdio.py} \
+            "${config.services.hermes-agent.stateDir}/.hermes/config.yaml" \
+            ${lib.escapeShellArg (builtins.toJSON (lib.unique (builtins.attrNames hostedStdio ++ cfg.staleStdioServers)))} \
+            ${lib.escapeShellArg (builtins.toJSON cfg.purgedServers)}
+        '');
+
     systemd.services.mcp-host = {
-      description = "Serveur MCP unique (serveurs maison + modules a chaud)";
+      description = "Single MCP server (home servers + hot modules)";
       wantedBy = ["multi-user.target"];
       after = ["network-online.target"];
       wants = ["network-online.target"];
+
+      # nixpkgs derives `environment.PATH` from this option and sets it with
+      # mkForce: two mkForce on the same key = eval conflict, which blocked
+      # EVERY switch. We empty the list and keep our explicit PATH
+      # below (same content, plus the profile's tools).
+      path = lib.mkForce [];
 
       environment = {
         MCP_HOST_MANIFEST = "${manifest}";
         MCP_HOST_MODULES = cfg.modulesDir;
         MCP_HOST_PORT = toString cfg.port;
         MCP_HOST_ADDR = "127.0.0.1";
+        # Manifest of the proxied stdio servers (gitea-mcp, npx, Rust
+        # binaries...). The children inherit this environment: without HOME or
+        # PATH, gitea-mcp and npx do not launch. `mkForce` is mandatory:
+        # the systemd module of nixpkgs already sets a PATH (coreutils, findutils,
+        # gnugrep, systemd) and two types.str definitions come into
+        # conflict. The system profile is put back at the front to recover those
+        # tools, plus the default PATH of nixpkgs as fallback.
+        MCP_HOST_STDIO = "${stdioManifest}";
+        HOME = "/var/lib/hermes";
+        PATH = lib.mkForce ("/run/current-system/sw/bin:/etc/profiles/per-user/hermes/bin:/var/lib/hermes/.local/bin:"
+          + lib.makeBinPath [pkgs.coreutils pkgs.findutils pkgs.gnugrep pkgs.gnused pkgs.systemd]);
       } // cfg.env;
 
       serviceConfig = {
@@ -132,11 +261,11 @@ in {
         Group = cfg.user;
         Restart = "always";
         RestartSec = 2;
-        # Un outil qui bloque ne doit pas figer la boucle : le SDK execute les
-        # outils synchrones dans un threadpool, ce timeout borne le pire cas.
+        # A tool that blocks must not freeze the loop: the SDK runs the
+        # synchronous tools in a threadpool, this timeout bounds the worst case.
         TimeoutStopSec = 10;
-        # Durcissement sans casser les acces fichiers dont les outils ont besoin
-        # (secrets sops dans /run/secrets, etat local de certains outils).
+        # Hardening without breaking the file accesses that the tools need
+        # (sops secrets in /run/secrets, local state of some tools).
         NoNewPrivileges = false;
         PrivateTmp = true;
         ProtectKernelTunables = true;

@@ -5,17 +5,17 @@ with lib;
 let
   cfg = config.services.kasmvnc;
 
-  # L'ancien code faisait `elemAt (builtins.split "x" cfg.geometry) 0/1` :
-  # builtins.split renvoie [prefixe, groupes, suffixe], donc l'index 0 donne bien
-  # "1920" mais l'index 1 est la LISTE des groupes de capture, pas "1080". Le
-  # height partait donc vide dans le YAML. splitString donne exactement les deux
-  # morceaux attendus.
+  # The old code did `elemAt (builtins.split "x" cfg.geometry) 0/1`:
+  # builtins.split returns [prefix, groups, suffix], so index 0 does give
+  # "1920" but index 1 is the LIST of capture groups, not "1080". The
+  # height therefore went empty into the YAML. splitString gives exactly the two
+  # expected pieces.
   geometryParts = splitString "x" cfg.geometry;
   width = elemAt geometryParts 0;
   height = elemAt geometryParts 1;
 
-  # perl + les modules CPAN que le wrapper kasmvncserver importe et que le deb ne
-  # fournit pas (le deb ne livre que ses propres modules KasmVNC::*).
+  # perl + the CPAN modules that the kasmvncserver wrapper imports and that the deb does
+  # not provide (the deb only ships its own KasmVNC::* modules).
   perlLib = pkgs.perl.withPackages (ps: with ps; [
     Switch
     ListMoreUtils
@@ -37,20 +37,20 @@ let
       sha256 = "sha256-9Zn+AuIXW5gXthZfdKXSvr3HMRjd6Rgbo0EJY77Xrh4=";
     };
 
-    # kasmvncserver et kasmvncconfig sont des SCRIPTS PERL, pas des ELF : l'ancien
-    # garde `if file .../kasmvncserver | grep -q ELF` testait le script, donc etait
-    # toujours FAUX et aucun binaire n'etait patche -> kasmvncpasswd sortait en
-    # « error while loading shared libraries: libcrypt.so.1 ». autoPatchelfHook
-    # patche tous les ELF du deb et resout les libs depuis buildInputs.
+    # kasmvncserver and kasmvncconfig are PERL SCRIPTS, not ELF: the old
+    # guard `if file .../kasmvncserver | grep -q ELF` tested the script, so it was
+    # always FALSE and no binary was patched -> kasmvncpasswd exited with
+    # "error while loading shared libraries: libcrypt.so.1". autoPatchelfHook
+    # patches every ELF in the deb and resolves the libs from buildInputs.
     nativeBuildInputs = [ pkgs.dpkg pkgs.autoPatchelfHook pkgs.patchelf pkgs.perl pkgs.makeWrapper ];
     buildInputs = [
-      # libxcrypt-legacy et PAS libxcrypt : le .deb demande libcrypt.so.1 (soname
-      # Debian) alors que pkgs.libxcrypt ne fournit que libcrypt.so.2. C'est
-      # exactement l'erreur « libcrypt.so.1: cannot open shared object file ».
+      # libxcrypt-legacy and NOT libxcrypt: the .deb asks for libcrypt.so.1 (Debian
+      # soname) whereas pkgs.libxcrypt only provides libcrypt.so.2. This is
+      # exactly the error "libcrypt.so.1: cannot open shared object file".
       pkgs.libxcrypt-legacy pkgs.glibc pkgs.gcc pkgs.libx11 pkgs.libxcb pkgs.libxkbcommon
       pkgs.wayland pkgs.libva pkgs.libdrm pkgs.mesa pkgs.libunwind pkgs.pixman
       pkgs.freetype pkgs.systemd pkgs.libxshmfence pkgs.libgbm
-      # noms non-deprecies (pkgs.xorg.* emet un warning d'evaluation)
+      # non-deprecated names (pkgs.xorg.* emits an evaluation warning)
       pkgs.libxfont_2 pkgs.libxau pkgs.libxdmcp pkgs.libxtst
       pkgs.libxrandr pkgs.libxcursor
       pkgs.openssl pkgs.zlib pkgs.libjpeg_turbo pkgs.libpng pkgs.libwebp
@@ -66,53 +66,53 @@ let
         mv $out/root/* $out/
         rmdir $out/root
       fi
-      # TOUS les binaires dans $out/bin : kasmvncserver (perl) localise Xkasmvnc
-      # dans le dossier de $0 (DetectBinariesDir), donc les symlinks doivent etre
-      # cote a cote (systemPackages les expose ensuite dans sw/bin).
+      # ALL binaries in $out/bin: kasmvncserver (perl) locates Xkasmvnc
+      # in the directory of $0 (DetectBinariesDir), so the symlinks must be
+      # side by side (systemPackages then exposes them in sw/bin).
       mkdir -p $out/bin
       for b in kasmvncserver kasmvncpasswd kasmvncconfig kasmxproxy Xkasmvnc; do
         ln -sf $out/usr/bin/$b $out/bin/$b
       done
-      # Le wrapper perl cherche LITTERALEMENT $exedir/Xvnc et $exedir/vncpasswd
-      # (lignes 493-508) alors que le deb ne livre que Xkasmvnc / kasmvncpasswd :
-      # sans ces deux alias il meurt sur « couldn't find ".../bin/Xvnc" ».
+      # The perl wrapper looks LITERALLY for $exedir/Xvnc and $exedir/vncpasswd
+      # (lines 493-508) whereas the deb only ships Xkasmvnc / kasmvncpasswd:
+      # without these two aliases it dies on: couldn't find ".../bin/Xvnc".
       ln -sf $out/usr/bin/Xkasmvnc $out/bin/Xvnc
       ln -sf $out/usr/bin/kasmvncpasswd $out/bin/vncpasswd
-      # kasmvncserver/kasmvncconfig ont un shebang Debian #!/usr/bin/perl qui
-      # n'existe pas sur NixOS (« No such file or directory » a l'execution) : le
-      # fixupPhase de stdenv ne patche pas $out/usr/bin, donc explicitement ici.
+      # kasmvncserver/kasmvncconfig have a Debian shebang #!/usr/bin/perl that
+      # does not exist on NixOS ("No such file or directory" at runtime): the
+      # stdenv fixupPhase does not patch $out/usr/bin, so explicitly here.
       patchShebangs $out/usr/bin
-      # Le wrapper charge ses valeurs par defaut depuis
-      # /usr/share/kasmvnc/kasmvnc_defaults.yaml (chemin Debian absent sur NixOS,
-      # donc les defauts n'etaient jamais lus). On reecrit vers le store.
+      # The wrapper loads its default values from
+      # /usr/share/kasmvnc/kasmvnc_defaults.yaml (Debian path absent on NixOS,
+      # so the defaults were never read). We rewrite it to the store.
       substituteInPlace $out/usr/bin/kasmvncserver \
         --replace-fail "/usr/share/kasmvnc/" "$out/usr/share/kasmvnc/"
-      # Le wrapper calcule le selecteur de bureau via LocalSelectDePath()
-      # (« $exedir/../builder/startup/deb/select-de.sh », arborescence du repo
-      # KasmVNC) alors que le deb livre le fichier dans usr/lib/kasmvncserver/ :
-      # sans cet alias la session sort en status=2 INVALIDARGUMENT avant Xvnc.
+      # The wrapper computes the desktop selector via LocalSelectDePath()
+      # ("$exedir/../builder/startup/deb/select-de.sh", tree of the KasmVNC
+      # repo) whereas the deb ships the file in usr/lib/kasmvncserver/:
+      # without this alias the session exits with status=2 INVALIDARGUMENT before Xvnc.
       mkdir -p $out/builder/startup/deb
       cp $out/usr/lib/kasmvncserver/select-de.sh $out/builder/startup/deb/select-de.sh
       runHook postInstall
     '';
 
-    # Le wrapper perl doit etre autonome : PERL5LIB (ses propres modules + les
-    # modules CPAN absents du deb) et le PATH (xauth, xkbcomp) sont cuits dans un
-    # wrapper, pour qu'on n'ait plus besoin d'exporter quoi que ce soit avant de
-    # lancer kasmvncserver (ni dans le shell, ni dans l'unite systemd).
+    # The perl wrapper must be self-contained: PERL5LIB (its own modules + the
+    # CPAN modules missing from the deb) and the PATH (xauth, xkbcomp) are baked into a
+    # wrapper, so that we no longer need to export anything before
+    # launching kasmvncserver (neither in the shell, nor in the systemd unit).
     postFixup = ''
       wrapProgram $out/bin/kasmvncserver \
         --prefix PERL5LIB : "${perlLib}/lib/perl5/site_perl:$out/usr/share/perl5" \
         --prefix PATH : "${lib.makeBinPath [ pkgs.xauth pkgs.xkbcomp pkgs.xrandr pkgs.procps pkgs.inetutils pkgs.which pkgs.util-linux ]}"
     '';
 
-    # Le wrapper perl charge les modules KasmVNC::* (livres dans
-    # usr/share/perl5) et quelques modules CPAN absents du deb : PERL5LIB est
-    # pose par le module (services.kasmvnc.environment), pas ici.
+    # The perl wrapper loads the KasmVNC::* modules (shipped in
+    # usr/share/perl5) and a few CPAN modules missing from the deb: PERL5LIB is
+    # set by the module (services.kasmvnc.environment), not here.
     passthru = {
-      # Liste exacte des modules absents du deb, obtenue en executant le wrapper :
-      # kasmvncserver importe YAML::Tiny (KasmVNC/Config.pm) et
-      # Hash::Merge::Simple en plus des modules DateTime/Switch/List::MoreUtils.
+      # Exact list of modules missing from the deb, obtained by running the wrapper:
+      # kasmvncserver imports YAML::Tiny (KasmVNC/Config.pm) and
+      # Hash::Merge::Simple in addition to the DateTime/Switch/List::MoreUtils modules.
       perlModules = with pkgs.perlPackages; [
         Switch
         ListMoreUtils
@@ -126,26 +126,29 @@ let
     };
   };
 
-  # Session de bureau lancee par xstartup (X11 : kasmvncserver 1.5.0 n'a pas de
-  # mode wayland). startlxqt herite du bus de session fourni par l'unite systemd.
-  # PATH : l'unite fixe un `path` court (xauth, xkbcomp, hostname), ce qui
-  # remplace le PATH par defaut de systemd et fait disparaitre le profil systeme.
-  # Or startlxqt exec `lxqt-session` par son nom, d'ou « exec: lxqt-session: not
-  # found » puis la fin immediate de la session (et l'arret de Xvnc). On remet
-  # donc le profil systeme en tete : c'est la que vivent les paquets LXQt de marc
+  # Desktop session launched by xstartup (X11: kasmvncserver 1.5.0 has no
+  # wayland mode). startlxqt inherits the session bus provided by the systemd unit.
+  # PATH: the unit sets a short `path` (xauth, xkbcomp, hostname), which
+  # replaces systemd's default PATH and makes the system profile disappear.
+  # But startlxqt execs `lxqt-session` by its name, hence "exec: lxqt-session: not
+  # found" then the immediate end of the session (and Xvnc stops). We therefore
+  # put the system profile first: that is where marc's LXQt packages live
   # (lxqt-session, lxqt-panel, pcmanfm-qt, lxqt-runner).
   xstartup = pkgs.writeShellScript "kasmvnc-xstartup" (
     if cfg.desktop == "custom" then cfg.customCommand
     else if cfg.desktop == "xfce" then "exec ${pkgs.xfce.xfce4-session}/bin/xfce4-session"
     else if cfg.desktop == "plasma" then ''
-      # startplasma-x11 est le point d'entree d'une session KDE : il pose le bus
-      # de session, ksmserver, kwin_x11, kded, plasmashell. Ne PAS lancer
-      # plasmashell a la main : la session serait sans gestionnaire de fenetres.
+      # startplasma-x11 is the entry point of a KDE session: it sets up the session
+      # bus, ksmserver, kwin_x11, kded, plasmashell. Do NOT launch
+      # plasmashell by hand: the session would be without a window manager.
       #
-      # Le PATH de l'unite est court (xauth, xkbcomp, ...). startplasma-x11
-      # appelle kwin_x11 et plasmashell par leur nom : sans le profil systeme il
-      # sort en « kwin_x11: not found » et la session meurt immediatement.
-      export PATH="/run/current-system/sw/bin:${pkgs.kdePackages.plasma-workspace}/bin:$PATH"
+      # The unit's PATH is short (xauth, xkbcomp, ...). startplasma-x11
+      # calls kwin_x11 and plasmashell by their name: without the system profile it
+      # exits with "kwin_x11: not found" and the session dies immediately.
+      # /run/wrappers/bin first: the sudo of the system profile is NOT setuid
+      # (cf. services/terminal). A terminal opened in the Kasm desktop inherits
+      # this order, so sudo and the other wrappers work there.
+      export PATH="/run/wrappers/bin:/run/current-system/sw/bin:${pkgs.kdePackages.plasma-workspace}/bin:$PATH"
       export XDG_SESSION_TYPE=x11
       export XDG_CURRENT_DESKTOP=KDE
       export XDG_SESSION_DESKTOP=KDE
@@ -154,11 +157,11 @@ let
       export KDE_SESSION_VERSION=6
       export QT_QPA_PLATFORM=xcb
       export GDK_BACKEND=x11
-      # startplasma-x11 ne cree un bus de session QUE si
-      # DBUS_SESSION_BUS_ADDRESS est vide (plasma-dbus-run-session-if-needed).
-      # L'unite pointe sur %t/bus : si ce socket n'existe pas (pas de dbus.socket
-      # utilisateur actif), KDE se contente du pointeur mort et meurt sur
-      # « Failed to connect to socket ». On le vide dans ce cas seulement.
+      # startplasma-x11 creates a session bus ONLY if
+      # DBUS_SESSION_BUS_ADDRESS is empty (plasma-dbus-run-session-if-needed).
+      # The unit points to %t/bus: if this socket does not exist (no user
+      # dbus.socket active), KDE settles for the dead pointer and dies on
+      # "Failed to connect to socket". We clear it only in that case.
       bus="''${DBUS_SESSION_BUS_ADDRESS#unix:path=}"
       if [ -n "$DBUS_SESSION_BUS_ADDRESS" ] && [ ! -S "$bus" ]; then
         unset DBUS_SESSION_BUS_ADDRESS
@@ -166,7 +169,8 @@ let
       exec ${pkgs.kdePackages.plasma-workspace}/bin/startplasma-x11
     ''
     else ''
-      export PATH="/run/current-system/sw/bin:${pkgs.lxqt.lxqt-session}/bin:$PATH"
+      # /run/wrappers/bin first (cf. plasma branch above).
+      export PATH="/run/wrappers/bin:/run/current-system/sw/bin:${pkgs.lxqt.lxqt-session}/bin:$PATH"
       export XDG_SESSION_TYPE=x11
       export QT_QPA_PLATFORM=xcb
       export GDK_BACKEND=x11
@@ -199,36 +203,36 @@ let
   ];
 
   # ---------------------------------------------------------------------------
-  # PLASMA 6 (desktop = "plasma") : bureau distant complet, en X11.
+  # PLASMA 6 (desktop = "plasma"): full remote desktop, in X11.
   #
-  # KasmVNC ne sait pas heberger de session Wayland (Xkasmvnc EST un serveur X ;
-  # kasmtech/KasmVNC#193 : faire tourner un DE Wayland dedans exigerait de
-  # patcher KWin). Le mode Wayland de l'option `desktop` n'existe donc pas :
-  # Plasma tourne en session X11 (startplasma-x11), ce qui est pleinement
-  # supporte par Plasma 6 et suffisant pour le but (bureau cliquable, terminal,
-  # navigateur, barre des taches).
+  # KasmVNC cannot host a Wayland session (Xkasmvnc IS an X server;
+  # kasmtech/KasmVNC#193: running a Wayland DE inside it would require
+  # patching KWin). The Wayland mode of the `desktop` option therefore does not exist:
+  # Plasma runs as an X11 session (startplasma-x11), which is fully
+  # supported by Plasma 6 and sufficient for the goal (clickable desktop, terminal,
+  # browser, taskbar).
   #
-  # La liste des paquets est celle de nixos/modules/services/desktop-managers/
-  # plasma6.nix (nixpkgs 26.05), source autorisee de « ce qu'une session Plasma
-  # attend ». Ce module n'est PAS active (services.desktopManager.plasma6) : il
-  # est global (fonts.fontconfig.defaultFonts, xdg.portal.configPackages,
-  # qt.enable, programs.kde-pim, orca...) et modifierait la session niri locale
-  # de marc. Tout est donc confine ici + au XDG_* de l'unite kasmvnc.
+  # The package list is the one from nixos/modules/services/desktop-managers/
+  # plasma6.nix (nixpkgs 26.05), authoritative source for "what a Plasma session
+  # expects". This module is NOT enabled (services.desktopManager.plasma6): it
+  # is global (fonts.fontconfig.defaultFonts, xdg.portal.configPackages,
+  # qt.enable, programs.kde-pim, orca...) and would modify marc's local niri
+  # session. Everything is therefore confined here + to the XDG_* of the kasmvnc unit.
   #
-  # ECARTES VOLONTAIREMENT du lot plasma6 (chaque paquet ajoute ici pose ses
-  # unites systemd dans /run/current-system/sw/share/systemd/user, que le
-  # gestionnaire utilisateur de marc partage avec sa session niri) :
-  #   baloo, baloo-widgets, kunifiedpush : leurs unites sont
-  #     WantedBy=graphical-session.target, donc elles demarreraient AUSSI dans
-  #     niri (indexeur de fichiers + distributeur de notifications push). Verifie
-  #     dans les .service livres. L'indexation baloo est de toute facon coupee
-  #     par le baloofilerc de plasmaConfigDir.
-  #   drkonqi : pose un gestionnaire de crashs SYSTEME
-  #     (drkonqi-coredump-processor@) qui remonte les core dumps de marc dans sa
-  #     session locale. Sans rapport avec un bureau distant.
-  #   kwallet-pam : exige une integration PAM (security.pam.services.*.kwallet)
-  #     qu'une session KasmVNC n'a pas (aucun login PAM) : son unite
-  #     plasma-kwallet-pam.service (Wants de plasma-workspace.target) echouerait.
+  # DELIBERATELY EXCLUDED from the plasma6 set (each package added here sets up its
+  # systemd units in /run/current-system/sw/share/systemd/user, which marc's
+  # user manager shares with his niri session):
+  #   baloo, baloo-widgets, kunifiedpush: their units are
+  #     WantedBy=graphical-session.target, so they would ALSO start in
+  #     niri (file indexer + push notification distributor). Verified
+  #     in the shipped .service files. baloo indexing is cut off anyway
+  #     by the baloofilerc of plasmaConfigDir.
+  #   drkonqi: sets up a SYSTEM crash handler
+  #     (drkonqi-coredump-processor@) that reports marc's core dumps into his
+  #     local session. Unrelated to a remote desktop.
+  #   kwallet-pam: requires PAM integration (security.pam.services.*.kwallet)
+  #     that a KasmVNC session does not have (no PAM login): its unit
+  #     plasma-kwallet-pam.service (Wants of plasma-workspace.target) would fail.
   # ---------------------------------------------------------------------------
   plasmaLookAndFeel = pkgs.runCommand "plasma-look-and-feel-hermes-kasm" { } ''
     dir=$out/share/plasma/look-and-feel/org.hermes.kasm.desktop
@@ -241,14 +245,14 @@ let
   plasmaPkgs =
     with pkgs.kdePackages;
     [
-      # Frameworks dont le profil systeme a besoin pour ses greffons Qt
+      # Frameworks that the system profile needs for its Qt plugins
       qtwayland qtsvg frameworkintegration kauth kcoreaddons kded kfilemetadata
       kguiaddons kiconthemes kimageformats qtimageformats kio kio-admin
       kio-extras kio-fuse knighttime kpackage kservice kwallet kwalletmanager
       plasma-activities solid phonon-vlc
-      # Coeur Plasma
+      # Plasma core
       kwin
-      kwin-x11 # LE gestionnaire de fenetres d'une session X11 (kwin seul = Wayland)
+      kwin-x11 # THE window manager of an X11 session (kwin alone = Wayland)
       kscreen
       libkscreen
       kscreenlocker
@@ -262,18 +266,18 @@ let
       plasma-desktop
       plasma-workspace
       kde-inotify-survey
-      # Integration applicative
+      # Application integration
       libplasma
       plasma-integration
       kde-gtk-config
-      # Habillage
+      # Theming
       breeze
       breeze-icons
       breeze-gtk
       ocean-sound-theme
       qqc2-breeze-style
       qqc2-desktop-style
-      # Extras + reglages
+      # Extras + settings
       kdeplasma-addons
       plasma-workspace-wallpapers
       kmenuedit
@@ -284,7 +288,7 @@ let
       systemsettings
       kcmutils
       ksshaskpass
-      # Applications : le terminal et le navigateur demandes, plus le minimum
+      # Applications: the requested terminal and browser, plus the minimum
       konsole
       dolphin
       dolphin-plugins
@@ -295,38 +299,38 @@ let
       gwenview
       kcalc
       plasma-browser-integration
-      # Sessions et portails
+      # Sessions and portals
       xdg-desktop-portal-kde
       kwayland-integration
       plasma5support
       kdecoration
       kirigami
-      (lib.getBin qttools) # qdbus, attendu par plusieurs scripts KDE
+      (lib.getBin qttools) # qdbus, expected by several KDE scripts
       plasmaLookAndFeel
     ]
-    # powerdevil n'est PAS installe : tower a powerManagement.enable = false,
-    # donc pas d'upower, et surtout AUCUNE extinction ni mise en veille de
-    # l'ecran pendant une session distante (c'est la raison de fond).
+    # powerdevil is NOT installed: tower has powerManagement.enable = false,
+    # so no upower, and above all NO screen power-off or suspend during
+    # a remote session (that is the underlying reason).
     ++ lib.optional config.networking.networkmanager.enable plasma-nm
     ++ lib.optional
       (config.services.pipewire.pulse.enable || config.services.pulseaudio.enable)
       plasma-pa
     ++ [
-      # Le navigateur demande, et les deux paquets que le module plasma6 de
-      # nixpkgs met dans systemPackages pour l'integration bureau.
+      # The requested browser, and the two packages that the nixpkgs plasma6
+      # module puts in systemPackages for desktop integration.
       pkgs.librewolf
       pkgs.hicolor-icon-theme
       pkgs.xdg-user-dirs
       pkgs.xdg-utils
     ];
 
-  # Arborescence de DONNEES Plasma, isolee du profil systeme. Sans elle,
-  # plasmashell ne trouve rien : le profil de tower ne lie pas share/plasma,
-  # share/kservices6, share/kglobalaccel, share/kpackage, share/solid... (le
-  # module plasma6 de nixpkgs regle ca avec un environment.pathsToLink =
-  # [ "/share" ] GLOBAL, hors de question sur une machine dont le bureau local
-  # est niri). On exporte donc ce dossier dans le XDG_DATA_DIRS de la seule
-  # unite kasmvnc : la session niri n'y voit rien.
+  # Plasma DATA tree, isolated from the system profile. Without it,
+  # plasmashell finds nothing: tower's profile does not link share/plasma,
+  # share/kservices6, share/kglobalaccel, share/kpackage, share/solid... (the
+  # nixpkgs plasma6 module fixes this with a GLOBAL environment.pathsToLink =
+  # [ "/share" ], out of the question on a machine whose local desktop
+  # is niri). We therefore export this folder into the XDG_DATA_DIRS of the only
+  # kasmvnc unit: the niri session sees nothing there.
   plasmaDataEnv = pkgs.buildEnv {
     name = "kasmvnc-plasma-data";
     paths = plasmaPkgs;
@@ -334,10 +338,10 @@ let
     ignoreCollisions = true;
   };
 
-  # Reglages KDE par DEFAUT, exportes dans le XDG_CONFIG_DIRS de la meme unite
-  # (la session niri ne les voit donc pas non plus). Sans kscreenlockerrc,
-  # l'ecran distant se verrouille au bout de 5 min d'inactivite, ce qui rend le
-  # bureau inutilisable a distance.
+  # DEFAULT KDE settings, exported into the XDG_CONFIG_DIRS of the same unit
+  # (so the niri session does not see them either). Without kscreenlockerrc,
+  # the remote screen locks after 5 min of inactivity, which makes the
+  # desktop unusable remotely.
   plasmaConfigDir = pkgs.linkFarm "kasmvnc-plasma-xdg" [
     {
       name = "kdeglobals";
@@ -377,23 +381,23 @@ let
 
   desktopPkgs = if cfg.desktop == "plasma" then plasmaPkgs else lxqtPkgs;
 
-  # Generate kasmvnc.yaml, au schema REEL de KasmVNC 1.5.0. L'ancien fichier
-  # imbriquait network/desktop/encoding/gpu/advanced sous un bloc `server:` qui
-  # n'existe pas a ce niveau : kasmvncserver repondait
-  #   « Unsupported config keys found: server.desktop.allow_resize, ... »
-  # et ignorait donc TOUTE la config (resolution, port, headers, mot de passe).
-  # Les cles de premier niveau sont : network, desktop, encoding, security,
+  # Generate kasmvnc.yaml, with the REAL schema of KasmVNC 1.5.0. The old file
+  # nested network/desktop/encoding/gpu/advanced under a `server:` block that
+  # does not exist at this level: kasmvncserver answered
+  #   "Unsupported config keys found: server.desktop.allow_resize, ..."
+  # and therefore ignored ALL the config (resolution, port, headers, password).
+  # The top-level keys are: network, desktop, encoding, security,
   # server (http/advanced/auto_shutdown), user_session, runtime_configuration.
-  # Reference : usr/share/kasmvnc/kasmvnc_defaults.yaml et etc/kasmvnc/kasmvnc.yaml
-  # livres dans le .deb.
+  # Reference: usr/share/kasmvnc/kasmvnc_defaults.yaml and etc/kasmvnc/kasmvnc.yaml
+  # shipped in the .deb.
   generateConfig = ''
     network:
-      # Valeurs acceptees : http | vnc (verifie par kasmvncserver :
-      # « network.protocol 'https': must be one of [http, vnc] »). Le TLS web
-      # vient de network.ssl.require_ssl, pas du protocole.
+      # Accepted values: http | vnc (checked by kasmvncserver:
+      # "network.protocol 'https': must be one of [http, vnc]"). Web TLS
+      # comes from network.ssl.require_ssl, not from the protocol.
       protocol: http
       interface: "${cfg.bindAddress}"
-      # KasmVNC 1.5.0 n'a PAS de network.port : le port web est websocket_port.
+      # KasmVNC 1.5.0 has NO network.port: the web port is websocket_port.
       websocket_port: ${toString cfg.port}
       use_ipv4: true
       use_ipv6: true
@@ -407,15 +411,15 @@ let
         height: ${height}
       allow_resize: true
       pixel_depth: 24
-      # gpu est un SOUS-bloc de desktop (pas une cle de premier niveau).
+      # gpu is a SUB-block of desktop (not a top-level key).
       gpu:
         hw3d: true
         drinode: "/dev/dri/renderD128"
     encoding:
-      # Pas de jpeg_quality/webp_quality ici : kasmvncserver les traduit en
-      # « -WebpVideoQuality » que Xkasmvnc de cette version refuse
-      # (« Fatal server error: Unrecognized option: -WebpVideoQuality »), ce qui
-      # empechait le serveur de demarrer. Les defauts conviennent.
+      # No jpeg_quality/webp_quality here: kasmvncserver translates them into
+      # "-WebpVideoQuality" which Xkasmvnc of this version refuses
+      # ("Fatal server error: Unrecognized option: -WebpVideoQuality"), which
+      # prevented the server from starting. The defaults are fine.
       video_encoding_mode:
         webp_encoding_time: 30
     security:
@@ -431,10 +435,10 @@ let
       advanced:
         kasm_password_file: "${cfg.passwordFile}"
         x_authority_file: auto
-        # « auto » cherche /usr/share/X11/fonts, inexistant sur NixOS : les
-        # polices vivent dans /run/current-system/sw/share/X11/fonts.
+        # "auto" looks for /usr/share/X11/fonts, nonexistent on NixOS: the
+        # fonts live in /run/current-system/sw/share/X11/fonts.
         x_font_path: "/run/current-system/sw/share/X11/fonts"
-      # Les timeouts sont dans la section auto_shutdown, pas dans advanced.
+      # The timeouts are in the auto_shutdown section, not in advanced.
       auto_shutdown:
         no_user_session_timeout: "never"
         active_user_session_timeout: "never"
@@ -451,9 +455,9 @@ let
         - "pointer.enabled"
         - "data_loss_prevention.clipboard.server_to_client.enabled"
         - "data_loss_prevention.clipboard.client_to_server.enabled"
-    # Sans ça kasmvncserver lance une invite interactive « Please choose Desktop
-    # Environment to run » (select-de.sh) au demarrage : impossible dans une unite
-    # systemd (pas de tty), sortie en status=2 INVALIDARGUMENT avant Xvnc.
+    # Without this kasmvncserver launches an interactive prompt "Please choose Desktop
+    # Environment to run" (select-de.sh) at startup: impossible in a systemd
+    # unit (no tty), exits with status=2 INVALIDARGUMENT before Xvnc.
     command_line:
       prompt: false
   '';
@@ -465,13 +469,13 @@ in {
     package = mkOption {
       type = types.package;
       default = kasmvncPackage;
-      description = "Paquet KasmVNC (binaires dans $out/bin, y compris Xkasmvnc)";
+      description = "KasmVNC package (binaries in $out/bin, including Xkasmvnc)";
     };
 
     perlModules = mkOption {
       type = types.listOf types.package;
       default = kasmvncPackage.perlModules;
-      description = "Modules CPAN requis par le wrapper perl kasmvncserver (PERL5LIB)";
+      description = "CPAN modules required by the kasmvncserver perl wrapper (PERL5LIB)";
     };
 
     # User to run as (systemd user service)
@@ -529,7 +533,7 @@ in {
     desktop = mkOption {
       type = types.enum [ "lxqt" "lxqt-wayland" "xfce" "plasma" "custom" ];
       default = "lxqt";
-      description = "Desktop environment to launch (le .deb 1.5.0 ne sait pas lancer de session Wayland : -xstartup -> X11)";
+      description = "Desktop environment to launch (the .deb 1.5.0 cannot launch a Wayland session: -xstartup -> X11)";
     };
 
     # Custom command for desktop=custom
@@ -553,14 +557,14 @@ in {
       description = "Extra YAML config merged into kasmvnc.yaml";
     };
 
-    # Pas expose dans kasmvnc.yaml (confirme par kasmtech/KasmVNC#284) : seul un
-    # flag CLI relaye a Xkasmvnc le desactive. A utiliser quand une autre couche
-    # (SSO Pangolin) gate deja l'acces, sinon n'importe qui qui atteint le port
-    # entre sans mot de passe.
+    # Not exposed in kasmvnc.yaml (confirmed by kasmtech/KasmVNC#284): only a
+    # CLI flag relayed to Xkasmvnc disables it. To use when another layer
+    # (Pangolin SSO) already gates access, otherwise anyone who reaches the port
+    # gets in without a password.
     disableBasicAuth = mkOption {
       type = types.bool;
       default = false;
-      description = "Desactive le Basic Auth HTTP propre a KasmVNC (-DisableBasicAuth). A reserver aux deploiements deja gates par un SSO en amont (ex. Pangolin).";
+      description = "Disables KasmVNC's own HTTP Basic Auth (-DisableBasicAuth). To be reserved for deployments already gated by an upstream SSO (e.g. Pangolin).";
     };
   };
 
@@ -574,30 +578,30 @@ in {
     # Config directory and file
     systemd.tmpfiles.rules = [
       "d /etc/kasmvnc 0750 root ${cfg.user} - -"
-      # Xkasmvnc est un binaire Debian : le chemin de xkbcomp est COMPILE dedans
-      # (« %s%sxkbcomp » avec XKB_BIN_DIRECTORY=/usr/bin) et l'option -xkbdir ne
-      # change que les donnees, pas le binaire. Sans ce lien il meurt sur
+      # Xkasmvnc is a Debian binary: the xkbcomp path is COMPILED into it
+      # ("%s%sxkbcomp" with XKB_BIN_DIRECTORY=/usr/bin) and the -xkbdir option only
+      # changes the data, not the binary. Without this link it dies on
       #   sh: /usr/bin/xkbcomp: No such file or directory
       #   XKB: Failed to compile keymap / Fatal server error
-      # NixOS n'ayant pas de /usr, on cree le lien declarativement ici.
+      # Since NixOS has no /usr, we create the link declaratively here.
       "d /usr/bin 0755 root root - -"
       "L+ /usr/bin/xkbcomp - - - - ${pkgs.xkbcomp}/bin/xkbcomp"
     ];
 
     environment.etc."kasmvnc/kasmvnc.yaml".text = generateConfig + cfg.extraYaml;
 
-    # Session de bureau via script xstartup : c'est le SEUL mecanisme de
-    # kasmvncserver 1.5.0 (aucun support de --wayland : « Fatal server error:
-    # Unrecognized option: --wayland »). Le script est lance par le wrapper une
-    # fois Xvnc en place.
+    # Desktop session via the xstartup script: it is the ONLY mechanism of
+    # kasmvncserver 1.5.0 (no support for --wayland: "Fatal server error:
+    # Unrecognized option: --wayland"). The script is launched by the wrapper once
+    # Xvnc is in place.
     environment.etc."kasmvnc/xstartup".source = xstartup;
 
     # Generate password file helper script
     environment.etc."kasmvnc/generate-password".text = ''
       #!/bin/sh
-      # kasmvncpasswd n'a PAS d'option -f (usage reel :
-      #   kasmvncpasswd -u <utilisateur> [fichier]) et refuse de tourner sans
-      # terminal : a lancer depuis une session interactive de l'utilisateur.
+      # kasmvncpasswd has NO -f option (actual usage:
+      #   kasmvncpasswd -u <user> [file]) and refuses to run without
+      # a terminal: to be run from an interactive session of the user.
       exec ${cfg.package}/bin/kasmvncpasswd -u "${cfg.user}" "$HOME/.kasmpasswd"
     '';
     environment.etc."kasmvnc/generate-password".mode = "0755";
@@ -605,37 +609,37 @@ in {
     # Systemd USER service (not system service!)
     systemd.user.services.kasmvnc = {
       description = "KasmVNC Server on display ${cfg.display}";
-      # L'unite est installee dans /etc/systemd/user (visible par tous les
-      # utilisateurs linger : hermes aussi demarre un user manager avec
-      # default.target actif). ConditionUser la restreint au compte de
-      # l'utilisateur configure : sans ca, hermes lançait une deuxieme
-      # instance sur :20 (conflit, crash-loop, et echec de son activation
-      # utilisateur au switch -> rc=4).
+      # The unit is installed in /etc/systemd/user (visible to all linger
+      # users: hermes also starts a user manager with
+      # default.target active). ConditionUser restricts it to the account of the
+      # configured user: without this, hermes launched a second
+      # instance on :20 (conflict, crash-loop, and failure of its user
+      # activation at switch -> rc=4).
       unitConfig.ConditionUser = cfg.user;
-      # KasmVNC est un serveur X autonome pour l'acces distant : il ne doit pas
-      # dependre de la session graphique locale (Xwayland sur :1). En le voulant
-      # par default.target il demarre aussi pour un utilisateur linger, sans
-      # login local, ce qui est le but d'un acces distant.
+      # KasmVNC is a standalone X server for remote access: it must not
+      # depend on the local graphical session (Xwayland on :1). By wanting it
+      # via default.target it also starts for a linger user, without
+      # a local login, which is the goal of remote access.
       wantedBy = [ "default.target" ];
-      # le wrapper perl exige xauth, xkbcomp et hostname sur le PATH, sinon il
-      # refuse de demarrer avant meme de lire sa config (inetutils fournit
-      # hostname : « couldn't find "hostname" on your PATH »).
-      # setxkbmap : kded6 configure les dispositions clavier via ce binaire et
-      # journalise « Can't find setxkbmap - keyboard layouts won't be
-      # configured » sans lui.
+      # the perl wrapper requires xauth, xkbcomp and hostname on the PATH, otherwise it
+      # refuses to start even before reading its config (inetutils provides
+      # hostname: couldn't find "hostname" on your PATH).
+      # setxkbmap: kded6 configures keyboard layouts via this binary and
+      # logs "Can't find setxkbmap - keyboard layouts won't be
+      # configured" without it.
       path = [ pkgs.xauth pkgs.xkbcomp pkgs.xrandr pkgs.setxkbmap pkgs.procps pkgs.inetutils pkgs.which pkgs.util-linux ];
       serviceConfig = {
         Type = "simple";
-        # Apres un switch, une ancienne instance (session precedente, processus
-        # orphelin hors de la gestion courante de l'unite) peut tenir le display :
-        # Xvnc repond alors « A VNC server is already running as :20 » et sort en
-        # 29 -> crash-loop. Ce pre-hook purge toute instance sur ce display (elle
-        # est par definition obsolete : on demarre la nouvelle) puis les restes
-        # (lock, socket). Lance en tant que l'utilisateur de l'unite.
+        # After a switch, an old instance (previous session, orphan process
+        # outside the unit's current management) may hold the display:
+        # Xvnc then answers "A VNC server is already running as :20" and exits with
+        # 29 -> crash-loop. This pre-hook purges any instance on this display (it
+        # is by definition obsolete: we start the new one) then the leftovers
+        # (lock, socket). Run as the unit's user.
         ExecStartPre = [
-          # display passe en ARGUMENT (concatené dans la meme commande) : en
-          # liste, systemd traiterait chaque element comme une commande separee
-          # (« Unable to locate executable '20' »).
+          # display passed as an ARGUMENT (concatenated in the same command): in
+          # a list, systemd would treat each element as a separate command
+          # ("Unable to locate executable '20'").
           (pkgs.writeShellScript "kasmvnc-cleanup" ''
             d="''${1#:}"
             pkill -f "Xvnc :''${d}" 2>/dev/null || true
@@ -653,22 +657,22 @@ in {
           ++ (
             if cfg.desktop == "plasma" then
               [
-                # La session KDE distante vit dans SON arborescence de donnees
-                # (plasmaDataEnv) et SES reglages par defaut (plasmaConfigDir).
-                # Le profil systeme de tower ne lie ni share/plasma, ni
-                # share/kservices6, ni share/kglobalaccel : sans ces XDG_*,
-                # plasmashell demarre sans applets, sans look-and-feel et sans
-                # raccourcis clavier. Rien de tout ca ne sort de cette unite.
+                # The remote KDE session lives in ITS OWN data tree
+                # (plasmaDataEnv) and ITS OWN default settings (plasmaConfigDir).
+                # tower's system profile links neither share/plasma, nor
+                # share/kservices6, nor share/kglobalaccel: without these XDG_*,
+                # plasmashell starts without applets, without look-and-feel and without
+                # keyboard shortcuts. None of that leaks out of this unit.
                 "XDG_CURRENT_DESKTOP=KDE"
                 "XDG_SESSION_DESKTOP=KDE"
                 "DESKTOP_SESSION=plasma"
                 "KDE_FULL_SESSION=true"
                 "KDE_SESSION_VERSION=6"
-                # Le theme de plateforme Qt ne se charge que si le greffon est
-                # joignable : QT_PLUGIN_PATH est donc restreint a plasmaDataEnv,
-                # pas au profil systeme (pas de qt.enable global : une variable
-                # QT_PLUGIN_PATH pointant des greffons Qt6 casserait les
-                # applications Qt5 de la session niri de marc).
+                # The Qt platform theme only loads if the plugin is
+                # reachable: QT_PLUGIN_PATH is therefore restricted to plasmaDataEnv,
+                # not to the system profile (no global qt.enable: a
+                # QT_PLUGIN_PATH pointing at Qt6 plugins would break the
+                # Qt5 applications of marc's niri session).
                 "QT_QPA_PLATFORMTHEME=kde"
                 "QT_PLUGIN_PATH=${plasmaDataEnv}/lib/qt-6/plugins"
                 "QML2_IMPORT_PATH=${plasmaDataEnv}/lib/qt-6/qml"
@@ -680,10 +684,10 @@ in {
                 "XDG_CURRENT_DESKTOP=LXQt"
               ]
           );
-        # -xkbdir : Xkasmvnc compile son keymap depuis /usr/share/X11/xkb
-        # (absent sur NixOS) et meurt sinon sur « XKB: Failed to compile keymap
-        # / Could not start Xvnc ». Le wrapper perl relaie les options inconnues
-        # a Xvnc, donc il suffit de lui passer le dossier du store.
+        # -xkbdir: Xkasmvnc compiles its keymap from /usr/share/X11/xkb
+        # (absent on NixOS) and dies otherwise on "XKB: Failed to compile keymap
+        # / Could not start Xvnc". The perl wrapper relays unknown options
+        # to Xvnc, so it is enough to pass it the store folder.
         ExecStart = ''
           ${cfg.package}/bin/kasmvncserver ${cfg.display} \
             -xkbdir ${pkgs.xkeyboard_config}/share/X11/xkb \
@@ -691,8 +695,8 @@ in {
             ${lib.optionalString cfg.disableBasicAuth "-DisableBasicAuth \\"}
             -fg
         '';
-        # une session qui se termine (logout, plantage de LXQt) ne doit pas
-        # laisser l'acces distant mort : on relance toujours.
+        # a session that ends (logout, LXQt crash) must not
+        # leave remote access dead: we always restart.
         Restart = "always";
         RestartSec = 10;
         StandardOutput = "journal";
@@ -703,21 +707,21 @@ in {
     # Note: user lingering should be enabled via users.users.<name>.linger = true
     # or loginctl enable-linger <user>
 
-    # Amorcage (root) de l'unite utilisateur : une unite utilisateur qui a
-    # crash-loop est laissee en start-limit-hit par systemd, et seul un
-    # `systemctl --user reset-failed` la debloque. Sans ca, l'acces distant
-    # reste mort apres un plantage jusqu'a ce que quelqu'un ouvre une session
-    # locale, ce qui est exactement la situation qu'on veut eviter. Ce oneshot
-    # systeme est idempotent : reset-failed ne fait rien si l'unite est saine,
-    # start ne fait rien si elle tourne deja.
+    # Kick-start (root) of the user unit: a user unit that has
+    # crash-looped is left in start-limit-hit by systemd, and only a
+    # `systemctl --user reset-failed` unblocks it. Without this, remote access
+    # stays dead after a crash until someone opens a
+    # local session, which is exactly the situation we want to avoid. This oneshot
+    # system unit is idempotent: reset-failed does nothing if the unit is healthy,
+    # start does nothing if it is already running.
     systemd.services.kasmvnc-kick = {
-      description = "Degage l'unite utilisateur kasmvnc (start-limit-hit) et la (re)lance";
+      description = "Clears the kasmvnc user unit (start-limit-hit) and (re)starts it";
       wantedBy = [ "multi-user.target" ];
       after = [ "systemd-user-sessions.service" ];
       serviceConfig = {
-        # pas de RemainAfterExit : l'unite reste inactive, donc chaque
-        # nixos-rebuild switch la relance (et remet kasmvnc en route apres un
-        # plantage), au lieu de la considerer comme deja faite pour toujours.
+        # no RemainAfterExit: the unit stays inactive, so each
+        # nixos-rebuild switch restarts it (and brings kasmvnc back up after a
+        # crash), instead of considering it done forever.
         Type = "oneshot";
       };
       script = ''

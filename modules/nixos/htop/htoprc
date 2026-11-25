@@ -1,12 +1,28 @@
-# Config htop (3.5+) orientee « je regarde le CPU : est-ce que je tue ce
-# process ? ». Partagee a l'identique par /etc/htoprc (root et tout
-# utilisateur sans htoprc personnel) et par ~/.config/htop/htoprc de marc.
+# Config htop (3.5+) au plus pres de l'affichage de glances : un bandeau de
+# jauges en haut (comme le header curses de glances), puis la table des
+# process. Partagee a l'identique par /etc/htoprc (root et tout utilisateur
+# sans htoprc personnel) et par ~/.config/htop/htoprc de marc.
+#
+# Bandeau, trois colonnes (header_layout=three_33_34_33), lecture de gauche a
+# droite comme glances :
+#   gauche  CPU moyenne + un thread par jaugue (AllCPUs4 : 16 threads sur 4
+#           lignes, ordre colonne par colonne)
+#   milieu  Memory, Swap, Load average, nombre de taches
+#   droite  debit reseau, debit disque, uptime, heure, hostname
+# Les jauges sont en mode barre (1), les valeurs texte en mode texte (2), ce
+# qui est exactement le rendu de glances : [|||||| 45.0%].
 #
 # Les quatre ecrans se parcourent avec la touche Tab :
-#   CPU    trie par CPU% decroissant : PID USER CPU% NCPU% RES SWAP ELAPSED TIME+
+#   CPU    trie par CPU% decroissant, colonnes a la glances (CPU%, MEM%, VIRT,
+#          RES, PID, USER, NI, S, TIME+, Command)
 #   MEM    trie par SWAP decroissant : qui a ete pousse hors de la RAM
 #   IO     trie par debit disque
 #   ARBRE  arbre des process (familles : une session hermes et ses serveurs MCP)
+#
+# Ce que htop ne sait pas faire de glances : pas de jauge d'occupation des
+# systemes de fichiers (aucun meter FileSystem en 3.5), pas de capteurs de
+# temperature, pas de courbes reseau/disque (au mieux le mode graph 3, mais
+# glances affiche des debits en texte ici).
 #
 # Qui lit quoi : htop lit d'abord HTOPRC, puis ~/.config/htop/htoprc, puis
 # ~/.htoprc, et seulement ensuite /etc/htoprc. Un htoprc personnel gagne donc
@@ -56,8 +72,6 @@ show_merged_command=0
 update_process_names=1
 header_margin=1
 screen_tabs=1
-# La barre AllCPUs4 montre les 16 threads sur 4 lignes : saturation et
-# desequilibre visibles d'un coup d'oeil.
 show_cpu_usage=1
 show_cpu_frequency=0
 show_cpu_smt_labels=0
@@ -65,18 +79,24 @@ detailed_cpu_time=0
 cpu_count_from_one=0
 show_cached_memory=1
 account_guest_in_cpu_meter=0
+# 0 = scheme par defaut : htop prend le fond et les accents du terminal, comme
+# glances qui herite aussi du theme du terminal. 4 (Midnight) donne un fond
+# bleu plein, 5 (Black Night) un fond noir fixe : plus loin de glances.
 color_scheme=0
 enable_mouse=1
-# 1,5 s : assez frais pour un pic, sans scanner 3200 threads trop souvent.
+# Glances rafraichit a 1 s ; 1,5 s ici pour ne pas rescanner 3200 threads dix
+# fois par seconde pendant un rebuild.
 delay=15
 hide_function_bar=0
-header_layout=two_50_50
-column_meters_0=AllCPUs4
-column_meter_modes_0=1
-column_meters_1=Tasks LoadAverage Uptime Memory Swap
-column_meter_modes_1=2 2 2 1 1
+header_layout=three_33_34_33
+column_meters_0=CPU AllCPUs4
+column_meter_modes_0=1 1
+column_meters_1=Memory Swap LoadAverage Tasks
+column_meter_modes_1=1 1 2 2
+column_meters_2=NetworkIO DiskIORate Uptime Clock Hostname
+column_meter_modes_2=2 2 2 2 2
 
-screen:CPU=PID USER PERCENT_CPU PERCENT_NORM_CPU M_RESIDENT M_SWAP ELAPSED TIME Command
+screen:CPU=PERCENT_CPU PERCENT_MEM M_VIRT M_RESIDENT PID USER NICE STATE TIME Command
 .sort_key=PERCENT_CPU
 .tree_sort_key=PID
 .tree_view=0
