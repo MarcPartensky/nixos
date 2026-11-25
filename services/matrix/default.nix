@@ -1,5 +1,5 @@
 # services/matrix/default.nix
-# Serveur Matrix classique (Synapse), pont WhatsApp : ../matrix-whatsapp
+# Classic Matrix server (Synapse), WhatsApp bridge: ../matrix-whatsapp
 {
   config,
   pkgs,
@@ -11,42 +11,42 @@ in {
   services.matrix-synapse = {
     enable = true;
     settings = {
-      # ATTENTION : server_name ne peut plus être changé après le premier démarrage
+      # WARNING: server_name can no longer be changed after the first start
       server_name = "matrix.marcpartensky.com";
       public_baseurl = "https://matrix.marcpartensky.com/";
       report_stats = false;
       max_upload_size = "100M";
-      # inscription publique fermée : les comptes se créent avec
+      # public registration closed: accounts are created with
       # sudo matrix-synapse-register_new_matrix_user -u <user> -a
-      # TCP obligatoire : le service tourne avec PrivateUsers=true, ce qui
-      # casse l'auth peer par socket Unix (UID mappé). 127.0.0.1 est trust
-      # (cf. services/postgres) et déclenche la dépendance postgresql.target
-      # du module synapse.
+      # TCP required: the service runs with PrivateUsers=true, which
+      # breaks peer auth by Unix socket (mapped UID). 127.0.0.1 is trust
+      # (cf. services/postgres) and triggers the postgresql.target dependency
+      # of the synapse module.
       database.args.host = "127.0.0.1";
     };
-    # registration_shared_secret hors du store nix, généré au 1er démarrage (preStart ci-dessous)
-    # TODO : migrer vers sops si une clé age devient accessible à hermes
+    # registration_shared_secret outside the nix store, generated on the 1st start (preStart below)
+    # TODO: migrate to sops if an age key becomes accessible to hermes
     extraConfigFiles = ["${dataDir}/secrets.yaml"];
   };
 
-  # BDD locale : postgres de tower est en auth trust sur localhost
-  # (cf. services/postgres), donc pas de mot de passe à gérer.
-  # Le module synapse attend postgresql.target tout seul (host = 127.0.0.1).
+  # Local DB: tower's postgres is in trust auth on localhost
+  # (cf. services/postgres), so no password to manage.
+  # The synapse module waits for postgresql.target on its own (host = 127.0.0.1).
   services.postgresql = {
     ensureUsers = [
       {
         name = "matrix-synapse";
-        # pas d'ensureDBOwnership ici : la DB est créée par le oneshot
-        # ci-dessous avec le OWNER (ensureDatabases ne gère pas la collation)
+        # no ensureDBOwnership here: the DB is created by the oneshot
+        # below with the OWNER (ensureDatabases does not handle the collation)
       }
     ];
   };
 
-  # Synapse EXIGE une DB en collation C (sinon IncorrectDatabaseSetup au boot)
-  # et ensureDatabases ne permet pas de la spécifier : création idempotente ici.
-  # Connexion par socket en peer (user postgres local, pas de PrivateUsers ici).
+  # Synapse REQUIRES a DB in collation C (otherwise IncorrectDatabaseSetup at boot)
+  # and ensureDatabases does not allow specifying it: idempotent creation here.
+  # Peer socket connection (local postgres user, no PrivateUsers here).
   systemd.services.matrix-synapse-db = {
-    description = "Création de la base matrix-synapse (collation C)";
+    description = "Creation of the matrix-synapse database (collation C)";
     after = ["postgresql.service" "postgresql-setup.service"];
     requires = ["postgresql.service"];
     wantedBy = ["multi-user.target"];
@@ -63,14 +63,14 @@ in {
   };
 
   systemd.services.matrix-synapse = {
-    # Les bridges génèrent leur registration dans leur propre preStart :
-    # synapse doit démarrer APRÈS eux sinon app_service_config_files pointe sur
-    # un fichier qui n'existe pas encore et synapse refuse de démarrer.
-    # (mautrix-discord gère ça tout seul via mautrix-discord-registration.)
+    # The bridges generate their registration in their own preStart:
+    # synapse must start AFTER them otherwise app_service_config_files points to
+    # a file that does not exist yet and synapse refuses to start.
+    # (mautrix-discord handles this on its own via mautrix-discord-registration.)
     after = ["mautrix-whatsapp.service" "mautrix-signal.service" "mautrix-linkedin.service" "matrix-synapse-db.service"];
     wants = ["mautrix-whatsapp.service" "mautrix-signal.service" "mautrix-linkedin.service"];
     requires = ["matrix-synapse-db.service"];
-    # mkBefore : tourne avant le --generate-keys du module
+    # mkBefore: runs before the module's --generate-keys
     preStart = lib.mkBefore ''
       if [ ! -f ${dataDir}/secrets.yaml ]; then
         echo "registration_shared_secret: $(${pkgs.openssl}/bin/openssl rand -hex 32)" > ${dataDir}/secrets.yaml
@@ -79,15 +79,15 @@ in {
     '';
   };
 
-  # Compte Matrix du bot Hermes (@hermes) : créé/mis à jour de façon idempotente.
-  # register_new_matrix_user lit le shared secret (secrets.yaml, root only) ;
-  # mot de passe et token d'accès restent hors du store nix :
-  #   - mot de passe : /var/lib/matrix-synapse/hermes-bot-password (root)
-  #   - token        : /var/lib/hermes/.hermes/matrix-token (hermes, 0600)
-  # Le token sert ensuite de MATRIX_ACCESS_TOKEN pour le gateway hermes
+  # Matrix account of the Hermes bot (@hermes): created/updated idempotently.
+  # register_new_matrix_user reads the shared secret (secrets.yaml, root only);
+  # password and access token stay outside the nix store:
+  #   - password: /var/lib/matrix-synapse/hermes-bot-password (root)
+  #   - token   : /var/lib/hermes/.hermes/matrix-token (hermes, 0600)
+  # The token then serves as MATRIX_ACCESS_TOKEN for the hermes gateway
   # (cf. services/hermes).
   systemd.services.matrix-synapse-register-hermes = {
-    description = "Création du compte Matrix @hermes (bot Hermes) + token d'accès";
+    description = "Creation of the Matrix account @hermes (Hermes bot) + access token";
     after = ["matrix-synapse.service"];
     requires = ["matrix-synapse.service"];
     wantedBy = ["multi-user.target"];
@@ -106,7 +106,7 @@ in {
       fi
       PASS=$(cat "$PASS_FILE")
 
-      # --exists-ok : ne casse pas si le compte existe déjà
+      # --exists-ok: does not break if the account already exists
       for _ in 1 2 3 4 5; do
         ${config.services.matrix-synapse.package}/bin/register_new_matrix_user \
           -u hermes -p "$PASS" --exists-ok --no-admin \
@@ -116,7 +116,7 @@ in {
         sleep 2
       done
 
-      # Token d'accès stable (device "Hermes Agent"), créé une seule fois.
+      # Stable access token (device "Hermes Agent"), created only once.
       if [ ! -f "$TOKEN_FILE" ]; then
         RESP=$(${pkgs.curl}/bin/curl -sf -X POST \
           http://127.0.0.1:8008/_matrix/client/v3/login \
@@ -132,7 +132,7 @@ in {
     '';
   };
 
-  # Listener par défaut du module : 127.0.0.1:8008 (client + federation, x_forwarded).
-  # Pas de port firewall à ouvrir : newt/Pangolin tourne sur tower et tape en local.
-  # Exposition publique à faire côté Pangolin : matrix.marcpartensky.com -> http://127.0.0.1:8008
+  # Default listener of the module: 127.0.0.1:8008 (client + federation, x_forwarded).
+  # No firewall port to open: newt/Pangolin runs on tower and hits it locally.
+  # Public exposure to be done on the Pangolin side: matrix.marcpartensky.com -> http://127.0.0.1:8008
 }
