@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>typer — typing practice</title>
+    <meta
+      name="description"
+      content="Touch typing drills in the browser, Catppuccin Mocha, local statistics, private race rooms by link."
+    />
+    <meta name="color-scheme" content="dark" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231e1e2e'/%3E%3Crect x='6' y='13' width='20' height='3' rx='1.5' fill='%23b4befe'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="typer">typer<span class="brand-bar" aria-hidden="true"></span></a>
+      <nav class="topnav">
+        <button type="button" class="link" id="open-race" data-dialog="dlg-race" data-i18n="nav.race">Course</button>
+        <button type="button" class="link" data-dialog="dlg-tui" data-i18n="nav.tui">Version terminal</button>
+        <button type="button" class="link" data-dialog="dlg-stats" data-i18n="nav.history">Historique</button>
+        <button type="button" class="link" data-dialog="dlg-custom" data-i18n="nav.custom">Texte libre</button>
+        <button type="button" class="link lang-toggle" id="ui-lang" aria-label="Language">EN</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="config" id="config" aria-label="Réglages du test">
+        <div class="group" id="group-mode"></div>
+        <span class="config-sep" aria-hidden="true"></span>
+        <div class="group" id="group-amount"></div>
+        <span class="config-sep" aria-hidden="true"></span>
+        <label class="select-group">
+          <span class="sr-only" data-i18n="config.lang">Langue</span>
+          <select id="lang-select" aria-label="Langue"></select>
+        </label>
+        <label class="select-group">
+          <span class="sr-only" data-i18n="config.layout">Disposition</span>
+          <select id="layout-select" aria-label="Disposition du clavier">
+            <option value="qwerty">QWERTY</option>
+            <option value="azerty">AZERTY</option>
+            <option value="bepo">BÉPO</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="hud" id="hud" aria-live="off">
+        <div class="hud-cell">
+          <span class="hud-value" id="hud-progress">0</span>
+          <span class="hud-label" id="hud-progress-label" data-i18n="hud.seconds">s</span>
+        </div>
+        <div class="hud-cell">
+          <span class="hud-value" id="hud-wpm">0</span>
+          <span class="hud-label" data-i18n="hud.wpm">mots/min</span>
+        </div>
+        <div class="hud-cell">
+          <span class="hud-value" id="hud-acc">100 %</span>
+          <span class="hud-label" data-i18n="hud.accuracy">précision</span>
+        </div>
+        <div class="hud-cell hud-cell--errors">
+          <span class="hud-value" id="hud-errors">0</span>
+          <span class="hud-label" data-i18n="hud.errors">erreurs</span>
+        </div>
+      </section>
+
+      <section class="race" id="race" hidden aria-live="polite">
+        <div class="race-bar">
+          <span class="race-room"><span data-i18n="race.room">salle</span> <b id="race-code">····</b></span>
+          <span class="race-status" id="race-status"></span>
+          <button type="button" class="link" id="race-open" data-i18n="race.lobby">salon</button>
+        </div>
+        <ol class="race-board" id="race-board"></ol>
+      </section>
+
+      <section class="stage" id="stage">
+        <div class="typewrap" id="typewrap" tabindex="-1">
+          <div class="typeview" id="typeview">
+            <div class="words" id="words">
+              <div class="caret" id="caret" aria-hidden="true"></div>
+            </div>
+          </div>
+          <button type="button" class="focus-hint" id="focus-hint" hidden data-i18n="stage.resume">
+            Clique pour reprendre la frappe
+          </button>
+          <div class="race-overlay" id="race-overlay" hidden>
+            <span class="race-overlay-count" id="race-count"></span>
+            <span class="race-overlay-text" id="race-overlay-text"></span>
+          </div>
+        </div>
+        <input
+          id="catcher"
+          class="catcher"
+          type="text"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-label="Zone de frappe"
+        />
+
+        <div class="stage-actions">
+          <button type="button" class="ghost" id="btn-restart" data-i18n="btn.restart" data-i18n-title="btn.restartHint">
+            Recommencer
+          </button>
+          <button type="button" class="ghost" id="btn-keyboard" aria-pressed="true" data-i18n="btn.keyboard">
+            Clavier
+          </button>
+        </div>
+      </section>
+
+      <section class="results" id="results" hidden>
+        <div class="result-main">
+          <span class="result-wpm" id="res-wpm">0</span>
+          <span class="result-unit" data-i18n="hud.wpm">mots/min</span>
+          <span class="result-pb" id="res-pb" hidden data-i18n="res.pb">record</span>
+        </div>
+        <div class="result-grid">
+          <div><span class="k" data-i18n="res.accuracy">Précision</span><span class="v" id="res-acc">—</span></div>
+          <div><span class="k" data-i18n="res.raw">Brut</span><span class="v" id="res-raw">—</span></div>
+          <div><span class="k" data-i18n="res.consistency">Régularité</span><span class="v" id="res-consistency">—</span></div>
+          <div><span class="k" data-i18n="res.chars">Caractères</span><span class="v" id="res-chars">—</span></div>
+          <div><span class="k" data-i18n="res.time">Temps</span><span class="v" id="res-time">—</span></div>
+          <div><span class="k" data-i18n="res.keys">Touches</span><span class="v" id="res-keys">—</span></div>
+          <div><span class="k" data-i18n="res.misses">Ratées</span><span class="v" id="res-misses">—</span></div>
+        </div>
+        <div class="race-final" id="race-final" hidden></div>
+        <div class="result-actions">
+          <button type="button" class="primary" id="res-again">Nouveau test <kbd>Tab</kbd></button>
+        </div>
+      </section>
+
+      <section class="keyboard" id="keyboard" aria-label="Clavier visuel"></section>
+      <p class="foot">
+        <span id="foot-lang">—</span> ·
+        <span data-i18n="foot.private">Aucune donnée ne quitte ce navigateur</span> ·
+        <a href="https://github.com/max-niederman/ttyper" rel="noreferrer noopener" target="_blank" data-i18n="foot.words">listes de mots ttyper</a>
+      </p>
+    </main>
+
+    <dialog id="dlg-stats" class="dialog">
+      <form method="dialog" class="dialog-head">
+        <h2 data-i18n="stats.title">Historique</h2>
+        <button class="close" value="close" aria-label="Fermer">✕</button>
+      </form>
+      <div class="dialog-body">
+        <h3 data-i18n="stats.records">Records</h3>
+        <table class="pb-table" id="pb-table"></table>
+        <h3 data-i18n="stats.recent">Derniers tests</h3>
+        <table class="hist-table" id="hist-table"></table>
+        <button type="button" class="ghost danger" id="clear-history" data-i18n="stats.clear">Effacer l'historique</button>
+      </div>
+    </dialog>
+
+    <dialog id="dlg-custom" class="dialog">
+      <form method="dialog" class="dialog-head">
+        <h2 data-i18n="custom.title">Texte libre</h2>
+        <button class="close" value="close" aria-label="Fermer">✕</button>
+      </form>
+      <div class="dialog-body">
+        <p class="muted" data-i18n="custom.hint">
+          Colle un texte, un extrait de code, une liste de mots. Il devient le test en cours.
+        </p>
+        <textarea id="custom-text" rows="8" spellcheck="false" placeholder="Colle ton texte ici…"></textarea>
+        <div class="dialog-actions">
+          <button type="button" class="primary" id="custom-apply" data-i18n="custom.apply">Utiliser ce texte</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="dlg-race" class="dialog">
+      <form method="dialog" class="dialog-head">
+        <h2 data-i18n="race.title">Course à plusieurs</h2>
+        <button class="close" value="close" aria-label="Fermer">✕</button>
+      </form>
+      <div class="dialog-body">
+        <p class="muted" data-i18n="race.hint">
+          Une salle = un code à quatre caractères. Envoie le lien, n'importe qui entre sans compte.
+        </p>
+        <label class="field">
+          <span data-i18n="race.name">Ton nom</span>
+          <input id="race-name" maxlength="20" autocomplete="nickname" placeholder="marc" />
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="primary" id="race-create" data-i18n="race.create">Créer une salle</button>
+        </div>
+        <p class="or" aria-hidden="true">···</p>
+        <label class="field">
+          <span data-i18n="race.code">Code de la salle</span>
+          <input id="race-code-input" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" />
+        </label>
+        <div class="dialog-actions">
+          <button type="button" class="ghost" id="race-join" data-i18n="race.join">Rejoindre</button>
+        </div>
+        <p class="race-error" id="race-error" hidden></p>
+        <div id="race-share" hidden>
+          <p class="muted" data-i18n="race.share">Lien à partager :</p>
+          <div class="share-row">
+            <input id="race-link" readonly />
+            <button type="button" class="ghost" id="race-copy" data-i18n="race.copy">Copier</button>
+          </div>
+          <div class="race-players" id="race-players"></div>
+          <div class="dialog-actions">
+            <button type="button" class="primary" id="race-ready" data-i18n="race.ready">Prêt</button>
+            <button type="button" class="ghost" id="race-leave" data-i18n="race.leave">Quitter la salle</button>
+          </div>
+          <p class="muted small" data-i18n="race.rule">
+            La course démarre quand tout le monde est prêt, avec le même texte pour tous.
+          </p>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="dlg-tui" class="dialog">
+      <form method="dialog" class="dialog-head">
+        <h2 data-i18n="tui.title">Version terminal</h2>
+        <button class="close" value="close" aria-label="Fermer">✕</button>
+      </form>
+      <div class="dialog-body prose">
+        <p data-i18n="tui.intro">
+          Cette page est la version web. Le client terminal se connecte aux mêmes salles.
+        </p>
+        <pre><code>typer-race                          # choisit une salle au hasard
+typer-race --room ABCD              # rejoint la salle ABCD
+typer-race --room ABCD --name marc
+typer-race --url ws://127.0.0.1:9146/ws</code></pre>
+        <p data-i18n="tui.ttyper">Pour un exercice solo hors ligne, <code>ttyper</code> reste installé :</p>
+        <pre><code>ttyper                       # 50 mots anglais
+ttyper -w 25                 # 25 mots
+ttyper -t 30                 # 30 secondes
+ttyper -l french200          # liste française</code></pre>
+        <p>
+          <span data-i18n="tui.web">Dans le navigateur d'une autre machine :</span>
+          <a href="https://terminal.marcpartensky.com" target="_blank" rel="noreferrer noopener">terminal.marcpartensky.com</a>
+        </p>
+        <p class="muted"><code>nix shell nixpkgs#ttyper -c ttyper</code></p>
+      </div>
+    </dialog>
+
+    <script src="app.js"></script>
+    <script src="race.js"></script>
+  </body>
+</html>

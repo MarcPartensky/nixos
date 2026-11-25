@@ -1,0 +1,17 @@
+[package]
+name = "typer-tui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "typer-race: terminal client for typer race rooms."
+
+[[bin]]
+name = "typer-race"
+path = "src/main.rs"
+
+[dependencies]
+typer-core.workspace = true
+serde_json.workspace = true
+ratatui.workspace = true
+rustls.workspace = true
+webpki-roots.workspace = true

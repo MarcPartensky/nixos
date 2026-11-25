@@ -1,0 +1,15 @@
+[package]
+name = "typer-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "typer.macpartensky.com: static front-end and race rooms over WebSocket."
+
+[[bin]]
+name = "typer-server"
+path = "src/main.rs"
+
+[dependencies]
+typer-core.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
