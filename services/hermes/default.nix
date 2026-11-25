@@ -26,6 +26,43 @@
   # `pangolin` of profiles/tower/configuration.nix), so the binary
   # writePython3Bin was no longer useful and was no longer referenced any
   # where: it only evaluated a python package on each host eval.
+  # Upstream hermes-agent fix (services/hermes/hermes-agent-managed-home.py):
+  # secure_parent_dir() in hermes_constants.py chmods the parent of credential
+  # files (the hermes home itself: auth.json lives at its root) to 0700 on every
+  # save, with no managed-install carve-out -- unlike apply_secure_dir_policy()
+  # and ensure_private_store(), which both skip managed installs by design. On
+  # this host the home is group-shared with marc (0750 + ACLs, cf.
+  # profiles/tower/configuration.nix), so every credential save silently
+  # re-locked him out; observed live 2026-11-25 02:06:59 (auth.json save, mode
+  # 750 -> 700, gateway unaffected). The fixer rewrites the file so the same
+  # carve-outs win (managed installs, HERMES_HOME_MODE). Its anchor must match
+  # exactly once or the build fails loudly: on an upstream bump that moves the
+  # code, update the fixer.
+  #
+  # WHERE the file lives decides how to patch it. Upstream's package is only the
+  # wrapper (bin/, share/, ui-tui/); the Python tree lives in a separate venv
+  # derivation, so a postFixup on the package never sees hermes_constants.py
+  # (observed: "expected exactly one hermes_constants.py ... found []"). This
+  # derivation ships a patched copy as a Python module and hands it to
+  # extraPythonPackages, the upstream hook: the wrapper puts those entries on
+  # PYTHONPATH, which Python searches BEFORE the venv's site-packages (verified
+  # on this host: a PYTHONPATH copy of hermes_constants.py wins over the venv's).
+  # toPythonModule keeps the package in the venv's own Python family, which is
+  # what the module filters extraPythonPackages on.
+  hermesConstantsManagedHome =
+    config.services.hermes-agent.package.python.pkgs.toPythonModule (
+      pkgs.runCommand "hermes-constants-managed-home"
+        {
+          nativeBuildInputs = [ pkgs.python3 ];
+        }
+        ''
+          site=$out/${config.services.hermes-agent.package.python.sitePackages}
+          mkdir -p "$site"
+          cp ${inputs.hermes-agent}/hermes_constants.py "$site/hermes_constants.py"
+          chmod u+w "$site/hermes_constants.py"
+          python3 ${./hermes-agent-managed-home.py} $out
+        ''
+    );
 in {
   # Option: the Matrix token of the @hermes bot (hermes_matrix_env key of
   # secrets/hermes-matrix.yml). The recipients of this sops file do
@@ -196,26 +233,12 @@ in {
     services.hermes-agent = {
       enable = true;
 
-      # Upstream hermes-agent fix (services/hermes/hermes-agent-managed-home.py,
-      # run as postFixup): secure_parent_dir() in hermes_constants.py chmods the
-      # home to 0700 on every credential save (auth.py _save_private_json ->
-      # auth.json), with no managed-install carve-out -- unlike
-      # apply_secure_dir_policy()/ensure_private_store(), which both skip managed
-      # installs by design. On this host the home is group-shared with marc
-      # (0750 + ACLs, cf. profiles/tower/configuration.nix), so every auth.json
-      # save silently re-locked him out; observed live 2026-11-25 02:06:59
-      # (auth save, mode 750 -> 700, gateway unaffected). The fixer rewrites the
-      # installed file so the same carve-outs win (managed installs,
-      # HERMES_HOME_MODE). The anchor must match exactly once or the build fails
-      # loudly: on an upstream bump that moves the code, update the fixer.
-      package =
-        inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default.overrideAttrs
-          (old: {
-            postFixup = (old.postFixup or "") + ''
-              ${pkgs.python3}/bin/python3 ${./hermes-agent-managed-home.py} $out
-            '';
-          });
-
+      # Upstream hermes-agent fix: secure_parent_dir() in hermes_constants.py
+      # re-locks the group-shared home on every credential save. The patch ships
+      # as hermesConstantsManagedHome (let block above), through
+      # extraPythonPackages -- NOT as a postFixup here: the file lives in the
+      # upstream venv, not in this package's $out, so a postFixup can never see
+      # it. See the comment above that derivation for the full story.
       environmentFiles =
         [ config.sops.secrets."hermes_env".path ]
         ++ lib.optional config.services.hermes.enableMatrixToken config.sops.secrets."hermes_matrix_env".path
@@ -303,7 +326,13 @@ in {
       # python family is driven by pm/lock.json (nix/pythonLock.nix, here 3.14); a
       # package from another family is silently filtered by hasPythonModule
       # -> PYTHONPATH without the package. package.python.pkgs follows the venv.
-      extraPythonPackages = with config.services.hermes-agent.package.python.pkgs; [ psycopg2 ];
+      # hermesConstantsManagedHome (let block above) carries the patched
+      # hermes_constants.py: PYTHONPATH precedes the venv's site-packages, so this
+      # copy is the one imported at runtime.
+      extraPythonPackages =
+        with config.services.hermes-agent.package.python.pkgs;
+        [ psycopg2 ]
+        ++ [ hermesConstantsManagedHome ];
 
       # pyproject dep groups resolved by uv INSIDE the sealed venv (no
       # PYTHONPATH):
