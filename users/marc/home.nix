@@ -23,6 +23,7 @@
     ../../modules/home/zsh
     ../../modules/home/ssh
     ../../modules/home/eternal-terminal
+    ../../modules/home/zellij
     ../../modules/home/tealdeer
     ../../modules/home/neovim
     ../../modules/home/gh
@@ -35,6 +36,10 @@
     ../../modules/home/wayvnc
     ../../modules/home/alacritty
     ../../modules/home/kitty
+    # btop : theme Catppuccin Mocha (accent lavender) + vue CPU par process.
+    # htop (plus bas, xdg.configFile) herite du palette ANSI de kitty ; btop
+    # est le seul a lire un vrai fichier de theme 24 bits.
+    ../../modules/home/btop
     ../../modules/home/wallpapers
     ../../modules/home/syncthing
     ../../modules/home/gtk
@@ -156,6 +161,12 @@
     };
   };
 
+  # zellij partout : tout shell interactif (ssh compris) se rattache a une
+  # session, donc une coupure detache au lieu de tuer le travail en cours.
+  # Les shells non interactifs (ssh hote 'commande', scripts, l'agent) ne sont
+  # pas concernes ; echappatoire : `ssh -t hote 'ZELLIJ=0 bash -l'`.
+  my.zellij.autostart = true;
+
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;
@@ -181,6 +192,17 @@
     "gtk-3.0/settings.ini".force = true;
     "gtk-4.0/settings.ini".force = true;
     "gtk-4.0/gtk.css".force = true;
+    # Colonnes et ecrans htop, au plus pres de glances : bandeau de jauges
+    # (CPU + par thread, MEM, SWP, reseau, disque, load, taches, uptime, heure)
+    # puis table des process facon glances (CPU%, MEM%, VIRT, RES, PID, USER,
+    # NI, S, TIME+, Command). Meme fichier que le defaut systeme /etc/htoprc,
+    # pour ne pas dependre du fait d'avoir ou non un htoprc personnel.
+    # force = true remplace un htoprc edite a la main ; le lien pointe dans le
+    # store, donc htop ne peut plus y ecrire : passer par ce fichier.
+    "htop/htoprc" = {
+      source = ../../modules/nixos/htop/htoprc;
+      force = true;
+    };
   };
 
   programs.home-manager.enable = true;

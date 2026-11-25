@@ -5,167 +5,351 @@
   config,
   ...
 }: let
-  # Client WireGuard vers le VPS (voir la section WIREGUARD CLIENT en bas).
+  # WireGuard client to the VPS (see the WIREGUARD CLIENT section at the bottom).
   wgClientEnable = true;
 in {
 
-  # tower sort le trafic du tel vers internet (exit node) et annonce le LAN
-  # maison, pour retrouver le comportement du tunnel WireGuard. La sortie du
-  # VPS reste préférable pour le débit (cf. meshTailscale sur anywhere).
+  # tower routes the phone's traffic to the internet (exit node) and announces the LAN
+  # at home, to reproduce the behavior of the WireGuard tunnel. The output of the
+  # VPS is still preferable for throughput (cf. meshTailscale on anywhere).
   meshTailscale = {
     advertiseExitNode = true;
     advertiseRoutes = [ "192.168.1.0/24" ];
   };
 
-  # AdGuard ne peut PAS écouter sur 0.0.0.0 (aardvark-dns des réseaux podman
-  # tient déjà le 53 des passerelles 10.88/10.89) : on donne l'adresse du mesh
-  # en plus de la loopback, sinon le résolveur reste mort pour tout le tailnet.
+  # Offload builds to the laptop and the deck. Tower is the interactive machine:
+  # a compiler must never run here. Two levels, both declarative:
+  #
+  #  - `nix.buildMachines` (below): what the DAEMON uses, so any
+  #    `nix build` (Justfile, scripts, nix-shell, nixos-rebuild without --builders).
+  #    Both machines are there: Nix spreads the derivations over those that have
+  #    a free slot.
+  #  - nix-builders-pick (modules/nixos/nixos-rebuild-gated/builders-pick.sh) :
+  #    probes laptop and deck (headroom = nproc - load1, available RAM) and yields
+  #    the `--builders` value. The nixos-rebuild-gated wrapper injects it on each
+  #    switch and the Justfile `build` uses it: the saturated machine is excluded,
+  #    jobs go to the least loaded one.
+  #
+  # The key /var/lib/hermes/.ssh/nix-builder is the hermes@tower -> builders pair.
+  # The daemon (root) does NOT receive sshKey via ssh: the identity is therefore set in
+  # root's ssh config (users/root/home.nix). On the builders side it must be
+  # authorized DECLARATIVELY (services/hermes/default.nix for the laptop,
+  # profiles/deck for the deck): in ~/.ssh/authorized_keys sshd StrictModes
+  # ignored it when the home is group-writable (laptop in 2770 -> Permission
+  # denied silently, observed on 2026-11-25).
+  nix.distributedBuilds = true;
+  nix.buildMachines = [
+    {
+      hostName = "laptop";
+      system = "x86_64-linux";
+      maxJobs = 4;
+      protocol = "ssh-ng";
+      sshUser = "hermes";
+      sshKey = "/var/lib/hermes/.ssh/nix-builder";
+      supportedFeatures = [ "big-parallel" "benchmark" "nixos-test" ];
+    }
+    {
+      # Deck: 8 cores, but it is marc's console (jovian/steam) -> 3 jobs.
+      hostName = "deck";
+      system = "x86_64-linux";
+      maxJobs = 3;
+      protocol = "ssh-ng";
+      sshUser = "hermes";
+      sshKey = "/var/lib/hermes/.ssh/nix-builder";
+      supportedFeatures = [ "big-parallel" "benchmark" "nixos-test" ];
+    }
+  ];
+
+  # AdGuard canNOT listen on 0.0.0.0 (aardvark-dns of the podman networks
+  # already holds port 53 of the 10.88/10.89 gateways): we give the mesh address
+  # in addition to loopback, otherwise the resolver stays dead for the whole tailnet.
   services.dnsFilter.bindHosts = [ "127.0.0.1" "100.64.0.3" ];
+  # Blocklists and short-name rewrites live in services/adguard/tailnet.nix,
+  # shared with the VPS instance so both resolvers answer identically (the
+  # client races them and keeps the first answer).
 
   imports = [
-    # Serveur MCP unique : un seul processus pour tous les serveurs maison, sur
-    # une URL loopback. Mesure : 8 serveurs reels, 90 outils, 85 Mo de RSS,
-    # contre 133 process et 1,7 Go avec un process par session. Les sessions
-    # Hermes peuvent basculer dessus en pointant mcpServers sur l'URL ; tant
-    # qu'elles ne le font pas, l'ancien cablage stdio reste en place et rien ne
-    # casse. Voir modules/nixos/mcp-host et mcp/main.py.
+    # Shared tailnet DNS policy (blocklists + short names) for this AdGuard
+    # instance and the one on the VPS.
+    ../../services/adguard/tailnet.nix
+    # Single MCP server: one process for all the home servers, on
+    # a loopback URL. Measurement: 8 real servers, 90 tools, 85 MB of RSS,
+    # versus 133 processes and 1.7 GB with one process per session. Hermes
+    # sessions can switch to it by pointing mcpServers at the URL; as long
+    # as they do not, the old stdio wiring stays in place and nothing
+    # breaks. See modules/nixos/mcp-host and mcp/main.py.
     ../../modules/nixos/mcp-host
+    # Single Rust MCP host: owns the stdio servers once, one HTTP endpoint.
+    # enable = false by default; takeover flips Hermes onto its URL.
+    ../../modules/nixos/mcp-host-rs
     ../../hosts/tower/disko.nix
     ../../hosts/laptop/hardware-configuration.nix
     ../../modules/nixos/herdr
-    # MCP Stalwart (JMAP vers le VPS) : tower uniquement, hermes y tourne.
+    # Stalwart MCP (JMAP to the VPS): tower only, hermes runs there.
     ../../services/stalwart-mcp
-    # Bot Discord (bridge vers l'API server Hermes) : tower uniquement, son
-    # secret vit dans secrets/tower.yml. Sorti de services/default.nix, ou il
-    # cassait le build de tout hote importé ./services sans ce secret.
+    # Discord bot (bridge to the Hermes API server): tower only, its
+    # secret lives in secrets/tower.yml. Moved out of services/default.nix, where it
+    # broke the build of any host importing ./services without this secret.
     ../../services/discord-bot
+    # ../../services/gotify  # MOVED to anywhere (2026-11-20): the Gotify
+    # server, its database and its Pangolin resource now live on the VPS.
+    # Only the CONSUMERS remain here (gotify-matrix bridge below,
+    # mesh-dashboard, gateway hook) that talk to
+    # https://gotify.marcpartensky.com with their application tokens.
+    # The bridge was imported ONLY by the services/default.nix aggregator, which this
+    # profile does not import: the 21/11 00:21 generation therefore lost it (units
+    # gotify-matrix-relay / gotify-pont-provision gone). Explicit import.
+    ../../services/gotify-matrix
+    # Hermes voice bridge (8999) + Pangolin resource voice.marcpartensky.com.
+    ../../services/hermes-voice
+    ../../services/jupyterhub
     ../../services/monero-miner
-    # Cache binaire Nix locale (atticd, stockage disque) : evite de recompiler
-    # les paquets maison apres un GC ou un flake update, et alimente la cache
-    # via le post-build-hook du demon nix.
+    # Local Nix binary cache (atticd, disk storage): avoids recompiling
+    # the home packages after a GC or a flake update, and feeds the cache
+    # via the nix daemon's post-build-hook.
     ../../services/attic
-    # Glances web (htop web, 61208) expose en proc.marcpartensky.com.
+    # Glances web (htop web, 61208) exposed at proc.marcpartensky.com.
     ../../services/glances
-    # Immich (immich.marcpartensky.com, 2283) : interface photos/videos de
-    # l'arbre /home/marc/media/photos en bibliotheque externe read-only.
+    # Immich (immich.marcpartensky.com, 2283): photos/videos interface of
+    # the /home/marc/media/photos tree as a read-only external library.
     ../../services/immich
-    # k8s sur tower : k3s mono-noeud + Rancher 2.15.3 (chart epingle),
-    # expose par Pangolin sur rancher.marcpartensky.com (SSO Zitadel), cible
-    # ClusterIP fixe 10.43.99.10:80. Voir services/k3s pour la procedure.
+    # single-node k3s, WITHOUT Rancher (2026-11-20): the Rancher chart and its
+    # Pangolin resource are behind the `withRancher = false` flag in
+    # services/k3s/default.nix. Measurement before removal: 1.5 core continuously
+    # for 10 control-plane pods that served no workload, plus
+    # a kine datastore that failed to compact every 5 min. k3s stays
+    # in place for the pods API; the datastore was recreated from scratch.
     ../../services/k3s
-    # PhotoPrism a ete RETIRE (choix de marc, 14/11/2026) : Immich reste.
-    # Le module services/photoprism existe toujours mais n'est plus importe ;
-    # son storage /var/lib/photoprism peut etre supprime.
-    # Comparatif de dashboards homelab (homer, homepage, glance, homarr) :
-    # chaque candidat en boucle locale, relayé par newt via une ressource
-    # Pangolin avec SSO. Voir services/dashboards.
+    # Internal tailnet TLS proxy: *.intra.marcpartensky.com on 9443,
+    # Let's Encrypt wildcard certificate via DNS-01 (see the module).
+    ../../services/traefik-intra
+    # PhotoPrism was REMOVED (marc's choice, 2026-11-14): Immich stays.
+    # The services/photoprism module still exists but is no longer imported;
+    # its storage /var/lib/photoprism can be deleted.
+    # Comparison of homelab dashboards (homer, homepage, glance, homarr):
+    # each candidate on loopback, relayed by newt via a Pangolin
+    # resource with SSO. See services/dashboards.
     ../../services/dashboards
-    # Octo (octo.marcpartensky.com) : proxy OpenSubsonic devant Navidrome qui
-    # cherche hors bibliotheque, joue un titre absent en preview YouTube et le
-    # telecharge sur un coeur. Deux conteneurs podman. Voir services/octo.
+    # Octo (octo.marcpartensky.com): OpenSubsonic proxy in front of Navidrome that
+    # searches outside the library, plays an absent track as a YouTube preview and
+    # downloads it on a core. Two podman containers. See services/octo.
     ../../services/octo
-    # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
-    # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
+    # ygg-mesh private network (Yggdrasil via Tor + direct LAN link), members:
+    # tower, anywhere, deck. See services/ygg-mesh/default.nix.
     ../../services/ygg-mesh
-    # Mesh headscale : nœud tailscale (contrôleur sur le VPS anywhere, cf
-    # services/headscale et services/tailscale).
+    # headscale mesh: tailscale node (controller on the VPS anywhere, cf
+    # services/headscale and services/tailscale).
     ../../services/tailscale
-    # Dashboard des nœuds du tailnet (mesh.marcpartensky.com, SSO Pangolin ;
-    # http://100.64.0.3:9140 depuis le tailnet). Lit `tailscale status --json`.
+    # Dashboard of the tailnet nodes (mesh.marcpartensky.com, Pangolin SSO;
+    # http://100.64.0.3:9140 from the tailnet). Reads `tailscale status --json`.
     ../../services/mesh-dashboard
-    # Dashboard d'usage LLM (usage.marcpartensky.com, SSO Pangolin) : solde et
-    # depense OpenRouter par modele / cle / jour, plus les soldes directs
-    # (Moonshot) et les abonnements hors OpenRouter. Lit /api/v1/analytics.
+    # Health of SSH aliases and reverse tunnels (tunnel.marcpartensky.com,
+    # Pangolin SSO): probes every 60 s from tower, page served on
+    # loopback on 9144 and published by newt. See services/tunnel-health.
+    ../../services/tunnel-health
+    # marc's presence (Rust): Mac / phone / tower, location (home, office,
+    # outside), inferred sleep, usage forecast and CPU RESERVATION (the
+    # background job governor no longer loosens the caps when marc will
+    # soon need the machine). Contract unchanged: devices.json.
+    ../../services/presence
+    # LLM usage dashboard (usage.marcpartensky.com, without Pangolin SSO): balance and
+    # OpenRouter spend per model / key / day, plus the direct balances
+    # (Moonshot) and subscriptions outside OpenRouter. Reads /api/v1/analytics.
     ../../services/usage-dashboard
-    # Page de suivi des dépenses (finance.marcpartensky.com, SSO Pangolin) :
-    # lit /var/lib/hermes/workspace/finance/dashboard.json, écrit chaque matin
-    # par le cron « Daily finances recap » (Wise + Chase via SimpleFIN).
+    # Spending tracking page (finance.marcpartensky.com, Pangolin SSO):
+    # reads /var/lib/hermes/workspace/finance/dashboard.json, written every morning
+    # by the cron "Daily finances recap" (Wise + Chase via SimpleFIN).
     ../../services/finance-dashboard
-    # Télémétrie CPU par process (atop 10 s + atop-peaks) : tower uniquement,
-    # c'est ici que les builds et les sessions Hermes se disputent le CPU.
+    # UCPA stays finder (ucpa.marcpartensky.com, Pangolin SSO):
+    # all dated ski/snowboard sessions with price and spots, filtering
+    # on the browser side (package, age, duration, price). Reuses the client of the
+    # MCP server mcp/modules/ucpa.py.
+    ../../services/ucpa-app
+    # Per-process CPU telemetry (atop 10 s + atop-peaks): tower only,
+    # this is where builds and Hermes sessions compete for the CPU.
     ../../services/atop
-    # Windmill : serveur de la flotte (UI/API + base Postgres `windmill`).
-    # Les workers tournent sur deck / anywhere et prennent les jobs dans la
-    # meme base via le tailnet. tower n'heberge PAS de worker : il reste libre.
+    # Windmill: fleet server (UI/API + Postgres database `windmill`).
+    # The workers run on deck / anywhere and take the jobs from the
+    # same database via the tailnet. tower does NOT host a worker: it stays free.
     ../../services/windmill
-    # Depot F-Droid personnel (fdroid.marcpartensky.com) : les APK release des
-    # applis de marc, ajoutable dans Droidify. Voir services/fdroid-repo.
+    # Personal F-Droid repo (fdroid.marcpartensky.com): the release APKs of
+    # marc's apps, addable in Droidify. See services/fdroid-repo.
     ../../services/fdroid-repo
-    # Atlas 3D de l'infra (atlas.marcpartensky.com) : projet separe sous
-    # /var/lib/hermes/workspace/infra-atlas, importe par l'INPUT `infra-atlas`
-    # du flake (verrouille dans flake.lock), plus par un builtins.getFlake :
-    # le getFlake rendait l'evaluation de tower impure. Bump du projet atlas
+    # 3D atlas of the infra (atlas.marcpartensky.com): separate project under
+    # /var/lib/hermes/workspace/infra-atlas, imported by the `infra-atlas` INPUT
+    # of the flake (locked in flake.lock), not by a builtins.getFlake:
+    # the getFlake made tower's evaluation impure. Bump of the atlas project
     # = `nix flake update infra-atlas`.
+    # Catch-up of critical units not started after a boot: systemd never
+    # restarts a unit whose dependency failed (see the header of the
+    # module, measurement of 2026-11-17: 5 h of matrix outage after a postgres
+    # recovery postgres).
+    ../../services/boot-recovery
+    # Typing practice (typer.marcpartensky.com): static front-end and
+    # race rooms /ws served by the same socket. The module and the package
+    # come from the typer flake (input above, vendored under projects/typer):
+    # Rust binaries typer-server + terminal client typer-race, the Python of
+    # services/typer is no longer deployed (kept under projects/typer/legacy/).
+    inputs.typer.nixosModules.default
     inputs.infra-atlas.nixosModules.default
+    # mnemo.marcpartensky.com: retention engine (conversation scoring,
+    # explanation sheets, podcast and typing sources). Standalone flake
+    # vendored under projects/mnemo; k3s pod + dedicated database come from the module.
+    inputs.mnemo.nixosModules.default
   ];
 
-  # Sauvegardes chiffrées pqbox en trois étages (coeur quotidien, volume
-  # hebdomadaire, mortes à la main). Clé publique dans services/backup-pqbox,
-  # clé privée scellée chez marc uniquement. Cf. le module pour le détail.
-  # Depuis le 14/11/2026 le PRODUCTEUR est le portable (03:10) : ici on n'est
-  # que le filet de sécurité, on passe à 05:00 et on ne fait rien si une archive
-  # de moins de 4 h existe déjà (portable allumé la nuit, ou pas).
+  # Purge of Alexandre's guest agent, removed from the flake on 2026-11-24 (own OS
+  # user, own HERMES_HOME, Pangolin domain, Zitadel project). This one-shot
+  # deletes the old home, which contains its state.db (conversations, memory,
+  # sessions): without it the folder survives the user deletion.
+  # ConditionPathExists makes it inert once the folder is erased, so it
+  # costs nothing afterwards (and it can be removed from the flake next time).
+  systemd.services."alexandre-home-purge" = {
+    description = "Purge /var/lib/alexandre (guest agent Hermes retire)";
+    wantedBy = [ "multi-user.target" ];
+    unitConfig.ConditionPathExists = "/var/lib/alexandre";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.coreutils}/bin/rm -rf /var/lib/alexandre";
+    };
+  };
+
+  # Boot safety net: restarts matrix / immich / attic if they are
+  # not active within 2 h after boot, 6 attempts max per unit.
+  services.bootRecovery.enable = true;
+
+  # pqbox encrypted backups in three tiers (daily core, weekly
+  # volume, manually pruned). Public key in services/backup-pqbox,
+  # private key sealed at marc's only. Cf. the module for details.
+  # Since 2026-11-14 the PRODUCER is the laptop (03:10): here we are
+  # only the safety net, we run at 05:00 and do nothing if an archive
+  # less than 4 h old already exists (laptop on at night, or not).
   services.backup-pqbox = {
     enable = true;
     coeurAt = "*-*-* 05:00:00";
     skipIfFresh = 4;
   };
 
-  # Atlas 3D interactif de l'infra (cluster, reseau, agent, MCP, taches, auth,
-  # backups) : atlas.marcpartensky.com derriere le SSO Pangolin, port loopback.
+  # Interactive 3D atlas of the infra (cluster, network, agent, MCP, tasks, auth,
+  # backups): atlas.marcpartensky.com behind the Pangolin SSO, loopback port.
   services.infraAtlas.enable = true;
 
-  # Page de suivi des dépenses (finance.marcpartensky.com).
+  # Spending tracking page (finance.marcpartensky.com).
   services.financeDashboard.enable = true;
+
+  # Typing practice (typer.marcpartensky.com): Rust server typer-server
+  # (static + rooms /ws), terminal client typer-race. The solo
+  # terminal version stays ttyper (users/marc/packages.nix).
+  services.typer.enable = true;
+
+  # mnemo (mnemo.marcpartensky.com): retention engine. Runs as a k3s POD
+  # (hostNetwork, 127.0.0.1:9152) to stay reachable by Pangolin like the
+  # other host services, with its own Postgres database. The OCI image is
+  # built on the laptop (`nix build .#image`) and dropped into
+  # /var/lib/hermes/mnemo/mnemo-oci.tar; the module imports it into containerd.
+  # Nothing compiles Rust on tower.
+  services.mnemo.enable = true;
+
+  # marc's presence (Rust): devices, location, forecast, CPU reservation.
+  services.presence.enable = true;
+
+  # UCPA stays finder (ucpa.marcpartensky.com): dated sessions,
+  # price and spots, package/age/duration/price filters on the browser side.
+  services.ucpaApp.enable = true;
 
   services.windmillFleet = {
     enable = true;
     role = "server";
     expose = true;
-    # Pas de login Windmill : l'OIDC applicatif est une fonction Enterprise en
-    # CE (stubs), et Pangolin authentifie deja via Zitadel en amont.
+    # No Windmill login: the application OIDC is an Enterprise feature in
+    # CE (stubs), and Pangolin already authenticates via Zitadel upstream.
     noAuth = true;
     baseUrl = "https://windmill.marcpartensky.com";
   };
 
-  # Sessions hermes lancees par marc (panes herdr, HERMES_HOME partage, cf
-  # users/marc/home.nix) : elles ecrivent dans /var/lib/hermes/.hermes. Le
-  # groupe hermes (users.nix) plus les chmod g+rw du module hermes couvrent
-  # l'existant ; ces ACL garantissent la traversee de /var/lib/hermes (2770) et
-  # que les fichiers crees par marc restent lisibles par le service.
-  # Pattern repris de services/firefox-mcp et amazon-mcp.
+  # Hermes sessions launched by marc (herdr panes, shared HERMES_HOME, cf
+  # users/marc/home.nix) write into /var/lib/hermes/.hermes. The hermes group
+  # (users.nix) plus the g+rw chmods of the hermes module cover the existing
+  # setup; these ACLs guarantee traversal of /var/lib/hermes (2770) and that
+  # files created by marc stay readable by the service. Pattern taken from
+  # services/amazon-mcp.
   #
-  # NE PAS revenir a un bloc `Match User hermes` + `StrictModes no` pour
-  # contourner StrictModes (c'etait l'etat du 14/11/2026) : StrictModes n'est pas
-  # une directive autorisee dans un bloc Match, sshd rejette alors TOUTE sa
-  # configuration et le build du systeme echoue, pas seulement l'acces.
-  # Il n'y a de toute facon rien a contourner : les cles autorisees sont
-  # declaratives, sshd les lit dans /etc/ssh/authorized_keys.d/hermes et ne
-  # regarde donc pas le home. Verification faite : `ssh hermes@127.0.0.1` en
-  # cle publique repond avec le home en 2770.
+  # 2026-11-25: group WRITE on the .hermes directory itself must stay disabled.
+  # hermes-agent 514e2cbd refuses a group-writable home for its control socket
+  # (home_mode_unsafe, hermes_cli/gateway_runtime_discovery.py): with the mask
+  # at rwx, EVERY agent-mode cron run failed with GatewayUnavailableError
+  # (unsafe_control_permissions) - 55 failures on 24/11, all the watches
+  # (tunnel, inbox, cpu) were dead. The home mask is therefore r-x (mode 0750):
+  # marc keeps read + traversal, and the default entries (d:u:marc:rwx) still
+  # give rwx on files created afterwards (plugins/, sessions/...). Verified on
+  # 25/11: marc writes nothing at the first level of .hermes (only
+  # plugins/herdr-agent-state belongs to him).
+  #
+  # The mode needs three layers because two other actors keep rewriting it:
+  #   - the hermes-agent-setup activation snippet chmods 2770 on the home at
+  #     every activation, and a chmod on an ACL-carrying directory resets the
+  #     mask to rwx: covered by the activationScripts step below, ordered
+  #     after that snippet;
+  #   - every credential save re-chmods the home to 0700 at RUNTIME:
+  #     secure_parent_dir() in hermes_constants.py (auth.py _save_private_json
+  #     -> auth.json, which lives at the home root) has no managed-install
+  #     carve-out, unlike apply_secure_dir_policy(). Observed 2026-11-25
+  #     02:06:59: auth save, mode 750 -> 700, marc locked out while the gateway
+  #     kept running. Root fix: the hermes-agent package patch declared in
+  #     services/hermes (hermes-agent-managed-home.py). Until that package is
+  #     deployed, the hermes cron job `home-mode-guard` re-applies the mode
+  #     within two minutes.
+  #
+  # Do NOT go back to a `Match User hermes` + `StrictModes no` block to
+  # bypass StrictModes (that was the state of 2026-11-14): StrictModes is not
+  # an allowed directive in a Match block, sshd then rejects ALL its
+  # configuration and the system build fails, not just the access.
+  # There is nothing to bypass anyway: the authorized keys are
+  # declarative, sshd reads them in /etc/ssh/authorized_keys.d/hermes and does
+  # not look at the home. Verification done: `ssh hermes@127.0.0.1` with
+  # a public key answers with the home in 2770.
   systemd.tmpfiles.rules = [
+    "d /var/lib/hermes/.hermes 0750 hermes hermes -"
     "a /var/lib/hermes - - - - u:marc:--x,m::rwx"
-    "a /var/lib/hermes/.hermes - - - - u:marc:rwx,d:u:marc:rwx,m::rwx,d:m::rwx"
+    "a /var/lib/hermes/.hermes - - - - u:marc:r-x,d:u:marc:rwx,m::r-x,d:m::rwx"
     "a /var/lib/hermes/.hermes/plugins - - - - u:marc:rwx,d:u:marc:rwx,m::rwx,d:m::rwx"
   ];
 
-  # Journal systemd : sans cap, journald monte a 10 % du systeme de fichiers,
-  # soit ~18 Go sur le dataset root (186 Go). Meme correctif que
-  # profiles/anywhere (500M) : on garde de quoi diagnostiquer une semaine, pas
-  # de quoi remplir un pool deja a 96 %. Le reste de /var/log (atop, 3 jours
-  # voulus) n'est pas concerne.
+  # Do not trust the tmpfiles order alone: the activation snippet
+  # hermes-agent-setup (hermes-agent module) redoes a `chmod 2770` on the home
+  # on EVERY activation, and on a folder carrying an ACL a chmod resets the
+  # mask to rwx - home_mode_unsafe falls back into the trap even when the rule
+  # `a` above is correct (observed on 2026-11-25: mode back to 2770
+  # after switch, all the agent cron jobs in GatewayUnavailableError). We
+  # therefore reapply mode + r-x mask AFTER this snippet. The same pair is what
+  # the cron job `home-mode-guard` replays at runtime, because every credential
+  # save re-chmods the home to 0700 (secure_parent_dir, no managed carve-out)
+  # until the patched hermes-agent package of services/hermes is deployed.
+  # Simulation verified on 25/11: chmod 2770 -> discover inaccessible ;
+  # setfacl -m m::r-x -> discover ready.
+  system.activationScripts."hermes-home-acl-mask" =
+    lib.stringAfter [ "hermes-agent-setup" ] ''
+      chmod 0750 /var/lib/hermes/.hermes
+      ${pkgs.acl}/bin/setfacl -m u:marc:r-x,d:u:marc:rwx,m::r-x,d:m::rwx /var/lib/hermes/.hermes
+    '';
+
+  # systemd journal: without a cap, journald climbs to 10 % of the filesystem,
+  # i.e. ~18 GB on the root dataset (186 GB). Same fix as
+  # profiles/anywhere (500M): we keep enough to diagnose a week, not
+  # enough to fill a pool already at 96 %. The rest of /var/log (atop, 3 days
+  # wanted) is not concerned.
   services.journald.extraConfig = "SystemMaxUse=1G";
 
-  # Plafond du cache ARC de ZFS. Sans lui, zfs_arc_max vaut 0 (defaut) et le
-  # cache monte jusqu'a ~61 Go sur 62, ce qui pousse les services et les builds
-  # dans le swap: mesure d'eval 236 s sous pression contre 90 s au repos.
-  # Ce parametre s'applique au chargement du module, donc au boot.
+  # Cap on the ZFS ARC cache. Without it, zfs_arc_max is 0 (default) and the
+  # cache climbs to ~61 GB out of 62, which pushes the services and builds
+  # into swap: eval measurement 236 s under pressure versus 90 s at rest.
+  # This parameter applies at module load, so at boot.
   boot.kernelParams = ["panic=10" "zfs.zfs_arc_max=17179869184"];
 
-  # Application a chaud, sans reboot : un no-op au boot (la valeur est deja
-  # posee par le parametre noyau) et l'effet immediat au premier switch.
+  # Hot application, without reboot: a no-op at boot (the value is already
+  # set by the kernel parameter) and immediate effect at the first switch.
   systemd.services.zfs-arc-cap = {
-    description = "Plafonne le cache ARC de ZFS a 16 Go";
+    description = "Caps the ZFS ARC cache at 16 GB";
     wantedBy = ["multi-user.target"];
     serviceConfig = {
       Type = "oneshot";
@@ -181,25 +365,25 @@ in {
     };
   };
 
-  # Swap compresse en RAM : 25% de la memoire, soit ~15 Go, pour eviter que la
-  # moindre pression reparte sur le NVMe. Remplace le disque comme premier
-  # niveau de swap.
+  # Compressed swap in RAM: 25% of memory, i.e. ~15 GB, to prevent the
+  # slightest pressure from going to the NVMe. Replaces the disk as the first
+  # swap level.
   zramSwap = {
     enable = true;
     memoryPercent = 25;
     algorithm = "zstd";
-    # Priorite du swap compresse, pas seulement son activation. Defaut nixpkgs
-    # = 5, face au swap disque a 100 : le noyau prend TOUJOURS le plus haut,
-    # donc le NVMe etait consomme d'abord et le zram ne servait jamais
-    # (mesure 14/11/2026 : 13,5 Go sur 16 Go de swap disque occupes, 120 Ko sur
-    # 15,6 Go de zram). Les pages anonymes se compressent maintenant en RAM
-    # avant de toucher le disque, ce qui supprime les gels de plusieurs
-    # dizaines de secondes du backend desktop et de sshd.
+    # Priority of the compressed swap, not just its activation. nixpkgs default
+    # = 5, versus disk swap at 100: the kernel ALWAYS takes the highest,
+    # so the NVMe was consumed first and zram was never used
+    # (measurement 2026-11-14: 13.5 GB out of 16 GB of disk swap used, 120 KB out of
+    # 15.6 GB of zram). Anonymous pages now compress in RAM
+    # before touching the disk, which removes the freezes of several
+    # tens of seconds of the desktop backend and sshd.
     priority = 110;
   };
 
-  # Avec un cache plafonne et du zram, inutile de pousser les pages anonymes
-  # dehors a 60% : on les garde en RAM.
+  # With a capped cache and zram, no point in pushing anonymous pages
+  # out at 60%: we keep them in RAM.
   boot.kernel.sysctl."vm.swappiness" = 10;
   systemd.settings.Manager.RuntimeWatchdogSec = "30s";
   boot.kernelModules = ["vkms"];
@@ -223,20 +407,20 @@ in {
 
   users.users.hermes.openssh.authorizedKeys.keys = lib.mkAfter [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
-    # Portable (hermes@nixos), ajoutee le 14/11/2026 : c'est lui qui tire les
-    # sauvegardes pqbox par SSH (pg_dump + tar de l'etat Hermes en streaming).
+    # Laptop (hermes@nixos), added on 2026-11-14: it is the one that pulls the
+    # pqbox backups over SSH (pg_dump + tar of the Hermes state in streaming).
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMTNk2eJYoD87QP/Ajg6iCX/EwYCjVVvoTfTAFqh2qnW hermes@laptop"
   ];
 
-  # Mode et ACL de /var/lib/hermes (exigence sshd StrictModes) : voir les regles
-  # tmpfiles plus haut dans ce fichier.
+  # Mode and ACL of /var/lib/hermes (sshd StrictModes requirement): see the
+  # tmpfiles rules higher up in this file.
 
 
-  # Clés autorisées pour marc, en plus de la clé RSA de users.nix :
-  #   - root@anywhere : accès SSH du VPS par wg1 (10.100.0.3), sans dépendre
-  #     de l'IP publique de la box ni d'un forward.
-  #   - marc@Air-de-Marc : le Mac, pour `ssh tower` qui passe par rack
-  #     (ProxyJump), d'où qu'il soit.
+  # Authorized keys for marc, in addition to the RSA key of users.nix:
+  #   - root@anywhere: SSH access from the VPS via wg1 (10.100.0.3), without depending
+  #     on the box's public IP or a forward.
+  #   - marc@Air-de-Marc: the Mac, for `ssh tower` which goes through rack
+  #     (ProxyJump), wherever it is.
   users.users.marc.openssh.authorizedKeys.keys = lib.mkAfter [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAc2f6U09CWD2yQNcyGz6Pz9EN3aJzvdCvr7FrSSgpwx root@anywhere"
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
@@ -245,10 +429,20 @@ in {
   networking.hostName = "tower";
   sops.defaultSopsFile = lib.mkForce ../../secrets/tower.yml;
 
-  # PAT d'admin Zitadel (chiffre dans secrets/zitadel.yml, recipient tower)
-  # materialise lisible par hermes : sert aux operations d'admin ponctuelles
-  # via l'API REST (creation d'apps OIDC, inspection) tant que le zitadel-mcp
-  # upstream n'est pas provisionne (secret zitadel_mcp_env manquant).
+  # Gotify moved to anywhere (2026-11-20): all of tower's consumers
+  # go through the public URL (Pangolin -> site `rack`) with their
+  # application tokens already in place. Without this line the
+  # gotify-matrix bridge, mesh-dashboard and the gateway hook would target
+  # 127.0.0.1:8070, where nothing listens anymore.
+  services.gotifyMatrix.gotifyUrl = "https://gotify.marcpartensky.com";
+  # No more Gotify postgres cluster here: the bcrypt alignment of the admin
+  # account is done on the VPS, not from tower (which only has an application token).
+  services.gotifyMatrix.localDatabase = false;
+
+  # Zitadel admin PAT (encrypted in secrets/zitadel.yml, tower recipient)
+  # materialized readable by hermes: used for occasional admin operations
+  # via the REST API (OIDC app creation, inspection) as long as the upstream
+  # zitadel-mcp is not provisioned (missing zitadel_mcp_env secret).
   sops.secrets."zitadel_mcp_pat" = {
     sopsFile = ../../secrets/zitadel.yml;
     owner = "hermes";
@@ -258,42 +452,49 @@ in {
 
   nixpkgs.overlays = [ inputs.ankimcp.overlays.default ];
 
-  # ACME/Let's Encrypt : PLUS UTILISE sur tower. Le DNS public
-  # (*.marcpartensky.com) est un wildcard vers le VPS 104.129.12.158 (Pangolin),
-  # donc un challenge http-01 ne peut jamais atteindre tower (derriere NAT) :
-  # chaque vhost ACME finissait en « order-renew ... failed », et un contact
-  # admin@example.com est de toute facon refuse par Let's Encrypt
-  # (« contact email has forbidden domain example.com »).
-  # Les vhosts nginx locaux ci-dessous sont donc en HTTP loopback, destines a etre
-  # exposes par une ressource Pangolin/newt qui porte, elle, le TLS.
-  # Si un jour l'ACME revient ici : security.acme.defaults.email = "<vrai email>";
-  # (l'ancienne option security.acme.email est depreciee) + acceptTerms = true.
+  # ACME/Let's Encrypt: NO LONGER USED on tower. The public DNS
+  # (*.marcpartensky.com) is a wildcard to the VPS 104.129.12.158 (Pangolin),
+  # so an http-01 challenge can never reach tower (behind NAT):
+  # each ACME vhost ended in "order-renew ... failed", and a contact
+  # admin@example.com is refused anyway by Let's Encrypt
+  # ("contact email has forbidden domain example.com").
+  # The local nginx vhosts below are therefore HTTP loopback, intended to be
+  # exposed by a Pangolin/newt resource which carries the TLS itself.
+  # If ACME ever comes back here: security.acme.defaults.email = "<real email>";
+  # (the old security.acme.email option is deprecated) + acceptTerms = true.
 
   services.hermes.enableMatrixToken = true;
-  # Faux depuis le depart : la valeur de secrets/hermes-discord.yml est un
-  # PLACEHOLDER (pas un token Discord), et discord.py n'est pas dans le venv
-  # scelle. Avec ce drapeau a true, le gateway activait quand meme la plateforme
-  # (auto-enable des qu'un token existe dans .env) puis echouait en
-  # "No adapter available for discord" : d'ou le backend Discord "down" affiche
-  # en permanence dans le dashboard. Discord passe par services/discord-bot
-  # (bot de marc) -> API server Hermes -> profil discord-bridge : c'est CE
-  # chemin qui sert Discord, et il ne demande aucun token cote Hermes.
-  # Pour un jour l'activer nativement (vocal Discord) : creer une DEUXIEME
-  # application Discord (un token ne se partage pas entre deux process),
-  # remplacer le placeholder dans secrets/hermes-discord.yml, poser ce drapeau
-  # a true et ajouter "discord" a extraDependencyGroups (services/hermes).
+
+  # Hardware reservation of the 2 physical cores 6 and 7 (cpu12 to cpu15) to
+  # hermes.slice: tower is the only host where the gateway runs permanently,
+  # and the isolation only holds on this hardware (16 threads). The other hosts
+  # leave the value at null: their CPUs do not exist and an invalid AllowedCPUs
+  # would prevent hermes-agent from starting.
+  services.hermes.cpuIsolation = "12-15";
+  # False from the start: the value of secrets/hermes-discord.yml is a
+  # PLACEHOLDER (not a Discord token), and discord.py is not in the sealed
+  # venv. With this flag at true, the gateway still enabled the platform
+  # (auto-enable as soon as a token exists in .env) then failed with
+  # "No adapter available for discord": hence the Discord backend "down" shown
+  # permanently in the dashboard. Discord goes through services/discord-bot
+  # (marc's bot) -> Hermes API server -> discord-bridge profile: it is THIS
+  # path that serves Discord, and it requires no token on the Hermes side.
+  # To enable it natively one day (Discord voice): create a SECOND
+  # Discord application (a token is not shared between two processes),
+  # replace the placeholder in secrets/hermes-discord.yml, set this flag
+  # to true and add "discord" to extraDependencyGroups (services/hermes).
   services.hermes.enableDiscordToken = false;
 
   # ========================================================================
-  # RUSTGUAC - Gateway Rust (remplace Guacamole Java)
+  # RUSTGUAC - Rust Gateway (replaces Guacamole Java)
   # ========================================================================
   services.rustguac = {
     enable = true;
     host = "127.0.0.1";
     port = 8089;
-    # guacd n'a pas de TLS ici : il ecoute en loopback, et rustguac doit parler
-    # le meme protocole que lui (tls = true des deux cotes, ou false des deux
-    # cotes, sinon la connexion guacamole ne s'etablit pas).
+    # guacd has no TLS here: it listens on loopback, and rustguac must speak
+    # the same protocol as it (tls = true on both sides, or false on both
+    # sides, otherwise the guacamole connection is not established).
     guacd = { host = "127.0.0.1"; port = 4822; tls = false; };
     vault = {
       address = "http://127.0.0.1:8200";
@@ -301,38 +502,38 @@ in {
       mountPath = "secret";
       basePath = "rustguac";
     };
-    # OIDC DESACTIVE (29/09/2026) : rustguac 1.10.0 attend redirect_uri (pas
-    # redirect_url), default_role, extra_scopes, et un client_secret LITTERAL ou
-    # la variable OIDC_CLIENT_SECRET (pas un chemin de fichier). Surtout, il faut
-    # d'abord creer l'app OIDC dans Zitadel : client "rustguac", redirect
-    # https://guac.marcpartensky.com/auth/callback, puis exposer le vhost via une
-    # ressource Pangolin. Pour l'activer :
+    # OIDC DISABLED (2026-09-29): rustguac 1.10.0 expects redirect_uri (not
+    # redirect_url), default_role, extra_scopes, and a LITERAL client_secret or
+    # the OIDC_CLIENT_SECRET variable (not a file path). Above all, one must
+    # first create the OIDC app in Zitadel: client "rustguac", redirect
+    # https://guac.marcpartensky.com/auth/callback, then expose the vhost via a
+    # Pangolin resource. To enable it:
     #   oidc = { issuerUrl = "https://auth.marcpartensky.com"; clientId = "rustguac";
     #            clientSecretFile = "/run/secrets/rustguac-oidc-client-secret";
     #            redirectUri = "https://guac.marcpartensky.com/auth/callback";
     #            defaultRole = "operator"; extraScopes = [ "groups" ]; };
-    # En attendant, l'auth est par cle API (`rustguac add-admin`).
+    # In the meantime, auth is by API key (`rustguac add-admin`).
     oidc = null;
     recording = {
       enable = true;
       path = "/var/lib/rustguac/recordings";
       maxDiskPercent = 80;
     };
-    # Pas de rate limiting ici : nginx est devant, et rustguac le recommande
-    # desactive derriere un reverse proxy.
+    # No rate limiting here: nginx is in front, and rustguac recommends
+    # it disabled behind a reverse proxy.
     rateLimit = false;
     trustedProxies = [ "127.0.0.1/32" ];
   };
 
   # ========================================================================
-  # KASMVNC - Bureau distant Plasma 6 (X11)
+  # KASMVNC - Remote Plasma 6 desktop (X11)
   # ========================================================================
   services.kasmvnc = {
     enable = true;
     user = "marc";
-    # :1 est DEJA pris par la session graphique de marc (Xwayland :1) :
-    # kasmvncserver refuse alors de demarrer (« tower:1 is taken because of
-    # /tmp/.X1-lock ») et l'unite boucle jusqu'au start-limit-hit.
+    # :1 is ALREADY taken by marc's graphical session (Xwayland :1):
+    # kasmvncserver then refuses to start ("tower:1 is taken because of
+    # /tmp/.X1-lock") and the unit loops until start-limit-hit.
     display = ":20";
     geometry = "1920x1080";
     port = 8443;
@@ -341,28 +542,28 @@ in {
       keyFile = "/run/secrets/kasmvnc-key-pem";
     };
     passwordFile = "/home/marc/.kasmpasswd";
-    # Plasma 6, PAS en Wayland : KasmVNC est un serveur X (Xkasmvnc) et ne peut
-    # heberger aucun DE Wayland (kasmtech/KasmVNC#193 — il faudrait patcher KWin).
-    # startplasma-x11 fournit la session X11 complete : barre des taches en bas
-    # (look-and-feel org.hermes.kasm.desktop, konsole + LibreWolf epingles),
+    # Plasma 6, NOT in Wayland: KasmVNC is an X server (Xkasmvnc) and cannot
+    # host any Wayland DE (kasmtech/KasmVNC#193 - KWin would need patching).
+    # startplasma-x11 provides the complete X11 session: taskbar at the bottom
+    # (look-and-feel org.hermes.kasm.desktop, konsole + LibreWolf pinned),
     # KRunner, Dolphin, System Settings.
     desktop = "plasma";
-    # Pangolin (auth.sso-enabled = true sur la ressource kasm plus bas) gate deja
-    # kasm.marcpartensky.com : sans ca, apres le SSO Pangolin, KasmVNC redemandait
-    # SON propre Basic Auth (mot de passe genere par kasmvncpasswd), un double
-    # login que meme vnc.marcpartensky.com (noVNC) n'impose pas.
+    # Pangolin (auth.sso-enabled = true on the kasm resource below) already gates
+    # kasm.marcpartensky.com: without this, after the Pangolin SSO, KasmVNC asked again
+    # for ITS OWN Basic Auth (password generated by kasmvncpasswd), a double
+    # login that even vnc.marcpartensky.com (noVNC) does not impose.
     disableBasicAuth = true;
   };
 
   # ========================================================================
-  # KASMVNC CHROME CDP - Chrome/Chromium avec remote debugging pour Playwright MCP
+  # KASMVNC CHROME CDP - Chrome/Chromium with remote debugging for Playwright MCP
   # ========================================================================
-  # But : VOIR en direct ce que fait l'automatisation. Un Chromium visible tourne
-  # dans le desktop Kasm (affichable sur 8443 en LAN et kasm.marcpartensky.com en
-  # Internet), et le MCP s'y attache via --cdp-endpoint http://127.0.0.1:9222 :
-  # toutes les actions Playwright se font alors dans CETTE fenetre.
-  # CDP en loopback uniquement (un port CDP joignable = controle total du
-  # navigateur par quiconque l'atteint, donc jamais au LAN ni sur Internet).
+  # Goal: SEE live what the automation does. A visible Chromium runs
+  # in the Kasm desktop (viewable on 8443 on the LAN and kasm.marcpartensky.com on
+  # the Internet), and the MCP attaches to it via --cdp-endpoint http://127.0.0.1:9222:
+  # all Playwright actions then happen in THIS window.
+  # CDP on loopback only (a reachable CDP port = total control of the
+  # browser by anyone who reaches it, so never on the LAN or the Internet).
   services.kasmvnc.chrome-cdp = {
     enable = true;
     browser = "chromium";
@@ -382,23 +583,23 @@ in {
     exposePublic = false;
   };
 
-  # /home/marc/.kasmpasswd : fichier au format kasmvncpasswd. Attention,
-  # kasmvncpasswd n'a PAS d'option -f et refuse de tourner sans terminal
-  # (« getpassword error: Inappropriate ioctl for device ») ; il lit le mot de
-  # passe sur stdin quand on le lui donne deux fois. L'activation tourne donc en
-  # root, cree le fichier une fois, puis le passe a marc. Le mot de passe vit
-  # dans secrets/kasmvnc.yml (`sops -d secrets/kasmvnc.yml` pour le lire).
-  # -w -o (write + owner) donnent a marc une session utilisable : sans champ de
-  # permission kasmvncserver annonce « Users configured: marc (can only view) »,
-  # soit une session en lecture seule. (Mesure : l'authentification HTTP passe
-  # quand meme sans ces flags, 200 avec le bon mot de passe et 401 avec un
-  # mauvais ; un 401 sur un mot de passe correct signifie que l'utilisateur
-  # n'existe pas dans le fichier, pas que les flags manquent.)
-  # La regeneration est pilotee par une empreinte du secret : le fichier n'est
-  # reecrit que si le mot de passe a change, sinon chaque switch relancerait la
-  # session en cours pour rien (kasmvncserver ne lit ce fichier qu'au demarrage,
-  # donc un changement de secret impose un restart). Le test de fumee final ne
-  # journalise QUE le code HTTP, jamais le mot de passe.
+  # /home/marc/.kasmpasswd: file in kasmvncpasswd format. Note,
+  # kasmvncpasswd has NO -f option and refuses to run without a terminal
+  # ("getpassword error: Inappropriate ioctl for device"); it reads the
+  # password on stdin when given it twice. The activation therefore runs as
+  # root, creates the file once, then hands it to marc. The password lives
+  # in secrets/kasmvnc.yml (`sops -d secrets/kasmvnc.yml` to read it).
+  # -w -o (write + owner) give marc a usable session: without a
+  # permission field kasmvncserver announces "Users configured: marc (can only view)",
+  # i.e. a read-only session. (Measurement: HTTP authentication passes
+  # anyway without these flags, 200 with the right password and 401 with a
+  # wrong one; a 401 on a correct password means the user
+  # does not exist in the file, not that the flags are missing.)
+  # Regeneration is driven by a hash of the secret: the file is
+  # rewritten only if the password changed, otherwise each switch would restart the
+  # current session for nothing (kasmvncserver only reads this file at startup,
+  # so a secret change requires a restart). The final smoke test
+  # logs ONLY the HTTP code, never the password.
   system.activationScripts.kasmvncPasswd = ''
     if [ -r /run/secrets/kasmvnc-password ]; then
       pw="$(cat /run/secrets/kasmvnc-password)"
@@ -418,14 +619,14 @@ in {
           if [ "$code" = "200" ]; then break; fi
           sleep 2
         done
-        echo "kasmvnc: mot de passe (re)genere, authentification locale -> HTTP $code" >&2
+        echo "kasmvnc: password (re)generated, local authentication -> HTTP $code" >&2
       fi
       unset pw want have
     fi
   '';
 
   # ========================================================================
-  # VAULT - Dev mode pour rustguac (stockage connexions)
+  # VAULT - Dev mode for rustguac (connection storage)
   # ========================================================================
   services.vault-rustguac = {
     enable = true;
@@ -437,13 +638,13 @@ in {
   };
 
   # ========================================================================
-  # RUSTDESK - Serveur P2P (hbbs + hbbr)
+  # RUSTDESK - P2P Server (hbbs + hbbr)
   # ========================================================================
-  # Ports reels de la 1.1.16 : hbbs 21115 (test NAT) / 21116 (ID, TCP+UDP) /
-  # 21118 (websocket), hbbr 21117 (relais) / 21119 (websocket). Sans -k, hbbs
-  # genere sa paire de cles dans /var/lib/rustdesk (id_ed25519*).
-  # NOTE : tower est derriere NAT residentiel ; ces ports ne sont utiles qu'en
-  # LAN tant que rien n'est redirige cote box (ou via le VPS).
+  # Actual ports of 1.1.16: hbbs 21115 (NAT test) / 21116 (ID, TCP+UDP) /
+  # 21118 (websocket), hbbr 21117 (relay) / 21119 (websocket). Without -k, hbbs
+  # generates its key pair in /var/lib/rustdesk (id_ed25519*).
+  # NOTE: tower is behind residential NAT; these ports are useful only on
+  # the LAN as long as nothing is redirected on the box (or via the VPS).
   services.rustdesk = {
     enable = true;
     hbbs = { enable = true; idPort = 21116; };
@@ -452,24 +653,24 @@ in {
   };
 
   # ========================================================================
-  # ANKI - serveur MCP headless (Anki + addon AnkiMCP)
+  # ANKI - headless MCP server (Anki + AnkiMCP addon)
   # ========================================================================
-  # Anki sans bureau + addon AnkiMCP, expose en HTTP MCP sur la loopback
-  # (127.0.0.1:3141) et consomme par Hermes (mcpServers.anki). La collection
-  # est celle du compte "marc" du serveur de sync anki.marcpartensky.com :
-  # ce service en est un client de plus, comme le Mac et le telephone.
-  # Rien n'est ouvert au firewall ni expose par newt (exposition publique
-  # possible plus tard, avec cle http_api_key, cf services/anki-mcp).
+  # Headless Anki + AnkiMCP addon, exposed as MCP HTTP on loopback
+  # (127.0.0.1:3141) and consumed by Hermes (mcpServers.anki). The collection
+  # is the one of the "marc" account of the sync server anki.marcpartensky.com:
+  # this service is one more client of it, like the Mac and the phone.
+  # Nothing is opened in the firewall or exposed by newt (public exposure
+  # possible later, with the http_api_key key, cf services/anki-mcp).
   services.anki-mcp.enable = true;
 
   # ========================================================================
-  # MCP - accès LAN filtré (URLs cliquables depuis Hermes Desktop sur le Mac)
+  # MCP - filtered LAN access (clickable URLs from Hermes Desktop on the Mac)
   # ========================================================================
-  # Republie sur l'adresse LAN de tower les quatre endpoints MCP HTTP qui
-  # écoutent en loopback. Le firewall n'accepte que 192.168.1.48 (le Mac) ;
-  # rien n'est ouvert à la box ni à Pangolin. Les modules nextcloud-mcp,
-  # arr-mcp, anki-mcp et le serveur beeper lisent `host` pour construire leur
-  # URL MCP, donc une seule valeur à changer si l'adresse DHCP bouge.
+  # Republishes on tower's LAN address the three MCP HTTP endpoints that
+  # listen on loopback. The firewall accepts only 192.168.1.48 (the Mac);
+  # nothing is opened to the box or to Pangolin. The nextcloud-mcp,
+  # arr-mcp and anki-mcp modules read `host` to build their MCP URL, so a
+  # single value to change if the DHCP address moves.
   services.mcp-lan-access = {
     enable = true;
     host = "192.168.1.44";
@@ -478,12 +679,11 @@ in {
       nextcloud = 8710;
       anki = 3141;
       arrmcp = 6060;
-      beeper = 23373;
     };
   };
 
   # ========================================================================
-  # NGINX - vhosts locaux (TLS porte par Pangolin/newt, pas par nginx ici)
+  # NGINX - local vhosts (TLS carried by Pangolin/newt, not by nginx here)
   # ========================================================================
   services.nginx.rustguac = {
     enable = true;
@@ -503,16 +703,26 @@ in {
     listenPort = 8288;
   };
 
-  # Exposition publique via Pangolin (newt, site "tower") : kasm.marcpartensky.com
-  # -> 127.0.0.1:8288, le vhost nginx local qui repart en https vers KasmVNC.
-  # HTTP + SSO, comme noVNC (vnc.marcpartensky.com) : newt 1.12.4 suffit, le mode
-  # VNC natif de Pangolin exigerait un connecteur > 1.13. Meme contrainte de
-  # schema que services/newt : ce Pangolin attend `proxy-resources` + `protocol`
-  # (`public-resources`/`mode` sont ignores en silence -> domaine en 404).
-  # Pas de healthcheck : meme avec disableBasicAuth, pas verifie assez pour
-  # changer cette regle sans retester (lecon du healthcheck noVNC dans
-  # services/newt : une cible qui semble repondre peut quand meme faire
-  # echouer le probe Pangolin pour une autre raison).
+  # Themed AdGuard UI (Catppuccin Mocha + Lavender). AdGuard listens only on
+  # 127.0.0.1:3000 and cannot load custom CSS: this vhost proxies and
+  # injects the stylesheet into the HTML. No public exposure by default,
+  # only loopback + mesh address (tailscale0 is trusted).
+  services.nginx.adguardTheme = {
+    enable = true;
+    listenAddresses = [ "127.0.0.1" "100.64.0.3" ];
+    listenPort = 3021;
+  };
+
+  # Public exposure via Pangolin (newt, site "tower"): kasm.marcpartensky.com
+  # -> 127.0.0.1:8288, the local nginx vhost which goes back to https towards KasmVNC.
+  # HTTP + SSO, like noVNC (vnc.marcpartensky.com): newt 1.12.4 is enough, Pangolin's
+  # native VNC mode would require a connector > 1.13. Same schema
+  # constraint as services/newt: this Pangolin expects `proxy-resources` + `protocol`
+  # (`public-resources`/`mode` are silently ignored -> domain in 404).
+  # No healthcheck: even with disableBasicAuth, not verified enough to
+  # change this rule without retesting (lesson of the noVNC healthcheck in
+  # services/newt: a target that seems to respond can still make
+  # the Pangolin probe fail for another reason).
   services.newt.blueprint.proxy-resources.kasm = {
     name = "kasm";
     protocol = "http";
@@ -523,11 +733,11 @@ in {
         hostname = "127.0.0.1";
         port = 8288;
         method = "http";
-        # Healthcheck sur le vhost nginx local (8288 -> https KasmVNC 8443).
-        # KasmVNC repond 200 text/html sur "/" (desactiveBasicAuth) : mesure
-        # du 11/10/2026 sur http://127.0.0.1:8288/ -> 200. Meme schema que
-        # noVNC/winnie dans services/newt (schema ancien : proxy-resources +
-        # protocol, valide par ce Pangolin).
+        # Healthcheck on the local nginx vhost (8288 -> https KasmVNC 8443).
+        # KasmVNC responds 200 text/html on "/" (disableBasicAuth): measurement
+        # of 2026-10-11 on http://127.0.0.1:8288/ -> 200. Same schema as
+        # noVNC/winnie in services/newt (old schema: proxy-resources +
+        # protocol, validated by this Pangolin).
         healthcheck = {
           enabled = true;
           hostname = "127.0.0.1";
@@ -550,14 +760,14 @@ in {
   # SECRETS (sops-nix)
   # ========================================================================
   sops.secrets = {
-    # Lu par le service vault (User=vault) : owner root + 0400 rendait le
-    # fichier illisible pour lui, donc `vault server -dev` sortait en EACCES.
+    # Read by the vault service (User=vault): owner root + 0400 made the
+    # file unreadable for it, so `vault server -dev` exited with EACCES.
     vault-rustguac-root-token = {
       sopsFile = ../../secrets/tower.yml;
       owner = "vault";
       mode = "0400";
     };
-    # Lu par le service rustguac lui-meme (User=rustguac).
+    # Read by the rustguac service itself (User=rustguac).
     rustguac-oidc-client-secret = {
       sopsFile = ../../secrets/tower.yml;
       owner = "rustguac";
@@ -573,52 +783,55 @@ in {
       owner = "marc";
       mode = "0400";
     };
-    # Mot de passe KasmVNC (web login), lu par le script d'activation cote root.
+    # KasmVNC password (web login), read by the activation script on the root side.
     kasmvnc-password = {
       sopsFile = ../../secrets/kasmvnc.yml;
       owner = "root";
       mode = "0400";
     };
-    # "pangolin/api_key" : volontairement absent, la cle n'existe pas dans
-    # secrets/common.yml (la declarer fait echouer tout le switch en
-    # « the key 'pangolin' cannot be found »). Voir services/hermes/default.nix.
+    # "pangolin/api_key": deliberately absent, the key does not exist in
+    # secrets/common.yml (declaring it makes the whole switch fail with
+    # "the key 'pangolin' cannot be found"). See services/hermes/default.nix.
   };
 
-  # User lingering pour KasmVNC systemd user service
+  # User lingering for the KasmVNC systemd user service
   users.users.marc.linger = true;
 
   # ========================================================================
-  # WAYDROID - Android LineageOS en conteneur (test).
-  # Noyau 6.18.54 deja avec ANDROID_BINDER_IPC/BINDERFS/MEMFD_CREATE -> pas de
-  # module out-of-tree, pas de reboot. Le service waydroid-container echoue
-  # proprement tant que `waydroid init` (root, telecharge ~1,2 Go d'images) n'a
-  # pas ete lance une fois, puis demarre au switch suivant ou sur restart.
+  # WAYDROID - Android LineageOS in a container (test).
+  # Kernel 6.18.54 already with ANDROID_BINDER_IPC/BINDERFS/MEMFD_CREATE -> no
+  # out-of-tree module, no reboot. The waydroid-container service fails
+  # cleanly as long as `waydroid init` (root, downloads ~1.2 GB of images) has
+  # not been run once, then starts at the next switch or on restart.
   #
-  # package = waydroid-nftables OBLIGATOIRE : le noyau de tower n'a pas les
-  # modules iptables (legacy) (netfilter en nf_tables seulement), donc le
-  # waydroid-net.sh du paquet standard sort en
-  #   « iptables (legacy): can't initialize iptables table `nat' »
-  # et la session ne demarre jamais. La variante nftables utilise nft.
+  # package = waydroid-nftables MANDATORY: tower's kernel does not have the
+  # iptables (legacy) modules (netfilter in nf_tables only), so the
+  # waydroid-net.sh of the standard package exits with
+  #   "iptables (legacy): can't initialize iptables table `nat'"
+  # and the session never starts. The nftables variant uses nft.
   # ========================================================================
-  # WAYDROID : DESACTIVE le 13/11/2026 a la demande de marc.
-  # Raison mesurée : le conteneur Android tourne en permanence pour le lab de
-  # capture et son compilateur AOT (dex2oat) prend jusqu'à 7,5 cœurs sur 16 à
-  # chaque mise à jour d'appli / tâche d'entretien de fond (Android se croit
-  # toujours inactif sur secteur dans un conteneur, donc il optimise tout).
-  # Aucun apk installé le 13/11, donc c'est bien l'entretien de fond, pas une
-  # installation. Pour le rallumer : passer enable a true (le lab
-  # android-capture et cage-waydroid se rebranchent tout seuls via waydroid0).
+  # WAYDROID: DISABLED on 2026-11-13 at marc's request.
+  # Measured reason: the Android container runs permanently for the capture
+  # lab and its AOT compiler (dex2oat) takes up to 7.5 cores out of 16 on
+  # each app update / background maintenance task (Android believes it is
+  # always idle on AC power in a container, so it optimizes everything).
+  # No apk installed on 13/11, so it is indeed the background maintenance, not an
+  # installation. To turn it back on: set enable to true (the
+  # android-capture and cage-waydroid labs reconnect on their own via waydroid0).
+  # WAYDROID: TEMPORARILY TURNED BACK ON on 2026-11-14 to install and test
+  # the NY Waterway app (demo at marc's request); set enable = false again
+  # after the demo (reason for the 13/11 disabling: dex2oat AOT).
   virtualisation.waydroid = {
-    enable = false;
+    enable = true;
     package = pkgs.waydroid-nftables;
   };
 
-  # hermes doit pouvoir lire les journaux (y compris les unites utilisateur de
-  # marc, ex. kasmvnc) : sans ca, aucun diagnostic possible sans root, et sudo
-  # n'est autorise que pour nixos-rebuild.
+  # hermes must be able to read the logs (including marc's user units,
+  # e.g. kasmvnc): without it, no diagnosis possible without root, and sudo
+  # is only authorized for nixos-rebuild.
   users.users.hermes.extraGroups = [ "systemd-journal" ];
 
-  # PROVISOIRE : executeur root one-shot pour l'agent (entretien disques USB).
+  # TEMPORARY: one-shot root executor for the agent (USB disk maintenance).
   systemd.paths.hermes-once3 = {
     wantedBy = [ "multi-user.target" ];
     pathConfig.PathExists = "/var/lib/hermes/once3/action";
@@ -636,33 +849,33 @@ in {
 
 
   # ========================================================================
-  # WIREGUARD CLIENT - tower pair du VPS anywhere (hub-and-spoke wg1)
+  # WIREGUARD CLIENT - tower peer of the VPS anywhere (hub-and-spoke wg1)
   # ========================================================================
-  # tower n'a aucune exposition entrante utile (NAT residentiel + IP publique
-  # dynamique) : il rejoint donc en CLIENT le wg1 du VPS (10.100.0.1/24) et y
-  # prend 10.100.0.3. Depuis le VPS : `ssh marc@10.100.0.3` (alias `tower` dans
-  # modules/home/ssh). Le Mac est l'autre pair (10.100.0.2) et passe par le meme
-  # hub. Aucun port a ouvrir sur tower : wg-quick garde une socket source
-  # ephemere et conntrack suit la reponse. persistentKeepalive entretient la
-  # traduction NAT, donc le VPS joint tower a tout moment.
-  #   - allowedIPs = 10.100.0.0/24 : seul le reseau du VPN passe par le tunnel,
-  #     le trafic Internet de tower reste sur la connexion locale.
-  #   - Cle privee dans secrets/wireguard.yml (sops, recipient tower), cle
-  #     publique declaree en peer cote VPS (services/wireguard/default.nix).
+  # tower has no useful inbound exposure (residential NAT + public IP
+  # dynamic): it therefore joins as a CLIENT the VPS's wg1 (10.100.0.1/24) and there
+  # takes 10.100.0.3. From the VPS: `ssh marc@10.100.0.3` (alias `tower` in
+  # modules/home/ssh). The Mac is the other peer (10.100.0.2) and goes through the same
+  # hub. No port to open on tower: wg-quick keeps an ephemeral source
+  # socket and conntrack follows the response. persistentKeepalive maintains the
+  # NAT translation, so the VPS can reach tower at any time.
+  #   - allowedIPs = 10.100.0.0/24: only the VPN network goes through the tunnel,
+  #     tower's Internet traffic stays on the local connection.
+  #   - Private key in secrets/wireguard.yml (sops, tower recipient), public
+  #     key declared as a peer on the VPS side (services/wireguard/default.nix).
   # ========================================================================
   networking.wg-quick.interfaces = lib.mkIf wgClientEnable {
     wg1 = {
       address = [ "10.100.0.3/32" ];
-      # Clé privée du client tower. Créer le secret sops avant d'activer.
-      # Le chemin est résolu par sops-nix depuis secrets/tower.yml.
+      # Private key of the tower client. Create the sops secret before enabling.
+      # The path is resolved by sops-nix from secrets/tower.yml.
       privateKeyFile = config.sops.secrets."wireguard/tower_private_key".path;
       peers = [
         {
-          # Clé publique du serveur wireguard du VPS (anywhere / RackNerd)
+          # Public key of the VPS wireguard server (anywhere / RackNerd)
           publicKey = "dsOBj2AfqF7YQ1JTGfYjlFse5sFZzwudOBiEMDLAzhU=";
           endpoint = "104.129.12.158:443";
-          # Seul le réseau privé du VPN est routé via le tunnel ;
-          # le trafic internet de tower reste sur la connexion locale.
+          # Only the private VPN network is routed through the tunnel;
+          # tower's internet traffic stays on the local connection.
           allowedIPs = [ "10.100.0.0/24" ];
           persistentKeepalive = 25;
         }
@@ -670,26 +883,26 @@ in {
     };
   };
 
-  # Clé privée du pair tower. Fichier sops dédié (recipient tower) pour ne pas
-  # toucher à tower.yml : `sops secrets/wireguard.yml` pour la rotation.
+  # Private key of the tower peer. Dedicated sops file (tower recipient) so as not
+  # to touch tower.yml: `sops secrets/wireguard.yml` for rotation.
   sops.secrets."wireguard/tower_private_key" = lib.mkIf wgClientEnable {
     sopsFile = ../../secrets/wireguard.yml;
     owner = "root";
     group = "root";
     mode = "0400";
   };
-  # Aucun port UDP à ouvrir : wg-quick en mode client n'écoute pas de port fixe.
+  # No UDP port to open: wg-quick in client mode does not listen on a fixed port.
 
   # ========================================================================
-  # SOUS-RESEAU : tower route le LAN 192.168.1.0/24 dans wg1
+  # SUBNET: tower routes the LAN 192.168.1.0/24 into wg1
   # ========================================================================
-  # Sans ça, le VPS (10.100.0.1) ne peut joindre que tower dans le tunnel :
-  # le Steam Deck et le reste du LAN restent invisibles depuis rack. tower
-  # fait donc routeur pour son LAN, avec MASQUERADE wg1 -> wlan0 (les hôtes du
-  # LAN n'ont aucune route retour vers 10.100.0.0/24, donc on sort avec l'IP
-  # LAN de tower, 192.168.1.44). Le pair tower côté VPS doit déclarer
-  # 192.168.1.0/24 dans ses allowedIPs pour que le VPS lui route le LAN.
-  # Effet de bord assumé : tout pair wg1 (le Mac, le VPS) peut joindre le LAN.
+  # Without it, the VPS (10.100.0.1) can only reach tower in the tunnel:
+  # the Steam Deck and the rest of the LAN stay invisible from rack. tower
+  # therefore acts as router for its LAN, with MASQUERADE wg1 -> wlan0 (the hosts of
+  # the LAN have no return route to 10.100.0.0/24, so we go out with tower's
+  # LAN IP, 192.168.1.44). The tower peer on the VPS side must declare
+  # 192.168.1.0/24 in its allowedIPs so that the VPS routes the LAN to it.
+  # Assumed side effect: any wg1 peer (the Mac, the VPS) can reach the LAN.
   boot.kernel.sysctl."net.ipv4.ip_forward" = 1;
   networking.nat = {
     enable = true;
@@ -698,7 +911,7 @@ in {
   };
 
   # ========================================================================
-  # MINEUR MONERO - planning sommeil / travail Nextcloud
+  # MONERO MINER - sleep / Nextcloud work schedule
   # ========================================================================
   sops.secrets."monero/wallet" = {
     sopsFile = ../../secrets/monero.yml;
@@ -739,23 +952,23 @@ in {
 
   # ========================================================================
 
-  # ── Serveur MCP unique ──────────────────────────────────────────────────
-  # Un seul processus pour tous les serveurs maison. Le demon demarre a cote
-  # de l'ancien cablage stdio : tant que les mcpServers d'hermes pointent sur
-  # les commandes, rien ne change pour les outils. Basculer une session
-  # revient a remplacer ses entrees par l'URL http://127.0.0.1:4780/mcp.
+  # -- Single MCP server --------------------------------------------------
+  # One single process for all the home servers. The daemon starts alongside
+  # the old stdio wiring: as long as hermes' mcpServers point at
+  # the commands, nothing changes for the tools. Switching a session
+  # amounts to replacing its entries with the URL http://127.0.0.1:4780/mcp.
   #
-  # Les serveurs listes doivent exposer un objet FastMCP (`mcp`, `app` ou
-  # `server`). Les trois faits main (arena-elo, username-recon, roku,
-  # androidtv) n'en ont pas et restent en stdio tant qu'ils ne sont pas
-  # convertis.
-  # Cle d'API Termix pour l'agent (MCP termix, monte par le mcp-host
-  # ci-dessous). Creee dans le panel : compte technique "hermes-agent",
-  # compte marc, admin, sans expiration. Ne donne AUCUN acces machine en plus
-  # de ce que Termix detient deja : l'API ne sait pas lire un mot de passe
-  # stocke via nos outils, et l'execution SSH passe par les identifiants du
-  # panel (l'hote "tower" y est en authType=key sans credential, donc
-  # SSH_AUTH_FAILED tant qu'aucune cle n'est deposee dans Termix).
+  # The listed servers must expose a FastMCP object (`mcp`, `app` or
+  # `server`). The three hand-made ones (arena-elo, username-recon, roku,
+  # androidtv) do not have one and stay in stdio as long as they are not
+  # converted.
+  # Termix API key for the agent (termix MCP, mounted by the mcp-host
+  # below). Created in the panel: technical account "hermes-agent",
+  # marc account, admin, no expiration. Gives NO machine access beyond
+  # what Termix already holds: the API cannot read a password
+  # stored via our tools, and SSH execution goes through the panel's
+  # credentials (the "tower" host is in authType=key without credential, so
+  # SSH_AUTH_FAILED as long as no key is deposited in Termix).
   sops.secrets."termix_api_key" = {
     sopsFile = ../../secrets/termix.yml;
     owner = "hermes";
@@ -764,17 +977,70 @@ in {
 
   services.mcp-host = {
     enable = true;
-    # Bascule Hermes ACTIVE : les sessions lisent l'URL unique au lieu de
-    # lancer un processus par serveur. Les entrees stdio des sept serveurs
-    # concernes ont ete retirees des modules ; share-mcp (wrapper aws) et tts
-    # (serveur HTTP distant) restent en stdio / URL dediee.
+    # Hermes takeover ACTIVE: the sessions read the single URL instead of
+    # launching a process per server. The stdio entries of the seven
+    # affected servers were removed from the modules; share-mcp (aws wrapper) and tts
+    # (remote HTTP server) stay in stdio / dedicated URL.
     hermesGateway = true;
-    # Les serveurs montes lisent leur configuration a l'import et partagent un
-    # seul environnement : c'est l'union de ce que chaque entree stdio recevait.
+    # Support for stdio servers: the daemon proxies them all (26
+    # measured on 2026-11-21), Hermes keeps only ONE connection. Verified before
+    # activation: 26/26 mounted, 516 tools served, 0/26 incomplete server
+    # (tool-by-tool comparison with each server taken alone).
+    hostHermesStdio = true;
+    # The 15 stdio servers actually declared in the conf (measurement of
+    # 2026-11-21). The manifest is generated from their Hermes entries,
+    # so command, args and env are not duplicated here: only the name is.
+    stdioServers = [
+      "amazon"
+      "arena-elo"
+      "bank"
+      "garage"
+      "gitea"
+      "github"
+      "hinge"
+      "iprep"
+      "openrouter"
+      "phonerep"
+      "share"
+      "shlink"
+      "stalwart"
+      "username-recon"
+      "wise"
+    ];
+    # Ghost entries measured on 2026-11-21: declared nowhere in the
+    # conf (modules commented out in services/default.nix), but still in
+    # config.yaml, so relaunched by each session. They are turned off, not
+    # deleted: their config stays in the file, a redeclaration turns them
+    # back on. They must be removed from here if one becomes useful again.
+    staleStdioServers = [
+      "app-publish"
+      "enable-banking"
+      "firefox"
+      "firefox-mac"
+      "gocardless"
+      "nixos"
+      "qbittorrent"
+      "roku"
+      "simplefin"
+      "taskq"
+      "zitadel"
+      # Same category (declared nowhere in the conf, present in
+      # config.yaml so relaunched by each session), measurement of 2026-11-25:
+      #   - luma and stripe: OAuth not configured in a non-
+      #     interactive environment -> "MCP OAuth setup failed", 4 attempts per session
+      #     each, for two servers never called (0 call in the 4
+      #     agent.log* logs);
+      # Turned off, not deleted: the config stays in the file, removing the
+      # name from here turns them back on.
+      "luma"
+      "stripe"
+    ];
+    # Beeper given up for good (2026-11-24): entry removed from
+    # config.yaml on each activation, not just turned off.
+    purgedServers = ["beeper"];
+    # The mounted servers read their configuration at import and share a
+    # single environment: it is the union of what each stdio entry received.
     env = {
-      SHLINK_URL = "http://127.0.0.1:8097";
-      SHLINK_API_KEY_FILE = config.sops.secrets.shlink_api_key.path;
-      SHLINK_ALLOW_WRITES = "1";
       SHORTURL_STATE_DIR = "/var/lib/hermes/.local/state/shorturl-mcp";
       SHORTURL_TIMEOUT = "25";
       BEEF_URL = "http://127.0.0.1:3010";
@@ -785,15 +1051,17 @@ in {
       IBKR_FLEX_ENV_FILE = config.sops.templates."ibkr-flex.env".path;
       PANGOLIN_BASE_URL = "https://api.marcpartensky.com/v1";
       PANGOLIN_API_KEY_FILE = config.sops.secrets."pangolin_api_key".path;
-      # TV Roku de la chambre (ECP). Servie par le meme demon que les autres.
+      # Bedroom Roku TV (ECP). Served by the same daemon as the others.
       ROKU_URL = "http://192.168.1.167:8060";
-      # Panel Termix (quadlet rootless hermes, loopback). La cle voyage par
-      # fichier sops : jamais dans un env du module, qui finit dans le store.
+      # Termix panel (rootless hermes quadlet, loopback). The key travels via
+      # a sops file: never in a module env, which ends up in the store.
       TERMIX_URL = "http://127.0.0.1:9160";
       TERMIX_API_KEY_FILE = config.sops.secrets."termix_api_key".path;
     };
     servers = {
-      shlink = ../../services/shlink-mcp/server.py;
+      # shlink is no longer mounted here: Rust port in stdio, declared by
+      # services/shlink-mcp (namespace mcp__shlink__*). Its old
+      # SHLINK_* variables therefore left env, nobody reads them anymore.
       shorturl = ../../services/shorturl-mcp/server.py;
       beef = ../../services/beef-mcp/server.py;
       meetup = ../../services/meetup-mcp/meetup_mcp.py;
@@ -801,48 +1069,71 @@ in {
       ibkr = ../../services/ibkr-mcp/ibkr_flex.py;
       pangolin = ../../services/hermes/pangolin-mcp.py;
       roku = ../../services/roku-mcp.py;
-      # Inventaire, etat, audit et execution SSH a travers le panel Termix.
+      # Inventory, state, audit and SSH execution through the Termix panel.
       termix = ../../services/termix-mcp/termix_mcp.py;
     };
   };
 
-  # ── Garde-fou de migration des conteneurs ───────────────────────────────
-  # Les quatre conteneurs ci-dessous ont ete SORTIS de la conf hote (blocs
-  # virtualisation.oci-containers retires, cf. deploy/containers.nix). Un
-  # switch les supprime, donc le quadlet podman doit exister AVANT. Cette
-  # assertion transforme un switch qui casserait quatre services en un echec
-  # d'eval explicite, y compris pour une autre session qui switcherait tower
-  # sans savoir ou en est la migration.
+  # -- Container migration guard -------------------------------
+  # The four containers below were MOVED OUT of the host conf (blocks
+  # virtualisation.oci-containers removed, cf. deploy/containers.nix). A
+  # switch deletes them, so the podman quadlet must exist BEFORE. This
+  # assertion turns a switch that would break four services into an explicit
+  # eval failure, including for another session that would switch tower
+  # without knowing where the migration stands.
   #
-  # POURQUOI PLUS DE builtins.pathExists : en evaluation PURE (politique
-  # pure-eval, et `just nixos` n'a plus --impure), pathExists sur un chemin
-  # hors store rend TOUJOURS false. Mesure le 14/11/2026 : la garde bloquait
-  # le switch indefiniment alors que les quatre quadlets existaient bien
+  # WHY NO MORE builtins.pathExists: in PURE evaluation (pure-eval
+  # policy, and `just nixos` no longer has --impure), pathExists on a path
+  # outside the store ALWAYS returns false. Measured on 2026-11-14: the guard blocked
+  # the switch indefinitely while the four quadlets did exist
   # (nix eval --expr 'builtins.pathExists "/var/lib/.../aonsoku.container"'
-  # = false en pur, true en impur). Une garde qui ne peut pas lire le disque
-  # n'a que deux formes honnetes : etre fausse, ou lire le depot.
+  # = false in pure, true in impure). A guard that cannot read the disk
+  # has only two honest forms: be false, or read the repo.
   #
-  # Elle lit donc le depot : chaque nom doit avoir une entree `migrated = true`
-  # dans deploy/containers.nix, c'est-a-dire un quadlet ecrit et sa reprise
-  # faite au moment ou le bloc oci-containers a ete retire. Limite assumee : ca
-  # prouve que le remplacant est DECLARE dans le depot, pas qu'il est rendu sur
-  # la machine. La verification reelle est apres le switch :
+  # It therefore reads the repo: each name must have a `migrated = true` entry
+  # in deploy/containers.nix, that is, a quadlet written and its takeover
+  # done at the time the oci-containers block was removed. Assumed limitation: it
+  # proves the replacement is DECLARED in the repo, not that it is rendered on
+  # the machine. The real verification is after the switch:
   #   systemctl --user is-active aonsoku arr-mcp nextcloud-mcp shlink-web-client
-  # (quadlets rootless hermes, generator podman + linger). A defaut, les rendre :
-  #   deploy/render.sh <nom>   puis  systemctl --user start <nom>
+  # (rootless hermes quadlets, podman generator + linger). Failing that, render them:
+  #   deploy/render.sh <name>   then  systemctl --user start <name>
   assertions = let
     containers = import ../../deploy/containers.nix;
   in
     map (name: {
       assertion = (containers ? ${name}) && (containers.${name}.migrated or false);
       message = ''
-        Le conteneur ${name} n'est plus declare dans la conf NixOS (bloc
-        oci-containers retire) et deploy/containers.nix ne le marque pas
-        `migrated = true` : le switch supprimerait son unite sans remplacant.
-        Ecrire le quadlet (deploy/render.sh ${name}) et passer migrated a true
-        dans deploy/containers.nix AVANT ce switch.
+        The container ${name} is no longer declared in the NixOS conf (the
+        oci-containers block removed) and deploy/containers.nix does not mark it
+        `migrated = true`: the switch would remove its unit without a replacement.
+        Write the quadlet (deploy/render.sh ${name}) and set migrated to true
+        in deploy/containers.nix BEFORE this switch.
       '';
     }) ["aonsoku" "arr-mcp" "nextcloud-mcp" "shlink-web-client"];
+
+  # -- External disks (NTFS) ---------------------------------------------
+  # Verified on 2026-11-15: udiskie did try to mount the external NTFS
+  # disk and failed ("wrong fs type, bad option, bad superblock"); the
+  # message "install ntfs-3g" is misleading, udisks 2.11.2 already embeds
+  # ntfs3g in its private PATH (/nix/store/*-ntfs3g-2026.7.7/bin). What
+  # is missing is the system exposure of the helper: "ntfs" adds pkgs.ntfs3g to
+  # system.fsPackages, so mount.ntfs-3g exists for mount and for the
+  # .mount units, not just for the udisks daemon.
+  boot.supportedFilesystems = [ "ntfs" ];
+
+  # Toshiba MQ01ABB200 2 TB external disk, NTFS "Disque 1".
+  # Mounted READ/WRITE via ntfs-3g (FUSE). The kernel ntfs3 driver
+  # refuses this volume ("wrong fs type, bad option, bad superblock"), and the
+  # volume is NOT dirty (ntfs-3g reports no "unclean file system"),
+  # so ntfs-3g in rw is safe: it refuses rw itself if the volume is
+  # hibernated or marked dirty, so the unit fails cleanly with nofail.
+  # nofail + device-timeout: its absence never blocks boot.
+  fileSystems."/mnt/disque1" = {
+    device = "/dev/disk/by-uuid/748EFC2E8EFBE690";
+    fsType = "ntfs-3g";
+    options = ["rw" "nofail" "x-systemd.device-timeout=10"];
+  };
 
   # ========================================================================
 }

@@ -60,6 +60,9 @@ in {
     spotdl
     bitwarden-cli
     typer
+    # ttyper : entrainement a la frappe au toucher en terminal (Rust/ratatui),
+    # version TUI de typer.macpartensky.com. Listes english200/french200/rust…
+    ttyper
     yazi
     eternal-terminal
     # Anki + addon MCP, tous deux depuis le nixpkgs de l'upstream (cf flake.nix)
@@ -157,7 +160,6 @@ in {
     code-cursor
     claude-code
     nautilus
-    beeper
     firefox
     crosspipe
     gtk3
@@ -215,7 +217,6 @@ in {
       "claude-code"
       "spotify"
       "cursor"
-      "beeper"
       "harmonoid"
       "steam-run"
       "steam-unwrapped"

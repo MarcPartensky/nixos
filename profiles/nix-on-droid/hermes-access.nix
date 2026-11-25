@@ -1,42 +1,42 @@
 { config, lib, pkgs, inputs, ... }:
 
-# Accès SSH de hermes vers le téléphone (modèle tmate : le tel sort vers le VPS
-# `rack`, aucun port ouvert, aucun tiers, pas d'app VPN en plus).
+# SSH access from hermes to the phone (tmate model: the phone dials out to the VPS
+# `rack`, no open port, no third party, no extra VPN app).
 #
-#   - sshd local (port 8023, clé hermes@tower autorisée, sftp) ;
-#   - `phone-tunnel-loop` : boucle `ssh -R 127.0.0.1:2224:127.0.0.1:8023 root@marcpartensky.com` ;
-#   - `phone-up` : démarrage idempotent (sshd + tunnel + watchdog + wake-lock borné),
-#     accroché à chaque session (.zprofile/.zshrc/.profile/.bashrc) ET à chaque prompt
-#     zsh (precmd rate-limité 60s : n'importe quelle touche dans l'app répare) ;
-#   - `phone-watchdog` : rejoue `phone-up` toutes les 2 min (filet de sécurité) ;
-#   - `phone-update` : met à jour la conf (switch nix-on-droid, tarball-ttl 0) ;
-#   - `phone-status` : diagnostic (verdicts + pids + logs) ;
-#   - `nod-bootstrap` : (re)provisionne l'appareil (switch declaratif + phone-up
-#     + verification). Meme script que l'artefact public du lien court
-#     (https://x.gd/a6gpx), installe ici pour etre relancable sans reseau.
+#   - local sshd (port 8023, hermes@tower key authorized, sftp);
+#   - `phone-tunnel-loop`: loop `ssh -R 127.0.0.1:2224:127.0.0.1:8023 root@marcpartensky.com`;
+#   - `phone-up`: idempotent startup (sshd + tunnel + watchdog + bounded wake-lock),
+#     hooked to each session (.zprofile/.zshrc/.profile/.bashrc) AND to each
+#     zsh prompt (precmd rate-limited 60s: any key in the app repairs it);
+#   - `phone-watchdog`: replays `phone-up` every 2 min (safety net);
+#   - `phone-update`: updates the conf (switch nix-on-droid, tarball-ttl 0);
+#   - `phone-status`: diagnostic (verdicts + pids + logs);
+#   - `nod-bootstrap`: (re)provisions the device (declarative switch + phone-up
+#     + verification). Same script as the public artifact of the short link
+#     (https://x.gd/a6gpx), installed here to be re-runnable without network.
 #
-# IMPORTANT (fiabilité Xiaomi/HyperOS) : accorder à l'app Nix la permission
-# « Afficher des fenêtres pop-up en arrière-plan » (display over other apps),
-# sinon le wake-lock échoue et MIUI tue les process d'arrière-plan.
+# IMPORTANT (Xiaomi/HyperOS reliability): grant the Nix app the permission
+# "Display pop-up windows in the background" (display over other apps),
+# otherwise the wake-lock fails and MIUI kills the background processes.
 #
-# La clé privée du tunnel vit uniquement sur le tel (~/.ssh/relay_ed25519), jamais ici.
-# Côté rack, l'entrée restreinte :
+# The tunnel's private key lives only on the phone (~/.ssh/relay_ed25519), never here.
+# On the rack side, the restricted entry:
 #   command="false",restrict,port-forwarding,permitlisten="127.0.0.1:2224" ssh-ed25519 AAAA... phone-relay
 
 let
   inherit (config.user) home;
 
-  # Ports propres à l'appareil. `nixOnDroidConfigurations.default` est partagé
-  # par plusieurs appareils (tel, tablette) : s'ils utilisaient les mêmes
-  # numéros, leurs tunnels se battraient pour les mêmes ports sur la boucle
-  # locale du VPS (`remote port forwarding failed for listen port 2224`).
-  # Chaque instance de flake surcharge donc `nod-access.*` (voir flake.nix).
+  # Ports specific to the device. `nixOnDroidConfigurations.default` is shared
+  # by several devices (phone, tablet): if they used the same
+  # numbers, their tunnels would fight over the same ports on the VPS's
+  # loopback (`remote port forwarding failed for listen port 2224`).
+  # Each flake instance therefore overrides `nod-access.*` (see flake.nix).
   inherit (config.nod-access) wsSocksPort wsHttpPort wsSshdPort;
 
-  # Le nixpkgs de nix-on-droid (inputs.nix-on-droid.inputs.nixpkgs) est ancien :
-  # `pkgs.wstunnel` y est en 0.5.1.0, une version qui n'a ni `client` ni `-R`.
-  # On prend donc celui d'unstable, comme pour tout paquet absent du nixpkgs
-  # épinglé par le profil.
+  # The nixpkgs of nix-on-droid (inputs.nix-on-droid.inputs.nixpkgs) is old:
+  # `pkgs.wstunnel` there is 0.5.1.0, a version that has neither `client` nor `-R`.
+  # We therefore take the one from unstable, as for any package missing from the
+  # nixpkgs pinned by the profile.
   wsTunnelPkg = inputs.unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.wstunnel;
 
   sshdDir = "${home}/sshd";
@@ -46,7 +46,7 @@ let
   inherit (config.nod-access) relayPort;
   relayKey = "${home}/.ssh/relay_ed25519";
 
-  # Clés autorisées sur le sshd du téléphone.
+  # Keys authorized on the phone's sshd.
   authorizedKeys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
   ];
@@ -73,8 +73,8 @@ let
   tunnelLoop = pkgs.writeScriptBin "phone-tunnel-loop" ''
     #!${pkgs.runtimeShell}
     while true; do
-      # Rotation : sans ça le log grossit sans fin quand le forward est refuse
-      # en boucle (mesure : 275 Mo de wstunnel.log sur le tel).
+      # Rotation: without this the log grows endlessly when the forward is refused
+      # in a loop (measurement: 275 MB of wstunnel.log on the phone).
       log=${sshdDir}/tunnel.log
       if [ -f "$log" ] && [ "$(${pkgs.coreutils}/bin/stat -c %s "$log" 2>/dev/null || echo 0)" -gt 5000000 ]; then
         ${pkgs.coreutils}/bin/tail -c 200000 "$log" > "$log.tmp" && ${pkgs.coreutils}/bin/mv "$log.tmp" "$log"
@@ -91,13 +91,13 @@ let
     done
   '';
 
-  # Tunnel WebSocket (wstunnel) : publie sur le VPS le sshd du téléphone
-  # (127.0.0.1:2225) plus deux proxys sur sa boucle locale, un SOCKS5 (1081) et
-  # un proxy HTTP (1082). Les requêtes qui passent par là sortent avec l'IP du
-  # téléphone, pas celle de tower, et tout ça traverse du wss ordinaire, donc
-  # ça survit à un réseau qui ne laisse sortir que du 443. Les ports d'écoute
-  # vivent sur la boucle locale du VPS (services/wstunnel) puis sont relayés
-  # par le client de tower.
+  # WebSocket tunnel (wstunnel): publishes the phone's sshd on the VPS
+  # (127.0.0.1:2225) plus two proxies on its loopback, a SOCKS5 (1081) and
+  # an HTTP proxy (1082). Requests that go through there exit with the
+  # phone's IP, not tower's, and all of it goes through ordinary wss, so
+  # it survives a network that only lets out 443. The listening ports
+  # live on the VPS's loopback (services/wstunnel) then are relayed
+  # by the tower client.
   wsLoop = pkgs.writeScriptBin "phone-wstunnel-loop" ''
     #!${pkgs.runtimeShell}
     while true; do
@@ -124,9 +124,9 @@ let
     exec 9>>"$lock" || exit 0
     if [ -x "$flock" ]; then
       if ! "$flock" -n 9; then
-        # Verrou deja pris : si le porteur (up.running, sinon mtime du verrou)
-        # n'avance plus depuis 15 min, il est fige -> on le contourne en
-        # recreant le verrou sur un inode neuf (le fige garde l'ancien).
+        # Lock already taken: if the holder (up.running, otherwise the lock's mtime)
+        # has not advanced for 15 min, it is stuck -> we bypass it by
+        # recreating the lock on a fresh inode (the stuck one keeps the old one).
         rts=$($core/stat -c %Y "$running" 2>/dev/null || echo 0)
         [ "$rts" -eq 0 ] && rts=$($core/stat -c %Y "$lock" 2>/dev/null || echo 0)
         now=$($core/date +%s)
@@ -146,7 +146,7 @@ let
       [ -f "$1" ] && kill -0 "$($core/cat "$1" 2>/dev/null)" 2>/dev/null
     }
 
-    # 1) sshd (retries : le demarrage peut echouer sur un port encore occupe)
+    # 1) sshd (retries: startup can fail on a port still occupied)
     if alive ${sshdDir}/sshd.pid; then
       :
     else
@@ -157,17 +157,17 @@ let
         ${pkgs.openssh}/bin/sshd -f ${sshdDir}/sshd_config >> ${sshdDir}/up.log 2>&1
         $core/sleep 1
         if alive ${sshdDir}/sshd.pid; then
-          echo "[up $(date 2>/dev/null)] sshd demarre (essai $n)" >> ${sshdDir}/up.log
+          echo "[up $(date 2>/dev/null)] sshd started (attempt $n)" >> ${sshdDir}/up.log
           break
         fi
         $core/sleep 2
       done
       if ! alive ${sshdDir}/sshd.pid; then
-        echo "[up $(date 2>/dev/null)] ECHEC sshd apres 3 essais" >> ${sshdDir}/up.log
+        echo "[up $(date 2>/dev/null)] sshd FAILED after 3 attempts" >> ${sshdDir}/up.log
       fi
     fi
 
-    # 2) tunnel inverse (nécessite la clé posée au bootstrap)
+    # 2) reverse tunnel (requires the key set at bootstrap)
     if alive ${sshdDir}/tunnel.pid; then
       :
     elif [ -f ${relayKey} ]; then
@@ -176,9 +176,9 @@ let
       echo $! > ${sshdDir}/tunnel.pid
     fi
 
-    # 2b) tunnel WebSocket (wstunnel) : indépendant du tunnel SSH, c'est le
-    # chemin qui passe un réseau qui ne laisse sortir que le 443, et il porte
-    # aussi les proxys SOCKS5/HTTP qui sortent avec l'IP du téléphone.
+    # 2b) WebSocket tunnel (wstunnel): independent of the SSH tunnel, it is the
+    # path that passes a network that only lets out 443, and it also carries
+    # the SOCKS5/HTTP proxies that exit with the phone's IP.
     if alive ${sshdDir}/wstunnel.pid; then
       :
     else
@@ -187,7 +187,7 @@ let
       echo $! > ${sshdDir}/wstunnel.pid
     fi
 
-    # 3) watchdog : rejoue phone-up en boucle (relance ce qui est mort)
+    # 3) watchdog: replays phone-up in a loop (restarts what is dead)
     if alive ${sshdDir}/watchdog.pid; then
       :
     else
@@ -196,10 +196,10 @@ let
       echo $! > ${sshdDir}/watchdog.pid
     fi
 
-    # 4) wake lock (anti-veille Android ; permission « fenêtres pop-up » requise).
-    # DÉTACHÉ (nohup, jamais attendu) : l'appel am peut se figer sans fin (vécu :
-    # `timeout 8` ne le tue pas, il tenait up.lock pour toujours et bloquait
-    # silencieusement TOUTES les relances suivantes).
+    # 4) wake lock (Android anti-sleep; "pop-up windows" permission required).
+    # DETACHED (nohup, never waited on): the am call can freeze endlessly (experienced:
+    # `timeout 8` does not kill it, it held up.lock forever and silently
+    # blocked ALL subsequent relaunches).
     wl=/nix/var/nix/profiles/nix-on-droid/nix-on-droid-path/bin/termux-wake-lock
     if [ -x "$wl" ]; then
       $core/nohup "$wl" >/dev/null 2>&1 &
@@ -242,25 +242,25 @@ let
     ${pkgs.coreutils}/bin/tail -n 5 ${sshdDir}/wstunnel.log 2>/dev/null || true
   '';
 
-  # Provisionnement/reparation de l'appareil en une commande. Le fichier est la
-  # copie exacte de l'artefact publie derriere le lien court
-  # (https://x.gd/a6gpx -> s.marcpartensky.com/nod -> Nextcloud) ; patchShebangs
-  # remplace son `#!/bin/sh` par l'interpreteur du store, comme les autres
-  # scripts du module.
+  # Provisioning/repair of the device in one command. The file is the
+  # exact copy of the artifact published behind the short link
+  # (https://x.gd/a6gpx -> s.marcpartensky.com/nod -> Nextcloud); patchShebangs
+  # replaces its `#!/bin/sh` with the store interpreter, like the other
+  # scripts of the module.
   nodBootstrap = pkgs.runCommandLocal "nod-bootstrap" { } ''
     install -D -m 0755 ${./nod-bootstrap.sh} $out/bin/nod-bootstrap
   '';
 in
 {
-  # Ports de l'appareil. Valeurs par défaut = celles du tel ; chaque instance
-  # du flake les surcharge pour ne pas se battre avec les autres appareils.
+  # Device ports. Default values = those of the phone; each
+  # flake instance overrides them to avoid fighting with the other devices.
   options.nod-access = {
     relayPort = lib.mkOption {
       type = lib.types.port;
       default = 2224;
       description = ''
-        Port du relais inverse sur la boucle locale du VPS. L'entrée restreinte
-        d'authorized_keys du VPS doit avoir permitlisten="127.0.0.1:<port>".
+        Port of the reverse relay on the VPS loopback. The restricted
+        authorized_keys entry of the VPS must have permitlisten="127.0.0.1:<port>".
       '';
     };
     wsSshdPort = lib.mkOption {
@@ -280,16 +280,16 @@ in
   config = {
     environment.packages = with pkgs; [
       openssh
-      util-linux # flock pour phone-up
-      gnugrep # pratique en session de debug
-      tunnelLoop # référencés ici -> installés sur le tel
+      util-linux # flock for phone-up
+      gnugrep # handy in a debug session
+      tunnelLoop # referenced here -> installed on the phone
       wsLoop
-      wsTunnelPkg # client du tunnel WebSocket (10.x, cf. commentaire dans le let)
+      wsTunnelPkg # WebSocket tunnel client (10.x, cf. comment in the let)
       phoneUp
       phoneWatchdog
       phoneUpdate
       phoneStatus
-      nodBootstrap # (re)provisionne l'appareil : switch + phone-up + verification
+      nodBootstrap # (re)provisions the device: switch + phone-up + verification
     ];
 
     android-integration = {

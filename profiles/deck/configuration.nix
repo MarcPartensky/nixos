@@ -9,6 +9,7 @@
     inputs.steam-config-nix.nixosModules.default
     inputs.disko.nixosModules.disko
     inputs.sops.nixosModules.sops
+    ../../modules/nixos/nixos-rebuild-gated
     ../../users.nix
     ../../hosts/deck/disko.nix
     ../../hosts/deck/hardware-configuration.nix
@@ -21,20 +22,24 @@
     ../../services/nginx-matrix
     ../../services/llm-steamdeck
     ../../services/monero-miner
-    # Disponibilite de la flotte : historique local (tuptime) + agent Zabbix
-    # vers le serveur qui vit sur le VPS, par le tailnet.
+    # Fleet availability: local history (tuptime) + Zabbix agent
+    # toward the server that lives on the VPS, over the tailnet.
     ../../services/tuptime
     ../../services/zabbix/agent.nix
-    # Réseau privé ygg-mesh (Yggdrasil via Tor + lien direct LAN), membres :
-    # tower, anywhere, deck. Voir services/ygg-mesh/default.nix.
+    # ygg-mesh private network (Yggdrasil via Tor + direct LAN link), members:
+    # tower, anywhere, deck. See services/ygg-mesh/default.nix.
     ../../services/ygg-mesh
-    # Mesh headscale : nœud tailscale (contrôleur sur le VPS anywhere, cf
-    # services/headscale et services/tailscale).
+    # headscale mesh: tailscale node (controller on the anywhere VPS, cf
+    # services/headscale and services/tailscale).
     ../../services/tailscale
-    # Worker Windmill : prend des jobs dans la base windmill de tower via le
-    # tailnet (Postgres 100.64.0.3:5432, role windmill en scram). Aucun port
-    # ouvert ici, aucun etat local : le deck peut s'endormir, le job est
-    # rejoue par Windmill au retour.
+    # Trust in the tailnet's internal CA: without it, the short names of the
+    # tower proxy (`https://mesh`, `https://jellyfin`) fail with
+    # "unable to get local issuer certificate".
+    ../../modules/nixos/intra-ca-trust.nix
+    # Windmill worker: takes jobs from tower's windmill database via the
+    # tailnet (Postgres 100.64.0.3:5432, windmill role in scram). No port
+    # open here, no local state: the deck can sleep, the job is
+    # replayed by Windmill on return.
     ../../services/windmill
     ./switch-emu.nix
   ];
@@ -50,9 +55,9 @@
 
   jovian.devices.steamdeck = {
     enable = true;
-    enableVendorDrivers = false; # le build de Mesa Valve plantait, on reste sur Mesa upstream
-    autoUpdate = true; # BIOS + firmware manette au boot, comme SteamOS
-    enableGyroDsuService = true; # gyroscope pour émulateurs (Cemu, Dolphin)
+    enableVendorDrivers = false; # the Valve Mesa build crashed, we stay on upstream Mesa
+    autoUpdate = true; # BIOS + controller firmware at boot, like SteamOS
+    enableGyroDsuService = true; # gyroscope for emulators (Cemu, Dolphin)
   };
 
   jovian.decky-loader.enable = false;
@@ -78,7 +83,7 @@
 
   time.timeZone = "America/New_York";
 
-  security.rtkit.enable = true; # était fourni par ton module bluetooth
+  security.rtkit.enable = true; # was provided by your bluetooth module
 
   boot.loader.systemd-boot = {
     enable = true;
@@ -115,18 +120,18 @@
     mode = "0400";
   };
 
-  programs.zsh.enable = true; # requis par users.nix
+  programs.zsh.enable = true; # required by users.nix
   services.openssh.enable = true;
   services.automatic-timezoned.enable = false;
 
-  # --- Compte dédié pour l'agent hermes (tower) ---
-  # Deck n'importe PAS services/hermes (pas de bot chat ici) : le compte
-  # système est donc déclaré à la main. Accès shell direct (et-session +
-  # zellij, cf services/eternal-terminal déjà importé plus haut) + sudo
-  # NOPASSWD nixos-rebuild pour pouvoir builder sur place.
-  # Clé du Mac pour marc : `ssh deck` depuis le Mac passe par rack
-  # (ProxyJump), l'authentification finale est de bout en bout avec la clé du
-  # Mac. La clé RSA de users.nix reste valable.
+  # --- Dedicated account for the hermes agent (tower) ---
+  # Deck does NOT import services/hermes (no chat bot here): the
+  # system account is therefore declared by hand. Direct shell access (et-session +
+  # zellij, cf services/eternal-terminal already imported above) + sudo
+  # NOPASSWD nixos-rebuild to be able to build on site.
+  # Mac key for marc: `ssh deck` from the Mac goes through rack
+  # (ProxyJump), the final authentication is end-to-end with the
+  # Mac key. The RSA key from users.nix remains valid.
   users.users.marc.openssh.authorizedKeys.keys = lib.mkAfter [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
   ];
@@ -138,38 +143,38 @@
     home = "/var/lib/hermes";
     createHome = true;
     shell = pkgs.zsh;
-    # Permet a l'agent de lire `journalctl -u <service>` sur le Deck.
+    # Lets the agent read `journalctl -u <service>` on the Deck.
     extraGroups = [ "systemd-journal" ];
-    # KF3hu = hermes@tower (rebuild/diagnostic depuis tower ou le LAN).
-    # gpwx  = root@anywhere (le VPS joint le Deck par le tunnel wg1 -> tower,
-    #         une fois tower routeur du LAN).
-    # MdX5  = marc@Air-de-Marc (le Mac, pour `ssh deck` via ProxyJump rack).
+    # KF3hu = hermes@tower (rebuild/diagnostic from tower or the LAN).
+    # MTNk2 = hermes@laptop (the laptop agent can also reach the Deck).
+    # gpwx  = root@anywhere (the VPS reaches the Deck via the wg1 tunnel -> tower,
+    #         once tower is LAN router).
+    # MdX5  = marc@Air-de-Marc (the Mac, for `ssh deck` via ProxyJump rack).
+    # nix-builder@tower = tower nix-daemon key pair: the Deck serves as a
+    #         remote builder (nix.buildMachines of profiles/tower + load-based
+    #         selection in modules/nixos/nixos-rebuild-gated).
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKF3huPUXHP6P6SBXHHw9k7HGh6Cs8ntoRk2pnqrG2Hc hermes@tower"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMTNk2eJYoD87QP/Ajg6iCX/EwYCjVVvoTfTAFqh2qnW hermes@laptop"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAc2f6U09CWD2yQNcyGz6Pz9EN3aJzvdCvr7FrSSgpwx root@anywhere"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMdX5m7b8xWL/9ZUeFRxahB4YY0v2rAV5CCFv8xTOlUh marc@Air-de-Marc"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIItlIA6k7s5q58FQBvof2aJ5ZljvA2vhhhRJqap6uVCb nix-builder@tower"
     ];
   };
 
-  security.sudo.extraRules = [
-    {
-      users = ["hermes"];
-      commands = [
-        {
-          command = "/run/current-system/sw/bin/nixos-rebuild";
-          options = ["NOPASSWD"];
-        }
-        {
-          command = "/nix/store/*-nixos-rebuild/bin/nixos-rebuild";
-          options = ["NOPASSWD"];
-        }
-      ];
-    }
-  ];
+  # The Deck is a remote builder of tower: tower's daemon connects to it as
+  # hermes and asks it to compile. Without hermes in trusted-users, the Deck
+  # refuses to serve the results (nix store ping -> Trusted: 0, observed on
+  # 25/11/2026). Same rule as profiles/common for the laptop.
+  nix.settings.trusted-users = [ "root" "hermes" ];
+
+  # hermes no longer has nixos-rebuild directly: the nixos-rebuild-gated module sets
+  # the wrapper that refuses --impure and serializes rebuilds (import below,
+  # at the top of this file).
 
   systemd.sleep.settings.Sleep = {
     AllowSuspend = false;
-    AllowHibernation = false; # coupe aussi hybrid-sleep et suspend-then-hibernate
+    AllowHibernation = false; # also cuts hybrid-sleep and suspend-then-hibernate
   };
 
   # ========================================================================
@@ -180,7 +185,7 @@
     settings = {
       global = {
         server_name = "matrix.marcpartensky.com";
-        address = "127.0.0.1"; # IPv6 est desactive sur le Deck, ::1 par defaut casse conduit
+        address = "127.0.0.1"; # IPv6 is disabled on the Deck, default ::1 breaks conduit
         database_backend = "rocksdb";
         port = 6167;
         allow_registration = false;
@@ -210,15 +215,15 @@
   programs.steam.config = {
     enable = true;
 
-    # AppID = le nombre dans l'URL du store, ex. store.steampowered.com/app/1091500
+    # AppID = the number in the store URL, e.g. store.steampowered.com/app/1091500
     apps."1091500".compatTool = pkgs.proton-ge-bin;
 
     nonSteamApps = {
       "Dolphin".target = pkgs.dolphin-emu;
       "Ryubing".target = pkgs.ryubing;
       "Eden".target = pkgs.eden;
-      # La tuile « Mario Kart 8 Deluxe » vit dans switch-emu.nix : elle passe
-      # par le script mk8dx, qui choisit le dump présent dans ~/Games/switch.
+      # The "Mario Kart 8 Deluxe" tile lives in switch-emu.nix: it goes
+      # through the mk8dx script, which picks the dump present in ~/Games/switch.
     };
   };
 
@@ -226,15 +231,15 @@
     wantedBy = ["timers.target"];
     timerConfig = {
       OnCalendar = "*-*-* 01:55:00";
-      WakeSystem = true; # réveille depuis la veille via l'horloge RTC
+      WakeSystem = true; # wakes from sleep via the RTC clock
     };
   };
 
-  # `sleep` de coreutils n'accepte pas une duree composee comme « 5h35m » (une
-  # seule unite par argument, mais plusieurs arguments sont additionnes) : la
-  # forme « 5h35m » sortait en « invalid time interval » et l'unite echouait a
-  # chaque declenchement. 5h35m = 20100 s.
-  systemd.services.deck-wake-downloads.serviceConfig.ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=sleep:idle --why='Téléchargements Steam' ${pkgs.coreutils}/bin/sleep 20100";
+  # coreutils' `sleep` does not accept a compound duration like "5h35m" (a
+  # single unit per argument, but several arguments are added): the
+  # form "5h35m" failed with "invalid time interval" and the unit failed on
+  # each trigger. 5h35m = 20100 s.
+  systemd.services.deck-wake-downloads.serviceConfig.ExecStart = "${pkgs.systemd}/bin/systemd-inhibit --what=sleep:idle --why='Steam downloads' ${pkgs.coreutils}/bin/sleep 20100";
 
   # home.file.${config.gtk.gtk2.configLocation}.force = true;
   # xdg.configFile = {
@@ -243,9 +248,9 @@
   #   "gtk-4.0/gtk.css".force = true;
   # };
 
-  # Minage Monero (RandomX, CPU uniquement). 8 threads = hashrate max sur les
-  # 4 coeurs / 8 threads du Van Gogh ; le plafond thermique et le plafond de
-  # charge protegent la machine sur le long terme.
+  # Monero mining (RandomX, CPU only). 8 threads = max hashrate on the
+  # 4 cores / 8 threads of the Van Gogh; the thermal ceiling and the
+  # charge ceiling protect the machine over the long term.
   services.monero-miner = {
     enable = true;
     walletFile = config.sops.secrets."monero/wallet".path;

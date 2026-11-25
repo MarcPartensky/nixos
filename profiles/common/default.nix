@@ -19,6 +19,12 @@ in {
     # inputs.microvm.nixosModules.microvm
     inputs.home-manager.nixosModules.default
 
+    # Racine de la CA interne du tailnet (Smallstep, modules/nixos/intra-ca) :
+    # signe les noms courts du proxy de tower (`https://mesh`,
+    # `https://jellyfin`). Certificat public, la cle racine n'est sur aucune
+    # machine du flake.
+    ../../modules/nixos/intra-ca-trust.nix
+
     ../../users.nix
 
     # Disponibilite de la flotte : tuptime tient l'historique local
@@ -45,6 +51,8 @@ in {
     ../../modules/nixos/xdg
     ../../modules/nixos/sddm # greetd or ly
     ../../modules/nixos/polkit
+    # htop : /etc/htoprc commun (colonnes et ecrans CPU/RAM, cf le htoprc).
+    ../../modules/nixos/htop
     # ../../modules/generations
     # ../../modules/git
     # ./modules/librewolf
@@ -71,8 +79,23 @@ in {
     experimental-features = "nix-command flakes";
     max-jobs = 6;
     download-buffer-size = 524288000;
+    # hermes must be a TRUSTED user for remote builds and for `nix copy`
+    # between the mesh hosts: an untrusted ssh user cannot serve build
+    # results. It is not a privilege escalation here, hermes already runs
+    # nixos-rebuild through the gated wrapper.
+    trusted-users = [ "root" "hermes" ];
   };
   security.polkit.enable = true;
+
+  # sudo keeps the caller's umask by default: an activation launched from a
+  # hermes session (umask 077) wrote /etc/passwd and /etc/group as 0600
+  # (File::Slurp masks the permissions with the process umask) and broke every
+  # non-root user lookup (incident of 03/11/2026). Force umask 0022 for EVERY
+  # command run through sudo.
+  security.sudo.extraConfig = ''
+    Defaults umask = 0022
+    Defaults umask_override
+  '';
   # services.polkit-gnome-authentication-agent.enable = true;
 
   # nix.settings = {

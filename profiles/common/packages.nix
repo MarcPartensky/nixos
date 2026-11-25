@@ -2,18 +2,12 @@
   pkgs,
   inputs,
 }: let
-  # thClaws : paquet du flake projet /home/marc/git/thclaws (binaire prebuilt
-  # repackage avec autoPatchelf + wrapGAppsHook). Le flake du projet reste
-  # utilisable seul (nix build .#), et le systeme consomme son package.nix pour
-  # construire contre le nixpkgs du systeme (pas de GTK duplique, pas d'input
-  # supplementaire dans flake.lock).
-  #
-  # POURQUOI PAS getFlake ICI : `builtins.getFlake (toString src)` refuse une
-  # chaine qui pointe dans le store ("not allowed to refer to a store path"), et
-  # un chemin brut ferait lire le .git par Nix alors qu'un nixos-rebuild tourne
-  # sous root et que le depot appartient a marc. `callPackage <fichier>` copie
-  # le seul package.nix dans le store : aucun git, aucun flake a evaluer.
-  thclaws = pkgs.callPackage /home/marc/git/thclaws/package.nix { };
+  # thClaws : paquet du flake projet /home/marc/git/thclaws, copie dans
+  # services/thclaws/package.nix parce que l'eval NixOS est PURE (skill
+  # nixos-pure-eval) : un `callPackage /home/marc/git/...` est un chemin absolu
+  # hors depot, refuse en eval pure. Le flake projet reste utilisable seul
+  # (nix build .#) ; les deux copies portent la meme version et le meme sha256.
+  thclaws = pkgs.callPackage ../../services/thclaws/package.nix { };
 
   # Initialisation correcte de NUR
   nur = import inputs.nur {
@@ -110,6 +104,13 @@
     gsettings-desktop-schemas
     glib
     exfatprogs
+    # zellij en profil systeme : l'agent (hermes) et root peuvent s'y rattacher
+    # sur n'importe quel hote, pas seulement dans le home-manager de marc.
+    zellij
+    # ttyper : entrainement a la frappe au toucher en terminal (Rust/ratatui).
+    # Version TUI de typer.macpartensky.com, meme listes de mots. En profil
+    # systeme pour etre utilisable tout de suite par marc ET par l'agent.
+    ttyper
   ] ++ [ thclaws ];
 
   unfree = with pkgs; [
