@@ -1,23 +1,23 @@
-# services/ucpa-app : interface de recherche des sejours UCPA.
+# services/ucpa-app: UCPA stays search interface.
 #
-# Chaine : Pangolin (ucpa.marcpartensky.com, SSO) -> newt (site tower)
-#          -> 127.0.0.1:9175 (ce service).
-# Depuis le tailnet, l'URL directe est http://100.64.0.3:9175 (pas de SSO).
+# Chain: Pangolin (ucpa.marcpartensky.com, public, no SSO) -> newt (site tower)
+#          -> 127.0.0.1:9175 (this service).
+# From the tailnet, the direct URL is http://100.64.0.3:9175 (no SSO).
 #
-# Pourquoi une page maison : ucpa.com cache les prix derriere un selecteur de
-# date, n'affiche que des minima de saison, ne filtre ni les formules (Mini /
-# Mi-temps / Plein-temps) ni l'age, et melange les sessions avec et sans
-# transport. Ici le catalogue est balaye une fois, toutes sessions datees avec
-# prix et places, et le filtrage se fait dans le navigateur (aucun aller-retour).
+# Why a home-made page: ucpa.com hides prices behind a date
+# selector, only shows season minima, does not filter either the formulas (Mini /
+# Half-time / Full-time) nor the age, and mixes sessions with and without
+# transport. Here the catalog is swept once, all sessions dated with
+# price and seats, and filtering happens in the browser (no round-trip).
 #
-# Aucune donnee propre : tout vient de l'API publique d'UCPA via le MEME
-# client que le serveur MCP (mcp/modules/ucpa.py, importe par chemin). Un seul
-# code parle a UCPA dans le depot, donc un seul endroit a corriger quand le
-# site bouge.
+# No data of its own: everything comes from UCPA's public API via the SAME
+# client as the MCP server (mcp/modules/ucpa.py, imported by path). A single
+# piece of code talks to UCPA in the repo, so a single place to fix when the
+# site moves.
 #
-# Le catalogue est mis en cache sur disque par fenetre de dates (3 h) et
-# reconstruit en tache de fond : une requete ne reste jamais 70 s sur un
-# balayage. Premier demarrage = une reconstruction immediate.
+# The catalog is cached on disk per date window (3 h) and
+# rebuilt in the background: a request never stays 70 s on a
+# sweep. First startup = an immediate rebuild.
 {
   config,
   lib,
@@ -29,26 +29,26 @@
   port = 9175;
   domain = "ucpa.marcpartensky.com";
 
-  # Cache des catalogues (un fichier par fenetre de dates, ~200 Ko chacun).
+  # Catalog cache (one file per date window, ~200 kB each).
   stateDir = "/var/lib/ucpa-app";
 
   clientModule = ../../mcp/modules/ucpa.py;
 in {
   options.services.ucpaApp = {
-    enable = lib.mkEnableOption "interface de recherche des sejours UCPA";
+    enable = lib.mkEnableOption "UCPA stays search interface";
   };
 
   config = lib.mkIf cfg.enable {
     systemd.services.ucpa-app = {
-      description = "UCPA stay browser (ski/snowboard, prix par session)";
+      description = "UCPA stay browser (ski/snowboard, price per session)";
       wantedBy = ["multi-user.target"];
       after = ["network-online.target"];
       wants = ["network-online.target"];
 
       serviceConfig = {
         Type = "simple";
-        # Tourne en hermes : il partage ainsi le cache disque du serveur MCP
-        # (~/.local/state/ucpa-mcp/cache), donc un balayage sert aux deux.
+        # Runs as hermes: it thus shares the MCP server's disk cache
+        # (~/.local/state/ucpa-mcp/cache), so one sweep serves both.
         User = "hermes";
         Group = "hermes";
         Environment = [
@@ -61,12 +61,12 @@ in {
         ExecStart = "${pkgs.python3}/bin/python3 ${./server.py}";
         Restart = "always";
         RestartSec = 5;
-        # Le premier balayage prend ~70 s ; on lui laisse de la marge.
+        # The first sweep takes ~70 s; we give it some margin.
         TimeoutStartSec = 120;
 
         NoNewPrivileges = true;
         ProtectSystem = "strict";
-        ProtectHome = false; # le cache du client MCP vit dans ~hermes
+        ProtectHome = false; # the MCP client cache lives in ~hermes
         PrivateTmp = true;
         PrivateDevices = true;
         ProtectKernelTunables = true;
@@ -87,13 +87,16 @@ in {
       "d ${stateDir} 0750 hermes hermes -"
     ];
 
-    # Le port reste ferme au firewall : acces par le tailnet (interface de
-    # confiance) ou par le SSO Pangolin via newt, jamais en clair depuis le LAN.
+    # The port stays closed in the firewall: access via the tailnet (trusted
+    # interface) or via Pangolin/newt, never in clear from the LAN.
     services.newt.blueprint.proxy-resources.ucpa = {
       name = "ucpa";
       protocol = "http";
       full-domain = domain;
-      auth.sso-enabled = true;
+      # Deliberately public: the page only shows UCPA's public catalog and
+      # prices, and it has no auth of its own. Setting sso-enabled back to true
+      # puts the domain behind the Pangolin dashboard again.
+      auth.sso-enabled = false;
       targets = [
         {
           hostname = "127.0.0.1";
@@ -120,7 +123,7 @@ in {
     assertions = [
       {
         assertion = !(lib.elem port config.networking.firewall.allowedTCPPorts);
-        message = "ucpa-app : le port ${toString port} ne doit pas etre ouvert au firewall (acces tailnet + SSO Pangolin uniquement).";
+        message = "ucpa-app: port ${toString port} must not be open in the firewall (tailnet access + Pangolin only).";
       }
     ];
   };
