@@ -1,19 +1,19 @@
 # services/reactive-resume/default.nix
-# Reactive Resume (github.com/AmruthPillai/Reactive-Resume) sur cv.marcpartensky.com.
+# Reactive Resume (github.com/AmruthPillai/Reactive-Resume) on cv.marcpartensky.com.
 #
-# Inspiré du docker-compose perso de marc (github.com/marcpartensky/docker,
-# services/resume/compose.yml), mais simplifié pour la version actuelle de
-# l'image (>= v5.1) : depuis v5.1 le PDF est généré côté navigateur
-# (@react-pdf/renderer), donc plus de conteneur "printer" (browserless/chrome)
-# ni de PRINTER_*/BROWSERLESS_*. Le stockage S3 (Minio dans l'ancien setup) est
-# optionnel depuis la même version : si les S3_* sont vides l'app stocke les
-# uploads en local (/app/data) — on garde ça pour éviter de déployer Minio.
+# Inspired by marc's personal docker-compose (github.com/marcpartensky/docker,
+# services/resume/compose.yml), but simplified for the current version of
+# the image (>= v5.1): since v5.1 the PDF is generated on the browser side
+# (@react-pdf/renderer), so no more "printer" container (browserless/chrome)
+# nor PRINTER_*/BROWSERLESS_*. S3 storage (Minio in the old setup) is
+# optional since the same version: if the S3_* are empty the app stores the
+# uploads locally (/app/data) -- we keep that to avoid deploying Minio.
 #
-# Pas de paquet nixpkgs pour cette app (Node/NestJS) : conteneur OCI via podman
-# (virtualisation.oci-containers, cf. services/chhoto pour le même pattern).
-# --network=host (au lieu d'un port mappé) car l'app doit parler à Postgres en
-# 127.0.0.1:5432 comme un service natif — même convention loopback que le
-# reste de tower, le firewall reste fermé sur ce port (assertion en bas).
+# No nixpkgs package for this app (Node/NestJS): OCI container via podman
+# (virtualisation.oci-containers, cf. services/chhoto for the same pattern).
+# --network=host (instead of a mapped port) because the app must talk to Postgres on
+# 127.0.0.1:5432 like a native service -- same loopback convention as the
+# rest of tower, the firewall stays closed on this port (assertion at the bottom).
 {
   config,
   lib,
@@ -23,8 +23,8 @@
   sops.secrets."reactive-resume/db_password" = {
     key = "reactive_resume_db_password";
     sopsFile = ../../secrets/reactive-resume.yml;
-    # lu par reactive-resume-db-password.service (User=postgres) ; l'app elle
-    # même lit le mot de passe via le template sops ci-dessous, pas ce fichier.
+    # read by reactive-resume-db-password.service (User=postgres); the app
+    # itself reads the password via the sops template below, not this file.
     owner = "postgres";
   };
 
@@ -40,9 +40,9 @@
       PORT=8098
       DATABASE_URL=postgresql://reactive-resume:${config.sops.placeholder."reactive-resume/db_password"}@127.0.0.1:5432/reactive-resume
       AUTH_SECRET=${config.sops.placeholder."reactive-resume/auth_secret"}
-      # Inscription ouverte pour l'instant : le point d'entrée est de toute
-      # façon derrière le SSO Pangolin (auth.sso-enabled ci-dessous). Repasser
-      # à true une fois le compte de marc créé si on veut fermer les inscriptions.
+      # Registration open for now: the entry point is anyway
+      # behind the Pangolin SSO (auth.sso-enabled below). Switch
+      # back to true once marc's account is created if we want to close registrations.
       FLAG_DISABLE_SIGNUPS=false
     '';
   };
@@ -55,27 +55,27 @@
         ensureDBOwnership = true;
       }
     ];
-    # types.lines : se concatène avec les règles des autres modules (postgres,
-    # vaultwarden, gitea...) au lieu de les remplacer. Même mkOverride 10 que
-    # vaultwarden, pattern vérifié fonctionnel (cf skill marc-nixos-config).
+    # types.lines: concatenates with the rules of the other modules (postgres,
+    # vaultwarden, gitea...) instead of replacing them. Same mkOverride 10 as
+    # vaultwarden, pattern verified working (cf skill marc-nixos-config).
     authentication = lib.mkOverride 10 ''
       host    reactive-resume  reactive-resume  127.0.0.1/32   md5
     '';
   };
 
-  # Aligne le mot de passe du rôle postgres sur le secret sops utilisé par
-  # DATABASE_URL (ensureUsers ne pose pas de mot de passe). Même pattern que
+  # Aligns the postgres role password with the sops secret used by
+  # DATABASE_URL (ensureUsers does not set a password). Same pattern as
   # vaultwarden-db-password.
   #
-  # PIEGE VECU (11/11/2026, 00:24) : ce unit peut demarrer AVANT que sops-nix
-  # ait pose le fichier du secret avec son proprietaire. Le `cat` sortait alors
-  # en « Permission denied », psql recevait un mot de passe VIDE et repondait
-  # « empty string is not a valid password, clearing password » : le role
-  # perdait son mot de passe, l'app se mettait en boucle de redemarrage
-  # (204 relances en 4 h) sur « password authentication failed ». Le script
-  # refuse donc maintenant de tourner si le secret n'est pas lisible.
+  # PITFALL EXPERIENCED (11/11/2026, 00:24): this unit can start BEFORE sops-nix
+  # has placed the secret file with its owner. The `cat` then exited
+  # with "Permission denied", psql received an EMPTY password and answered
+  # "empty string is not a valid password, clearing password": the role
+  # lost its password, the app went into a restart loop
+  # (204 restarts in 4 h) on "password authentication failed". The script
+  # therefore now refuses to run if the secret is not readable.
   systemd.services.reactive-resume-db-password = {
-    description = "Aligne le mot de passe du rôle postgres reactive-resume sur le secret sops";
+    description = "Aligns the postgres role password of reactive-resume with the sops secret";
     wantedBy = ["multi-user.target"];
     before = ["podman-reactive-resume.service"];
     requiredBy = ["podman-reactive-resume.service"];
@@ -89,12 +89,12 @@
     script = ''
       secret=${config.sops.secrets."reactive-resume/db_password".path}
       if [ ! -r "$secret" ]; then
-        echo "reactive-resume : secret $secret illisible (sops pas encore pose), on ne touche pas au mot de passe" >&2
+        echo "reactive-resume: secret $secret unreadable (sops not placed yet), leaving the password untouched" >&2
         exit 1
       fi
       pw="$(cat "$secret")"
       if [ -z "$pw" ]; then
-        echo "reactive-resume : secret vide, on ne touche pas au mot de passe" >&2
+        echo "reactive-resume: empty secret, leaving the password untouched" >&2
         exit 1
       fi
       ${config.services.postgresql.package}/bin/psql -v pw="$pw" <<'SQL'
@@ -103,8 +103,8 @@
     '';
   };
 
-  # Uploads locaux (pas de S3/Minio). uid/gid 1000 = user "node" de l'image
-  # officielle amruthpillai/reactive-resume.
+  # Local uploads (no S3/Minio). uid/gid 1000 = user "node" of the official
+  # image amruthpillai/reactive-resume.
   systemd.tmpfiles.rules = [
     "d /var/lib/reactive-resume 0750 1000 1000 -"
     "d /var/lib/reactive-resume/data 0750 1000 1000 -"
@@ -139,9 +139,9 @@
     requires = ["reactive-resume-db-password.service"];
   };
 
-  # Ressource publique Pangolin : schéma `proxy-resources` + `protocol`
-  # (celui qui marche réellement sur ce contrôleur, cf gitea/jellyfin).
-  # SSO activé : ferme l'accès (y compris inscription) derrière Zitadel.
+  # Public Pangolin resource: schema `proxy-resources` + `protocol`
+  # (the one that actually works on this controller, cf gitea/jellyfin).
+  # SSO enabled: closes access (including registration) behind Zitadel.
   services.newt.blueprint.proxy-resources.reactive-resume = {
     name = "reactive-resume";
     protocol = "http";
@@ -170,12 +170,12 @@
     ];
   };
 
-  # Garde-fou : jamais de port ouvert au LAN (--network=host expose 8098 sur
-  # toutes les interfaces du host, seul le firewall protège du LAN direct).
+  # Guard rail: never a port open on the LAN (--network=host exposes 8098 on
+  # all the host interfaces, only the firewall protects from direct LAN).
   assertions = [
     {
       assertion = !(lib.elem 8098 config.networking.firewall.allowedTCPPorts);
-      message = "reactive-resume : le port 8098 ne doit pas être ouvert au firewall (exposition uniquement via Pangolin/newt).";
+      message = "reactive-resume: port 8098 must not be open on the firewall (exposure only via Pangolin/newt).";
     }
   ];
 }

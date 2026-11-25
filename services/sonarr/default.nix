@@ -4,14 +4,14 @@
   ...
 }:
 
-# Sonarr = séries TV. Le module nixpkgs pose deux valeurs incompatibles avec un
-# dataDir sous /home : ProtectHome=true (le service ne verrait pas /home) et la
-# création du dossier par systemd-tmpfiles, qui refuse tout chemin sous
-# /home/marc (« unsafe path transition », cf. services/jellyfin).
-# Historiquement ce module pointait sur /home/marc/radarr (copier-coller depuis
-# le module radarr), donc Sonarr tournait sans pouvoir lire ni écrire sa
-# configuration : le dossier était figé au 28/07/2026 et son port 8006 ne
-# répondait plus. Réparé le 27/09/2026 : dossier dédié + migration des données.
+# Sonarr = TV series. The nixpkgs module sets two values incompatible with a
+# dataDir under /home: ProtectHome=true (the service would not see /home) and the
+# creation of the folder by systemd-tmpfiles, which refuses any path under
+# /home/marc ("unsafe path transition", cf. services/jellyfin).
+# Historically this module pointed at /home/marc/radarr (copy-paste from
+# the radarr module), so Sonarr ran without being able to read or write its
+# configuration: the folder was frozen at 28/07/2026 and its port 8006 no
+# longer responded. Fixed on 27/09/2026: dedicated folder + data migration.
 {
   services.sonarr = {
     enable = true;
@@ -20,38 +20,38 @@
     dataDir = "/home/marc/sonarr";
     settings = {
       server = {
-        # Pas de urlbase (voir services/radarr) : avec une base non vide,
-        # UrlBaseMiddleware redirige en 307 tout chemin hors base, y compris
-        # /api/v3/..., ce qui casse les clients API locaux.
+        # No urlbase (see services/radarr): with a non-empty base,
+        # UrlBaseMiddleware redirects any path outside the base with a 307, including
+        # /api/v3/..., which breaks local API clients.
         port = 8006;
         bindaddress = "*";
       };
 
-      # Auth de l'appli DESACTIVEE, comme radarr : la porte est le SSO Pangolin
-      # (sonarr.marcpartensky.com ci-dessous). Sonarr 4.0.19 gere bien
-      # `External` (cf. AddExternal -> NoAuthenticationHandler) même si son
-      # config.xml portait encore `None` : le declaratif evite qu'un passage
-      # dans l'UI reactive un formulaire de login en plus du SSO.
-      # OIDC natif dans l'appli : absent de Sonarr 4.x (et de Radarr 6.x). Il
-      # arrive dans Sonarr 5 (branche develop : AddOidc + AuthOptions.Oidc*),
-      # a rebrancher sur Zitadel quand nixpkgs passera a cette version.
+      # App auth DISABLED, like radarr: the gate is the Pangolin SSO
+      # (sonarr.marcpartensky.com below). Sonarr 4.0.19 handles
+      # `External` fine (cf. AddExternal -> NoAuthenticationHandler) even though its
+      # config.xml still carried `None`: the declarative form prevents a trip
+      # through the UI from re-enabling a login form on top of the SSO.
+      # Native OIDC in the app: absent from Sonarr 4.x (and Radarr 6.x). It
+      # arrives in Sonarr 5 (develop branch: AddOidc + AuthOptions.Oidc*),
+      # to be rewired to Zitadel when nixpkgs moves to that version.
       auth.method = "External";
     };
   };
 
   systemd.services.sonarr.serviceConfig.ProtectHome = lib.mkForce false;
 
-  # Média partagé (cf. services/media) : rend les fichiers importés modifiables
-  # par les autres membres du groupe `media`.
+  # Shared media (cf. services/media): makes imported files writable
+  # by the other members of the `media` group.
   systemd.services.sonarr.serviceConfig.UMask = lib.mkForce "0002";
 
-  # Exposition publique via Pangolin (newt, site "tower") : sonarr.marcpartensky.com
-  # -> 127.0.0.1:8006, même schéma que radarr (cle `proxy-resources` + champ
-  # `protocol` = ce que comprend le Pangolin du VPS, cf. services/newt).
-  # SSO Pangolin ACTIF et auth de l'appli coupée (settings.auth.method plus
-  # haut) : le tunnel vient de 127.0.0.1, donc Sonarr voit les requêtes
-  # distantes comme locales et sa propre auth ne filtrerait rien. Sans SSO,
-  # l'UI complète et l'API v3 seraient ouvertes à Internet.
+  # Public exposure via Pangolin (newt, site "tower"): sonarr.marcpartensky.com
+  # -> 127.0.0.1:8006, same scheme as radarr (key `proxy-resources` + field
+  # `protocol` = what the VPS Pangolin understands, cf. services/newt).
+  # Pangolin SSO ACTIVE and app auth cut (settings.auth.method above):
+  # the tunnel comes from 127.0.0.1, so Sonarr sees remote requests
+  # as local and its own auth would filter nothing. Without SSO,
+  # the full UI and the v3 API would be open to the Internet.
   services.newt.blueprint.proxy-resources.sonarr = {
     name = "sonarr";
     protocol = "http";
@@ -80,18 +80,18 @@
     ];
   };
 
-  # La règle tmpfiles du module viserait /home/marc/sonarr, que
-  # systemd-tmpfiles refuserait de créer et signalerait à chaque activation :
-  # supprimée, le dossier est créé par la migration ci-dessous.
+  # The module's tmpfiles rule would target /home/marc/sonarr, which
+  # systemd-tmpfiles would refuse to create and would report on each activation:
+  # removed, the folder is created by the migration below.
   systemd.tmpfiles.settings."10-sonarr" = lib.mkForce { };
 
-  # Migration en une fois : Sonarr était configuré dans /home/marc/radarr (qui
-  # contient AUSSI radarr.db, reste d'un ancien Radarr, laissé en place). On ne
-  # copie que les données de Sonarr, pas config.xml : il est régénéré depuis les
-  # réglages Nix ci-dessus (port 8006, aucune urlbase), alors que celui du
-  # dossier partagé portait la config du dernier service qui l'avait écrit.
+  # One-shot migration: Sonarr was configured in /home/marc/radarr (which
+  # ALSO contains radarr.db, left over from an old Radarr, left in place). We
+  # copy only Sonarr's data, not config.xml: it is regenerated from the
+  # Nix settings above (port 8006, no urlbase), whereas the one in the
+  # shared folder carried the config of the last service that wrote it.
   systemd.services.sonarr-data-migrate = {
-    description = "Migration du dossier de données de Sonarr (~/radarr -> ~/sonarr)";
+    description = "Migration of the Sonarr data folder (~/radarr -> ~/sonarr)";
     wantedBy = [ "multi-user.target" ];
     before = [ "sonarr.service" ];
     unitConfig.ConditionPathExists = "!/home/marc/sonarr/.migration-done";
@@ -117,9 +117,9 @@
     '';
   };
 
-  # DIAGNOSTIC TEMPORAIRE (a retirer) : exhume la base Jellyfin (clés API,
-  # utilisateurs) et le config.xml de Radarr, root-only, vers un dossier
-  # lisible par hermes, pour pouvoir piloter les deux en solo.
+  # TEMPORARY DIAGNOSTIC (to be removed): exhumes the Jellyfin database (API
+  # keys, users) and the Radarr config.xml, root-only, to a folder
+  # readable by hermes, to be able to drive both on its own.
   system.activationScripts.mediaDiag = ''
     ${pkgs.coreutils}/bin/install -d -o hermes -g hermes -m 0750 /var/lib/hermes/x-media
     for f in /var/lib/jellyfin/data/jellyfin.db /var/lib/jellyfin/data/jellyfin.db-wal /var/lib/jellyfin/data/jellyfin.db-shm; do

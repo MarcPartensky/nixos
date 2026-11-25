@@ -3,69 +3,69 @@
   ...
 }:
 
-# Radarr = le « Sonarr des films ». Il télécharge/renomme et dépose les films
-# dans une racine de bibliothèque, ici /srv/media/movies : le MÊME dossier que
-# la bibliothèque « Films » de Jellyfin. C'est ça, la connexion utile : Jellyfin
-# surveille le dossier en temps réel (surveillance activée par défaut sur un
-# stockage local), donc un film importé apparaît tout seul. Le « Connect »
-# Emby/Jellyfin de Radarr (URL + clé API Jellyfin) ne sert qu'à déclencher en
-# plus un rescan explicite à chaque import.
+# Radarr = the "Sonarr of movies". It downloads/renames and drops the movies
+# into a library root, here /srv/media/movies: the SAME folder as
+# Jellyfin's "Films" library. That's the useful connection: Jellyfin
+# watches the folder in real time (watch enabled by default on a
+# local storage), so an imported movie appears on its own. The "Connect"
+# Emby/Jellyfin of Radarr (URL + Jellyfin API key) only serves to additionally
+# trigger an explicit rescan on each import.
 {
   services.radarr = {
     enable = true;
     user = "marc";
     group = "users";
 
-    # PIEGE 1 : ne PAS reprendre `dataDir = "/home/marc/radarr"` (valeur du
-    # module sonarr, qui a été copiée-collée ici et là : Sonarr TOURNAIT avec
-    # -data=/home/marc/radarr). Les deux partageraient le même dossier de config.
-    # PIEGE 2 : un dataDir sous /home/marc est impossible pour Radarr : son
-    # module pose ProtectHome=true et crée le dossier par systemd-tmpfiles, qui
-    # REFUSE tout chemin sous /home/marc (cf. services/jellyfin, section
-    # « unsafe path transition »). D'où ce dataDir hors /home.
+    # PITFALL 1: do NOT reuse `dataDir = "/home/marc/radarr"` (value of the
+    # sonarr module, which was copy-pasted here and there: Sonarr RAN with
+    # -data=/home/marc/radarr). The two would share the same config folder.
+    # PITFALL 2: a dataDir under /home/marc is impossible for Radarr: its
+    # module sets ProtectHome=true and creates the folder via systemd-tmpfiles, which
+    # REFUSES any path under /home/marc (cf. services/jellyfin, section
+    # "unsafe path transition"). Hence this dataDir outside /home.
     dataDir = "/var/lib/radarr/.config/Radarr";
 
     settings = {
       server = {
-        # PAS de urlbase : Radarr est servi à la racine du domaine. L'exemple du
-        # module nixpkgs (urlbase = "localhost") a été recopié ici un temps, et
-        # avec une valeur non vide, UrlBaseMiddleware renvoie un 307 vers
-        # /<base><chemin> sur TOUTE requête hors base : le local /login
-        # redirigeait vers /localhost/login, et un client API tapant
-        # /api/v3/... recevait un 307 vers /localhost/api/v3/... (un navigateur
-        # suit, curl/arr-mcp non).
+        # NO urlbase: Radarr is served at the root of the domain. The example of the
+        # nixpkgs module (urlbase = "localhost") was copied here for a while, and
+        # with a non-empty value, UrlBaseMiddleware returns a 307 to
+        # /<base><path> on EVERY out-of-base request: the local /login
+        # redirected to /localhost/login, and an API client hitting
+        # /api/v3/... received a 307 to /localhost/api/v3/... (a browser
+        # follows, curl/arr-mcp does not).
         port = 8086;
         bindaddress = "*";
       };
 
-      # Authentification de l'appli DESACTIVEE (méthode prévue pour un reverse
-      # proxy qui authentifie en amont). Radarr 6.x n'a AUCUN support OIDC
-      # (AuthenticationType = None/Basic/Forms/External seulement, cf. wiki
-      # Servarr « OIDC NOT currently supported »), donc derrière le SSO Pangolin
-      # la seule alternative était un second login dans Radarr.
-      # Contrepartie assumée : tout ce qui joint 127.0.0.1:8086 depuis tower
-      # (n'importe quel process local) ouvre l'UI sans mot de passe ; la clé
-      # API reste exigée sur /api/v3 et la porte internet reste le SSO Pangolin
-      # (le port n'est pas ouvert au firewall).
+      # App authentication DISABLED (method intended for a reverse
+      # proxy that authenticates upstream). Radarr 6.x has NO OIDC support
+      # (AuthenticationType = None/Basic/Forms/External only, cf. wiki
+      # Servarr "OIDC NOT currently supported"), so behind Pangolin SSO
+      # the only alternative was a second login in Radarr.
+      # Accepted trade-off: everything that reaches 127.0.0.1:8086 from tower
+      # (any local process) opens the UI without a password; the
+      # API is still required on /api/v3 and the internet door remains Pangolin SSO
+      # (the port is not open at the firewall).
       auth.method = "External";
     };
   };
 
-  # Média partagé (cf. services/media) : UMask=0002 pour que les fichiers
-  # importés soient modifiables par les autres membres du groupe `media`
-  # (le module pose 0022 par défaut, d'où le mkForce).
+  # Shared media (cf. services/media): UMask=0002 so that files
+  # imported are modifiable by the other members of the `media` group
+  # (the module sets 0022 by default, hence the mkForce).
   systemd.services.radarr.serviceConfig.UMask = lib.mkForce "0002";
 
-  # Exposition publique via Pangolin (newt, site "tower") : radarr.marcpartensky.com
-  # -> 127.0.0.1:8086. `site` omis : Pangolin affecte le site qui applique le
-  # blueprint. Cle `proxy-resources` + champ `protocol` = schema reellement
-  # compris par le Pangolin du VPS (cf. commentaire detaille dans services/newt).
+  # Public exposure via Pangolin (newt, site "tower"): radarr.marcpartensky.com
+  # -> 127.0.0.1:8086. `site` omitted: Pangolin assigns the site that applies the
+  # blueprint. Key `proxy-resources` + field `protocol` = schema actually
+  # understood by the VPS Pangolin (cf. detailed comment in services/newt).
   #
-  # SSO Pangolin ACTIVE (contrairement a Jellyfin, qui a besoin de ses clients
-  # natifs) : le tunnel newt tape en local, donc Radarr voit les requetes
-  # distantes comme locales (127.0.0.1) et sa propre auth
-  # "DisabledForLocalAddresses" ne filtrerait RIEN. Sans SSO, l'UI complete et
-  # l'API v3 (qui suffit a piloter Radarr) seraient ouvertes a Internet.
+  # Pangolin SSO ACTIVE (unlike Jellyfin, which needs its native
+  # clients): the newt tunnel hits locally, so Radarr sees remote
+  # requests as local (127.0.0.1) and its own auth
+  # "DisabledForLocalAddresses" would filter NOTHING. Without SSO, the full UI and
+  # the v3 API (which is enough to drive Radarr) would be open to the Internet.
   services.newt.blueprint.proxy-resources.radarr = {
     name = "radarr";
     protocol = "http";
@@ -94,11 +94,11 @@
     ];
   };
 
-  # Plus de ProtectHome=false ici : depuis que le média est dans /srv/media,
-  # Radarr ne touche plus du tout au home de marc (données dans
-  # /var/lib/radarr, téléchargements et bibliothèque dans /srv), donc le
-  # durcissement du module reste en place.
+  # No more ProtectHome=false here: since the media is in /srv/media,
+  # Radarr no longer touches marc's home at all (data in
+  # /var/lib/radarr, downloads and library in /srv), so the
+  # module hardening stays in place.
 
-  # Pas d'openFirewall : comme les autres *arr, Radarr reste joignable
-  # uniquement depuis la machine (et par le tunnel/SSO si on l'expose un jour).
+  # No openFirewall: like the other *arr, Radarr stays reachable
+  # only from the machine (and via the tunnel/SSO if we expose it one day).
 }

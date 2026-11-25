@@ -1,33 +1,33 @@
 # services/octo/default.nix
-# Octo (github.com/winters27/octo, GPL-3, Rust) : proxy OpenSubsonic devant
-# Navidrome. Il ajoute ce que Navidrome ne sait pas faire :
-#   - chercher hors bibliotheque (Deezer + YouTube Music + Last.fm) et jouer
-#     tout de suite un titre absent, en preview YouTube via yt-dlp ;
-#   - une radio qui apprend des ecoutes (Last.fm, YouTube Music, ListenBrainz),
-#     servie aux clients Subsonic comme des stations / playlists ;
-#   - surtout : telecharger sur un coeur (ou un "+") le titre absent, le taguer
-#     et le deposer dans la bibliotheque que Navidrome scanne.
-# Navidrome n'a pas d'OIDC ni de source audio externe : un plugin (capacites
-# metadata/scrobbler/lyrics/sonicSimilarity) ne peut PAS rendre jouable un
-# fichier absent. C'est ce trou que ce proxy comble.
+# Octo (github.com/winters27/octo, GPL-3, Rust): OpenSubsonic proxy in front of
+# Navidrome. It adds what Navidrome cannot do:
+#   - search outside the library (Deezer + YouTube Music + Last.fm) and play
+#     right away a missing track, as a YouTube preview via yt-dlp;
+#   - a radio that learns from listens (Last.fm, YouTube Music, ListenBrainz),
+#     served to Subsonic clients as stations / playlists;
+#   - above all: download on a heart (or a "+") the missing track, tag it
+#     and drop it into the library that Navidrome scans.
+# Navidrome has no OIDC nor external audio source: a plugin (capabilities
+# metadata/scrobbler/lyrics/sonicSimilarity) CANNOT make a missing
+# file playable. It is this gap that this proxy fills.
 #
-# Deux conteneurs OCI (podman, virtualisation.oci-containers, meme schema que
-# services/aonsoku) :
-#   - octo             : l'app + son API Subsonic, publiee sur 127.0.0.1:5274
-#                        (octo.marcpartensky.com) ; il joint Navidrome par
-#                        host.containers.internal:4533, donc le service local
-#                        reste introuchable depuis le LAN ;
-#   - octo-yt-dlp-shim : yt-dlp + deno (runtime JS exige par YouTube) derriere
-#                        /search et /stream, jamais publie, joint par nom sur
-#                        un reseau podman dedie (le reseau par defaut de podman
-#                        n'a pas de DNS).
+# Two OCI containers (podman, virtualisation.oci-containers, same scheme as
+# services/aonsoku):
+#   - octo             : the app + its Subsonic API, published on 127.0.0.1:5274
+#                        (octo.marcpartensky.com); it reaches Navidrome via
+#                        host.containers.internal:4533, so the local service
+#                        stays unreachable from the LAN;
+#   - octo-yt-dlp-shim : yt-dlp + deno (JS runtime required by YouTube) behind
+#                        /search and /stream, never published, reached by name on
+#                        a dedicated podman network (podman's default network
+#                        has no DNS).
 #
-# Choix deliberes :
-#   - DownloadSource = YouTube : un coeur telecharge le M4A/MP3 YouTube
-#     directement. Pas de slskd, donc pas de compte Soulseek ni de port 50300
-#     a ouvrir ; a passer a Soulseek/Lidarr plus tard si marc veut du FLAC.
-#   - Pas d'octo-sonic (Sounds alike) : il decode la bibliotheque en continu,
-#     et tower heberge deja la pile TTS de marc sur le CPU.
+# Deliberate choices:
+#   - DownloadSource = YouTube: a heart downloads the YouTube M4A/MP3
+#     directly. No slskd, so no Soulseek account nor port 50300
+#     to open; switch to Soulseek/Lidarr later if marc wants FLAC.
+#   - No octo-sonic (Sounds alike): it decodes the library continuously,
+#     and tower already hosts marc's TTS stack on the CPU.
 {
   config,
   lib,
@@ -35,18 +35,18 @@
   ...
 }: let
   dataDir = "/var/lib/octo";
-  # Bibliotheque partagee (groupe `media`, setgid) : les fichiers telecharges
-  # heritent du groupe media et restent lisibles par navidrome/jellyfin.
+  # Shared library (`media` group, setgid): downloaded files
+  # inherit the media group and stay readable by navidrome/jellyfin.
   musicDir = "/srv/media/music";
-  # Tag d'image : meme version pour les deux conteneurs (le shim et l'app
-  # doivent rester alignes, cf. docker-compose upstream).
+  # Image tag: same version for both containers (the shim and the app
+  # must stay aligned, cf. upstream docker-compose).
   tag = "2026.10.28";
 in {
-  # ── Reseau podman dedie ──────────────────────────────────────────────────
-  # NixOS n'a pas d'option pour declarer un reseau podman : un oneshot le cree
-  # (idempotent) et les deux unites de conteneur demarrent apres lui.
+  # -- Dedicated podman network --------------------------------------------
+  # NixOS has no option to declare a podman network: a oneshot creates it
+  # (idempotent) and both container units start after it.
   systemd.services.podman-network-octo = {
-    description = "Reseau podman `octo` (octo <-> yt-dlp-shim)";
+    description = "Podman network `octo` (octo <-> yt-dlp-shim)";
     wantedBy = ["multi-user.target"];
     after = ["network-online.target"];
     wants = ["network-online.target"];
@@ -61,9 +61,9 @@ in {
     '';
   };
 
-  # ── Etat persistant ──────────────────────────────────────────────────────
-  # Config Octo (settings.json ecrit par le dashboard, code de recuperation
-  # admin) et caches yt-dlp (binaire auto-mis a jour, base de durees).
+  # -- Persistent state ----------------------------------------------------
+  # Octo config (settings.json written by the dashboard, admin recovery
+  # code) and yt-dlp caches (auto-updated binary, durations database).
   systemd.tmpfiles.rules = [
     "d ${dataDir} 0755 root root -"
     "d ${dataDir}/config 0700 root root -"
@@ -72,7 +72,7 @@ in {
     "d ${dataDir}/ytshim 0755 root root -"
   ];
 
-  # ── Shim yt-dlp (recherche + resolution de flux) ─────────────────────────
+  # -- yt-dlp shim (search + stream resolution) ----------------------------
   virtualisation.oci-containers.containers.octo-yt-dlp-shim = {
     image = "ghcr.io/winters27/octo-yt-dlp-shim:${tag}";
     autoStart = true;
@@ -81,10 +81,10 @@ in {
       "--umask=002"
     ];
     volumes = [
-      # Les telechargements YouTube doivent atterrir la ou Navidrome scanne.
+      # YouTube downloads must land where Navidrome scans.
       "${musicDir}:/music"
-      # Binaire yt-dlp hors de l'image : sa mise a jour survit a la recreation
-      # du conteneur (YouTube casse un extracteur tous les mois).
+      # yt-dlp binary outside the image: its update survives the recreation
+      # of the container (YouTube breaks an extractor every month).
       "${dataDir}/ytdlp-bin:/opt/ytdlp"
       "${dataDir}/ytdlp-cache:/root/.cache/yt-dlp"
       "${dataDir}/ytshim:/var/lib/ytshim"
@@ -95,26 +95,26 @@ in {
       DOWNLOAD_ROOT = "/music";
       YTDLP_PATH = "/opt/ytdlp/yt-dlp";
       META_DB_PATH = "/var/lib/ytshim/meta.db";
-      # visionos : URL de flux jouables tout de suite (les clients par defaut
-      # de yt-dlp ne donnent une URL valide qu'apres 4 a 14 s).
+      # visionos: stream URLs playable right away (the default yt-dlp
+      # clients only give a valid URL after 4 to 14 s).
       YTDLP_PLAYER_CLIENT = "visionos";
     };
   };
 
-  # ── Octo ─────────────────────────────────────────────────────────────────
+  # -- Octo ----------------------------------------------------------------
   virtualisation.oci-containers.containers.octo = {
     image = "ghcr.io/winters27/octo:${tag}";
     autoStart = true;
     dependsOn = ["octo-yt-dlp-shim"];
     extraOptions = [
       "--network=octo"
-      # host.containers.internal -> IP de l'hote vue depuis le pont podman :
-      # c'est ce qui permet de joindre Navidrome en 127.0.0.1:4533 sans passer
-      # par le domaine public (et donc sans dependre de newt).
+      # host.containers.internal -> IP of the host seen from the podman bridge:
+      # this is what makes it possible to reach Navidrome on 127.0.0.1:4533 without going
+      # through the public domain (and therefore without depending on newt).
       "--add-host=host.containers.internal:host-gateway"
       "--publish=127.0.0.1:5274:8080"
-      # setgid sur la bibliotheque + umask 002 : fichiers root:media en 664,
-      # donc lisibles par navidrome et par jellyfin.
+      # setgid on the library + umask 002: root:media files in 664,
+      # therefore readable by navidrome and by jellyfin.
       "--umask=002"
     ];
     volumes = [
@@ -125,36 +125,36 @@ in {
       ASPNETCORE_ENVIRONMENT = "Production";
       TZ = "Europe/Paris";
 
-      # --- Navidrome en amont ---
+      # --- Navidrome upstream ---
       Subsonic__Url = "http://host.containers.internal:4533";
-      # Stream : rien n'est mis en cache disque, la bibliotheque fait foi.
+      # Stream: nothing is cached on disk, the library is authoritative.
       Subsonic__StorageMode = "Stream";
-      # Un coeur telecharge une copie permanente : depuis YouTube ici.
+      # A heart downloads a permanent copy: from YouTube here.
       Subsonic__DownloadSource = "YouTube";
       Subsonic__DownloadOnStar = "true";
       Subsonic__DownloadAlbumOnStar = "true";
-      # Ne jamais retelecharger un titre deja present.
+      # Never re-download an already present track.
       Subsonic__SkipOwnedSongs = "true";
-      # Artist/Album, comme la bibliotheque existante.
+      # Artist/Album, like the existing library.
       Subsonic__FolderStructure = "Organized";
-      # Recherche au-dela de la bibliotheque (le coeur du besoin).
+      # Search beyond the library (the core need).
       Subsonic__EnableSearchDiscovery = "true";
       Library__DownloadPath = "/music";
 
-      # --- Preview YouTube ---
+      # --- YouTube preview ---
       YouTube__ShimUrl = "http://octo-yt-dlp-shim:8080";
 
-      # --- Radio : sources sans cle d'API ---
+      # --- Radio: sources without an API key ---
       RadioSources__YouTubeMusic = "true";
       RadioSources__ListenBrainz = "true";
-      # Pas d'octo-sonic : Sounds alike est desactive (voir l'en-tete).
+      # No octo-sonic: Sounds alike is disabled (see the header).
       RadioSources__SoundsAlike = "false";
       GeneratedPlaylists__PopularNow = "true";
 
-      # --- Metadonnees ---
+      # --- Metadata ---
       Metadata__FetchLyrics = "true";
-      # lrclib et lyricsovh seulement : kugou/netease sont des API non
-      # officielles, hors de question de les interroger par defaut.
+      # lrclib and lyricsovh only: kugou/netease are unofficial
+      # APIs, out of the question to query them by default.
       Metadata__LyricsSources = "song,lrclib,lyricsovh";
       Metadata__ReplayGain = "true";
 
@@ -163,12 +163,12 @@ in {
     };
   };
 
-  # ── Exposition publique ──────────────────────────────────────────────────
-  # octo.marcpartensky.com -> 127.0.0.1:5274. Le domaine navidrome reste
-  # pointe sur Navidrome : aucun client existant ne bouge, Octo s'ajoute.
-  # /rest/* et /share/* sortent du gate SSO, sinon les clients Subsonic
-  # (Feishin, Symfonium, apps mobiles) ne peuvent pas suivre la redirection
-  # Pangolin : meme contrainte que pour navidrome.
+  # -- Public exposure -----------------------------------------------------
+  # octo.marcpartensky.com -> 127.0.0.1:5274. The navidrome domain stays
+  # pointed at Navidrome: no existing client moves, Octo is added.
+  # /rest/* and /share/* exit the SSO gate, otherwise the Subsonic clients
+  # (Feishin, Symfonium, mobile apps) cannot follow the Pangolin
+  # redirect: same constraint as for navidrome.
   services.newt.blueprint.proxy-resources.octo = {
     name = "octo";
     protocol = "http";
@@ -195,7 +195,7 @@ in {
           enabled = true;
           hostname = "127.0.0.1";
           port = 5274;
-          # / renvoie un 302 vers /app/ ; /health repond 200 en direct.
+          # / returns a 302 to /app/ ; /health answers 200 directly.
           path = "/health";
           scheme = "http";
           mode = "http";

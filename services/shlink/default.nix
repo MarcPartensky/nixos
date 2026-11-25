@@ -1,25 +1,25 @@
 # services/shlink/default.nix
-# Shlink (github.com/shlinkio/shlink) : raccourcisseur d'URL auto-hébergé,
-# serveur REST v3 complet (short URLs, visites, tags, domaines, redirect rules).
-# Exposé sur s.marcpartensky.com.
+# Shlink (github.com/shlinkio/shlink): self-hosted URL shortener,
+# full v3 REST server (short URLs, visits, tags, domains, redirect rules).
+# Exposed on s.marcpartensky.com.
 #
-# Choix d'architecture (voir aussi services/shlink-mcp) :
-#   - moteur dans un conteneur OCI (pas de paquet nixpkgs : jamais packagé),
-#     même pattern que reactive-resume / open-notebook ;
-#   - --network=host : l'app doit joindre Postgres en 127.0.0.1:5432 avec la
-#     convention "trust/md5 loopback" du reste de tower ; le port applicatif
-#     (8097) reste fermé au firewall, seule la ressource Pangolin l'expose ;
-#   - Postgres dédié (rôle + base `shlink`), mot de passe sops aligné par un
-#     oneshot, comme reactive-resume ;
-#   - SSO Pangolin DÉSACTIVÉ volontairement : les liens courts doivent
-#     résoudre pour n'importe qui (un 302 vers Zitadel casserait tout lien
-#     partagé). La protection de l'API est la clé d'API Shlink, pas le proxy ;
-#     le serveur Shlink n'a de toute façon aucune UI web.
+# Architecture choice (see also services/shlink-mcp):
+#   - engine in an OCI container (no nixpkgs package: never packaged),
+#     same pattern as reactive-resume / open-notebook;
+#   - --network=host: the app must reach Postgres at 127.0.0.1:5432 with the
+#     "trust/md5 loopback" convention of the rest of tower; the application port
+#     (8097) stays closed on the firewall, only the Pangolin resource exposes it;
+#   - dedicated Postgres (role + `shlink` database), sops password aligned by a
+#     oneshot, like reactive-resume;
+#   - Pangolin SSO DELIBERATELY DISABLED: short links must
+#     resolve for anyone (a 302 to Zitadel would break any shared
+#     link). API protection is the Shlink API key, not the proxy;
+#     the Shlink server has no web UI anyway.
 #
-# Non couvert ici : la géolocalisation des visites, qui exige une clé de
-# licence GeoLite2 (compte MaxMind, non FOSS côté base). Ajouter alors
-# GEOLITE_LICENSE_KEY dans le template d'env ci-dessous ; sans elle Shlink
-# démarre normalement, seules les stats pays/ville restent vides.
+# Not covered here: visit geolocation, which requires a GeoLite2
+# license key (MaxMind account, non-FOSS base). Then add
+# GEOLITE_LICENSE_KEY in the env template below; without it Shlink
+# starts normally, only the country/city stats stay empty.
 {
   config,
   lib,
@@ -30,20 +30,20 @@
   domain = "s.marcpartensky.com";
 in {
   # ── Secrets ────────────────────────────────────────────────────────────
-  # NOMS PLATS volontairement : un nom avec slash (`shlink/db_password`) fait
-  # créer un sous-dossier /run/secrets/<n>/ en drwxr-x--x root:keys, que le
-  # user `postgres` ne peut pas traverser (ni lire le fichier) : le oneshot
-  # ci-dessous sortait en « cat: Permission denied », le rôle restait sans mot
-  # de passe et le conteneur mourait sur « Error updating database ».
+  # FLAT NAMES deliberately: a name with a slash (`shlink/db_password`) causes
+  # a subfolder /run/secrets/<n>/ to be created as drwxr-x--x root:keys, which the
+  # `postgres` user cannot traverse (nor read the file): the oneshot
+  # below exited with "cat: Permission denied", the role stayed without a
+  # password and the container died on "Error updating database".
   sops.secrets.shlink_db_password = {
     key = "shlink_db_password";
     sopsFile = ../../secrets/shlink.yml;
-    # Lu par shlink-db-password.service (User=postgres).
+    # Read by shlink-db-password.service (User=postgres).
     owner = "postgres";
   };
 
-  # Clé d'API Shlink : sert à la fois de INITIAL_API_KEY au premier démarrage
-  # et de credential au MCP (services/shlink-mcp, qui tourne en user hermes).
+  # Shlink API key: serves both as INITIAL_API_KEY on first startup
+  # and as credential to the MCP (services/shlink-mcp, which runs as user hermes).
   sops.secrets.shlink_api_key = {
     key = "shlink_api_key";
     sopsFile = ../../secrets/shlink.yml;
@@ -52,7 +52,7 @@ in {
     mode = "0400";
   };
 
-  # Env du conteneur : rendu déchiffré à l'activation (jamais dans le store).
+  # Container env: rendered decrypted at activation (never in the store).
   sops.templates."shlink.env" = {
     mode = "0400";
     content = ''
@@ -70,7 +70,7 @@ in {
     '';
   };
 
-  # ── Base Postgres dédiée ───────────────────────────────────────────────
+  # ── Dedicated Postgres database ───────────────────────────────────────────────
   services.postgresql = {
     ensureDatabases = ["shlink"];
     ensureUsers = [
@@ -79,24 +79,24 @@ in {
         ensureDBOwnership = true;
       }
     ];
-    # mkOverride 10 : concatène au lieu de remplacer les règles des autres
+    # mkOverride 10: concatenates instead of replacing the rules of the other
     # modules (postgres, reactive-resume, vaultwarden, gitea...).
     authentication = lib.mkOverride 10 ''
       host    shlink  shlink  127.0.0.1/32  md5
     '';
   };
 
-  # Aligne le mot de passe du rôle sur le secret sops (ensureUsers n'en pose
-  # pas). Tourne avant le conteneur, rejouable à chaque switch.
+  # Aligns the role's password with the sops secret (ensureUsers does not set
+  # one). Runs before the container, replayable on each switch.
   #
-  # `postgresql-setup.service` est requis EXPLICITEMENT : il crée le rôle et la
-  # base (ensureUsers/ensureDatabases) mais tourne comme une unité à part,
-  # redémarrée par le switch. Se contenter de `after = postgresql.service` ne
-  # suffit pas quand postgres est déjà actif : cette dépendance est un job
-  # no-op, donc le oneshot pouvait partir avant la création du rôle et sortir
-  # en « ERROR: role "shlink" does not exist » (vécu au premier switch).
+  # `postgresql-setup.service` is required EXPLICITLY: it creates the role and the
+  # database (ensureUsers/ensureDatabases) but runs as a separate unit,
+  # restarted by the switch. Being satisfied with `after = postgresql.service` is
+  # not enough when postgres is already active: that dependency is a no-op
+  # job, so the oneshot could start before the role was created and exit
+  # with "ERROR: role "shlink" does not exist" (experienced on the first switch).
   systemd.services.shlink-db-password = {
-    description = "Aligne le mot de passe du rôle postgres shlink sur le secret sops";
+    description = "Aligns the postgres role shlink password with the sops secret";
     wantedBy = ["multi-user.target"];
     before = ["podman-shlink.service"];
     requiredBy = ["podman-shlink.service"];
@@ -115,27 +115,27 @@ in {
     '';
   };
 
-  # ── Données du conteneur ───────────────────────────────────────────────
-  # 0777 : l'uid interne de l'image shlinkio/shlink n'est pas garanti
-  # (l'image tourne en non-root depuis la v4) et le volume doit rester
-  # inscriptible quel que soit cet uid. Rien de sensible dedans (pas de SQLite
-  # puisque Postgres, seulement les downloads GeoLite éventuels et les locks).
+  # ── Container data ───────────────────────────────────────────────
+  # 0777: the internal uid of the shlinkio/shlink image is not guaranteed
+  # (the image runs as non-root since v4) and the volume must stay
+  # writable whatever that uid is. Nothing sensitive inside (no SQLite
+  # since Postgres, only the possible GeoLite downloads and the locks).
   systemd.tmpfiles.rules = [
     "d /var/lib/shlink 0777 root root -"
     "d /var/lib/shlink/data 0777 root root -"
   ];
 
-  # ── Conteneur ──────────────────────────────────────────────────────────
+  # ── Container ──────────────────────────────────────────────────────────
   virtualisation.oci-containers.containers.shlink = {
     image = "docker.io/shlinkio/shlink:stable";
     autoStart = true;
     volumes = ["/var/lib/shlink/data:/etc/shlink/data"];
     environmentFiles = [config.sops.templates."shlink.env".path];
-    # Pas de --health-cmd : l'image ne garantit ni curl ni wget, et un
-    # healthcheck en échec permanent rend le conteneur "unhealthy" sans
-    # informer personne. La santé réelle est vérifiée par Pangolin sur
-    # /rest/health (voir la ressource plus bas), qui est l'endpoint que Shlink
-    # documente pour ça.
+    # No --health-cmd: the image guarantees neither curl nor wget, and a
+    # permanently failing healthcheck makes the container "unhealthy" without
+    # informing anyone. The real health is checked by Pangolin on
+    # /rest/health (see the resource below), which is the endpoint Shlink
+    # documents for that.
     extraOptions = [
       "--network=host"
       "--pull=newer"
@@ -152,11 +152,11 @@ in {
     requires = ["shlink-db-password.service"];
   };
 
-  # ── Exposition publique (Pangolin/newt) ────────────────────────────────
-  # Schéma `proxy-resources` + `protocol` (celui qui marche sur ce
-  # contrôleur). auth.sso-enabled = false : indispensable pour que les
-  # redirections /<slug> soient publiques. Healthcheck sur /rest/health, qui
-  # répond 200 sans clé d'API (endpoint dédié santé).
+  # ── Public exposure (Pangolin/newt) ────────────────────────────────
+  # `proxy-resources` + `protocol` schema (the one that works on this
+  # controller). auth.sso-enabled = false: indispensable for the
+  # /<slug> redirects to be public. Healthcheck on /rest/health, which
+  # answers 200 without an API key (dedicated health endpoint).
   services.newt.blueprint.proxy-resources.shlink = {
     name = "shlink";
     protocol = "http";
@@ -185,18 +185,18 @@ in {
     ];
   };
 
-  # ── Sauvegarde ─────────────────────────────────────────────────────────
-  # Le dump Postgres quotidien de tower couvrait nextcloud uniquement : les
-  # liens vivent en base, donc sans ça un disque perdu = tous les liens perdus.
+  # ── Backup ─────────────────────────────────────────────────────────
+  # Tower's daily Postgres dump covered nextcloud only: the
+  # links live in the database, so without this a lost disk = all links lost.
   services.postgresqlBackup.databases = lib.mkAfter ["shlink"];
 
-  # ── Garde-fous ─────────────────────────────────────────────────────────
+  # ── Safeguards ─────────────────────────────────────────────────────────
   assertions = [
     {
-      # --network=host expose 8097 sur toutes les interfaces : seul le firewall
-      # empêche un accès LAN direct (l'API n'a qu'une clé, pas d'IP allowlist).
+      # --network=host exposes 8097 on all interfaces: only the firewall
+      # prevents direct LAN access (the API has only a key, no IP allowlist).
       assertion = !(lib.elem port config.networking.firewall.allowedTCPPorts);
-      message = "shlink : le port ${toString port} ne doit pas être ouvert au firewall (exposition uniquement via Pangolin/newt).";
+      message = "shlink: port ${toString port} must not be open on the firewall (exposure only via Pangolin/newt).";
     }
   ];
 }
